@@ -1,0 +1,8 @@
+Paths to third party program files from licensing directory: 
+compiler/c/en/third-party-programs.txt
+compiler/fortran/en/third-party-programs.txt
+mkl/en/third-party-programs.txt
+tbb/en/third-party-programs.txt
+ipp/en/third-party-programs.txt
+mpi/third-party-programs.txt
+daal/en/third-party-programs.txt

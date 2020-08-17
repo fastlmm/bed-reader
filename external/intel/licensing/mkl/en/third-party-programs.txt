@@ -1,0 +1,3 @@
+This third-party-programs.txt file applies to the Intel(R) Math Kernel Library 2019 Update 4.
+There are not any Third Party Programs (as defined in the Agreement) included in this version of the Intel(R) Math Kernel Library.
+

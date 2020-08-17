@@ -1,0 +1,8 @@
+第三者のプログラムファイルの場所 (licensing ディレクトリーからの相対パス): 
+../compiler/c/ja/third-party-programs.txt
+../compiler/fortran/ja/third-party-programs.txt
+../mkl/ja/third-party-programs.txt
+../tbb/ja/third-party-programs.txt
+../ipp/ja/third-party-programs.txt
+../mpi/third-party-programs.txt
+../daal/ja/third-party-programs.txt

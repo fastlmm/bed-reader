@@ -1,0 +1,48 @@
+Package ID: w_comp_lib_2019.4.245
+
+This package contains:
+        Intel(R) Math Kernel Library 2019 Update 4 for Windows* Target
+        Intel(R) Math Kernel Library 2019 Update 4 for Linux* Target
+
+This document provides general installation and support notes about the Community forum supported Intel(R) Math Kernel Library.
+ 
+These software development tools are also available as part of the Intel® Parallel Studio XE and Intel® System Studio products.
+These products include Priority Customer support at the Online Service Center.  For more information see: https://software.intel.com/en-us/intel-parallel-studio-xe and https://software.intel.com/en-us/intel-system-studio.
+
+-----------------
+Technical Support
+-----------------
+
+Your feedback is very important to us. Technical support for the Community forum supported
+Intel(R) Math Kernel Library can be obtained by creating an account at the Intel® Software Development Products Forums:
+      https://software.intel.com/en-us/forums/intel-math-kernel-library
+
+General information on the Community forum supported Intel® Performance Libraries,
+as well as request for licenses may be obtained at:
+      https://software.intel.com/en-us/qualify-for-free-software
+
+Before submitting a support issue, see our documentation for details on 
+post-install testing to ensure that basic facilities are working.
+
+When submitting a support issue to us, please provide specific details of your problem,
+including:
+    - Intel package and version information
+    - Host architecture (for example, Intel(R) 64 architecture)
+    - Compiler(s) and versions
+    - Operating system(s) and versions
+    - Specifics on how to reproduce the problem. Include makefiles,
+      command lines, small test cases, and build instructions.
+      Use <installdir>/test sources as test cases, when possible.
+
+Submitting Issues
+-----------------
+- Go to the appropriate forum as listed above
+- Log in to the site (upper right-hand corner). Note that your username and password are case-sensitive.
+- Click on the "New topic" button in the top left.
+- Complete the fields describing your issue and attach any supporting files.
+- Review the issue and complete submission.
+
+Note: These are public forums so do not post any restricted information.  Once an Intel representative
+responds to you, provide further details via a private message.
+
+* Other names and brands may be claimed as the property of others.
