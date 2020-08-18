@@ -3,7 +3,7 @@ language: python
 env:
   global:
     - CIBW_SKIP="pp* cp27-* cp34-* cp35-* cp36-* *i686* *-win32"
-    - CIBW_BEFORE_BUILD: pip install .
+    - CIBW_BEFORE_BUILD=pip install numpy
     - CIBW_TEST_COMMAND="pytest"
 
 jobs:
@@ -21,9 +21,9 @@ jobs:
         - export PATH="/c/Python38:/c/Python38/Scripts:$PATH"
 
 install:
-  - python3 -m pip install -r requirements.txt
-  - python3 -m pip install cibuildwheel==1.5.5
-  - python3 -m pip install pytest
+  - python -m pip install -r requirements.txt
+  - python -m pip install cibuildwheel==1.5.5
+  - python -m pip install pytest
 
 script:
   # build the wheels, put them into './wheelhouse'
