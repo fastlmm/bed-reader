@@ -64,6 +64,117 @@ _meta_meta = {
     }
 
 class open_bed:  #!!!cmk need doc strings everywhere
+    """
+    A NumPy-inspired class for fast opening and reading of PLINK \*.bed files.
+
+    Parameters
+    ----------
+    filepath: string or path
+        BED file path
+    iid_count: int or ``none``
+        Number of individuals (samples) in the BED file.
+        Defaults to quickly counting the number itself.
+    sid_count: int or ``none``
+        Number of SNPs (variants) in the BED file.
+        Defaults to quickly counting the number itself.
+    metadata: dictionary
+        A dictionary of replacement metadata. By default, this
+        is empty and any queries about metadata
+        are answered by reading either the \*.fam or the *.\bim file. Any replacement
+        metadata given here takes precedent over the information in the file.
+        The keys of the dictionary are the names of the metadata, specifically,
+        "fid" (family id), "iid" (individual or sample id), "father" (father id),
+        "mother" (mother id), "sex", "pheno" (phenotype), "chromosome", "sid"
+        (SNP or variant id), "cm_position" (centimorgan position), "bp_position"
+        (base-pair position), "allele_1", "allele_2". The values in the dictionary
+        are list or array.
+    count_A1: bool
+        Tells if the reader should count the number of A1 alleles (the PLINK standard and the default) or the number of A2 alleles.
+    num_threads: int
+        Tells how many threads to use to read data. Defaults to all available threads.
+        Can also be set the 'MKL_NUM_THREADS' environment variable.
+    skip_format_check: b
+        If False (default), will immediately check that '.bed' file has expected starting bytes
+        on open. If True, will not check until (and if) the file is read.
+        
+    Returns
+    -------
+    an open_bed object : :class:`open_bed`
+
+    .. _open_examples:
+
+    Examples
+    --------
+    #!!!cmk give examples of metadata
+    #!!!cmk talk about missing data
+    With the `with <https://docs.python.org/3/reference/compound_stmts.html#grammar-token-with-stmt>`__ statement, list individual (sample) :attr:`iid` and SNP (variant) :attr:`sid`, then :meth:`read` the whole file.
+
+    .. doctest::
+
+        >>> from bgen_reader import open_bed
+        >>>
+        >>> with open_bed("distributed_bed_test1_X.bed") as bed:
+        ...     print(bed.iid)
+        ...     print(bed.sid)
+        ...     print(bed.read())
+        ['SNP1' 'SNP2' 'SNP3' 'SNP4']
+        ['sample_0' 'sample_1' 'sample_2' 'sample_3']
+        [[[1. 0. 1. 0.]
+          [0. 1. 1. 0.]
+          [1. 0. 0. 1.]
+          [0. 1. 0. 1.]]
+        <BLANKLINE>
+         [[0. 1. 1. 0.]
+          [1. 0. 0. 1.]
+          [0. 1. 0. 1.]
+          [1. 0. 1. 0.]]
+        <BLANKLINE>
+         [[1. 0. 0. 1.]
+          [0. 1. 0. 1.]
+          [1. 0. 1. 0.]
+          [0. 1. 1. 0.]]
+        <BLANKLINE>
+         [[0. 1. 0. 1.]
+          [1. 0. 1. 0.]
+          [0. 1. 1. 0.]
+          [1. 0. 0. 1.]]]
+
+    Open the file (without `with`) and read probabilities for one variant.
+
+    .. doctest::
+
+        >>> bed = open_bed("distributed_bed_test1_X.bed")
+        >>> print(bed.read(2))
+        [[[1. 0. 0. 1.]]
+        <BLANKLINE>
+         [[0. 1. 0. 1.]]
+        <BLANKLINE>
+         [[1. 0. 1. 0.]]
+        <BLANKLINE>
+         [[0. 1. 1. 0.]]]
+        >>> del bed                 # close and delete object
+
+    Open the file and then first read for a :class:`slice` of samples and variants, and then for a single sample and variant.
+
+    .. doctest::
+
+        >>> bed = open_bed(file, verbose=False)
+        >>> print(bed.read((slice(1,3),slice(2,4))))
+        [[[0. 1. 0. 1.]
+          [1. 0. 1. 0.]]
+        <BLANKLINE>
+         [[1. 0. 1. 0.]
+          [0. 1. 1. 0.]]]
+        >>> print(bgen.read((0,1)))
+        [[[0. 1. 1. 0.]]]
+        >>> del bgen                 # close and delete object
+
+
+        #!!!cmk need example of accessing the metadata
+        #!!!cmk need exmaple of overriding the metadata
+
+    .. _sample format: https://www.well.ox.ac.uk/~gav/qctool/documentation/sample_file_formats.html #!!!cmk
+    """
     def __init__(
         self,
         filepath,
@@ -185,37 +296,79 @@ class open_bed:  #!!!cmk need doc strings everywhere
     def __str__(self):
         return f"{self.__class__.__name__}('{self.filepath}',...)"
 
+    #!!!cmk make sure these are in a good order for the documentation
+
     @property
     def fid(self):
+        """
+        The family id (a :class:`numpy.ndarray` of ``str``).
+
+        #!!!cmk tell that if needed will open and reader the *.fam file
+
+        Example
+        -------
+        .. doctest::
+
+            >>> from bed_reader import open_bed
+            >>>
+            >>> file = example_filepath("haplotypes.bed")
+            >>> with open_bed(file) as bed:
+            ...     print(bed.fid)
+            ['sample_0' 'sample_1' 'sample_2' 'sample_3']
+
+        """
+
         return self.metadata_item("fid")
 
     @property
     def iid(self):
+        '''
+        !!!cmk need doc string
+        '''
         return self.metadata_item("iid")
 
     @property
     def father(self):
+        '''
+        !!!cmk need doc string
+        '''
         return self.metadata_item("father")
 
     @property
     def mother(self):
+        '''
+        !!!cmk need doc string
+        '''
         return self.metadata_item("mother")
 
     @property
     def sex(self):
+        '''
+        !!!cmk need doc string
+        '''
         return self.metadata_item("sex")
 
     @property
     def pheno(self):
+        '''
+        !!!cmk need doc string
+        '''
         return self.metadata_item("pheno")
 
     @property
     def metadata(self):
+        '''
+        !!!cmk need doc string
+        !!!cmk tell that if needed, will open and read *.fam and *.bim files
+        '''
         for key in _meta_meta:
             self.metadata_item(key)
         return self.metadata_dict
 
     def metadata_item(self, key):
+        '''
+        !!!cmk need doc string
+        '''
         val = self.metadata_dict.get(key)
         if val is None:
             mm = _meta_meta[key]
@@ -226,34 +379,58 @@ class open_bed:  #!!!cmk need doc strings everywhere
 
     @property
     def chromosome(self):
+        '''
+        !!!cmk need doc string
+        '''
         return self.metadata_item("chromosome")
 
     @property
     def sid(self):
+        '''
+        !!!cmk need doc string
+        '''
         return self.metadata_item("sid")
 
     @property
     def cm_position(self):
+        '''
+        !!!cmk need doc string
+        '''
         return self.metadata_item("cm_position")
 
     @property
     def bp_position(self):
+        '''
+        !!!cmk need doc string
+        '''
         return self.metadata_item("bp_position")
 
     @property
     def allele_1(self):
+        '''
+        !!!cmk need doc string
+        '''
         return self.metadata_item("allele_1")
 
     @property
     def allele_2(self):
+        '''
+        !!!cmk need doc string
+        '''
         return self.metadata_item("allele_2")
 
     @property
     def iid_count(self):
+        '''
+        !!!cmk need doc string
+        '''
         return self._count("fam")
 
     @property
     def sid_count(self):
+        '''
+        !!!cmk need doc string
+        '''
         return self._count("bim")
 
     def _count(self, suffix):
@@ -297,6 +474,9 @@ class open_bed:  #!!!cmk need doc strings everywhere
     def write(
         filepath, val, metadata={}, count_A1=True, force_python_only=False,
     ):
+        '''
+        !!!cmk need doc string
+        '''
         filepath = Path(filepath)
         iid_count = val.shape[0]
         sid_count = val.shape[1]
@@ -462,6 +642,9 @@ class open_bed:  #!!!cmk need doc strings everywhere
         order: Optional[str] = "F",
         force_python_only: bool = False,
     ) -> np.ndarray:
+        '''
+        !!!cmk talk about default dtype and missing and the various index methods
+        '''
 
         iid_index_or_slice_etc, sid_index_or_slice_etc = self._split_index(index)
 
@@ -672,7 +855,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     import os
 
-    if True:
+    if True: #!!!cmk
         import numpy as np
         from bed_reader._open_bed import open_bed
 

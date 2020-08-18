@@ -1,0 +1,338 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>bed-reader Documentation &#8212; pysnptools 0.0.2 documentation</title>
+    <link rel="stylesheet" href="_static/classic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="#">pysnptools 0.0.2 documentation</a> &#187;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="bed-reader-documentation">
+<h1><code class="xref py py-mod docutils literal notranslate"><span class="pre">bed-reader</span></code> Documentation<a class="headerlink" href="#bed-reader-documentation" title="Permalink to this headline">¶</a></h1>
+<p>!!!cmk update</p>
+<span class="target" id="module-bed_reader"></span><div class="section" id="open-bed">
+<h2><code class="xref py py-class docutils literal notranslate"><span class="pre">open_bed</span></code><a class="headerlink" href="#open-bed" title="Permalink to this headline">¶</a></h2>
+<dl class="py class">
+<dt id="bed_reader._open_bed.open_bed">
+<em class="property">class </em><code class="sig-prename descclassname">bed_reader._open_bed.</code><code class="sig-name descname">open_bed</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filepath</span></em>, <em class="sig-param"><span class="n">iid_count</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">sid_count</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">metadata</span><span class="o">=</span><span class="default_value">{}</span></em>, <em class="sig-param"><span class="n">count_A1</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">num_threads</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">skip_format_check</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#bed_reader._open_bed.open_bed" title="Permalink to this definition">¶</a></dt>
+<dd><p>A NumPy-inspired class for fast opening and reading of PLINK *.bed files.</p>
+<dl class="simple">
+<dt>filepath: string or path</dt><dd><p>BED file path</p>
+</dd>
+<dt>iid_count: int or <code class="docutils literal notranslate"><span class="pre">none</span></code></dt><dd><p>Number of individuals (samples) in the BED file.
+Defaults to quickly counting the number itself.</p>
+</dd>
+<dt>sid_count: int or <code class="docutils literal notranslate"><span class="pre">none</span></code></dt><dd><p>Number of SNPs (variants) in the BED file.
+Defaults to quickly counting the number itself.</p>
+</dd>
+<dt>metadata: dictionary</dt><dd><p>A dictionary of replacement metadata. By default, this
+is empty and any queries about metadata
+are answered by reading either the *.fam or the <a href="#id1"><span class="problematic" id="id2">*</span></a>.im file. Any replacement
+metadata given here takes precedent over the information in the file.
+The keys of the dictionary are the names of the metadata, specifically,
+“fid” (family id), “iid” (individual or sample id), “father” (father id),
+“mother” (mother id), “sex”, “pheno” (phenotype), “chromosome”, “sid”
+(SNP or variant id), “cm_position” (centimorgan position), “bp_position”
+(base-pair position), “allele_1”, “allele_2”. The values in the dictionary
+are list or array.</p>
+</dd>
+<dt>count_A1: bool</dt><dd><p>Tells if the reader should count the number of A1 alleles (the PLINK standard and the default) or the number of A2 alleles.</p>
+</dd>
+<dt>num_threads: int</dt><dd><p>Tells how many threads to use to read data. Defaults to all available threads.
+Can also be set the ‘MKL_NUM_THREADS’ environment variable.</p>
+</dd>
+<dt>skip_format_check: b</dt><dd><p>If False (default), will immediately check that ‘.bed’ file has expected starting bytes
+on open. If True, will not check until (and if) the file is read.</p>
+</dd>
+</dl>
+<p>an open_bed object : <a class="reference internal" href="#bed_reader._open_bed.open_bed" title="bed_reader._open_bed.open_bed"><code class="xref py py-class docutils literal notranslate"><span class="pre">open_bed</span></code></a></p>
+<p>#!!!cmk give examples of metadata
+#!!!cmk talk about missing data
+With the <a class="reference external" href="https://docs.python.org/3/reference/compound_stmts.html#grammar-token-with-stmt">with</a> statement, list individual (sample) <a class="reference internal" href="#bed_reader._open_bed.open_bed.iid" title="bed_reader._open_bed.open_bed.iid"><code class="xref py py-attr docutils literal notranslate"><span class="pre">iid</span></code></a> and SNP (variant) <a class="reference internal" href="#bed_reader._open_bed.open_bed.sid" title="bed_reader._open_bed.open_bed.sid"><code class="xref py py-attr docutils literal notranslate"><span class="pre">sid</span></code></a>, then <a class="reference internal" href="#bed_reader._open_bed.open_bed.read" title="bed_reader._open_bed.open_bed.read"><code class="xref py py-meth docutils literal notranslate"><span class="pre">read()</span></code></a> the whole file.</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bgen_reader</span> <span class="k">import</span> <span class="n">open_bed</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">open_bed</span><span class="p">(</span><span class="s2">&quot;distributed_bed_test1_X.bed&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">bed</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">iid</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">sid</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+<span class="go">[&#39;SNP1&#39; &#39;SNP2&#39; &#39;SNP3&#39; &#39;SNP4&#39;]</span>
+<span class="go">[&#39;sample_0&#39; &#39;sample_1&#39; &#39;sample_2&#39; &#39;sample_3&#39;]</span>
+<span class="go">[[[1. 0. 1. 0.]</span>
+<span class="go">  [0. 1. 1. 0.]</span>
+<span class="go">  [1. 0. 0. 1.]</span>
+<span class="go">  [0. 1. 0. 1.]]</span>
+
+<span class="go"> [[0. 1. 1. 0.]</span>
+<span class="go">  [1. 0. 0. 1.]</span>
+<span class="go">  [0. 1. 0. 1.]</span>
+<span class="go">  [1. 0. 1. 0.]]</span>
+
+<span class="go"> [[1. 0. 0. 1.]</span>
+<span class="go">  [0. 1. 0. 1.]</span>
+<span class="go">  [1. 0. 1. 0.]</span>
+<span class="go">  [0. 1. 1. 0.]]</span>
+
+<span class="go"> [[0. 1. 0. 1.]</span>
+<span class="go">  [1. 0. 1. 0.]</span>
+<span class="go">  [0. 1. 1. 0.]</span>
+<span class="go">  [1. 0. 0. 1.]]]</span>
+</pre></div>
+</div>
+<p>Open the file (without <cite>with</cite>) and read probabilities for one variant.</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">bed</span> <span class="o">=</span> <span class="n">open_bed</span><span class="p">(</span><span class="s2">&quot;distributed_bed_test1_X.bed&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span>
+<span class="go">[[[1. 0. 0. 1.]]</span>
+
+<span class="go"> [[0. 1. 0. 1.]]</span>
+
+<span class="go"> [[1. 0. 1. 0.]]</span>
+
+<span class="go"> [[0. 1. 1. 0.]]]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">del</span> <span class="n">bed</span>                 <span class="c1"># close and delete object</span>
+</pre></div>
+</div>
+<p>Open the file and then first read for a <code class="xref py py-class docutils literal notranslate"><span class="pre">slice</span></code> of samples and variants, and then for a single sample and variant.</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">bed</span> <span class="o">=</span> <span class="n">open_bed</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">read</span><span class="p">((</span><span class="nb">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">3</span><span class="p">),</span><span class="nb">slice</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">4</span><span class="p">))))</span>
+<span class="go">[[[0. 1. 0. 1.]</span>
+<span class="go">  [1. 0. 1. 0.]]</span>
+
+<span class="go"> [[1. 0. 1. 0.]</span>
+<span class="go">  [0. 1. 1. 0.]]]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">bgen</span><span class="o">.</span><span class="n">read</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">)))</span>
+<span class="go">[[[0. 1. 1. 0.]]]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">del</span> <span class="n">bgen</span>                 <span class="c1"># close and delete object</span>
+
+
+<span class="go">#!!!cmk need example of accessing the metadata</span>
+<span class="go">#!!!cmk need exmaple of overriding the metadata</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt id="bed_reader._open_bed.open_bed.allele_1">
+<em class="property">property </em><code class="sig-name descname">allele_1</code><a class="headerlink" href="#bed_reader._open_bed.open_bed.allele_1" title="Permalink to this definition">¶</a></dt>
+<dd><p>!!!cmk need doc string</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="bed_reader._open_bed.open_bed.allele_2">
+<em class="property">property </em><code class="sig-name descname">allele_2</code><a class="headerlink" href="#bed_reader._open_bed.open_bed.allele_2" title="Permalink to this definition">¶</a></dt>
+<dd><p>!!!cmk need doc string</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="bed_reader._open_bed.open_bed.bp_position">
+<em class="property">property </em><code class="sig-name descname">bp_position</code><a class="headerlink" href="#bed_reader._open_bed.open_bed.bp_position" title="Permalink to this definition">¶</a></dt>
+<dd><p>!!!cmk need doc string</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="bed_reader._open_bed.open_bed.chromosome">
+<em class="property">property </em><code class="sig-name descname">chromosome</code><a class="headerlink" href="#bed_reader._open_bed.open_bed.chromosome" title="Permalink to this definition">¶</a></dt>
+<dd><p>!!!cmk need doc string</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="bed_reader._open_bed.open_bed.close">
+<code class="sig-name descname">close</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#bed_reader._open_bed.open_bed.close" title="Permalink to this definition">¶</a></dt>
+<dd><p>!!!cmk doc this</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="bed_reader._open_bed.open_bed.cm_position">
+<em class="property">property </em><code class="sig-name descname">cm_position</code><a class="headerlink" href="#bed_reader._open_bed.open_bed.cm_position" title="Permalink to this definition">¶</a></dt>
+<dd><p>!!!cmk need doc string</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="bed_reader._open_bed.open_bed.father">
+<em class="property">property </em><code class="sig-name descname">father</code><a class="headerlink" href="#bed_reader._open_bed.open_bed.father" title="Permalink to this definition">¶</a></dt>
+<dd><p>!!!cmk need doc string</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="bed_reader._open_bed.open_bed.fid">
+<em class="property">property </em><code class="sig-name descname">fid</code><a class="headerlink" href="#bed_reader._open_bed.open_bed.fid" title="Permalink to this definition">¶</a></dt>
+<dd><p>The family id (a <code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.ndarray</span></code> of <code class="docutils literal notranslate"><span class="pre">str</span></code>).</p>
+<p>#!!!cmk tell that if needed will open and reader the <a href="#id3"><span class="problematic" id="id4">*</span></a>.fam file</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">open_bed</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">file</span> <span class="o">=</span> <span class="n">example_filepath</span><span class="p">(</span><span class="s2">&quot;haplotypes.bed&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">open_bed</span><span class="p">(</span><span class="n">file</span><span class="p">)</span> <span class="k">as</span> <span class="n">bed</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">fid</span><span class="p">)</span>
+<span class="go">[&#39;sample_0&#39; &#39;sample_1&#39; &#39;sample_2&#39; &#39;sample_3&#39;]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt id="bed_reader._open_bed.open_bed.iid">
+<em class="property">property </em><code class="sig-name descname">iid</code><a class="headerlink" href="#bed_reader._open_bed.open_bed.iid" title="Permalink to this definition">¶</a></dt>
+<dd><p>!!!cmk need doc string</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="bed_reader._open_bed.open_bed.iid_count">
+<em class="property">property </em><code class="sig-name descname">iid_count</code><a class="headerlink" href="#bed_reader._open_bed.open_bed.iid_count" title="Permalink to this definition">¶</a></dt>
+<dd><p>!!!cmk need doc string</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="bed_reader._open_bed.open_bed.metadata">
+<em class="property">property </em><code class="sig-name descname">metadata</code><a class="headerlink" href="#bed_reader._open_bed.open_bed.metadata" title="Permalink to this definition">¶</a></dt>
+<dd><p>!!!cmk need doc string
+!!!cmk tell that if needed, will open and read <a href="#id5"><span class="problematic" id="id6">*</span></a>.fam and <a href="#id7"><span class="problematic" id="id8">*</span></a>.bim files</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="bed_reader._open_bed.open_bed.metadata_item">
+<code class="sig-name descname">metadata_item</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">key</span></em><span class="sig-paren">)</span><a class="headerlink" href="#bed_reader._open_bed.open_bed.metadata_item" title="Permalink to this definition">¶</a></dt>
+<dd><p>!!!cmk need doc string</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="bed_reader._open_bed.open_bed.mother">
+<em class="property">property </em><code class="sig-name descname">mother</code><a class="headerlink" href="#bed_reader._open_bed.open_bed.mother" title="Permalink to this definition">¶</a></dt>
+<dd><p>!!!cmk need doc string</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="bed_reader._open_bed.open_bed.pheno">
+<em class="property">property </em><code class="sig-name descname">pheno</code><a class="headerlink" href="#bed_reader._open_bed.open_bed.pheno" title="Permalink to this definition">¶</a></dt>
+<dd><p>!!!cmk need doc string</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="bed_reader._open_bed.open_bed.read">
+<code class="sig-name descname">read</code><span class="sig-paren">(</span><em class="sig-param">index: Optional[Any] = None</em>, <em class="sig-param">dtype: Union[type</em>, <em class="sig-param">str</em>, <em class="sig-param">None] = &lt;class 'numpy.float32'&gt;</em>, <em class="sig-param">order: Optional[str] = 'F'</em>, <em class="sig-param">force_python_only: bool = False</em><span class="sig-paren">)</span> &#x2192; numpy.ndarray<a class="headerlink" href="#bed_reader._open_bed.open_bed.read" title="Permalink to this definition">¶</a></dt>
+<dd><p>!!!cmk talk about default dtype and missing and the various index methods</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="bed_reader._open_bed.open_bed.sex">
+<em class="property">property </em><code class="sig-name descname">sex</code><a class="headerlink" href="#bed_reader._open_bed.open_bed.sex" title="Permalink to this definition">¶</a></dt>
+<dd><p>!!!cmk need doc string</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="bed_reader._open_bed.open_bed.shape">
+<em class="property">property </em><code class="sig-name descname">shape</code><a class="headerlink" href="#bed_reader._open_bed.open_bed.shape" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="bed_reader._open_bed.open_bed.sid">
+<em class="property">property </em><code class="sig-name descname">sid</code><a class="headerlink" href="#bed_reader._open_bed.open_bed.sid" title="Permalink to this definition">¶</a></dt>
+<dd><p>!!!cmk need doc string</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="bed_reader._open_bed.open_bed.sid_count">
+<em class="property">property </em><code class="sig-name descname">sid_count</code><a class="headerlink" href="#bed_reader._open_bed.open_bed.sid_count" title="Permalink to this definition">¶</a></dt>
+<dd><p>!!!cmk need doc string</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="bed_reader._open_bed.open_bed.write">
+<em class="property">static </em><code class="sig-name descname">write</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filepath</span></em>, <em class="sig-param"><span class="n">val</span></em>, <em class="sig-param"><span class="n">metadata</span><span class="o">=</span><span class="default_value">{}</span></em>, <em class="sig-param"><span class="n">count_A1</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">force_python_only</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="headerlink" href="#bed_reader._open_bed.open_bed.write" title="Permalink to this definition">¶</a></dt>
+<dd><p>!!!cmk need doc string</p>
+</dd></dl>
+
+</dd></dl>
+
+<div class="section" id="indices-and-tables">
+<h3>Indices and Tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h3>
+<blockquote>
+<div><ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
+</ul>
+</div></blockquote>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="#">Table of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#"><code class="xref py py-mod docutils literal notranslate"><span class="pre">bed-reader</span></code> Documentation</a><ul>
+<li><a class="reference internal" href="#open-bed"><code class="xref py py-class docutils literal notranslate"><span class="pre">open_bed</span></code></a><ul>
+<li><a class="reference internal" href="#indices-and-tables">Indices and Tables</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/index.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="#">pysnptools 0.0.2 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 20198.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.0.3.
+    </div>
+  </body>
+</html>
