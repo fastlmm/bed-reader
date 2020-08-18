@@ -111,7 +111,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
 
     .. doctest::
 
-        >>> from bgen_reader import open_bed
+        >>> from bed_reader import open_bed
         >>>
         >>> with open_bed("distributed_bed_test1_X.bed") as bed:
         ...     print(bed.iid)
@@ -165,9 +165,9 @@ class open_bed:  #!!!cmk need doc strings everywhere
         <BLANKLINE>
          [[1. 0. 1. 0.]
           [0. 1. 1. 0.]]]
-        >>> print(bgen.read((0,1)))
+        >>> print(bed.read((0,1)))
         [[[0. 1. 1. 0.]]]
-        >>> del bgen                 # close and delete object
+        >>> del bed                 # close and delete object
 
 
         #!!!cmk need example of accessing the metadata
