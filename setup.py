@@ -124,7 +124,7 @@ else:
     ]
     cmdclass = {}
 
-install_requires = ["numpy>=1.11.3", "wheel>=0.34.2"]
+install_requires = ["numpy>=1.11.3"]
 
 # !!!cmk see FIXUP's
 setup(
@@ -144,7 +144,7 @@ setup(
         "Programming Language :: Python :: 3",
         "Programming Language :: Python",
     ],
-    packages=["bed_reader",],  # basically everything with a __init__.py
+    packages=["bed_reader","bed_reader/tests","bed_reader/external"],  # basically everything with a __init__.py
     install_requires=install_requires,
     # extensions
     cmdclass=cmdclass,
