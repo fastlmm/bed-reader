@@ -174,6 +174,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
         #!!!cmk need exmaple of overriding the metadata
 
     .. _sample format: https://www.well.ox.ac.uk/~gav/qctool/documentation/sample_file_formats.html #!!!cmk
+
     """
     def __init__(
         self,
