@@ -4,8 +4,8 @@ env:
   global:
     - CIBW_SKIP="pp* cp27-* cp34-* cp35-* cp36-* *i686* *-win32"
     - CIBW_BEFORE_BUILD="pip install numpy&&python setup.py build_ext --inplace"
-    - CIBW_TEST_REQUIRES=pytest
     - CIBW_BEFORE_TEST="pip install -r requirements-dev.txt"
+    - CIBW_TEST_REQUIRES=pytest
     - CIBW_TEST_COMMAND="pytest {project}"
 
 jobs:
@@ -14,7 +14,15 @@ jobs:
     - services: docker
     # and a mac build #!!!cmk failing because python 2.7
     - os: osx
+      osx_image: xcode11.3
       language: shell
+      before_install:
+      - brew install gcc@7
+      - export CC=gcc-7
+      - export CXX=g++-7
+      - wget https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O miniconda.sh;
+      - bash miniconda.sh -b -p $HOME/miniconda
+      - export PATH=$HOME/miniconda/bin:$PATH
     # and a windows build
     - os: windows
       language: shell
@@ -27,7 +35,7 @@ install:
 
 script:
   # build the wheels, put them into './wheelhouse'
-  - python3 -m cibuildwheel --output-dir wheelhouse
+  - python -m cibuildwheel --output-dir wheelhouse
 
 deploy:
   provider: s3
