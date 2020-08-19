@@ -474,10 +474,11 @@ class open_bed:  #!!!cmk need doc strings everywhere
 
     @staticmethod
     def _fix_path():
-        if "bed_reader.wrap_plink_parser" in sys.modules:
-            return
-        if "win" in platform.system().lower():
-            sys.path.append(Path(__file__).parent)
+        return
+        #if "bed_reader.wrap_plink_parser" in sys.modules:
+        #    return
+        #if "win" in platform.system().lower():
+        #    sys.path.append(Path(__file__).parent)
 
 
     #!!!cmk say something about support for snp-minor vs major

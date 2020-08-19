@@ -1,6 +1,7 @@
 numpy
 pandas
 dataclass
+intel-openmp
 black
 flake8
 isort
