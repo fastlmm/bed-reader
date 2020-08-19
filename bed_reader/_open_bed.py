@@ -9,6 +9,8 @@ import logging
 from pathlib import Path
 import multiprocessing
 from dataclasses import dataclass
+import sys
+import platform
 
 import math
 from typing import Any, List, Optional, Tuple, Union
@@ -470,6 +472,15 @@ class open_bed:  #!!!cmk need doc strings everywhere
     def __exit__(self, *_):
         pass
 
+    @staticmethod
+    def _fix_path():
+        if "bed_reader.wrap_plink_parser" in sys.modules:
+            return
+        from bed_reader import wrap_plink_parser
+        if "win" in platform.system().lower():
+            sys.path.append(Path(wrap_plink_parser.__file__).parent)
+
+
     #!!!cmk say something about support for snp-minor vs major
     @staticmethod
     def write(
@@ -494,7 +505,9 @@ class open_bed:  #!!!cmk need doc strings everywhere
         )).encode("ascii")
 
         if not force_python_only:
+            open_bed._fix_path()
             from bed_reader import wrap_plink_parser
+            
 
             if val.flags["C_CONTIGUOUS"]:
                 order = "C"
@@ -665,6 +678,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
         sid_index = self._sid_range[sid_index_or_slice_etc]
 
         if not force_python_only:
+            open_bed._fix_path()
             from bed_reader import wrap_plink_parser
 
             val = np.zeros((len(iid_index), len(sid_index)), order=order, dtype=dtype)
