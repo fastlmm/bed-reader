@@ -5,13 +5,13 @@ env:
     - CIBW_SKIP="pp* cp27-* cp34-* cp35-* cp36-* *i686* *-win32"
     - CIBW_BEFORE_BUILD="pip install numpy"
     - CIBW_TEST_REQUIRES=pytest
-    - CIBW_TEST_COMMAND="pytest"
+    - CIBW_TEST_COMMAND="pytest {project}"
 
 jobs:
   include:
     # perform a linux build
     - services: docker
-    # and a mac build
+    # and a mac build #!!!cmk failing because python 2.7
     - os: osx
       language: shell
     # and a windows build
