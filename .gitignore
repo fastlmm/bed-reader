@@ -131,3 +131,5 @@ dmypy.json
 /ignore.fam
 /ignore.bim
 /releases/
+/bed_reader/tests/ignore.fam
+/bed_reader/tests/ignore.bim

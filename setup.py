@@ -145,6 +145,7 @@ setup(
         "Programming Language :: Python",
     ],
     packages=["bed_reader","bed_reader/tests"],  # basically everything with a __init__.py
+    package_data={"bed_reader":["external/intel/windows/compiler/lib/intel64/libiomp5md.dll"]} if "win" in platform.system().lower() else {},
     install_requires=install_requires,
     # extensions
     cmdclass=cmdclass,
