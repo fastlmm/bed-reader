@@ -1,7 +1,7 @@
 #include *.rst
 #recursive-include doc *
 #recursive-include tests *
-recursive-include bed_reader *.c *.cpp *.h *.pyx *.pxd
+recursive-include bed_reader *.c *.cpp *.h *.pyx *.pxd *.dll
 include LICENSE.md
 include AUTHORS.txt
 include README.md
