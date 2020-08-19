@@ -5,7 +5,7 @@ import shutil
 from setuptools import setup, Extension
 from distutils.command.clean import clean as Clean
 import numpy
-import distutils
+import distutils.sysconfig
 
 # Version number
 version = "0.0.2a0"
