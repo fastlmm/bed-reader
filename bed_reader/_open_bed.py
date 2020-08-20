@@ -481,9 +481,9 @@ class open_bed:  #!!!cmk need doc strings everywhere
             from ctypes import cdll
             from ctypes.util import find_library
             dllname = "libiomp5md.dll"
-            if find_library(dllname) is not None:
-                print(f"cmk found '{dllname}' at '{find_library(dllname)}' so returning")
-                return
+            #if find_library(dllname) is not None: #!!!cmk
+            #    print(f"cmk found '{dllname}' at '{find_library(dllname)}' so returning")
+            #    return
             location_list = [Path(__file__).parent / dllname, Path(__file__).parent.parent / "external/intel/windows/compiler/lib/intel64" / dllname]
             for location in location_list:
                 print(f"cmk looking for '{dllname}' at '{location}'")
