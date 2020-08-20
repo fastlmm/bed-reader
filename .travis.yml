@@ -15,6 +15,10 @@ jobs:
     # and a mac build #!!!cmk failing because python 2.7
     - os: osx
       language: shell
+      before_install:
+      - brew install gcc@7
+      - export CC=gcc-7
+      - export CXX=g++-7
     # and a windows build
     - os: windows
       language: shell
