@@ -21,7 +21,9 @@
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
+#ifdef _OPENMP
 #include <omp.h>
+#endif
 
 #ifndef isinf
 #ifdef _WIN32
@@ -206,7 +208,7 @@ void SUFFIX(CBedFile)::ReadGenotypes(size_t iSnp, bool count_A1, const vector<si
 void SUFFIX(readPlinkBedFile)(std::string bed_fn, int inputNumIndividuals, int inputNumSNPs,
 							  bool count_A1, std::vector<size_t> individuals_idx, std::vector<int> snpIdxList, REAL *out, int num_threads)
 {
-#ifdef OPENMP	
+#ifdef _OPENMP	
 	omp_set_num_threads(num_threads);
 
 #pragma omp parallel default(none) shared(bed_fn, inputNumIndividuals, inputNumSNPs, count_A1, individuals_idx, snpIdxList, out)
@@ -220,7 +222,7 @@ void SUFFIX(readPlinkBedFile)(std::string bed_fn, int inputNumIndividuals, int i
 		bedFile = SUFFIX(CBedFile)();
 		bedFile.Open(bed_fn, inputNumIndividuals, inputNumSNPs);
 
-#ifdef OPENMP	
+#ifdef _OPENMP	
 #pragma omp for schedule(guided)
 #endif
 		for (long i = 0; i < (long) outputNumSNPs; i++)

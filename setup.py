@@ -105,7 +105,7 @@ if use_cython:
             runtime_library_dirs = runtime_library_dirs,
             include_dirs=library_list+[numpy.get_include()],
             extra_compile_args=openmp_compiler_args,
-            define_macros=macros+[("OPENMP","1")]))
+            define_macros=macros))
 
     cmdclass = {"build_ext": build_ext, "clean": CleanCommand}
 else:
