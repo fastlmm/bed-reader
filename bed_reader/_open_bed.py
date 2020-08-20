@@ -109,6 +109,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
     --------
     #!!!cmk give examples of metadata
     #!!!cmk talk about missing data
+    #!!!cmk talk about multithreading
     With the `with <https://docs.python.org/3/reference/compound_stmts.html#grammar-token-with-stmt>`__ statement, list individual (sample) :attr:`iid` and SNP (variant) :attr:`sid`, then :meth:`read` the whole file.
 
     .. doctest::
@@ -174,6 +175,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
 
         #!!!cmk need example of accessing the metadata
         #!!!cmk need exmaple of overriding the metadata
+        #!!!cmk in README say: Documentation not API Documatnion
 
     .. _sample format: https://www.well.ox.ac.uk/~gav/qctool/documentation/sample_file_formats.html #!!!cmk
 
@@ -477,20 +479,17 @@ class open_bed:  #!!!cmk need doc strings everywhere
         if "bed_reader.wrap_plink_parser_openmp" in sys.modules:
             return
         if platform.system() == "Windows":
-            print("cmk in windows _find_openmp")
+            #print("cmk in windows _find_openmp")
             from ctypes import cdll
             from ctypes.util import find_library
             dllname = "libiomp5md.dll"
-            #if find_library(dllname) is not None: #!!!cmk
-            #    print(f"cmk found '{dllname}' at '{find_library(dllname)}' so returning")
-            #    return
             location_list = [Path(__file__).parent / dllname, Path(__file__).parent.parent / "external/intel/windows/compiler/lib/intel64" / dllname]
             for location in location_list:
-                print(f"cmk looking for '{dllname}' at '{location}'")
+                #print(f"cmk looking for '{dllname}' at '{location}'")
                 if location.exists():
-                    print(f"cmk found it")
+                    #print(f"cmk found it")
                     cdll.LoadLibrary(str(location))
-                    print(f"cmk loaded it")
+                    #print(f"cmk loaded it")
                     return
             raise Exception(f"Can't find '{dllname}'")
 

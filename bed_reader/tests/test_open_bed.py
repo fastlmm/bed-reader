@@ -2,7 +2,7 @@ import numpy as np
 from pathlib import Path
 import pytest
 import logging
-from bed_reader._open_bed import open_bed #!!!cmk fix reference
+from bed_reader import open_bed
 
 
 def test_read1(shared_datadir):
@@ -412,7 +412,7 @@ def test_write12(tmp_path):
                     with open_bed(filename) as bed:
                         val2 = bed.read(
                             index=subsetter, order="C", dtype="float32"
-                        )  #!!!cmk should float32 be the default so that NaN is better?
+                        )
                         if subsetter is None:
                             expected = val
                         else:
