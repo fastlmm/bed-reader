@@ -16,10 +16,6 @@ jobs:
     - os: osx
       osx_image: xcode11.2
       language: shell
-      before_install:
-      - brew install gcc@7
-      - export CC=gcc-7
-      - export CXX=g++-7
     # and a windows build
     - os: windows
       language: shell

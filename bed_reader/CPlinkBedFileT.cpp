@@ -74,7 +74,7 @@ void SUFFIX(CBedFile)::Open(const string &filename_, size_t cIndividuals_, size_
 	unsigned char rd2 = NextChar();
 	if ((bedFileMagic1 != rd1) || (bedFileMagic2 != rd2))
 	{
-		printf("Ill-formed BED file [%s]."
+		printf("Ill-formed BED file [%s]."//!!!cmk use C++ to Python error message, here and elsewhere
 			   "\n  BED file header is incorrect."
 			   "\n  Expected magic number of 0x%02x 0x%02x, found 0x%02x 0x%02x",
 			   filename.c_str(), bedFileMagic1, bedFileMagic2, rd1, rd2);
@@ -93,7 +93,7 @@ void SUFFIX(CBedFile)::Open(const string &filename_, size_t cIndividuals_, size_
 		cbStride = (cIndividuals + 3) / 4;	// 4 genotypes per byte so round up
 		break;
 	default:
-		printf("Ill-formed BED file [%s].  BED file header is incorrect.  Expected mode to be 0 or 1, found %d", filename.c_str(), rd3);
+		printf("Ill-formed BED file [%s].  BED file header is incorrect.  Expected mode to be 0 or 1, found %d", filename.c_str(), rd3);//!!!cmk use C++ to Python error message, here and elsewhere
 		break;
 	}
 
@@ -124,12 +124,12 @@ size_t SUFFIX(CBedFile)::Read(BYTE *pb, size_t cbToRead)
 	{
 		if (feof(pFile))
 		{
-			printf("Encountered EOF before expected in BED file. Ill-formed BED file [%s]", filename.c_str());
+			printf("Encountered EOF before expected in BED file. Ill-formed BED file [%s]", filename.c_str());//!!!cmk use C++ to Python error message, here and elsewhere
 		}
 		int err = ferror(pFile);
 		if (err)
 		{
-			printf("Encountered a file error %d in BED file [%s]", err, filename.c_str());
+			printf("Encountered a file error %d in BED file [%s]", err, filename.c_str());//!!!cmk use C++ to Python error message, here and elsewhere
 		}
 	}
 	return (cbRead);
