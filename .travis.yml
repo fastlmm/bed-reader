@@ -19,6 +19,7 @@ jobs:
       - brew install gcc@7 --without-multilib
       - export CC=gcc-7
       - export CXX=g++-7
+      - alias python=python3
     # and a windows build
     - os: windows
       language: shell
@@ -27,11 +28,11 @@ jobs:
         - export PATH="/c/Python38:/c/Python38/Scripts:$PATH"
 
 install:
-  - python3 -m pip install cibuildwheel==1.5.5
+  - python -m pip install cibuildwheel==1.5.5
 
 script:
   # build the wheels, put them into './wheelhouse'
-  - python3 -m cibuildwheel --output-dir wheelhouse
+  - python -m cibuildwheel --output-dir wheelhouse
 
 deploy:
   provider: s3
