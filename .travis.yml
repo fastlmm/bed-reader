@@ -16,9 +16,9 @@ jobs:
     - os: osx
       language: shell
       before_install:
-      - brew install gcc@7
-      - export CC=gcc-7
-      - export CXX=g++-7
+      - brew install gcc@6
+      - export CC=gcc-6
+      - export CXX=g++-6
       - alias python=python3
     # and a windows build
     - os: windows
