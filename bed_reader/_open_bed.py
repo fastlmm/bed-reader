@@ -476,7 +476,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
     def _find_openmp():
         if "bed_reader.wrap_plink_parser_openmp" in sys.modules:
             return
-        if "win" in platform.system().lower():
+        if platform.system() == "Windows":
             print("cmk in windows _find_openmp")
             from ctypes import cdll
             from ctypes.util import find_library

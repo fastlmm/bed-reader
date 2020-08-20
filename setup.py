@@ -51,17 +51,20 @@ if platform.system() == "Darwin":
     intel_root = os.path.join(os.path.dirname(__file__),"external/intel/linux")
     mp5lib = 'iomp5'
     openmp_compiler_args = ["-fopenmp","-std=c++11"]
+    onep_compiler_args = ["-Wc++11-extensions"]
 
-elif "win" in platform.system().lower():
+elif platform.system() == "Windows":
     macros = [("_WIN32", "1"),("_CRT_SECURE_NO_WARNINGS","1")]
     intel_root = os.path.join(os.path.dirname(__file__),"external/intel/windows")
     mp5lib = 'libiomp5md'
     openmp_compiler_args = ["/EHsc", "/openmp"]
+    onep_compiler_args = []
 else:
     macros = [("_UNIX", "1")]
     intel_root = os.path.join(os.path.dirname(__file__),"external/intel/linux")
     mp5lib = 'iomp5'
     openmp_compiler_args = ["-fopenmp","-std=c++11"]
+    onep_compiler_args = []
 
 library_list = [intel_root+"/compiler/lib/intel64"]
 runtime_library_dirs = None if "win" in platform.system().lower() else library_list
@@ -79,6 +82,7 @@ if use_cython:
             ],
             include_dirs=[numpy.get_include()],
             define_macros=macros,
+            extra_compile_args=onep_compiler_args,
         ),
         Extension(
             name="bed_reader.wrap_matrix_subset",
