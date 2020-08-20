@@ -14,6 +14,7 @@ jobs:
     - services: docker
     # and a mac build
     - os: osx
+      osx_image: xcode11.2
       language: shell
       before_install:
       - brew install gcc@6
