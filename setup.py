@@ -50,18 +50,18 @@ if platform.system() == "Darwin":
     macros = [("__APPLE__", "1")]
     intel_root = os.path.join(os.path.dirname(__file__),"external/intel/linux")
     mp5lib = 'iomp5'
-    extra_compile_args = ["-fopenmp","-std=c++11"]
+    openmp_compiler_args = ["-fopenmp","-std=c++11"]
 
 elif "win" in platform.system().lower():
     macros = [("_WIN32", "1"),("_CRT_SECURE_NO_WARNINGS","1")]
     intel_root = os.path.join(os.path.dirname(__file__),"external/intel/windows")
     mp5lib = 'libiomp5md'
-    extra_compile_args = ["/EHsc", "/openmp"]
+    openmp_compiler_args = ["/EHsc", "/openmp"]
 else:
     macros = [("_UNIX", "1")]
     intel_root = os.path.join(os.path.dirname(__file__),"external/intel/linux")
     mp5lib = 'iomp5'
-    extra_compile_args = ["-fopenmp","-std=c++11"]
+    openmp_compiler_args = ["-fopenmp","-std=c++11"]
 
 library_list = [intel_root+"/compiler/lib/intel64"]
 runtime_library_dirs = None if "win" in platform.system().lower() else library_list
@@ -71,17 +71,13 @@ runtime_library_dirs = None if "win" in platform.system().lower() else library_l
 if use_cython:
     ext_modules = [
         Extension(
-            name="bed_reader.wrap_plink_parser",
+            name="bed_reader.wrap_plink_parser_onep",
             language="c++",
             sources=[
-                "bed_reader/wrap_plink_parser.pyx",
+                "bed_reader/wrap_plink_parser_onep.pyx",
                 "bed_reader/CPlinkBedFile.cpp",
             ],
-            libraries = [mp5lib],
-            library_dirs = library_list,
-            runtime_library_dirs = runtime_library_dirs,
-            include_dirs=library_list+[numpy.get_include()],
-            extra_compile_args=extra_compile_args,
+            include_dirs=[numpy.get_include()],
             define_macros=macros,
         ),
         Extension(
@@ -95,8 +91,25 @@ if use_cython:
             define_macros=macros,
         ),
     ]
+    if platform.system() != "Darwin":
+        ext_modules.append(
+                Extension(
+            name="bed_reader.wrap_plink_parser_openmp",
+            language="c++",
+            sources=[
+                "bed_reader/wrap_plink_parser_openmp.pyx",
+                "bed_reader/CPlinkBedFile.cpp",
+            ],
+            libraries = [mp5lib],
+            library_dirs = library_list,
+            runtime_library_dirs = runtime_library_dirs,
+            include_dirs=library_list+[numpy.get_include()],
+            extra_compile_args=openmp_compiler_args,
+            define_macros=macros+[("OPENMP","1")]))
+
     cmdclass = {"build_ext": build_ext, "clean": CleanCommand}
 else:
+    assert False, "need codecmk"
     ext_modules = [
         Extension(
             name="bed_reader.wrap_plink_parser",

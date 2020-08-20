@@ -206,9 +206,11 @@ void SUFFIX(CBedFile)::ReadGenotypes(size_t iSnp, bool count_A1, const vector<si
 void SUFFIX(readPlinkBedFile)(std::string bed_fn, int inputNumIndividuals, int inputNumSNPs,
 							  bool count_A1, std::vector<size_t> individuals_idx, std::vector<int> snpIdxList, REAL *out, int num_threads)
 {
+#ifdef OPENMP	
 	omp_set_num_threads(num_threads);
 
 #pragma omp parallel default(none) shared(bed_fn, inputNumIndividuals, inputNumSNPs, count_A1, individuals_idx, snpIdxList, out)
+#endif
 	{
 #ifdef ORDERF
 		uint64_t_ outputNumInd = individuals_idx.size();
@@ -218,7 +220,9 @@ void SUFFIX(readPlinkBedFile)(std::string bed_fn, int inputNumIndividuals, int i
 		bedFile = SUFFIX(CBedFile)();
 		bedFile.Open(bed_fn, inputNumIndividuals, inputNumSNPs);
 
+#ifdef OPENMP	
 #pragma omp for schedule(guided)
+#endif
 		for (long i = 0; i < (long) outputNumSNPs; i++)
 		{
 			int idx = snpIdxList[i];

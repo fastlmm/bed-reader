@@ -474,7 +474,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
 
     @staticmethod
     def _find_openmp():
-        if "bed_reader.wrap_plink_parser" in sys.modules:
+        if "bed_reader.wrap_plink_parser_openmp" in sys.modules:
             return
         if "win" in platform.system().lower():
             print("cmk in windows _find_openmp")
@@ -519,8 +519,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
         )).encode("ascii")
 
         if not force_python_only:
-            open_bed._find_openmp()
-            from bed_reader import wrap_plink_parser
+            from bed_reader import wrap_plink_parser_onep
             
 
             if val.flags["C_CONTIGUOUS"]:
@@ -534,7 +533,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
             try:
                 if val.dtype == np.float64:
                     if order == "F":
-                        wrap_plink_parser.writePlinkBedFile2doubleFAAA(
+                        wrap_plink_parser_onep.writePlinkBedFile2doubleFAAA(
                             bedfile,
                             iid_count,
                             sid_count,
@@ -542,7 +541,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
                             val,
                         )
                     else:
-                        wrap_plink_parser.writePlinkBedFile2doubleCAAA(
+                        wrap_plink_parser_onep.writePlinkBedFile2doubleCAAA(
                             bedfile,
                             iid_count,
                             sid_count,
@@ -551,7 +550,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
                         )
                 elif val.dtype == np.float32:
                     if order == "F":
-                        wrap_plink_parser.writePlinkBedFile2floatFAAA(
+                        wrap_plink_parser_onep.writePlinkBedFile2floatFAAA(
                             bedfile,
                             iid_count,
                             sid_count,
@@ -559,7 +558,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
                             val,
                         )
                     else:
-                        wrap_plink_parser.writePlinkBedFile2floatCAAA(
+                        wrap_plink_parser_onep.writePlinkBedFile2floatCAAA(
                             bedfile,
                             iid_count,
                             sid_count,
@@ -568,7 +567,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
                         )
                 elif val.dtype == np.int8:
                     if order == "F":
-                        wrap_plink_parser.writePlinkBedFile2int8FAAA(
+                        wrap_plink_parser_onep.writePlinkBedFile2int8FAAA(
                             bedfile,
                             iid_count,
                             sid_count,
@@ -576,7 +575,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
                             val,
                         )
                     else:
-                        wrap_plink_parser.writePlinkBedFile2int8CAAA(
+                        wrap_plink_parser_onep.writePlinkBedFile2int8CAAA(
                             bedfile,
                             iid_count,
                             sid_count,
@@ -640,6 +639,8 @@ class open_bed:  #!!!cmk need doc strings everywhere
         logging.info(f"Done writing {filepath}")
 
     def _get_num_threads(self):
+        if platform.system() == "Darwin":
+            return 1
         if self._num_threads is not None:
             return self._num_threads
         if "MKL_NUM_THREADS" in os.environ:
@@ -693,12 +694,17 @@ class open_bed:  #!!!cmk need doc strings everywhere
 
         if not force_python_only:
             open_bed._find_openmp()
-            from bed_reader import wrap_plink_parser
+            from bed_reader import wrap_plink_parser_openmp
+            from bed_reader import wrap_plink_parser_onep
 
             val = np.zeros((len(iid_index), len(sid_index)), order=order, dtype=dtype)
             bed_file_ascii = str(open_bed._name_of_other_file(self.filepath, "bed", "bed")).encode("ascii")
 
             num_threads = self._get_num_threads()
+            if num_threads>1:
+                wrap_plink_parser = wrap_plink_parser_openmp
+            else:
+                wrap_plink_parser = wrap_plink_parser_onep
 
             if self.iid_count > 0 and self.sid_count > 0:
                 if dtype == np.int8:
