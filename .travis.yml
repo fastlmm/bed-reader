@@ -23,11 +23,11 @@ jobs:
         - export PATH="/c/Python38:/c/Python38/Scripts:$PATH"
 
 install:
-  - python -m pip install cibuildwheel==1.5.5
+  - python3 -m pip install cibuildwheel==1.5.5
 
 script:
   # build the wheels, put them into './wheelhouse'
-  - python -m cibuildwheel --output-dir wheelhouse
+  - python3 -m cibuildwheel --output-dir wheelhouse
 
 deploy:
   provider: s3
