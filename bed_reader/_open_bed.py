@@ -693,18 +693,16 @@ class open_bed:  #!!!cmk need doc strings everywhere
         sid_index = self._sid_range[sid_index_or_slice_etc]
 
         if not force_python_only:
-            open_bed._find_openmp()
-            from bed_reader import wrap_plink_parser_openmp
-            from bed_reader import wrap_plink_parser_onep
+            num_threads = self._get_num_threads()
+            if num_threads>1:
+                open_bed._find_openmp()
+                from bed_reader import wrap_plink_parser_openmp as wrap_plink_parser
+            else:
+                from bed_reader import wrap_plink_parser_onep as wrap_plink_parser
 
             val = np.zeros((len(iid_index), len(sid_index)), order=order, dtype=dtype)
             bed_file_ascii = str(open_bed._name_of_other_file(self.filepath, "bed", "bed")).encode("ascii")
 
-            num_threads = self._get_num_threads()
-            if num_threads>1:
-                wrap_plink_parser = wrap_plink_parser_openmp
-            else:
-                wrap_plink_parser = wrap_plink_parser_onep
 
             if self.iid_count > 0 and self.sid_count > 0:
                 if dtype == np.int8:

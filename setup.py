@@ -51,7 +51,7 @@ if platform.system() == "Darwin":
     intel_root = os.path.join(os.path.dirname(__file__),"external/intel/linux")
     mp5lib = 'iomp5'
     openmp_compiler_args = ["-fopenmp","-std=c++11"]
-    onep_compiler_args = ["-Wc++11-extensions"]
+    onep_compiler_args = ["-Wc++11-extensions","-Wc++11-long-long"]
 
 elif platform.system() == "Windows":
     macros = [("_WIN32", "1"),("_CRT_SECURE_NO_WARNINGS","1")]
