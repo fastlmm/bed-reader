@@ -477,15 +477,20 @@ class open_bed:  #!!!cmk need doc strings everywhere
         if "bed_reader.wrap_plink_parser" in sys.modules:
             return
         if "win" in platform.system().lower():
+            print("cmk in windows _find_openmp")
             from ctypes import cdll
             from ctypes.util import find_library
             dllname = "libiomp5md.dll"
             if find_library(dllname) is not None:
+                print(f"cmk found '{dllname}' at '{find_library(dllname)}' so returning")
                 return
             location_list = [Path(__file__).parent / dllname, Path(__file__).parent.parent / "external/intel/windows/compiler/lib/intel64" / dllname]
             for location in location_list:
+                print(f"cmk looking for '{dllname}' at '{location}'")
                 if location.exists():
+                    print(f"cmk found it")
                     cdll.LoadLibrary(str(location))
+                    print(f"cmk loaded it")
                     return
             raise Exception(f"Can't find '{dllname}'")
 
