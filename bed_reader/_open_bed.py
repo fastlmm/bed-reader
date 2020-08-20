@@ -477,7 +477,14 @@ class open_bed:  #!!!cmk need doc strings everywhere
         if "bed_reader.wrap_plink_parser" in sys.modules:
             return
         if "win" in platform.system().lower():
-            os.environ["PATH"]=f'{Path(__file__).parent};{os.environ["PATH"]}'
+            from ctypes import cdll
+            dllname = "libiomp5md.dll"
+            location_list = [Path(__file__).parent / dllname, Path(__file__).parent.parent / "external/intel/windows/compiler/lib/intel64" / dllname]
+            for location in location_list:
+                if location.exists():
+                    cdll.LoadLibrary(str(location))
+                    return
+            raise Exception(f"Can't find '{dllname}'")
 
 
     #!!!cmk say something about support for snp-minor vs major

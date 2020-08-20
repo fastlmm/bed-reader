@@ -2,7 +2,7 @@ import numpy as np
 from pathlib import Path
 import pytest
 import logging
-from bed_reader._open_bed import open_bed
+from bed_reader._open_bed import open_bed #!!!cmk fix reference
 
 
 def test_read1(shared_datadir):
