@@ -14,15 +14,7 @@ jobs:
     - services: docker
     # and a mac build #!!!cmk failing because python 2.7
     - os: osx
-      osx_image: xcode11.3
       language: shell
-      before_install:
-      - brew install gcc@7
-      - export CC=gcc-7
-      - export CXX=g++-7
-      - wget https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O miniconda.sh;
-      - bash miniconda.sh -b -p $HOME/miniconda
-      - export PATH=$HOME/miniconda/bin:$PATH
     # and a windows build
     - os: windows
       language: shell
