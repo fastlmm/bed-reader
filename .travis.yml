@@ -12,11 +12,11 @@ jobs:
   include:
     # perform a linux build
     - services: docker
-    # and a mac build #!!!cmk failing because python 2.7
+    # and a mac build
     - os: osx
       language: shell
       before_install:
-      - brew install gcc@7
+      - brew install gcc@7 --without-multilib
       - export CC=gcc-7
       - export CXX=g++-7
     # and a windows build
