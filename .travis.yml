@@ -16,7 +16,7 @@ jobs:
     - os: osx
       language: shell
       before_install:
-      - brew install gcc@7 --without-multilib
+      - brew install gcc@7
       - export CC=gcc-7
       - export CXX=g++-7
       - alias python=python3
