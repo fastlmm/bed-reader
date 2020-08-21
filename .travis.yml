@@ -7,7 +7,6 @@ env:
     - CIBW_BEFORE_TEST="pip install -r requirements-dev.txt"
     - CIBW_TEST_REQUIRES=pytest
     - CIBW_TEST_COMMAND="pytest -s {project}"
-    - CIBW_MANYLINUX_X86_64_IMAGE: manylinux1
 
 jobs:
   include:
