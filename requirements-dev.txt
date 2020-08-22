@@ -1,7 +1,3 @@
-numpy
-pandas
-dataclass
 pytest
 pytest-cov
 pytest-datadir
-

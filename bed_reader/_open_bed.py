@@ -475,6 +475,15 @@ class open_bed:  #!!!cmk need doc strings everywhere
         pass
 
     @staticmethod
+    def _get_version_number (filename):
+        #http://timgolden.me.uk/python/win32_how_do_i/get_dll_version.html
+        from win32api import GetFileVersionInfo, LOWORD, HIWORD #!!!cmk add dependancy
+        info = GetFileVersionInfo (filename, "\\")
+        ms = info['FileVersionMS']
+        ls = info['FileVersionLS']
+        return HIWORD (ms), LOWORD (ms), HIWORD (ls), LOWORD (ls)
+
+    @staticmethod
     def _find_openmp():
         if "bed_reader.wrap_plink_parser_openmp" in sys.modules:
             return
@@ -483,6 +492,12 @@ class open_bed:  #!!!cmk need doc strings everywhere
             from ctypes import cdll
             from ctypes.util import find_library
             dllname = "libiomp5md.dll"
+            find_location = find_library(dllname)
+            if find_location is not None: #!!!cmk
+                print(f"cmk found '{dllname}' at '{find_library(dllname)}'")
+                if open_bed._get_version_number(find_location) >= (5, 0, 2013, 227):
+                    print(f"cmk version looks good, so load")
+                    return
             location_list = [Path(__file__).parent / dllname, Path(__file__).parent.parent / "external/intel/windows/compiler/lib/intel64" / dllname]
             for location in location_list:
                 #print(f"cmk looking for '{dllname}' at '{location}'")
