@@ -518,7 +518,8 @@ class open_bed:  #!!!cmk need doc strings everywhere
                 goal_ver = (5, 0, 2014, 926)
                 print(f"cmk found ver is '{found_ver}'. Goal ver is '{goal_ver}'")
                 if  found_ver >= goal_ver:
-                    print("cmk found version looks good, so wait and load that")
+                    print("cmk found version looks good, so load that")
+                    cdll.LoadLibrary(str(find_location))
                     return
             location_list = [
                 Path(__file__).parent / dllname,
