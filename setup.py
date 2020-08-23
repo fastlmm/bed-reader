@@ -48,25 +48,28 @@ class CleanCommand(Clean):
 # set up macro
 if platform.system() == "Darwin":
     macros = [("__APPLE__", "1")]
-    intel_root = os.path.join(os.path.dirname(__file__),"external/intel/linux")
+    openmp_root = os.path.join(os.path.dirname(__file__),"external/intel/linux")
     mp5lib = 'iomp5'
     openmp_compiler_args = ["-fopenmp","-std=c++11"]
+    library_list = [openmp_root+"/compiler/lib/intel64"]
+    runtime_library_dirs = library_list
     
 elif platform.system() == "Windows":
     macros = [("_WIN32", "1"),("_CRT_SECURE_NO_WARNINGS","1")]
-    intel_root = os.path.join(os.path.dirname(__file__),"external/intel/windows")
-    mp5lib = 'libiomp5md'
+    openmp_root = os.path.join(os.path.dirname(__file__),"external/llvm/windows")
+    mp5lib = 'libomp'
     openmp_compiler_args = ["/EHsc", "/openmp"]
+    library_list = [openmp_root+"/lib"]
+    runtime_library_dirs = None
     
 else:
     macros = [("_UNIX", "1")]
-    intel_root = os.path.join(os.path.dirname(__file__),"external/intel/linux")
+    openmp_root = os.path.join(os.path.dirname(__file__),"external/intel/linux")
     mp5lib = 'iomp5'
     openmp_compiler_args = ["-fopenmp","-std=c++11"]
+    library_list = [openmp_root+"/compiler/lib/intel64"]
+    runtime_library_dirs = library_list
     
-library_list = [intel_root+"/compiler/lib/intel64"]
-runtime_library_dirs = None if "win" in platform.system().lower() else library_list
-
 
 # see http://stackoverflow.com/questions/4505747/how-should-i-structure-a-python-package-that-contains-cython-code
 ext_modules = [
@@ -133,8 +136,7 @@ setup(
         "Programming Language :: Python",
     ],
     packages=["bed_reader","bed_reader/tests"],  # basically everything with a __init__.py
-    data_files=[("lib/site-packages/bed_reader", ["external/intel/windows/compiler/lib/intel64/libiomp5md.dll"])] if "win" in platform.system().lower() else [],
-    #package_data={"bed_reader":["external\intel\windows\compiler\lib\intel64\libiomp5md.dll"]} if "win" in platform.system().lower() else {},
+    data_files=[("lib/site-packages/bed_reader", ["external/llvm/windows/bin/libomp.dll"])] if platform.system() == "Windows" else [],
     install_requires=install_requires,
     # extensions
     cmdclass=cmdclass,
