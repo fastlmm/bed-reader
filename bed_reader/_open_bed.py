@@ -26,16 +26,18 @@ def _rawincount(filepath):
 
 @dataclass
 class _MetaMeta:
-    suffix : str
-    column : int
+    suffix: str
+    column: int
     dtype: type
     missing_value: object
     fill_sequence: object
+
 
 def _all_same(key, length, missing, dtype):
     if np.issubdtype(dtype, np.str_):
         dtype = f"<U{len(missing)}"
     return np.full(length, missing, dtype=dtype)
+
 
 def _sequence(key, length, missing, dtype):
     if np.issubdtype(dtype, np.str_):
@@ -44,6 +46,7 @@ def _sequence(key, length, missing, dtype):
     return np.fromiter(
         (f"{key}{i+1}" for i in range(length)), dtype=dtype, count=length
     )
+
 
 _delimiters = {"fam": r"\s+", "bim": "\t"}
 _count_name = {"fam": "iid_count", "bim": "sid_count"}
@@ -63,7 +66,8 @@ _meta_meta = {
     "bp_position": _MetaMeta("bim", 3, np.int32, 0, _all_same),
     "allele_1": _MetaMeta("bim", 4, np.str_, "A1", _all_same),
     "allele_2": _MetaMeta("bim", 5, np.str_, "A2", _all_same),
-    }
+}
+
 
 class open_bed:  #!!!cmk need doc strings everywhere
     """
@@ -180,6 +184,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
     .. _sample format: https://www.well.ox.ac.uk/~gav/qctool/documentation/sample_file_formats.html #!!!cmk
 
     """
+
     def __init__(
         self,
         filepath,
@@ -206,6 +211,26 @@ class open_bed:  #!!!cmk need doc strings everywhere
             with open(bedfile, "rb") as filepointer:
                 self._check_file(filepointer)
 
+    @staticmethod
+    def _fix_up_array(input, dtype, missing_value):
+        if len(input) == 0:
+            return np.zeros([0], dtype=dtype)
+
+        if not isinstance(input, np.ndarray):
+            return _fix_up_array(np.array(input), dtype)
+
+        if len(input.shape) != 1:
+            raise ValueError(f"Override {key} should be one dimensional")
+
+        if not np.issubdtype(input.dtype, dtype):
+            output = np.array(input, dtype=dtype)
+            #If converting float to non-float: Change NaN to new missing value
+            if np.isrealobj(input) and not np.isrealobj(output):
+                output[input!=input] = missing_value
+            return output
+
+        return input
+
 
     @staticmethod
     def _fixup_metadata(metadata, iid_count, sid_count, use_fill_sequence):
@@ -226,16 +251,8 @@ class open_bed:  #!!!cmk need doc strings everywhere
                     output = mm.fill_sequence(key, count, mm.missing_value, mm.dtype)
                 else:
                     continue
-            elif len(input) == 0:
-                output = np.zeros([0], dtype=mm.dtype)
             else:
-                if not isinstance(input, np.ndarray) or not np.issubdtype(
-                    input.dtype, mm.dtype
-                ):
-                    input = np.array(input, dtype=mm.dtype)
-                if len(input.shape) != 1:
-                    raise ValueError(f"Override {key} should be one dimensional")
-                output = input
+                output = open_bed._fix_up_array(input, mm.dtype, mm.missing_value)
 
             if count is None:
                 count_dict[mm.suffix] = len(output)
@@ -245,7 +262,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
                         f"The length of override {key}, {len(output)}, should not be different from the current {_count_name[mm.suffix]}, {count}"
                     )
             metadata_dict[key] = output
-        return metadata_dict, count_dict 
+        return metadata_dict, count_dict
 
     def _read_fam_or_bim(self, suffix):
         metafile = open_bed._name_of_other_file(self.filepath, "bed", suffix)
@@ -289,7 +306,9 @@ class open_bed:  #!!!cmk need doc strings everywhere
                 elif mm.missing_value is None:
                     output = np.array(fields[mm.column], dtype=mm.dtype)
                 else:
-                    output = np.array(fields[mm.column].fillna(mm.missing_value), dtype=mm.dtype)
+                    output = np.array(
+                        fields[mm.column].fillna(mm.missing_value), dtype=mm.dtype
+                    )
                 self.metadata_dict[key] = output
 
     @staticmethod
@@ -327,53 +346,53 @@ class open_bed:  #!!!cmk need doc strings everywhere
 
     @property
     def iid(self):
-        '''
+        """
         !!!cmk need doc string
-        '''
+        """
         return self.metadata_item("iid")
 
     @property
     def father(self):
-        '''
+        """
         !!!cmk need doc string
-        '''
+        """
         return self.metadata_item("father")
 
     @property
     def mother(self):
-        '''
+        """
         !!!cmk need doc string
-        '''
+        """
         return self.metadata_item("mother")
 
     @property
     def sex(self):
-        '''
+        """
         !!!cmk need doc string
-        '''
+        """
         return self.metadata_item("sex")
 
     @property
     def pheno(self):
-        '''
+        """
         !!!cmk need doc string
-        '''
+        """
         return self.metadata_item("pheno")
 
     @property
     def metadata(self):
-        '''
+        """
         !!!cmk need doc string
         !!!cmk tell that if needed, will open and read *.fam and *.bim files
-        '''
+        """
         for key in _meta_meta:
             self.metadata_item(key)
         return self.metadata_dict
 
     def metadata_item(self, key):
-        '''
+        """
         !!!cmk need doc string
-        '''
+        """
         val = self.metadata_dict.get(key)
         if val is None:
             mm = _meta_meta[key]
@@ -384,58 +403,58 @@ class open_bed:  #!!!cmk need doc strings everywhere
 
     @property
     def chromosome(self):
-        '''
+        """
         !!!cmk need doc string
-        '''
+        """
         return self.metadata_item("chromosome")
 
     @property
     def sid(self):
-        '''
+        """
         !!!cmk need doc string
-        '''
+        """
         return self.metadata_item("sid")
 
     @property
     def cm_position(self):
-        '''
+        """
         !!!cmk need doc string
-        '''
+        """
         return self.metadata_item("cm_position")
 
     @property
     def bp_position(self):
-        '''
+        """
         !!!cmk need doc string
-        '''
+        """
         return self.metadata_item("bp_position")
 
     @property
     def allele_1(self):
-        '''
+        """
         !!!cmk need doc string
-        '''
+        """
         return self.metadata_item("allele_1")
 
     @property
     def allele_2(self):
-        '''
+        """
         !!!cmk need doc string
-        '''
+        """
         return self.metadata_item("allele_2")
 
     @property
     def iid_count(self):
-        '''
+        """
         !!!cmk need doc string
-        '''
+        """
         return self._count("fam")
 
     @property
     def sid_count(self):
-        '''
+        """
         !!!cmk need doc string
-        '''
+        """
         return self._count("bim")
 
     def _count(self, suffix):
@@ -450,9 +469,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
     def _check_file(filepointer):
         mode = filepointer.read(2)
         if mode != b"l\x1b":
-            raise ValueError(
-                "No valid binary BED file"
-            )
+            raise ValueError("No valid binary BED file")
         mode = filepointer.read(1)  # \x01 = SNP major \x00 = individual major
         if mode != b"\x01":
             raise ValueError(
@@ -475,48 +492,54 @@ class open_bed:  #!!!cmk need doc strings everywhere
         pass
 
     @staticmethod
-    def _get_version_number (filename):
-        #http://timgolden.me.uk/python/win32_how_do_i/get_dll_version.html
-        from win32api import GetFileVersionInfo, LOWORD, HIWORD #!!!cmk add dependancy
-        info = GetFileVersionInfo (filename, "\\")
-        ms = info['FileVersionMS']
-        ls = info['FileVersionLS']
-        return HIWORD (ms), LOWORD (ms), HIWORD (ls), LOWORD (ls)
+    def _get_version_number(filename):
+        # http://timgolden.me.uk/python/win32_how_do_i/get_dll_version.html
+        from win32api import GetFileVersionInfo, LOWORD, HIWORD  #!!!cmk add dependancy
+
+        info = GetFileVersionInfo(filename, "\\")
+        ms = info["FileVersionMS"]
+        ls = info["FileVersionLS"]
+        return HIWORD(ms), LOWORD(ms), HIWORD(ls), LOWORD(ls)
 
     @staticmethod
     def _find_openmp():
         if "bed_reader.wrap_plink_parser_openmp" in sys.modules:
             return
         if platform.system() == "Windows":
-            #print("cmk in windows _find_openmp")
+            # print("cmk in windows _find_openmp")
             from ctypes import cdll
             from ctypes.util import find_library
+
             dllname = "libiomp5md.dll"
             find_location = find_library(dllname)
-            if find_location is not None: #!!!cmk
+            if find_location is not None:  #!!!cmk
                 print(f"cmk found '{dllname}' at '{find_library(dllname)}'")
                 if open_bed._get_version_number(find_location) >= (5, 0, 2013, 227):
                     print(f"cmk version looks good, so load")
                     return
-            location_list = [Path(__file__).parent / dllname, Path(__file__).parent.parent / "external/intel/windows/compiler/lib/intel64" / dllname]
+            location_list = [
+                Path(__file__).parent / dllname,
+                Path(__file__).parent.parent
+                / "external/intel/windows/compiler/lib/intel64"
+                / dllname,
+            ]
             for location in location_list:
-                #print(f"cmk looking for '{dllname}' at '{location}'")
+                # print(f"cmk looking for '{dllname}' at '{location}'")
                 if location.exists():
-                    #print(f"cmk found it")
+                    # print(f"cmk found it")
                     cdll.LoadLibrary(str(location))
-                    #print(f"cmk loaded it")
+                    # print(f"cmk loaded it")
                     return
             raise Exception(f"Can't find '{dllname}'")
-
 
     #!!!cmk say something about support for snp-minor vs major
     @staticmethod
     def write(
         filepath, val, metadata={}, count_A1=True, force_python_only=False,
     ):
-        '''
+        """
         !!!cmk need doc string
-        '''
+        """
         filepath = Path(filepath)
         iid_count = val.shape[0]
         sid_count = val.shape[1]
@@ -528,13 +551,14 @@ class open_bed:  #!!!cmk need doc strings everywhere
         open_bed._write_fam_or_bim(filepath, metadata, "fam")
         open_bed._write_fam_or_bim(filepath, metadata, "bim")
 
-        bedfile = str(open_bed._name_of_other_file(
-            filepath, remove_suffix="bed", add_suffix="bed"
-        )).encode("ascii")
+        bedfile = str(
+            open_bed._name_of_other_file(
+                filepath, remove_suffix="bed", add_suffix="bed"
+            )
+        ).encode("ascii")
 
         if not force_python_only:
             from bed_reader import wrap_plink_parser_onep
-            
 
             if val.flags["C_CONTIGUOUS"]:
                 order = "C"
@@ -548,53 +572,29 @@ class open_bed:  #!!!cmk need doc strings everywhere
                 if val.dtype == np.float64:
                     if order == "F":
                         wrap_plink_parser_onep.writePlinkBedFile2doubleFAAA(
-                            bedfile,
-                            iid_count,
-                            sid_count,
-                            count_A1,
-                            val,
+                            bedfile, iid_count, sid_count, count_A1, val,
                         )
                     else:
                         wrap_plink_parser_onep.writePlinkBedFile2doubleCAAA(
-                            bedfile,
-                            iid_count,
-                            sid_count,
-                            count_A1,
-                            val,
+                            bedfile, iid_count, sid_count, count_A1, val,
                         )
                 elif val.dtype == np.float32:
                     if order == "F":
                         wrap_plink_parser_onep.writePlinkBedFile2floatFAAA(
-                            bedfile,
-                            iid_count,
-                            sid_count,
-                            count_A1,
-                            val,
+                            bedfile, iid_count, sid_count, count_A1, val,
                         )
                     else:
                         wrap_plink_parser_onep.writePlinkBedFile2floatCAAA(
-                            bedfile,
-                            iid_count,
-                            sid_count,
-                            count_A1,
-                            val,
+                            bedfile, iid_count, sid_count, count_A1, val,
                         )
                 elif val.dtype == np.int8:
                     if order == "F":
                         wrap_plink_parser_onep.writePlinkBedFile2int8FAAA(
-                            bedfile,
-                            iid_count,
-                            sid_count,
-                            count_A1,
-                            val,
+                            bedfile, iid_count, sid_count, count_A1, val,
                         )
                     else:
                         wrap_plink_parser_onep.writePlinkBedFile2int8CAAA(
-                            bedfile,
-                            iid_count,
-                            sid_count,
-                            count_A1,
-                            val,
+                            bedfile, iid_count, sid_count, count_A1, val,
                         )
                 else:
                     raise ValueError(
@@ -640,9 +640,9 @@ class open_bed:  #!!!cmk need doc strings everywhere
                                 code = 0b10  # backwards on purpose
                             elif val_for_byte == 2:
                                 code = two_code
-                            elif (val.dtype == np.int8 and val_for_byte == -127) or np.isnan(
-                                val_for_byte
-                            ): 
+                            elif (
+                                val.dtype == np.int8 and val_for_byte == -127
+                            ) or np.isnan(val_for_byte):
                                 code = 0b01  # backwards on purpose
                             else:
                                 raise ValueError(
@@ -685,9 +685,9 @@ class open_bed:  #!!!cmk need doc strings everywhere
         order: Optional[str] = "F",
         force_python_only: bool = False,
     ) -> np.ndarray:
-        '''
+        """
         !!!cmk talk about default dtype and missing and the various index methods
-        '''
+        """
 
         iid_index_or_slice_etc, sid_index_or_slice_etc = self._split_index(index)
 
@@ -708,15 +708,16 @@ class open_bed:  #!!!cmk need doc strings everywhere
 
         if not force_python_only:
             num_threads = self._get_num_threads()
-            if num_threads>1:
+            if num_threads > 1:
                 open_bed._find_openmp()
                 from bed_reader import wrap_plink_parser_openmp as wrap_plink_parser
             else:
                 from bed_reader import wrap_plink_parser_onep as wrap_plink_parser
 
             val = np.zeros((len(iid_index), len(sid_index)), order=order, dtype=dtype)
-            bed_file_ascii = str(open_bed._name_of_other_file(self.filepath, "bed", "bed")).encode("ascii")
-
+            bed_file_ascii = str(
+                open_bed._name_of_other_file(self.filepath, "bed", "bed")
+            ).encode("ascii")
 
             if self.iid_count > 0 and self.sid_count > 0:
                 if dtype == np.int8:
@@ -902,7 +903,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     import os
 
-    if True: #!!!cmk
+    if True:  #!!!cmk
         import numpy as np
         from bed_reader._open_bed import open_bed
 
