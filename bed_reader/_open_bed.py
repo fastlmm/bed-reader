@@ -212,15 +212,15 @@ class open_bed:  #!!!cmk need doc strings everywhere
                 self._check_file(filepointer)
 
     @staticmethod
-    def _fix_up_array(input, dtype, missing_value):
+    def _fix_up_array(input, dtype, missing_value, key):
         if len(input) == 0:
             return np.zeros([0], dtype=dtype)
 
         if not isinstance(input, np.ndarray):
-            return _fix_up_array(np.array(input), dtype)
+            return open_bed._fix_up_array(np.array(input), dtype, missing_value, key)
 
         if len(input.shape) != 1:
-            raise ValueError(f"Override {key} should be one dimensional")
+            raise ValueError(f"Metadata {key} should be one dimensional")
 
         if not np.issubdtype(input.dtype, dtype):
             output = np.array(input, dtype=dtype)
@@ -252,7 +252,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
                 else:
                     continue
             else:
-                output = open_bed._fix_up_array(input, mm.dtype, mm.missing_value)
+                output = open_bed._fix_up_array(input, mm.dtype, mm.missing_value, key)
 
             if count is None:
                 count_dict[mm.suffix] = len(output)
