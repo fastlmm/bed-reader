@@ -515,7 +515,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
             if find_location is not None:  #!!!cmk
                 print(f"cmk found '{dllname}' at '{find_library(dllname)}'")
                 found_ver = open_bed._get_version_number(find_location)
-                goal_ ver = (5, 0, 2014, 926)
+                goal_ver = (5, 0, 2014, 926)
                 print(f"cmk found ver is '{found_ver}'. Goal ver is '{goal_ ver}'")
                 if  found_ver >= goal_ ver:
                     print(f"cmk found version looks good, so wait and load that)
