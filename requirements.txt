@@ -1,4 +1,4 @@
 numpy
 pandas
 dataclass
-win32api; sys_platform == "Windows"
+win32api; sys_platform == "windows"
