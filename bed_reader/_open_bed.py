@@ -514,8 +514,11 @@ class open_bed:  #!!!cmk need doc strings everywhere
             find_location = find_library(dllname)
             if find_location is not None:  #!!!cmk
                 print(f"cmk found '{dllname}' at '{find_library(dllname)}'")
-                if open_bed._get_version_number(find_location) >= (5, 0, 2013, 227):
-                    print(f"cmk version looks good, so load")
+                found_ver = open_bed._get_version_number(find_location)
+                goal_ ver = (5, 0, 2014, 926)
+                print(f"cmk found ver is '{found_ver}'. Goal ver is '{goal_ ver}'")
+                if  found_ver >= goal_ ver:
+                    print(f"cmk found version looks good, so wait and load that)
                     return
             location_list = [
                 Path(__file__).parent / dllname,
@@ -524,11 +527,9 @@ class open_bed:  #!!!cmk need doc strings everywhere
                 / dllname,
             ]
             for location in location_list:
-                # print(f"cmk looking for '{dllname}' at '{location}'")
                 if location.exists():
-                    # print(f"cmk found it")
+                    print(f"cmk loading my own version from '{location}'")
                     cdll.LoadLibrary(str(location))
-                    # print(f"cmk loaded it")
                     return
             raise Exception(f"Can't find '{dllname}'")
 
