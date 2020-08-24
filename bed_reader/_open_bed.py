@@ -120,12 +120,10 @@ class open_bed:  #!!!cmk need doc strings everywhere
 
         >>> from bed_reader import open_bed
         >>>
-        >>> with open_bed("some_missing.bed") as bed:
+        >>> with open_bed("small.bed") as bed:
+        ...     print(bed.read())
         ...     print(bed.iid)
         ...     print(bed.sid)
-        ...     print(bed.read())
-        ['SNP1' 'SNP2' 'SNP3' 'SNP4']
-        ['sample_0' 'sample_1' 'sample_2' 'sample_3']
         [[[1. 0. 1. 0.]
           [0. 1. 1. 0.]
           [1. 0. 0. 1.]
@@ -145,6 +143,8 @@ class open_bed:  #!!!cmk need doc strings everywhere
           [1. 0. 1. 0.]
           [0. 1. 1. 0.]
           [1. 0. 0. 1.]]]
+        ['SNP1' 'SNP2' 'SNP3' 'SNP4']
+        ['sample_0' 'sample_1' 'sample_2' 'sample_3']
 
     Open the file (without `with`) and read probabilities for one variant.
 
@@ -921,7 +921,7 @@ if __name__ == "__main__":
 
     if True: #!!!cmk
         from bed_reader import open_bed, sample_file
-        file_name = sample_file("some_missing.bed")
+        file_name = sample_file("small.bed")
         with open_bed(file_name) as bed:
             print(bed.iid)
             print(bed.sid)

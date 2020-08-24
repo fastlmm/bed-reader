@@ -581,6 +581,13 @@ def test_iid_sid_count(shared_datadir):
         sid_count=sid_count_ref,
     ).shape
 
+def test_sample_file():
+    from bed_reader import open_bed, sample_file
+    file_name = sample_file("small.bed")
+    with open_bed(file_name) as bed:
+        print(bed.iid)
+        print(bed.sid)
+        print(bed.read())
 
 def test_coverage2(shared_datadir):
     with open_bed(
