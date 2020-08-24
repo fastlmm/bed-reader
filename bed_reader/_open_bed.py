@@ -118,62 +118,40 @@ class open_bed:  #!!!cmk need doc strings everywhere
 
     .. doctest::
 
-        >>> from bed_reader import open_bed
+        >>> from bed_reader import open_bed, sample_file
         >>>
-        >>> with open_bed("small.bed") as bed:
+        >>> file_name = sample_file("small.bed")
+        >>> with open_bed(file_name) as bed:
         ...     print(bed.read())
         ...     print(bed.iid)
         ...     print(bed.sid)
-        [[[1. 0. 1. 0.]
-          [0. 1. 1. 0.]
-          [1. 0. 0. 1.]
-          [0. 1. 0. 1.]]
-        <BLANKLINE>
-         [[0. 1. 1. 0.]
-          [1. 0. 0. 1.]
-          [0. 1. 0. 1.]
-          [1. 0. 1. 0.]]
-        <BLANKLINE>
-         [[1. 0. 0. 1.]
-          [0. 1. 0. 1.]
-          [1. 0. 1. 0.]
-          [0. 1. 1. 0.]]
-        <BLANKLINE>
-         [[0. 1. 0. 1.]
-          [1. 0. 1. 0.]
-          [0. 1. 1. 0.]
-          [1. 0. 0. 1.]]]
-        ['SNP1' 'SNP2' 'SNP3' 'SNP4']
-        ['sample_0' 'sample_1' 'sample_2' 'sample_3']
+        [[ 1.  0. nan  0.]
+         [ 2.  0. nan  2.]
+         [ 0.  1.  2.  0.]]
+        ['iid1' 'iid2' 'iid3']
+        ['sid1' 'sid2' 'sid3' 'sid4']
 
     Open the file (without `with`) and read probabilities for one variant.
 
     .. doctest::
 
-        >>> bed = open_bed("some_missing.bed")
+        >>> bed = open_bed(file_name)
         >>> print(bed.read(2))
-        [[[1. 0. 0. 1.]]
-        <BLANKLINE>
-         [[0. 1. 0. 1.]]
-        <BLANKLINE>
-         [[1. 0. 1. 0.]]
-        <BLANKLINE>
-         [[0. 1. 1. 0.]]]
+        [[nan]
+         [nan]
+         [ 2.]]
         >>> del bed                 # close and delete object
 
     Open the file and then first read for a :class:`slice` of samples and variants, and then for a single sample and variant.
 
     .. doctest::
 
-        >>> bed = open_bed(file, verbose=False)
+        >>> bed = open_bed(file_name)
         >>> print(bed.read((slice(1,3),slice(2,4))))
-        [[[0. 1. 0. 1.]
-          [1. 0. 1. 0.]]
-        <BLANKLINE>
-         [[1. 0. 1. 0.]
-          [0. 1. 1. 0.]]]
+        [[nan  2.]
+         [ 2.  0.]]
         >>> print(bed.read((0,1)))
-        [[[0. 1. 1. 0.]]]
+        [[0.]]
         >>> del bed                 # close and delete object
 
 
@@ -217,16 +195,18 @@ class open_bed:  #!!!cmk need doc strings everywhere
             return np.zeros([0], dtype=dtype)
 
         if not isinstance(input, np.ndarray):
-            return open_bed._fix_up_metadata_array(np.array(input), dtype, missing_value, key)
+            return open_bed._fix_up_metadata_array(
+                np.array(input), dtype, missing_value, key
+            )
 
         if len(input.shape) != 1:
             raise ValueError(f"{key} should be one dimensional")
 
         if not np.issubdtype(input.dtype, dtype):
             output = np.array(input, dtype=dtype)
-            #If converting float to non-float: Change NaN to new missing value
+            # If converting float to non-float: Change NaN to new missing value
             if np.isrealobj(input) and not np.isrealobj(output):
-                output[input!=input] = missing_value
+                output[input != input] = missing_value
             return output
 
         return input
@@ -241,7 +221,6 @@ class open_bed:  #!!!cmk need doc strings everywhere
             raise ValueError("val should be two dimensional")
 
         return input
-
 
     @staticmethod
     def _fix_up_metadata(metadata, iid_count, sid_count, use_fill_sequence):
@@ -263,7 +242,9 @@ class open_bed:  #!!!cmk need doc strings everywhere
                 else:
                     continue
             else:
-                output = open_bed._fix_up_metadata_array(input, mm.dtype, mm.missing_value, key)
+                output = open_bed._fix_up_metadata_array(
+                    input, mm.dtype, mm.missing_value, key
+                )
 
             if count is None:
                 count_dict[mm.suffix] = len(output)
@@ -344,12 +325,12 @@ class open_bed:  #!!!cmk need doc strings everywhere
         -------
         .. doctest::
 
-            >>> from bed_reader import open_bed
+            >>> from bed_reader import open_bed, sample_file
             >>>
-            >>> file = example_filepath("haplotypes.bed")
-            >>> with open_bed(file) as bed:
+            >>> file_name = sample_file("small.bed")
+            >>> with open_bed(file_name) as bed:
             ...     print(bed.fid)
-            ['sample_0' 'sample_1' 'sample_2' 'sample_3']
+            ['fid1' 'fid1' 'fid2']
 
         """
 
@@ -505,7 +486,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
     @staticmethod
     def _get_version_number(filename):
         # http://timgolden.me.uk/python/win32_how_do_i/get_dll_version.html
-        from win32api import GetFileVersionInfo, LOWORD, HIWORD  #!!!cmk add dependancy
+        from win32api import GetFileVersionInfo, LOWORD, HIWORD
 
         info = GetFileVersionInfo(filename, "\\")
         ms = info["FileVersionMS"]
@@ -528,19 +509,17 @@ class open_bed:  #!!!cmk need doc strings everywhere
                 found_ver = open_bed._get_version_number(find_location)
                 goal_ver = (5, 0, 2014, 926)
                 print(f"cmk found ver is '{found_ver}'. Goal ver is '{goal_ver}'")
-                if  found_ver >= goal_ver:
+                if found_ver >= goal_ver:
                     print("cmk found version looks good, so load that")
                     cdll.LoadLibrary(str(find_location))
                     return
             location_list = [
                 Path(__file__).parent / dllname,
-                Path(__file__).parent.parent
-                / "external/llvm/windows/bin"
-                / dllname,
+                Path(__file__).parent.parent / "external/llvm/windows/bin" / dllname,
             ]
             for location in location_list:
                 if location.exists():
-                    print(f"cmk loading my own version from '{location}'")
+                    #print(f"cmk loading my own version from '{location}'")
                     cdll.LoadLibrary(str(location))
                     return
             raise Exception(f"Can't find '{dllname}'")
@@ -558,7 +537,6 @@ class open_bed:  #!!!cmk need doc strings everywhere
         val = open_bed._fix_up_val(val)
         iid_count = val.shape[0]
         sid_count = val.shape[1]
-
 
         metadata, _ = open_bed._fix_up_metadata(
             metadata, iid_count=iid_count, sid_count=sid_count, use_fill_sequence=True
@@ -618,7 +596,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
                     )
             except SystemError as system_error:
                 try:
-                    bedfile.unlink()
+                    os.unlink(bedfile)
                 except Exception:
                     pass
                 raise system_error.__cause__
@@ -919,15 +897,14 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     import os
 
-    if True: #!!!cmk
+    if True:  #!!!cmk
         from bed_reader import open_bed, sample_file
+
         file_name = sample_file("small.bed")
         with open_bed(file_name) as bed:
             print(bed.iid)
             print(bed.sid)
             print(bed.read())
-
-
 
     if False:  #!!!cmk
         import numpy as np
@@ -1015,8 +992,7 @@ if __name__ == "__main__":
             "tempdir/toydata.5chrom.bed", snpdata, count_A1=False
         )  # Write data in Bed format
 
-    #import doctest
-
+    # import doctest
 
     #!!!cmk put this back
     # doctest.testmod(
