@@ -153,7 +153,10 @@ setup(
         "bed_reader",
         "bed_reader/tests",
     ],  # basically everything with a __init__.py
-    data_files=win_data + [("tests", ["bed_reader/tests/data/registry.txt"])],
+    data_files=win_data,
+    package_data={"bed_reader/tests" : [
+                       "registry.txt"],
+                  },
     install_requires=install_requires,
     # extensions
     cmdclass=cmdclass,
