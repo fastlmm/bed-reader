@@ -11,6 +11,7 @@ import multiprocessing
 from dataclasses import dataclass
 import sys
 import platform
+import logging
 
 import math
 from typing import Any, List, Optional, Tuple, Union
@@ -498,19 +499,19 @@ class open_bed:  #!!!cmk need doc strings everywhere
         if "bed_reader.wrap_plink_parser_openmp" in sys.modules:
             return
         if platform.system() == "Windows":
-            # print("cmk in windows _find_openmp")
+            logging.info("in windows _find_openmp")
             from ctypes import cdll
             from ctypes.util import find_library
 
             dllname = "libomp.dll"
             find_location = find_library(dllname)
             if find_location is not None:  #!!!cmk
-                print(f"cmk found '{dllname}' at '{find_library(dllname)}'")
+                logging.info(f"found '{dllname}' at '{find_library(dllname)}'")
                 found_ver = open_bed._get_version_number(find_location)
                 goal_ver = (5, 0, 2014, 926)
-                print(f"cmk found ver is '{found_ver}'. Goal ver is '{goal_ver}'")
+                logging.info(f"found ver is '{found_ver}'. Goal ver is '{goal_ver}'")
                 if found_ver >= goal_ver:
-                    print("cmk found version looks good, so load that")
+                    logging.info("found version looks good, so load that")
                     cdll.LoadLibrary(str(find_location))
                     return
             location_list = [
@@ -519,7 +520,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
             ]
             for location in location_list:
                 if location.exists():
-                    #print(f"cmk loading my own version from '{location}'")
+                    logging.info(f"loading my own version from '{location}'")
                     cdll.LoadLibrary(str(location))
                     return
             raise Exception(f"Can't find '{dllname}'")
