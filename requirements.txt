@@ -2,3 +2,4 @@ numpy
 pandas
 dataclass
 pywin32; sys_platform == "win32"
+pooch

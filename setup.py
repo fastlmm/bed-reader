@@ -117,7 +117,7 @@ else:
 
 install_requires = ["numpy>=1.11.3"]
 
-# !!!cmk see FIXUP's
+win_data = [("lib/site-packages/bed_reader", ["external/llvm/windows/bin/libomp.dll"])] if platform.system() == "Windows" else []
 setup(
     name='bed-reader',
     version=version,
@@ -136,7 +136,7 @@ setup(
         "Programming Language :: Python",
     ],
     packages=["bed_reader","bed_reader/tests"],  # basically everything with a __init__.py
-    data_files=[("lib/site-packages/bed_reader", ["external/llvm/windows/bin/libomp.dll"])] if platform.system() == "Windows" else [],
+    data_files=win_data+[("tests",["bed_reader/tests/data/registry.txt")]]
     install_requires=install_requires,
     # extensions
     cmdclass=cmdclass,

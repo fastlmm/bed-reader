@@ -919,7 +919,17 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     import os
 
-    if True:  #!!!cmk
+    if True: #!!!cmk
+        from bed_reader import open_bed, sample_file
+        file_name = sample_file("some_missing.bed")
+        with open_bed(file_name) as bed:
+            print(bed.iid)
+            print(bed.sid)
+            print(bed.read())
+
+
+
+    if False:  #!!!cmk
         import numpy as np
         from bed_reader._open_bed import open_bed
 
@@ -1005,7 +1015,8 @@ if __name__ == "__main__":
             "tempdir/toydata.5chrom.bed", snpdata, count_A1=False
         )  # Write data in Bed format
 
-    import doctest
+    #import doctest
+
 
     #!!!cmk put this back
     # doctest.testmod(
