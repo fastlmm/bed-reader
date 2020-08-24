@@ -79,7 +79,7 @@ on open. If True, will not check until (and if) the file is read.</p>
 With the <a class="reference external" href="https://docs.python.org/3/reference/compound_stmts.html#grammar-token-with-stmt">with</a> statement, list individual (sample) <a class="reference internal" href="#bed_reader._open_bed.open_bed.iid" title="bed_reader._open_bed.open_bed.iid"><code class="xref py py-attr docutils literal notranslate"><span class="pre">iid</span></code></a> and SNP (variant) <a class="reference internal" href="#bed_reader._open_bed.open_bed.sid" title="bed_reader._open_bed.open_bed.sid"><code class="xref py py-attr docutils literal notranslate"><span class="pre">sid</span></code></a>, then <a class="reference internal" href="#bed_reader._open_bed.open_bed.read" title="bed_reader._open_bed.open_bed.read"><code class="xref py py-meth docutils literal notranslate"><span class="pre">read()</span></code></a> the whole file.</p>
 <div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">open_bed</span>
 <span class="go">&gt;&gt;&gt;</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">open_bed</span><span class="p">(</span><span class="s2">&quot;distributed_bed_test1_X.bed&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">bed</span><span class="p">:</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">open_bed</span><span class="p">(</span><span class="s2">&quot;some_missing.bed&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">bed</span><span class="p">:</span>
 <span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">iid</span><span class="p">)</span>
 <span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">sid</span><span class="p">)</span>
 <span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
@@ -107,7 +107,7 @@ With the <a class="reference external" href="https://docs.python.org/3/reference
 </pre></div>
 </div>
 <p>Open the file (without <cite>with</cite>) and read probabilities for one variant.</p>
-<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">bed</span> <span class="o">=</span> <span class="n">open_bed</span><span class="p">(</span><span class="s2">&quot;distributed_bed_test1_X.bed&quot;</span><span class="p">)</span>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">bed</span> <span class="o">=</span> <span class="n">open_bed</span><span class="p">(</span><span class="s2">&quot;some_missing.bed&quot;</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span>
 <span class="go">[[[1. 0. 0. 1.]]</span>
 

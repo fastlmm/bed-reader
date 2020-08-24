@@ -120,7 +120,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
 
         >>> from bed_reader import open_bed
         >>>
-        >>> with open_bed("distributed_bed_test1_X.bed") as bed:
+        >>> with open_bed("some_missing.bed") as bed:
         ...     print(bed.iid)
         ...     print(bed.sid)
         ...     print(bed.read())
@@ -150,7 +150,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
 
     .. doctest::
 
-        >>> bed = open_bed("distributed_bed_test1_X.bed")
+        >>> bed = open_bed("some_missing.bed")
         >>> print(bed.read(2))
         [[[1. 0. 0. 1.]]
         <BLANKLINE>
@@ -200,7 +200,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
         self._num_threads = num_threads
         self.skip_format_check = skip_format_check
 
-        self.metadata_dict, self._counts = open_bed._fixup_metadata(
+        self.metadata_dict, self._counts = open_bed._fix_up_metadata(
             metadata, iid_count, sid_count, use_fill_sequence=False
         )
         self._iid_range = None
@@ -212,15 +212,15 @@ class open_bed:  #!!!cmk need doc strings everywhere
                 self._check_file(filepointer)
 
     @staticmethod
-    def _fix_up_array(input, dtype, missing_value, key):
+    def _fix_up_metadata_array(input, dtype, missing_value, key):
         if len(input) == 0:
             return np.zeros([0], dtype=dtype)
 
         if not isinstance(input, np.ndarray):
-            return open_bed._fix_up_array(np.array(input), dtype, missing_value, key)
+            return open_bed._fix_up_metadata_array(np.array(input), dtype, missing_value, key)
 
         if len(input.shape) != 1:
-            raise ValueError(f"Metadata {key} should be one dimensional")
+            raise ValueError(f"{key} should be one dimensional")
 
         if not np.issubdtype(input.dtype, dtype):
             output = np.array(input, dtype=dtype)
@@ -231,9 +231,20 @@ class open_bed:  #!!!cmk need doc strings everywhere
 
         return input
 
+    @staticmethod
+    def _fix_up_val(input):
+
+        if not isinstance(input, np.ndarray):
+            return open_bed._fix_up_val(np.array(input))
+
+        if len(input.shape) != 2:
+            raise ValueError("val should be two dimensional")
+
+        return input
+
 
     @staticmethod
-    def _fixup_metadata(metadata, iid_count, sid_count, use_fill_sequence):
+    def _fix_up_metadata(metadata, iid_count, sid_count, use_fill_sequence):
 
         metadata_dict = {key: None for key in _meta_meta}
         count_dict = {"fam": iid_count, "bim": sid_count}
@@ -252,7 +263,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
                 else:
                     continue
             else:
-                output = open_bed._fix_up_array(input, mm.dtype, mm.missing_value, key)
+                output = open_bed._fix_up_metadata_array(input, mm.dtype, mm.missing_value, key)
 
             if count is None:
                 count_dict[mm.suffix] = len(output)
@@ -543,10 +554,13 @@ class open_bed:  #!!!cmk need doc strings everywhere
         !!!cmk need doc string
         """
         filepath = Path(filepath)
+
+        val = open_bed._fix_up_val(val)
         iid_count = val.shape[0]
         sid_count = val.shape[1]
 
-        metadata, _ = open_bed._fixup_metadata(
+
+        metadata, _ = open_bed._fix_up_metadata(
             metadata, iid_count=iid_count, sid_count=sid_count, use_fill_sequence=True
         )
 

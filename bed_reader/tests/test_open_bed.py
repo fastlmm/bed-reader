@@ -67,7 +67,7 @@ def test_write1(tmp_path, shared_datadir):
 
 
 def test_overrides(shared_datadir):
-    with open_bed(shared_datadir / "distributed_bed_test1_X.bed") as bed:
+    with open_bed(shared_datadir / "some_missing.bed") as bed:
         fid = bed.fid
         iid = bed.iid
         father = bed.father
@@ -80,8 +80,8 @@ def test_overrides(shared_datadir):
         bp_position = bed.bp_position
         allele_1 = bed.allele_1
         allele_2 = bed.allele_2
-    # lock in the expected results: np.savez(shared_datadir / "distributed_bed_test1_X.metadata.npz",fid=fid,iid=iid,father=father,mother=mother,sex=sex,pheno=pheno,chromosome=chromosome,sid=sid,cm_position=cm_position,bp_position=bp_position,allele_1=allele_1,allele_2=allele_2)
-    property_dict = np.load(shared_datadir / "distributed_bed_test1_X.metadata.npz")
+    # lock in the expected results: np.savez(shared_datadir / "some_missing.metadata.npz",fid=fid,iid=iid,father=father,mother=mother,sex=sex,pheno=pheno,chromosome=chromosome,sid=sid,cm_position=cm_position,bp_position=bp_position,allele_1=allele_1,allele_2=allele_2)
+    property_dict = np.load(shared_datadir / "some_missing.metadata.npz")
     assert np.array_equal(property_dict["fid"], fid)
     assert np.array_equal(property_dict["iid"], iid)
     assert np.array_equal(property_dict["father"], father)
@@ -97,14 +97,14 @@ def test_overrides(shared_datadir):
 
     with pytest.raises(KeyError):
         open_bed(
-            shared_datadir / "distributed_bed_test1_X.bed", metadata={"unknown": [3, 4, 4]}
+            shared_datadir / "some_missing.bed", metadata={"unknown": [3, 4, 4]}
         )
     with open_bed(
-        shared_datadir / "distributed_bed_test1_X.bed", metadata={"iid": None}
+        shared_datadir / "some_missing.bed", metadata={"iid": None}
     ) as bed1:
         assert np.array_equal(bed1.iid, property_dict["iid"])
     with open_bed(
-        shared_datadir / "distributed_bed_test1_X.bed", metadata={"iid": []}
+        shared_datadir / "some_missing.bed", metadata={"iid": []}
     ) as bed1:
         assert np.issubdtype(bed1.iid.dtype, np.str_)
         assert len(bed1.iid) == 0
@@ -112,36 +112,36 @@ def test_overrides(shared_datadir):
             bed1.father
 
     with open_bed(
-        shared_datadir / "distributed_bed_test1_X.bed",
+        shared_datadir / "some_missing.bed",
         metadata={"sid": [i for i in range(len(sid))]},
     ) as bed1:
         assert np.issubdtype(bed1.sid.dtype, np.str_)
         assert bed1.sid[0] == "0"
     with pytest.raises(ValueError):
         open_bed(
-            shared_datadir / "distributed_bed_test1_X.bed",
+            shared_datadir / "some_missing.bed",
             metadata={"sex": ["F" for i in range(len(sex))]},
         )  # Sex must be coded as a number
     with open_bed(
-        shared_datadir / "distributed_bed_test1_X.bed",
+        shared_datadir / "some_missing.bed",
         metadata={"sid": np.array([i for i in range(len(sid))])},
     ) as bed1:
         assert np.issubdtype(bed1.sid.dtype, np.str_)
         assert bed1.sid[0] == "0"
     with pytest.raises(ValueError):
         open_bed(
-            shared_datadir / "distributed_bed_test1_X.bed",
+            shared_datadir / "some_missing.bed",
             metadata={"sid": np.array([(i, i) for i in range(len(sid))])},
         )
     with open_bed(
-        shared_datadir / "distributed_bed_test1_X.bed", metadata={"sid": [1, 2, 3]}
+        shared_datadir / "some_missing.bed", metadata={"sid": [1, 2, 3]}
     ) as bed1:
         with pytest.raises(ValueError):
             bed1.chromosome
 
 
 def test_str(shared_datadir):
-    with open_bed(shared_datadir / "distributed_bed_test1_X.bed") as bed:
+    with open_bed(shared_datadir / "some_missing.bed") as bed:
         assert "open_bed(" in str(bed)
 
 
@@ -153,9 +153,9 @@ def test_bad_bed(shared_datadir):
 
 def test_bad_dtype_or_order(shared_datadir):
     with pytest.raises(ValueError):
-        open_bed(shared_datadir / "distributed_bed_test1_X.bed").read(dtype=np.int32)
+        open_bed(shared_datadir / "some_missing.bed").read(dtype=np.int32)
     with pytest.raises(ValueError):
-        open_bed(shared_datadir / "distributed_bed_test1_X.bed").read(order="X")
+        open_bed(shared_datadir / "some_missing.bed").read(order="X")
 
 
 def setting_generator(seq_dict, seed=9392):
@@ -240,7 +240,7 @@ def test_properties(shared_datadir):
 def test_c_reader_bed(shared_datadir):
     for force_python_only in [False, True]:
         bed = open_bed(
-            shared_datadir / "distributed_bed_test1_X.bed", count_A1=False
+            shared_datadir / "some_missing.bed", count_A1=False
         ) 
 
         val = bed.read(order="F", force_python_only=force_python_only)
@@ -258,7 +258,7 @@ def test_c_reader_bed(shared_datadir):
 
         bed.close()
 
-        with open_bed(shared_datadir / "distributed_bed_test1_X.bed") as bed:
+        with open_bed(shared_datadir / "some_missing.bed") as bed:
             val = bed.read(
                 order="F", dtype="float64", force_python_only=force_python_only
             )
@@ -267,12 +267,12 @@ def test_c_reader_bed(shared_datadir):
 
 
 def reference_val(shared_datadir):
-    val = np.load(shared_datadir / "distributed_bed_test1_X.val.npy")
+    val = np.load(shared_datadir / "some_missing.val.npy")
     return val
 
 
 def test_bed_int8(tmp_path, shared_datadir):
-    with open_bed(shared_datadir / "distributed_bed_test1_X.bed") as bed:
+    with open_bed(shared_datadir / "some_missing.bed") as bed:
         for force_python_only in [False, True]:
             for order in ["F", "C"]:
                 val = bed.read(
@@ -304,7 +304,7 @@ def test_bed_int8(tmp_path, shared_datadir):
 
 
 def test_write1_bed_f64cpp(tmp_path, shared_datadir):
-    with open_bed(shared_datadir / "distributed_bed_test1_X.bed") as bed:
+    with open_bed(shared_datadir / "some_missing.bed") as bed:
         for iid_index in [0, 1, 5]:
             for force_python_only in [False, True]:
                 val = bed.read(
@@ -323,7 +323,7 @@ def test_write1_bed_f64cpp(tmp_path, shared_datadir):
 def test_write1_x_x_cpp(tmp_path, shared_datadir):
     for count_A1 in [False, True]:
         with open_bed(
-            shared_datadir / "distributed_bed_test1_X.bed", count_A1=count_A1
+            shared_datadir / "some_missing.bed", count_A1=count_A1
         ) as bed:
             for order in ["C", "F", "A"]:
                 for dtype in [np.float32, np.float64]:
@@ -347,7 +347,7 @@ def test_respect_read_inputs(shared_datadir):
     ref_val_int8 = ref_val_float.astype("int8")
     ref_val_int8[ref_val_float != ref_val_float] = -127
 
-    with open_bed(shared_datadir / "distributed_bed_test1_X.bed") as bed:
+    with open_bed(shared_datadir / "some_missing.bed") as bed:
         for order in ["F", "C", "A"]:
             for dtype in [np.int8, np.float32, np.float64]:
                 for force_python_only in [True, False]:
@@ -371,7 +371,7 @@ def test_threads(shared_datadir):
 
     for num_threads in [1, 4]:
         with open_bed(
-            shared_datadir / "distributed_bed_test1_X.bed", num_threads=num_threads
+            shared_datadir / "some_missing.bed", num_threads=num_threads
         ) as bed:
             val = bed.read(dtype='int8')
             assert np.allclose(ref_val_int8, val, equal_nan=True)
@@ -437,11 +437,42 @@ def test_write12(tmp_path):
                         pass
     logging.info("done with 'test_writes'")
 
+def test_writes_small(tmp_path):
+    output_file = tmp_path / "small.bed"
+
+    val = [[1.0, 0, np.nan, 0],
+           [2, 0, np.nan, 2],
+           [0, 1, 2, 0]]
+
+    metadata = {"fid":["fid1","fid1","fid2"],
+                "iid":["iid1","iid2","iid3"],
+                "father":['iid23','iid23','iid22'],
+                "mother":['iid34','iid34','iid33'],
+                "sex": [1,2,0],
+                "pheno": ["red","red","blue"],
+                "chromosome":["1","1","5","Y"],
+                "sid":["sid1","sid2","sid3","sid4"],
+                "cm_position":[100.4,2000.5,4000.7,7000.9],
+                "bp_position":[1,100,1000,1004],
+                "allele_1":["A","T","A","T"],
+                "allele_2":["A","C","C","G"],
+                }
+
+    open_bed.write(output_file, val, metadata=metadata)
+
+    with open_bed(output_file) as bed:
+        assert np.allclose(bed.read(), val, equal_nan=True)
+        for key, value in bed.metadata.items():
+            if not np.array_equal(value,metadata[key]) and not np.allclose(value,metadata[key]):#!!!cmk
+                print("!!!cmk")
+            assert np.array_equal(value,metadata[key]) or np.allclose(value,metadata[key])
+
 
 def test_index(shared_datadir):
+    print(shared_datadir)#!!!cmk
     ref_val_float = reference_val(shared_datadir)
     
-    with open_bed(shared_datadir / "distributed_bed_test1_X.bed") as bed:
+    with open_bed(shared_datadir / "some_missing.bed") as bed:
         val = bed.read()
         assert np.allclose(ref_val_float, val, equal_nan=True)
 
@@ -512,7 +543,7 @@ def test_zero_files(tmp_path):
                         for prop in metadata2.values():
                             assert len(prop) in {iid_count, sid_count}
 
-                    # Change metdata and write again
+                    # Change metadata and write again
                     if iid_count > 0:
                         metadata2["iid"][0] = "iidx"
                     if sid_count > 0:
@@ -573,6 +604,6 @@ def test_coverage2(shared_datadir):
 if __name__ == "__main__":  #!!cmk is this wanted?
     logging.basicConfig(level=logging.INFO)
 
-    #test_write1(Path(r"m:/deldir/tests"))
+    test_writes_small(Path(r"m:/deldir/tests"))
     pytest.main([__file__])
 
