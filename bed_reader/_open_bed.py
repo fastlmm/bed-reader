@@ -205,13 +205,37 @@ class open_bed:  #!!!cmk need doc strings everywhere
         force_python_only: bool = False,
     ) -> np.ndarray:
         """
-        !!!cmk talk about default dtype and missing and the various index methods
+        Read genotype information from an :class:`open_bgen` object.
+
+        Parameters
+        ----------
+        index
+            An expression specifying the samples and variants to read. (See :ref:`read_examples`, below).
+            Defaults to ``None``, meaning read all.
+        dtype : data-type
+            The desired data-type for the returned probability array.
+            Defaults to `float32`. Can also use `int8` or `float64`. Missing values
+            will be NaN with the floats and -127 with `int8`
+        order : {'F','C'}
+            The desired memory layout for the returned probability array.
+            Defaults to ``F`` (Fortran order, which is SNP-major).
+        force_python_only: bool
+            Defaults to ``False``. If true, uses pure Python code instead of the faster C++.
+
+        Returns
+        -------
+        :class:`numpy.ndarray` of 0, 1, 2, or missing values with ``dtype`` and shape `(iid_count,sid_count)`
+
+        .. _read_examples:
 
         Examples
         --------
 
-        With the `with <https://docs.python.org/3/reference/compound_stmts.html#grammar-token-with-stmt>`__ statement,
-        read the whole file.
+        Examples
+        --------
+        * Index Examples
+
+        To read all data in a BED file, set ``index`` to ``None``. This is the default.
 
         .. doctest::
 
@@ -224,44 +248,80 @@ class open_bed:  #!!!cmk need doc strings everywhere
              [ 2.  0. nan  2.]
              [ 0.  1.  2.  0.]]
 
-        Open the file (without `with`) and read various slices of the data:
+        To read selected SNPs (variants), set ``index`` to an ``int``, a list of ``int``, a :class:`slice`, or a list of ``bool``.
+        Negative integers count from the end of the data.
+
 
             >>> bed = open_bed(file_name)
-            >>> # Read SNPs (variants) at index position 2
-            >>> print(bed.read(index=2))
+            >>> print(bed.read(2))  # read the SNPs indexed by 2.
             [[nan]
              [nan]
              [ 2.]]
+            >>> print(bed.read([2,3,0]))  # read the SNPs indexed by 2, 3, and 0
+            [[nan  0.  1.]
+             [nan  2.  2.]
+             [ 2.  0.  0.]]
+            >>> print(bed.read(slice(2))) #read the first 2 SNPs
+            [[1. 0.]
+             [2. 0.]
+             [0. 1.]]
+            >>> print(bed.read(slice(1,4))) #read SNPs from 1 (inclusive) to 4 (exclusive)
+            [[ 0. nan  0.]
+             [ 0. nan  2.]
+             [ 1.  2.  0.]]
+            >>> print(bed.read(slice(2,None))) # read SNPs starting at index 2.
+            [[nan  0.]
+             [nan  2.]
+             [ 2.  0.]]
+            >>> print(bed.read(slice(None,None,2))) #read every 2nd SNPs
+            [[ 1. nan]
+             [ 2. nan]
+             [ 0.  2.]]
+            >>> print(np.unique(bed.chromosome)) # print unique chrom values
+            ['1' '5' 'Y']
+            >>> print(bed.read(bed.chromosome=='5')) # read all SNPs in chrom 1
+            [[nan]
+             [nan]
+             [ 2.]]
+            >>> print(bed.read(-1)) # read the last SNPs
+            [[0.]
+             [2.]
+             [0.]]
 
-            >>> # Read individual (sample) at index position 1
-            >>> print(bed.read(index=(1,None)))
-            [[ 2.  0. nan  2.]]
 
-            >>> # Read a slice of the SNPs (variants)
-            >>> print(bed.read(index=slice(1,-1)))
-            [[ 0. nan]
-             [ 0. nan]
-             [ 1.  2.]]
+        To read selected individuals (samples), set ``index`` to a tuple of the form ``(individual_index,None)``, where ``individual_index`` follows the form
+        of ``SNP index``, above.
 
-            >>> # Read a slice of the individuals (samples)
-            >>> # and SNPs (variants)
-            >>> print(bed.read(index=(slice(None,None,2),slice(1,-1))))
-            [[ 0. nan]
-             [ 1.  2.]]
-            >>> # Can also use np.s_ to specify same slicing
-            >>> import numpy as np
-            >>> print(bed.read(index=np.s_[::2,1:-1]))
-            [[ 0. nan]
-             [ 1.  2.]]
+        .. doctest::
 
-            >>> # Indexing with arrays of values
-            >>> # or arrays of booleans is also supported.
-            >>> print(bed.read(index=([0,2],[False,True,True,False])))
-            [[ 0. nan]
-             [ 1.  2.]]
+            >>> print(bed.read((0,None))) # Read 1st individual (across all SNPs)
+            [[ 1.  0. nan  0.]]
+            >>> print(bed.read((slice(None,None,2),None))) # Read every 2nd individual
+            [[ 1.  0. nan  0.]
+             [ 0.  1.  2.  0.]]
 
-        Can give a dtype. For float32 and float64, NaN indicates missing values.
+
+        To read selected individuals and selected SNPs, set ``index`` to a tuple of the form ``(individual_index,SNP_index)``,
+        where ``individual_index`` and ``SNP_index`` follow the forms above.
+
+        .. doctest::
+
+            >>> # Read individuals 1 (inclusive) to 3 (exclusive) and the first 2 SNPs.
+            >>> print(bed.read((slice(1,3),slice(2))))
+            [[2. 0.]
+             [0. 1.]]
+            >>> #read last and 2nd-to-last individuals and the last SNPs
+            >>> print(bed.read(([-1,-2],-1)))
+            [[0.]
+             [2.]]
+
+
+      * dtype example
+
+        You can give a dtype. For float32 and float64, NaN indicates missing values.
         For int8, -127 indicates missing values.
+
+        .. doctest::
 
             >>> print(bed.read(dtype='int8'))
             [[   1    0 -127    0]
