@@ -78,12 +78,12 @@ class open_bed:  #!!!cmk need doc strings everywhere
     ----------
     filepath: string or path
         BED file path
-    iid_count: int or ``none``
+    iid_count: int or ``None``
         Number of individuals (samples) in the BED file.
-        Defaults to quickly counting the number itself.
-    sid_count: int or ``none``
+        Defaults to quickly counting the number for itself.
+    sid_count: int or ``None``
         Number of SNPs (variants) in the BED file.
-        Defaults to quickly counting the number itself.
+        Defaults to quickly counting the number for itself.
     metadata: dictionary
         A dictionary of replacement metadata. By default, this
         is empty and any queries about metadata
@@ -94,15 +94,17 @@ class open_bed:  #!!!cmk need doc strings everywhere
         "mother" (mother id), "sex", "pheno" (phenotype), "chromosome", "sid"
         (SNP or variant id), "cm_position" (centimorgan position), "bp_position"
         (base-pair position), "allele_1", "allele_2". The values in the dictionary
-        are list or array.
+        are lists or arrays.
     count_A1: bool
         Tells if the reader should count the number of A1 alleles (the PLINK standard and the default) or the number of A2 alleles.
     num_threads: int
         Tells how many threads to use to read data. Defaults to all available threads.
-        Can also be set the 'MKL_NUM_THREADS' environment variable.
-    skip_format_check: b
-        If False (default), will immediately check that '.bed' file has expected starting bytes
-        on open. If True, will not check until (and if) the file is read.
+        Can also be set with the 'MKL_NUM_THREADS' environment variable. On MacOS, this
+        is ignored and all reads are singled threaded. On Windows, if reads have
+        library loading problems, setting this to 1 should work around them (but be slower).
+    skip_format_check: bool
+        If False (default), will immediately check that '.bed' file has the expected starting bytes.
+        If True, will not check until (and if) the file is read.
         
     Returns
     -------
@@ -112,10 +114,9 @@ class open_bed:  #!!!cmk need doc strings everywhere
 
     Examples
     --------
-    #!!!cmk give examples of metadata
-    #!!!cmk talk about missing data
-    #!!!cmk talk about multithreading
-    With the `with <https://docs.python.org/3/reference/compound_stmts.html#grammar-token-with-stmt>`__ statement, list individual (sample) :attr:`iid` and SNP (variant) :attr:`sid`, then :meth:`read` the whole file.
+
+    With the `with <https://docs.python.org/3/reference/compound_stmts.html#grammar-token-with-stmt>`__ statement,
+    list individual (sample) :attr:`iid` and SNP (variant) :attr:`sid`, then :meth:`read` the whole file.
 
     .. doctest::
 
@@ -123,41 +124,46 @@ class open_bed:  #!!!cmk need doc strings everywhere
         >>>
         >>> file_name = sample_file("small.bed")
         >>> with open_bed(file_name) as bed:
-        ...     print(bed.read())
         ...     print(bed.iid)
         ...     print(bed.sid)
+        ...     print(bed.read())
+        ['iid1' 'iid2' 'iid3']
+        ['sid1' 'sid2' 'sid3' 'sid4']
         [[ 1.  0. nan  0.]
          [ 2.  0. nan  2.]
          [ 0.  1.  2.  0.]]
-        ['iid1' 'iid2' 'iid3']
-        ['sid1' 'sid2' 'sid3' 'sid4']
 
-    Open the file (without `with`) and read probabilities for one variant.
+    Open the file (without `with`) and read probabilities for one variant at index position 2.
 
     .. doctest::
 
         >>> bed = open_bed(file_name)
-        >>> print(bed.read(2))
+        >>> print(bed.read(index=2))
         [[nan]
          [nan]
          [ 2.]]
-        >>> del bed                 # close and delete object
+        >>> del bed  # optional: close and delete object
 
-    Open the file and then first read for a :class:`slice` of samples and variants, and then for a single sample and variant.
+    Replace the sample :attr:`iid`.
 
-    .. doctest::
+        >>> with open_bed(file_name, metadata={"iid":["sample1","sample2","sample3"]}) as bed:
+        ...     print(bed.iid)
+        ...     print(bed.sid)
+        ['sample1' 'sample2' 'sample3']
+        ['sid1' 'sid2' 'sid3' 'sid4']
 
-        >>> bed = open_bed(file_name)
-        >>> print(bed.read((slice(1,3),slice(2,4))))
-        [[nan  2.]
-         [ 2.  0.]]
-        >>> print(bed.read((0,1)))
-        [[0.]]
-        >>> del bed                 # close and delete object
+    Tell it the number of individuals (samples) and SNPs (variants). This lets it read data without
+    the needing to ever open the \*.fam and \*.bim files.
+
+        >>> with open_bed(file_name, iid_count=3, sid_count=4) as bed:
+        ...     print(bed.read())
+        [[ 1.  0. nan  0.]
+         [ 2.  0. nan  2.]
+         [ 0.  1.  2.  0.]]
 
 
-        #!!!cmk need example of accessing the metadata
-        #!!!cmk need exmaple of overriding the metadata
+    See the :meth:`read` for details of reading batches via slicing and fancy indexing.
+
         #!!!cmk in README say: Documentation not API Documatnion
 
     .. _sample format: https://www.well.ox.ac.uk/~gav/qctool/documentation/sample_file_formats.html #!!!cmk
@@ -190,125 +196,250 @@ class open_bed:  #!!!cmk need doc strings everywhere
             with open(bedfile, "rb") as filepointer:
                 self._check_file(filepointer)
 
-    @staticmethod
-    def _fix_up_metadata_array(input, dtype, missing_value, key):
-        if len(input) == 0:
-            return np.zeros([0], dtype=dtype)
 
-        if not isinstance(input, np.ndarray):
-            return open_bed._fix_up_metadata_array(
-                np.array(input), dtype, missing_value, key
-            )
+    def read(
+        self,
+        index: Optional[Any] = None,
+        dtype: Optional[Union[type, str]] = np.float32,
+        order: Optional[str] = "F",
+        force_python_only: bool = False,
+    ) -> np.ndarray:
+        """
+        !!!cmk talk about default dtype and missing and the various index methods
 
-        if len(input.shape) != 1:
-            raise ValueError(f"{key} should be one dimensional")
+        Examples
+        --------
 
-        if not np.issubdtype(input.dtype, dtype):
-            output = np.array(input, dtype=dtype)
-            # If converting float to non-float: Change NaN to new missing value
-            if np.isrealobj(input) and not np.isrealobj(output):
-                output[input != input] = missing_value
-            return output
+        With the `with <https://docs.python.org/3/reference/compound_stmts.html#grammar-token-with-stmt>`__ statement,
+        read the whole file.
 
-        return input
+        .. doctest::
 
-    @staticmethod
-    def _fix_up_val(input):
+            >>> from bed_reader import open_bed, sample_file
+            >>>
+            >>> file_name = sample_file("small.bed")
+            >>> with open_bed(file_name) as bed:
+            ...     print(bed.read())
+            [[ 1.  0. nan  0.]
+             [ 2.  0. nan  2.]
+             [ 0.  1.  2.  0.]]
 
-        if not isinstance(input, np.ndarray):
-            return open_bed._fix_up_val(np.array(input))
+        Open the file (without `with`) and read various slices of the data:
 
-        if len(input.shape) != 2:
-            raise ValueError("val should be two dimensional")
+            >>> bed = open_bed(file_name)
+            >>> # Read SNPs (variants) at index position 2
+            >>> print(bed.read(index=2))
+            [[nan]
+             [nan]
+             [ 2.]]
 
-        return input
+            >>> # Read individual (sample) at index position 1
+            >>> print(bed.read(index=(1,None)))
+            [[ 2.  0. nan  2.]]
 
-    @staticmethod
-    def _fix_up_metadata(metadata, iid_count, sid_count, use_fill_sequence):
+            >>> # Read a slice of the SNPs (variants)
+            >>> print(bed.read(index=slice(1,-1)))
+            [[ 0. nan]
+             [ 0. nan]
+             [ 1.  2.]]
 
-        metadata_dict = {key: None for key in _meta_meta}
-        count_dict = {"fam": iid_count, "bim": sid_count}
+            >>> # Read a slice of the individuals (samples)
+            >>> # and SNPs (variants)
+            >>> print(bed.read(index=(slice(None,None,2),slice(1,-1))))
+            [[ 0. nan]
+             [ 1.  2.]]
+            >>> # Can also use np.s_ to specify same slicing
+            >>> import numpy as np
+            >>> print(bed.read(index=np.s_[::2,1:-1]))
+            [[ 0. nan]
+             [ 1.  2.]]
 
-        for key, input in metadata.items():
-            if key not in _meta_meta:
-                raise KeyError(f"metadata key '{key}' not known")
+            >>> # Indexing with arrays of values
+            >>> # or arrays of booleans is also supported.
+            >>> print(bed.read(index=([0,2],[False,True,True,False])))
+            [[ 0. nan]
+             [ 1.  2.]]
 
-        for key, mm in _meta_meta.items():
-            count = count_dict[mm.suffix]
+        Can give a dtype. For float32 and float64, NaN indicates missing values.
+        For int8, -127 indicates missing values.
 
-            input = metadata.get(key)
-            if input is None:
-                if use_fill_sequence:
-                    output = mm.fill_sequence(key, count, mm.missing_value, mm.dtype)
+            >>> print(bed.read(dtype='int8'))
+            [[ 1  0 -127  0]
+             [ 2  0 -127  2]
+             [ 0  1  2  0]]
+
+            >>> del bed  # optional: close and delete object
+
+        """
+
+        iid_index_or_slice_etc, sid_index_or_slice_etc = self._split_index(index)
+
+        dtype = np.dtype(dtype)
+        if order == "A":
+            order = "F"
+        if order not in {"F", "C"}:
+            raise ValueError(f"order '{order}' not known, only 'F', 'C', and 'A")
+
+        # Later happy with _iid_range and _sid_range or could it be done with allocation them?
+        if self._iid_range is None:
+            self._iid_range = np.arange(self.iid_count)
+        if self._sid_range is None:
+            self._sid_range = np.arange(self.sid_count)
+
+        iid_index = self._iid_range[iid_index_or_slice_etc]
+        sid_index = self._sid_range[sid_index_or_slice_etc]
+
+        if not force_python_only:
+            num_threads = self._get_num_threads()
+            if num_threads > 1:
+                open_bed._find_openmp()
+                from bed_reader import wrap_plink_parser_openmp as wrap_plink_parser
+            else:
+                from bed_reader import wrap_plink_parser_onep as wrap_plink_parser
+
+            val = np.zeros((len(iid_index), len(sid_index)), order=order, dtype=dtype)
+            bed_file_ascii = str(
+                open_bed._name_of_other_file(self.filepath, "bed", "bed")
+            ).encode("ascii")
+
+            if self.iid_count > 0 and self.sid_count > 0:
+                if dtype == np.int8:
+                    if order == "F":
+                        wrap_plink_parser.readPlinkBedFile2int8FAAA(
+                            bed_file_ascii,
+                            self.iid_count,
+                            self.sid_count,
+                            self.count_A1,
+                            iid_index,
+                            sid_index,
+                            val,
+                            num_threads,
+                        )
+                    elif order == "C":
+                        wrap_plink_parser.readPlinkBedFile2int8CAAA(
+                            bed_file_ascii,
+                            self.iid_count,
+                            self.sid_count,
+                            self.count_A1,
+                            iid_index,
+                            sid_index,
+                            val,
+                            num_threads,
+                        )
+                    else:
+                        assert False, "real assert"
+                elif dtype == np.float64:
+                    if order == "F":
+                        wrap_plink_parser.readPlinkBedFile2doubleFAAA(
+                            bed_file_ascii,
+                            self.iid_count,
+                            self.sid_count,
+                            self.count_A1,
+                            iid_index,
+                            sid_index,
+                            val,
+                            num_threads,
+                        )
+                    elif order == "C":
+                        wrap_plink_parser.readPlinkBedFile2doubleCAAA(
+                            bed_file_ascii,
+                            self.iid_count,
+                            self.sid_count,
+                            self.count_A1,
+                            iid_index,
+                            sid_index,
+                            val,
+                            num_threads,
+                        )
+                    else:
+                        assert False, "real assert"
+                elif dtype == np.float32:
+                    if order == "F":
+                        wrap_plink_parser.readPlinkBedFile2floatFAAA(
+                            bed_file_ascii,
+                            self.iid_count,
+                            self.sid_count,
+                            self.count_A1,
+                            iid_index,
+                            sid_index,
+                            val,
+                            num_threads,
+                        )
+                    elif order == "C":
+                        wrap_plink_parser.readPlinkBedFile2floatCAAA(
+                            bed_file_ascii,
+                            self.iid_count,
+                            self.sid_count,
+                            self.count_A1,
+                            iid_index,
+                            sid_index,
+                            val,
+                            num_threads,
+                        )
+                    else:
+                        assert False, "real assert"
+
                 else:
-                    continue
-            else:
-                output = open_bed._fix_up_metadata_array(
-                    input, mm.dtype, mm.missing_value, key
-                )
-
-            if count is None:
-                count_dict[mm.suffix] = len(output)
-            else:
-                if count != len(output):
                     raise ValueError(
-                        f"The length of override {key}, {len(output)}, should not be different from the current {_count_name[mm.suffix]}, {count}"
+                        f"dtype '{val.dtype}' not known, only 'int8', 'float32', and 'float64' are allowed."
                     )
-            metadata_dict[key] = output
-        return metadata_dict, count_dict
 
-    def _read_fam_or_bim(self, suffix):
-        metafile = open_bed._name_of_other_file(self.filepath, "bed", suffix)
-        logging.info("Loading {0} file {1}".format(suffix, metafile))
-
-        count = self._counts[suffix]
-
-        delimiter = _delimiters[suffix]
-        if delimiter in {r"\s+"}:
-            delimiter = None
-            delim_whitespace = True
         else:
-            delim_whitespace = False
+            if not self.count_A1:
+                byteZero = 0
+                byteThree = 2
+            else:
+                byteZero = 2
+                byteThree = 0
+            if dtype == np.int8:
+                missing = -127
+            else:
+                missing = np.nan
+            # An earlier version of this code had a way to read consecutive SNPs of code in one read. May want
+            # to add that ability back to the code.
+            # Also, note that reading with python will often result in non-contiguous memory
+            # logging.warn("using pure python plink parser (might be much slower!!)")
+            val = np.zeros(
+                ((int(np.ceil(0.25 * self.iid_count)) * 4), len(sid_index)),
+                order=order,
+                dtype=dtype,
+            )  # allocate it a little big
 
-        if os.path.getsize(metafile) == 0:
-            fields = []
-        else:
-            fields = pd.read_csv(
-                metafile,
-                delimiter=delimiter,
-                delim_whitespace=delim_whitespace,
-                header=None,
-                index_col=False,
-                comment=None,
-            )
+            bedfile = self._name_of_other_file(self.filepath, "bed", "bed")
+            with open(bedfile, "rb") as filepointer:
+                for SNPsIndex, bimIndex in enumerate(sid_index):
 
-        if count is None:
-            self._counts[suffix] = len(fields)
-        else:
-            if count != len(fields):
-                raise ValueError(
-                    f"The number of lines in the *.{suffix} file, {len(fields)}, should not be different from the current {_count_name[suffix]}, {count}"
-                )
-        for key, mm in _meta_meta.items():
-            if mm.suffix is not suffix:
-                continue
-            val = self.metadata_dict[key]
-            if val is None:
-                if len(fields) == 0:
-                    output = np.array([], dtype=mm.dtype)
-                elif mm.missing_value is None:
-                    output = np.array(fields[mm.column], dtype=mm.dtype)
-                else:
-                    output = np.array(
-                        fields[mm.column].fillna(mm.missing_value), dtype=mm.dtype
+                    startbit = int(np.ceil(0.25 * self.iid_count) * bimIndex + 3)
+                    filepointer.seek(startbit)
+                    nbyte = int(np.ceil(0.25 * self.iid_count))
+                    bytes = np.array(bytearray(filepointer.read(nbyte))).reshape(
+                        (int(np.ceil(0.25 * self.iid_count)), 1), order="F"
                     )
-                self.metadata_dict[key] = output
 
-    @staticmethod
-    def _name_of_other_file(filepath, remove_suffix, add_suffix):
-        if filepath.suffix.lower() == "." + remove_suffix:
-            filepath = filepath.parent / filepath.stem
-        return filepath.parent / (filepath.name + "." + add_suffix)
+                    val[3::4, SNPsIndex : SNPsIndex + 1] = byteZero
+                    val[3::4, SNPsIndex : SNPsIndex + 1][bytes >= 64] = missing
+                    val[3::4, SNPsIndex : SNPsIndex + 1][bytes >= 128] = 1
+                    val[3::4, SNPsIndex : SNPsIndex + 1][bytes >= 192] = byteThree
+                    bytes = np.mod(bytes, 64)
+                    val[2::4, SNPsIndex : SNPsIndex + 1] = byteZero
+                    val[2::4, SNPsIndex : SNPsIndex + 1][bytes >= 16] = missing
+                    val[2::4, SNPsIndex : SNPsIndex + 1][bytes >= 32] = 1
+                    val[2::4, SNPsIndex : SNPsIndex + 1][bytes >= 48] = byteThree
+                    bytes = np.mod(bytes, 16)
+                    val[1::4, SNPsIndex : SNPsIndex + 1] = byteZero
+                    val[1::4, SNPsIndex : SNPsIndex + 1][bytes >= 4] = missing
+                    val[1::4, SNPsIndex : SNPsIndex + 1][bytes >= 8] = 1
+                    val[1::4, SNPsIndex : SNPsIndex + 1][bytes >= 12] = byteThree
+                    bytes = np.mod(bytes, 4)
+                    val[0::4, SNPsIndex : SNPsIndex + 1] = byteZero
+                    val[0::4, SNPsIndex : SNPsIndex + 1][bytes >= 1] = missing
+                    val[0::4, SNPsIndex : SNPsIndex + 1][bytes >= 2] = 1
+                    val[0::4, SNPsIndex : SNPsIndex + 1][bytes >= 3] = byteThree
+                val = val[iid_index, :]  # reorder or trim any extra allocation
+                if not open_bed._array_properties_are_ok(val, order, dtype):
+                    val = val.copy(order=order)
+
+        return val
 
     def __str__(self):
         return f"{self.__class__.__name__}('{self.filepath}',...)"
@@ -320,7 +451,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
         """
         The family id (a :class:`numpy.ndarray` of ``str``).
 
-        #!!!cmk tell that if needed will open and reader the *.fam file
+        If needed, will cause a one-time read of the \*.fam file.
 
         Example
         -------
@@ -340,14 +471,42 @@ class open_bed:  #!!!cmk need doc strings everywhere
     @property
     def iid(self):
         """
-        !!!cmk need doc string
+        The individual id (a :class:`numpy.ndarray` of ``str``).
+
+        If needed, will cause a one-time read of the \*.fam file.
+
+        Example
+        -------
+        .. doctest::
+
+            >>> from bed_reader import open_bed, sample_file
+            >>>
+            >>> file_name = sample_file("small.bed")
+            >>> with open_bed(file_name) as bed:
+            ...     print(bed.iid)
+            ['iid1' 'iid2' 'iid3']
+
         """
         return self.metadata_item("iid")
 
     @property
     def father(self):
         """
-        !!!cmk need doc string
+        The father id (a :class:`numpy.ndarray` of ``str``).
+
+        If needed, will cause a one-time read of the \*.fam file.
+
+        Example
+        -------
+        .. doctest::
+
+            >>> from bed_reader import open_bed, sample_file
+            >>>
+            >>> file_name = sample_file("small.bed")
+            >>> with open_bed(file_name) as bed:
+            ...     print(bed.father)
+            ['iid23' 'iid23' 'iid22']
+
         """
         return self.metadata_item("father")
 
@@ -673,186 +832,6 @@ class open_bed:  #!!!cmk need doc strings everywhere
     def shape(self):
         return (len(self.iid), len(self.sid))
 
-    def read(
-        self,
-        index: Optional[Any] = None,
-        dtype: Optional[Union[type, str]] = np.float32,
-        order: Optional[str] = "F",
-        force_python_only: bool = False,
-    ) -> np.ndarray:
-        """
-        !!!cmk talk about default dtype and missing and the various index methods
-        """
-
-        iid_index_or_slice_etc, sid_index_or_slice_etc = self._split_index(index)
-
-        dtype = np.dtype(dtype)
-        if order == "A":
-            order = "F"
-        if order not in {"F", "C"}:
-            raise ValueError(f"order '{order}' not known, only 'F', 'C', and 'A")
-
-        # Later happy with _iid_range and _sid_range or could it be done with allocation them?
-        if self._iid_range is None:
-            self._iid_range = np.arange(self.iid_count)
-        if self._sid_range is None:
-            self._sid_range = np.arange(self.sid_count)
-
-        iid_index = self._iid_range[iid_index_or_slice_etc]
-        sid_index = self._sid_range[sid_index_or_slice_etc]
-
-        if not force_python_only:
-            num_threads = self._get_num_threads()
-            if num_threads > 1:
-                open_bed._find_openmp()
-                from bed_reader import wrap_plink_parser_openmp as wrap_plink_parser
-            else:
-                from bed_reader import wrap_plink_parser_onep as wrap_plink_parser
-
-            val = np.zeros((len(iid_index), len(sid_index)), order=order, dtype=dtype)
-            bed_file_ascii = str(
-                open_bed._name_of_other_file(self.filepath, "bed", "bed")
-            ).encode("ascii")
-
-            if self.iid_count > 0 and self.sid_count > 0:
-                if dtype == np.int8:
-                    if order == "F":
-                        wrap_plink_parser.readPlinkBedFile2int8FAAA(
-                            bed_file_ascii,
-                            self.iid_count,
-                            self.sid_count,
-                            self.count_A1,
-                            iid_index,
-                            sid_index,
-                            val,
-                            num_threads,
-                        )
-                    elif order == "C":
-                        wrap_plink_parser.readPlinkBedFile2int8CAAA(
-                            bed_file_ascii,
-                            self.iid_count,
-                            self.sid_count,
-                            self.count_A1,
-                            iid_index,
-                            sid_index,
-                            val,
-                            num_threads,
-                        )
-                    else:
-                        assert False, "real assert"
-                elif dtype == np.float64:
-                    if order == "F":
-                        wrap_plink_parser.readPlinkBedFile2doubleFAAA(
-                            bed_file_ascii,
-                            self.iid_count,
-                            self.sid_count,
-                            self.count_A1,
-                            iid_index,
-                            sid_index,
-                            val,
-                            num_threads,
-                        )
-                    elif order == "C":
-                        wrap_plink_parser.readPlinkBedFile2doubleCAAA(
-                            bed_file_ascii,
-                            self.iid_count,
-                            self.sid_count,
-                            self.count_A1,
-                            iid_index,
-                            sid_index,
-                            val,
-                            num_threads,
-                        )
-                    else:
-                        assert False, "real assert"
-                elif dtype == np.float32:
-                    if order == "F":
-                        wrap_plink_parser.readPlinkBedFile2floatFAAA(
-                            bed_file_ascii,
-                            self.iid_count,
-                            self.sid_count,
-                            self.count_A1,
-                            iid_index,
-                            sid_index,
-                            val,
-                            num_threads,
-                        )
-                    elif order == "C":
-                        wrap_plink_parser.readPlinkBedFile2floatCAAA(
-                            bed_file_ascii,
-                            self.iid_count,
-                            self.sid_count,
-                            self.count_A1,
-                            iid_index,
-                            sid_index,
-                            val,
-                            num_threads,
-                        )
-                    else:
-                        assert False, "real assert"
-
-                else:
-                    raise ValueError(
-                        f"dtype '{val.dtype}' not known, only 'int8', 'float32', and 'float64' are allowed."
-                    )
-
-        else:
-            if not self.count_A1:
-                byteZero = 0
-                byteThree = 2
-            else:
-                byteZero = 2
-                byteThree = 0
-            if dtype == np.int8:
-                missing = -127
-            else:
-                missing = np.nan
-            # An earlier version of this code had a way to read consecutive SNPs of code in one read. May want
-            # to add that ability back to the code.
-            # Also, note that reading with python will often result in non-contiguous memory
-            # logging.warn("using pure python plink parser (might be much slower!!)")
-            val = np.zeros(
-                ((int(np.ceil(0.25 * self.iid_count)) * 4), len(sid_index)),
-                order=order,
-                dtype=dtype,
-            )  # allocate it a little big
-
-            bedfile = self._name_of_other_file(self.filepath, "bed", "bed")
-            with open(bedfile, "rb") as filepointer:
-                for SNPsIndex, bimIndex in enumerate(sid_index):
-
-                    startbit = int(np.ceil(0.25 * self.iid_count) * bimIndex + 3)
-                    filepointer.seek(startbit)
-                    nbyte = int(np.ceil(0.25 * self.iid_count))
-                    bytes = np.array(bytearray(filepointer.read(nbyte))).reshape(
-                        (int(np.ceil(0.25 * self.iid_count)), 1), order="F"
-                    )
-
-                    val[3::4, SNPsIndex : SNPsIndex + 1] = byteZero
-                    val[3::4, SNPsIndex : SNPsIndex + 1][bytes >= 64] = missing
-                    val[3::4, SNPsIndex : SNPsIndex + 1][bytes >= 128] = 1
-                    val[3::4, SNPsIndex : SNPsIndex + 1][bytes >= 192] = byteThree
-                    bytes = np.mod(bytes, 64)
-                    val[2::4, SNPsIndex : SNPsIndex + 1] = byteZero
-                    val[2::4, SNPsIndex : SNPsIndex + 1][bytes >= 16] = missing
-                    val[2::4, SNPsIndex : SNPsIndex + 1][bytes >= 32] = 1
-                    val[2::4, SNPsIndex : SNPsIndex + 1][bytes >= 48] = byteThree
-                    bytes = np.mod(bytes, 16)
-                    val[1::4, SNPsIndex : SNPsIndex + 1] = byteZero
-                    val[1::4, SNPsIndex : SNPsIndex + 1][bytes >= 4] = missing
-                    val[1::4, SNPsIndex : SNPsIndex + 1][bytes >= 8] = 1
-                    val[1::4, SNPsIndex : SNPsIndex + 1][bytes >= 12] = byteThree
-                    bytes = np.mod(bytes, 4)
-                    val[0::4, SNPsIndex : SNPsIndex + 1] = byteZero
-                    val[0::4, SNPsIndex : SNPsIndex + 1][bytes >= 1] = missing
-                    val[0::4, SNPsIndex : SNPsIndex + 1][bytes >= 2] = 1
-                    val[0::4, SNPsIndex : SNPsIndex + 1][bytes >= 3] = byteThree
-                val = val[iid_index, :]  # reorder or trim any extra allocation
-                if not open_bed._array_properties_are_ok(val, order, dtype):
-                    val = val.copy(order=order)
-
-        return val
-
     @staticmethod
     def _split_index(index):
         if not isinstance(index, tuple):
@@ -892,6 +871,126 @@ class open_bed:  #!!!cmk need doc strings everywhere
                 filepointer.write(
                     sep.join(str(seq[index]) for seq in fam_bim_list) + "\n"
                 )
+
+    @staticmethod
+    def _fix_up_metadata_array(input, dtype, missing_value, key):
+        if len(input) == 0:
+            return np.zeros([0], dtype=dtype)
+
+        if not isinstance(input, np.ndarray):
+            return open_bed._fix_up_metadata_array(
+                np.array(input), dtype, missing_value, key
+            )
+
+        if len(input.shape) != 1:
+            raise ValueError(f"{key} should be one dimensional")
+
+        if not np.issubdtype(input.dtype, dtype):
+            output = np.array(input, dtype=dtype)
+            # If converting float to non-float: Change NaN to new missing value
+            if np.isrealobj(input) and not np.isrealobj(output):
+                output[input != input] = missing_value
+            return output
+
+        return input
+
+    @staticmethod
+    def _fix_up_val(input):
+
+        if not isinstance(input, np.ndarray):
+            return open_bed._fix_up_val(np.array(input))
+
+        if len(input.shape) != 2:
+            raise ValueError("val should be two dimensional")
+
+        return input
+
+    @staticmethod
+    def _fix_up_metadata(metadata, iid_count, sid_count, use_fill_sequence):
+
+        metadata_dict = {key: None for key in _meta_meta}
+        count_dict = {"fam": iid_count, "bim": sid_count}
+
+        for key, input in metadata.items():
+            if key not in _meta_meta:
+                raise KeyError(f"metadata key '{key}' not known")
+
+        for key, mm in _meta_meta.items():
+            count = count_dict[mm.suffix]
+
+            input = metadata.get(key)
+            if input is None:
+                if use_fill_sequence:
+                    output = mm.fill_sequence(key, count, mm.missing_value, mm.dtype)
+                else:
+                    continue
+            else:
+                output = open_bed._fix_up_metadata_array(
+                    input, mm.dtype, mm.missing_value, key
+                )
+
+            if count is None:
+                count_dict[mm.suffix] = len(output)
+            else:
+                if count != len(output):
+                    raise ValueError(
+                        f"The length of override {key}, {len(output)}, should not be different from the current {_count_name[mm.suffix]}, {count}"
+                    )
+            metadata_dict[key] = output
+        return metadata_dict, count_dict
+
+    def _read_fam_or_bim(self, suffix):
+        metafile = open_bed._name_of_other_file(self.filepath, "bed", suffix)
+        logging.info("Loading {0} file {1}".format(suffix, metafile))
+
+        count = self._counts[suffix]
+
+        delimiter = _delimiters[suffix]
+        if delimiter in {r"\s+"}:
+            delimiter = None
+            delim_whitespace = True
+        else:
+            delim_whitespace = False
+
+        if os.path.getsize(metafile) == 0:
+            fields = []
+        else:
+            fields = pd.read_csv(
+                metafile,
+                delimiter=delimiter,
+                delim_whitespace=delim_whitespace,
+                header=None,
+                index_col=False,
+                comment=None,
+            )
+
+        if count is None:
+            self._counts[suffix] = len(fields)
+        else:
+            if count != len(fields):
+                raise ValueError(
+                    f"The number of lines in the *.{suffix} file, {len(fields)}, should not be different from the current {_count_name[suffix]}, {count}"
+                )
+        for key, mm in _meta_meta.items():
+            if mm.suffix is not suffix:
+                continue
+            val = self.metadata_dict[key]
+            if val is None:
+                if len(fields) == 0:
+                    output = np.array([], dtype=mm.dtype)
+                elif mm.missing_value is None:
+                    output = np.array(fields[mm.column], dtype=mm.dtype)
+                else:
+                    output = np.array(
+                        fields[mm.column].fillna(mm.missing_value), dtype=mm.dtype
+                    )
+                self.metadata_dict[key] = output
+
+    @staticmethod
+    def _name_of_other_file(filepath, remove_suffix, add_suffix):
+        if filepath.suffix.lower() == "." + remove_suffix:
+            filepath = filepath.parent / filepath.stem
+        return filepath.parent / (filepath.name + "." + add_suffix)
 
 
 if __name__ == "__main__":
