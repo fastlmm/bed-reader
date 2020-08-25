@@ -264,10 +264,9 @@ class open_bed:  #!!!cmk need doc strings everywhere
         For int8, -127 indicates missing values.
 
             >>> print(bed.read(dtype='int8'))
-            [[ 1  0 -127  0]
-             [ 2  0 -127  2]
-             [ 0  1  2  0]]
-
+            [[   1    0 -127    0]
+             [   2    0 -127    2]
+             [   0    1    2    0]]
             >>> del bed  # optional: close and delete object
 
         """
