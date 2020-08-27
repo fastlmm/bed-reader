@@ -1,6 +1,9 @@
+import os
 from typing import Any, List, Optional, Tuple, Union
 import pooch
 from pathlib import Path
+import tempfile
+import logging
 
 """
 Load sample data.
@@ -54,3 +57,35 @@ def sample_file(filepath: Union[str, Path]) -> str:  #!!!cmk doc
         POOCH.fetch(file_string[:-4] + ".fam")
         POOCH.fetch(file_string[:-4] + ".bim")
     return POOCH.fetch(file_string)
+
+
+def tmp_path() -> Path:  #!!!cmk doc
+    """
+    Return a temporary directory path object.
+
+    Returns
+    -------
+    Path
+
+    Example
+    --------
+
+    .. doctest::
+
+        >>> from bed_reader import to_bed, tmp_path
+        >>>
+        >>> output_file = tmp_path() / "small3.bed"
+        >>> val = [[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]]
+        >>> to_bed(output_file, val)
+
+    """
+    temp_dir = tempfile.gettempdir()
+    path = Path(temp_dir) / "bed_reader_tmp_path"
+    path.mkdir(parents=True,exist_ok=True)
+    return path
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+
+    import pytest
+    pytest.main(["--doctest-modules", __file__])

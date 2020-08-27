@@ -88,7 +88,8 @@ class open_bed:  #!!!cmk need doc strings everywhere
         automatically by quickly scanning the BIM file.
     metadata: dict, optional
         A dictionary of any replacement metadata. The default is an empty dictionary.
-        The keys of the dictionary are the names of the metadata to replace, specifically,
+        The keys of the dictionary are the names of the metadata to replace.
+        The possible keys are:
 
              "fid" (family id), "iid" (individual or sample id), "father" (father id),
              "mother" (mother id), "sex", "pheno" (phenotype), "chromosome", "sid"
@@ -212,16 +213,16 @@ class open_bed:  #!!!cmk need doc strings everywhere
 
         Parameters
         ----------
-        index
-            An expression specifying the individuals (samples) and SNPs (variants)
+        index:
+            An optional expression specifying the individuals (samples) and SNPs (variants)
             to read. (See :ref:`read_examples`, below).
             Defaults to ``None``, meaning read all.
-        dtype: {'float32' (default), 'float64', 'int8'}
+        dtype: {'float32' (default), 'float64', 'int8'}, optional
             The desired data-type for the returned array.
-        order : {'F','C'}
+        order : {'F','C'}, optional
             The desired memory layout for the returned array.
             Defaults to ``F`` (Fortran order, which is SNP-major).
-        force_python_only
+        force_python_only: bool, optional
             If False (default), uses the faster C++ code; otherwise it uses the slower pure Python code.
 
         Returns
@@ -1019,10 +1020,5 @@ if __name__ == "__main__":
     #         "tempdir/toydata.5chrom.bed", snpdata, count_A1=False
     #     )  # Write data in Bed format
 
-    # import doctest
-
-    #!!!cmk put this back
-    # doctest.testmod(
-    #    optionflags=doctest.ELLIPSIS
-    # )  #!!!cmk how do you doctest with PyTest?
-    # There is also a unit test case in 'pysnptools\test.py' that calls this doc test
+    import pytest
+    pytest.main(["--doctest-modules", __file__])

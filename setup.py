@@ -6,7 +6,7 @@ from setuptools import setup, Extension
 from distutils.command.clean import clean as Clean
 import numpy
 import distutils.sysconfig
-import pathlib
+from pathlib import Path
 import re
 
 def find_version(filepath):
