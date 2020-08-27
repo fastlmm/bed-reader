@@ -1,8 +1,9 @@
-from pathlib import Path
-import numpy as np
 import logging
 import os
-from typing import Any, List, Optional, Union, Mapping
+from pathlib import Path
+from typing import Any, List, Mapping, Optional, Union
+
+import numpy as np
 
 from bed_reader import open_bed
 
@@ -199,7 +200,6 @@ def to_bed(
     logging.info(f"Done writing {filepath}")
 
 
-
 def _fix_up_val(input):
 
     if not isinstance(input, np.ndarray):
@@ -223,4 +223,5 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
     import pytest
+
     pytest.main(["--doctest-modules", __file__])

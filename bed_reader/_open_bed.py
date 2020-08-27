@@ -1,22 +1,21 @@
 #!!!cmk todo: Offer to ignore some or all fam bim fields
 #!!!cmk add typing info
 #!!!cmk run flake8, isort, etc
-import os
-import numpy as np
-import numbers
-import pandas as pd
 import logging
-from pathlib import Path
-import multiprocessing
-from dataclasses import dataclass
-import sys
-import platform
-import logging
-
 import math
-from typing import Any, List, Optional, Union, Mapping
+import multiprocessing
+import numbers
+import os
+import platform
+import sys
+from dataclasses import dataclass
+from itertools import repeat, takewhile
+from pathlib import Path
+from typing import Any, List, Mapping, Optional, Union
 
-from itertools import takewhile, repeat
+import numpy as np
+import pandas as pd
+
 
 # https://stackoverflow.com/questions/845058/how-to-get-line-count-of-a-large-file-cheaply-in-python
 def _rawincount(filepath):

@@ -1,9 +1,10 @@
-import os
-from typing import Any, List, Optional, Tuple, Union
-import pooch
-from pathlib import Path
-import tempfile
 import logging
+import os
+import tempfile
+from pathlib import Path
+from typing import Any, List, Optional, Tuple, Union
+
+import pooch
 
 """
 Load sample data.

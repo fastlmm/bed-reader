@@ -1,13 +1,15 @@
-import platform
-import os
-import sys
-import shutil
-from setuptools import setup, Extension
-from distutils.command.clean import clean as Clean
-import numpy
 import distutils.sysconfig
-from pathlib import Path
+import os
+import platform
 import re
+import shutil
+import sys
+from distutils.command.clean import clean as Clean
+from pathlib import Path
+
+import numpy
+from setuptools import Extension, setup
+
 
 def find_version(filepath):
     import re
@@ -18,6 +20,7 @@ def find_version(filepath):
         return version_match.group(1)
     raise RuntimeError("Unable to find version string.")
 
+
 def read(filepath):
     import codecs
 
@@ -27,6 +30,7 @@ def read(filepath):
 
 # Version number
 version = find_version(Path(__file__).parents[0] / Path("bed_reader/__init__.py"))
+
 
 def readme():
     with open("README.md") as f:
@@ -171,9 +175,7 @@ setup(
         "bed_reader/tests",
     ],  # basically everything with a __init__.py
     data_files=win_data,
-    package_data={"bed_reader/tests" : [
-                       "registry.txt"],
-                  },
+    package_data={"bed_reader/tests": ["registry.txt"],},
     install_requires=install_requires,
     # extensions
     cmdclass=cmdclass,

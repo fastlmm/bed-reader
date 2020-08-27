@@ -1,7 +1,9 @@
-import numpy as np
-from pathlib import Path
-import pytest
 import logging
+from pathlib import Path
+
+import numpy as np
+import pytest
+
 from bed_reader import open_bed, to_bed
 
 
@@ -606,4 +608,3 @@ if __name__ == "__main__":  #!!cmk is this wanted?
 
     test_writes_small(Path(r"m:/deldir/tests"))
     pytest.main([__file__])
-
