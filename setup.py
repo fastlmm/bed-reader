@@ -18,6 +18,12 @@ def find_version(filepath):
         return version_match.group(1)
     raise RuntimeError("Unable to find version string.")
 
+def read(filepath):
+    import codecs
+
+    with codecs.open(filepath, "r") as fp:
+        return fp.read()
+
 
 # Version number
 version = find_version(Path(__file__).parents[0] / Path("bed_reader/__init__.py"))
