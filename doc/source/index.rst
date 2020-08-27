@@ -1,34 +1,40 @@
 ################################
-:mod:`bed-reader` Documentation
+:mod:`bed_reader` Documentation
 ################################
 
-!!!cmk update
+.. currentmodule:: bed_reader
 
+Open, read, write
 
-.. automodule:: bed_reader
-    :members:
-    :undoc-members:
-	:show-inheritance:
-	:special-members:
+.. autosummary::
 
+    open_bed
+    open_bed.read
+    to_bed
 
-:class:`open_bed`
-+++++++++++++++++++++++++++++
-.. autoclass:: bed_reader._open_bed.open_bed
-    :members:
-    :undoc-members:
-	:show-inheritance:
-	:special-members: __getitem__
-    :exclude-members: copyinputs
+Metadata
 
+.. autosummary::
 
+    open_bed.chromosome
+    open_bed.iid
+    open_bed.iid_count
+    open_bed.sid
+    open_bed.sid_count
+    open_bed.shape
 
-.. only:: html 
+Utilities
 
-***********************
-Indices and Tables
-***********************
+.. autosummary::
 
-   * :ref:`genindex`
-   * :ref:`modindex`
-   * :ref:`search`
+    sample_file
+
+.. autoclass:: open_bed
+   :members:
+   :inherited-members:
+
+.. autofunction:: to_bed
+
+.. autofunction:: sample_file
+
+CMKTOC

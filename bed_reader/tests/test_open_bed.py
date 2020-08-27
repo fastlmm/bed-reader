@@ -2,7 +2,7 @@ import numpy as np
 from pathlib import Path
 import pytest
 import logging
-from bed_reader import open_bed
+from bed_reader import open_bed, to_bed
 
 
 def test_read1(shared_datadir):
@@ -12,7 +12,7 @@ def test_read1(shared_datadir):
         assert bed.fid[-1] == "0"
         assert bed.iid[-1] == "9"
         assert bed.shape == (10, 100)
-        val = bed.read(dtype='int8')
+        val = bed.read(dtype="int8")
         assert (
             val.mean() == -13.142
         )  # really shouldn't do mean on data where -127 represents missing
@@ -33,7 +33,7 @@ def test_write1(tmp_path, shared_datadir):
             "cm_position": bed.cm_position,
             "bp_position": bed.bp_position,
         }
-        open_bed.write(out_file, val0, metadata=metadata0)
+        to_bed(out_file, val0, metadata=metadata0)
         with open_bed(out_file) as bed1:
             assert np.allclose(val0, bed1.read(), equal_nan=True)
             assert np.array_equal(bed.fid, metadata0["fid"])
@@ -48,7 +48,7 @@ def test_write1(tmp_path, shared_datadir):
 
     for force_python_only in [False, True]:
         with pytest.raises(ValueError):
-            open_bed.write(
+            to_bed(
                 out_file,
                 val_float,
                 metadata=metadata0,
@@ -58,7 +58,7 @@ def test_write1(tmp_path, shared_datadir):
     val_int8[0, 0] = -1
     for force_python_only in [False, True]:
         with pytest.raises(ValueError):
-            open_bed.write(
+            to_bed(
                 out_file,
                 val_int8,
                 metadata=metadata0,
@@ -96,16 +96,10 @@ def test_overrides(shared_datadir):
     assert np.array_equal(property_dict["allele_2"], allele_2)
 
     with pytest.raises(KeyError):
-        open_bed(
-            shared_datadir / "some_missing.bed", metadata={"unknown": [3, 4, 4]}
-        )
-    with open_bed(
-        shared_datadir / "some_missing.bed", metadata={"iid": None}
-    ) as bed1:
+        open_bed(shared_datadir / "some_missing.bed", metadata={"unknown": [3, 4, 4]})
+    with open_bed(shared_datadir / "some_missing.bed", metadata={"iid": None}) as bed1:
         assert np.array_equal(bed1.iid, property_dict["iid"])
-    with open_bed(
-        shared_datadir / "some_missing.bed", metadata={"iid": []}
-    ) as bed1:
+    with open_bed(shared_datadir / "some_missing.bed", metadata={"iid": []}) as bed1:
         assert np.issubdtype(bed1.iid.dtype, np.str_)
         assert len(bed1.iid) == 0
         with pytest.raises(ValueError):
@@ -239,9 +233,7 @@ def test_properties(shared_datadir):
 
 def test_c_reader_bed(shared_datadir):
     for force_python_only in [False, True]:
-        bed = open_bed(
-            shared_datadir / "some_missing.bed", count_A1=False
-        ) 
+        bed = open_bed(shared_datadir / "some_missing.bed", count_A1=False)
 
         val = bed.read(order="F", force_python_only=force_python_only)
         assert val.dtype == np.float32
@@ -249,7 +241,7 @@ def test_c_reader_bed(shared_datadir):
         ref_val = ref_val * -1 + 2
         assert np.allclose(ref_val, val, rtol=1e-05, atol=1e-05, equal_nan=True)
 
-        val = bed.read(order="F", dtype='int8', force_python_only=False)
+        val = bed.read(order="F", dtype="int8", force_python_only=False)
         assert val.dtype == np.int8
         ref_val[ref_val != ref_val] = -127
         ref_val = ref_val.astype("int8")
@@ -288,7 +280,7 @@ def test_bed_int8(tmp_path, shared_datadir):
                 assert np.array_equal(ref_val, val)
                 output = str(tmp_path / "int8.bed")
                 for count_A1 in [False, True]:
-                    open_bed.write(
+                    to_bed(
                         output,
                         ref_val,
                         count_A1=count_A1,
@@ -315,17 +307,15 @@ def test_write1_bed_f64cpp(tmp_path, shared_datadir):
                 )
                 assert val.shape == (iid_index, 100)
                 output = str(tmp_path / f"toydata.F64cpp.{iid_index}")
-                open_bed.write(output, val, count_A1=False)
+                to_bed(output, val, count_A1=False)
                 val2 = open_bed(output, count_A1=False).read(dtype="float64")
                 assert np.allclose(val, val2, equal_nan=True)
 
 
 def test_write1_x_x_cpp(tmp_path, shared_datadir):
     for count_A1 in [False, True]:
-        with open_bed(
-            shared_datadir / "some_missing.bed", count_A1=count_A1
-        ) as bed:
-            for order in ["C", "F", "A"]:
+        with open_bed(shared_datadir / "some_missing.bed", count_A1=count_A1) as bed:
+            for order in ["C", "F"]:
                 for dtype in [np.float32, np.float64]:
                     val = bed.read(order=order, dtype=dtype)
                     metadata = bed.metadata
@@ -336,7 +326,7 @@ def test_write1_x_x_cpp(tmp_path, shared_datadir):
                             order, "32" if dtype == np.float32 else "64"
                         )
                     )
-                    open_bed.write(output, val, metadata=metadata, count_A1=count_A1)
+                    to_bed(output, val, metadata=metadata, count_A1=count_A1)
                     val2 = open_bed(output, count_A1=count_A1).read(dtype=dtype)
                     assert np.allclose(val, val2, equal_nan=True)
 
@@ -348,16 +338,14 @@ def test_respect_read_inputs(shared_datadir):
     ref_val_int8[ref_val_float != ref_val_float] = -127
 
     with open_bed(shared_datadir / "some_missing.bed") as bed:
-        for order in ["F", "C", "A"]:
+        for order in ["F", "C"]:
             for dtype in [np.int8, np.float32, np.float64]:
                 for force_python_only in [True, False]:
                     val = bed.read(
                         order=order, dtype=dtype, force_python_only=force_python_only
                     )
-                    has_right_order = (
-                        order == "A"
-                        or (order == "C" and val.flags["C_CONTIGUOUS"])
-                        or (order == "F" and val.flags["F_CONTIGUOUS"])
+                    has_right_order = (order == "C" and val.flags["C_CONTIGUOUS"]) or (
+                        order == "F" and val.flags["F_CONTIGUOUS"]
                     )
                     assert val.dtype == dtype and has_right_order
                     ref_val = ref_val_int8 if dtype == np.int8 else ref_val_float
@@ -373,7 +361,7 @@ def test_threads(shared_datadir):
         with open_bed(
             shared_datadir / "some_missing.bed", num_threads=num_threads
         ) as bed:
-            val = bed.read(dtype='int8')
+            val = bed.read(dtype="int8")
             assert np.allclose(ref_val_int8, val, equal_nan=True)
 
 
@@ -405,14 +393,12 @@ def test_write12(tmp_path):
                 filename = output_template.format(i)
                 logging.info(filename)
                 i += 1
-                open_bed.write(
+                to_bed(
                     filename, val, metadata=metadata
-                )  #!!!cmk is it weird to "open_bed.write"?
+                )  #!!!cmk is it weird to "to_bed"?
                 for subsetter in [None, np.s_[::2, ::3]]:
                     with open_bed(filename) as bed:
-                        val2 = bed.read(
-                            index=subsetter, order="C", dtype="float32"
-                        )
+                        val2 = bed.read(index=subsetter, order="C", dtype="float32")
                         if subsetter is None:
                             expected = val
                         else:
@@ -437,41 +423,45 @@ def test_write12(tmp_path):
                         pass
     logging.info("done with 'test_writes'")
 
+
 def test_writes_small(tmp_path):
     output_file = tmp_path / "small.bed"
 
-    val = [[1.0, 0, np.nan, 0],
-           [2, 0, np.nan, 2],
-           [0, 1, 2, 0]]
+    val = [[1.0, 0, np.nan, 0], [2, 0, np.nan, 2], [0, 1, 2, 0]]
 
-    metadata = {"fid":["fid1","fid1","fid2"],
-                "iid":["iid1","iid2","iid3"],
-                "father":['iid23','iid23','iid22'],
-                "mother":['iid34','iid34','iid33'],
-                "sex": [1,2,0],
-                "pheno": ["red","red","blue"],
-                "chromosome":["1","1","5","Y"],
-                "sid":["sid1","sid2","sid3","sid4"],
-                "cm_position":[100.4,2000.5,4000.7,7000.9],
-                "bp_position":[1,100,1000,1004],
-                "allele_1":["A","T","A","T"],
-                "allele_2":["A","C","C","G"],
-                }
+    metadata = {
+        "fid": ["fid1", "fid1", "fid2"],
+        "iid": ["iid1", "iid2", "iid3"],
+        "father": ["iid23", "iid23", "iid22"],
+        "mother": ["iid34", "iid34", "iid33"],
+        "sex": [1, 2, 0],
+        "pheno": ["red", "red", "blue"],
+        "chromosome": ["1", "1", "5", "Y"],
+        "sid": ["sid1", "sid2", "sid3", "sid4"],
+        "cm_position": [100.4, 2000.5, 4000.7, 7000.9],
+        "bp_position": [1, 100, 1000, 1004],
+        "allele_1": ["A", "T", "A", "T"],
+        "allele_2": ["A", "C", "C", "G"],
+    }
 
-    open_bed.write(output_file, val, metadata=metadata)
+    to_bed(output_file, val, metadata=metadata)
 
     with open_bed(output_file) as bed:
         assert np.allclose(bed.read(), val, equal_nan=True)
         for key, value in bed.metadata.items():
-            if not np.array_equal(value,metadata[key]) and not np.allclose(value,metadata[key]):#!!!cmk
+            if not np.array_equal(value, metadata[key]) and not np.allclose(
+                value, metadata[key]
+            ):  #!!!cmk
                 print("!!!cmk")
-            assert np.array_equal(value,metadata[key]) or np.allclose(value,metadata[key])
+            assert np.array_equal(value, metadata[key]) or np.allclose(
+                value, metadata[key]
+            )
 
 
 def test_index(shared_datadir):
-    print(shared_datadir)#!!!cmk
+    print(shared_datadir)  #!!!cmk
     ref_val_float = reference_val(shared_datadir)
-    
+
     with open_bed(shared_datadir / "some_missing.bed") as bed:
         val = bed.read()
         assert np.allclose(ref_val_float, val, equal_nan=True)
@@ -533,7 +523,7 @@ def test_zero_files(tmp_path):
                     filename = str(tmp_path / "zero_files.bed")
 
                     # Write
-                    open_bed.write(filename, val, force_python_only=force_python_only)
+                    to_bed(filename, val, force_python_only=force_python_only)
 
                     # Read
                     with open_bed(filename) as bed2:
@@ -548,7 +538,7 @@ def test_zero_files(tmp_path):
                         metadata2["iid"][0] = "iidx"
                     if sid_count > 0:
                         metadata2["sid"][0] = "sidx"
-                    open_bed.write(
+                    to_bed(
                         filename,
                         val2,
                         metadata=metadata2,
@@ -581,13 +571,16 @@ def test_iid_sid_count(shared_datadir):
         sid_count=sid_count_ref,
     ).shape
 
+
 def test_sample_file():
     from bed_reader import open_bed, sample_file
+
     file_name = sample_file("small.bed")
     with open_bed(file_name) as bed:
         print(bed.iid)
         print(bed.sid)
         print(bed.read())
+
 
 def test_coverage2(shared_datadir):
     with open_bed(
@@ -602,10 +595,10 @@ def test_coverage2(shared_datadir):
     val = np.zeros((3, 5))[::2]
     assert not val.flags["C_CONTIGUOUS"] and not val.flags["F_CONTIGUOUS"]
     with pytest.raises(ValueError):
-        open_bed.write("ignore", val)
+        to_bed("ignore", val)
     val = np.zeros((3, 5), dtype=np.str)
     with pytest.raises(ValueError):
-        open_bed.write("ignore", val)
+        to_bed("ignore", val)
 
 
 if __name__ == "__main__":  #!!cmk is this wanted?

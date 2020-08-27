@@ -6,10 +6,21 @@ from setuptools import setup, Extension
 from distutils.command.clean import clean as Clean
 import numpy
 import distutils.sysconfig
+import pathlib
+import re
+
+def find_version(filepath):
+    import re
+
+    version_file = read(filepath)
+    version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]", version_file, re.M)
+    if version_match:
+        return version_match.group(1)
+    raise RuntimeError("Unable to find version string.")
+
 
 # Version number
-version = "0.0.2a0"
-
+version = find_version(Path(__file__).parents[0] / Path("bed_reader/__init__.py"))
 
 def readme():
     with open("README.md") as f:

@@ -6,10 +6,12 @@ A simple and efficient PLINK \*.bed file format reader and writer.
 Read and write genetic PLINK \*.bed/bim/fam files.
 Also, efficiently read parts of files and access metadata.
 
+CMK example
+
 Documentation
 =================================
 
-* [API Documentation](http://fastlmm.github.io/bed-reader/) with examples.
+* [Documentation](http://fastlmm.github.io/bed-reader/) with examples.
 * [Project Home and Full Annotated Bibliography](https://fastlmm.github.io/)
 
 Code
