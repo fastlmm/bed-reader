@@ -62,7 +62,7 @@ def sample_file(filepath: Union[str, Path]) -> str:  #!!!cmk doc
 
 def tmp_path() -> Path:  #!!!cmk doc
     """
-    Return a temporary directory path object.
+    Return a :class:`pathlib.Path` to a temporary directory.
 
     Returns
     -------

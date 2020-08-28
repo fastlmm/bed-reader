@@ -47,9 +47,9 @@ def to_bed(
     Examples
     --------
 
-    .. doctest::
-
     In this example, full metadata is given.
+
+    .. doctest::
 
         >>> import numpy as np
         >>> from bed_reader import to_bed, tmp_path
@@ -72,12 +72,11 @@ def to_bed(
         ... }
         >>> to_bed(output_file, val, metadata=metadata)
 
-
-    .. doctest::
-
     In this example, no metadata is given, so default values as assigned.
     If we read the file and list the chromosome, it will be a list of '0's
     the default chromosome value. cmkref
+
+    .. doctest::
 
         >>> output_file2 = tmp_path() / "small2.bed"
         >>> val = [[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]]

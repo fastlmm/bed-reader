@@ -507,12 +507,15 @@ class open_bed:  #!!!cmk need doc strings everywhere
     @property
     def fid(self):
         """
-        The family id (a :class:`numpy.ndarray` of ``str``).
+        Family id of each individual (sample).
+       
+        :rtype:  :class:`numpy.ndarray` of ``str``
 
         If needed, will cause a one-time read of the cmkstar.fam file.
 
         Example
         -------
+
         .. doctest::
 
             >>> from bed_reader import open_bed, sample_file
@@ -529,12 +532,15 @@ class open_bed:  #!!!cmk need doc strings everywhere
     @property
     def iid(self):
         """
-        The individual id (a :class:`numpy.ndarray` of ``str``).
-
+        Individual id of each individual (sample).
+       
+        :rtype:  :class:`numpy.ndarray` of ``str``
+        
         If needed, will cause a one-time read of the cmkstar.fam file.
 
         Example
         -------
+
         .. doctest::
 
             >>> from bed_reader import open_bed, sample_file
@@ -550,7 +556,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
     @property
     def father(self):
         """
-        The father id
+        Father id of each individual (sample).
        
         :rtype:  :class:`numpy.ndarray` of ``str``
         
@@ -558,6 +564,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
 
         Example
         -------
+
         .. doctest::
 
             >>> from bed_reader import open_bed, sample_file
@@ -573,37 +580,139 @@ class open_bed:  #!!!cmk need doc strings everywhere
     @property
     def mother(self):
         """
-        !!!cmk need doc string
+        Mother id of each individual (sample).
+       
+        :rtype:  :class:`numpy.ndarray` of ``str``
+
+        If needed, will cause a one-time read of the cmkstar.fam file.
+
+        Example
+        -------
+
+        .. doctest::
+
+            >>> from bed_reader import open_bed, sample_file
+            >>>
+            >>> file_name = sample_file("small.bed")
+            >>> with open_bed(file_name) as bed:
+            ...     print(bed.mother)
+            ['iid34' 'iid34' 'iid33']
+
         """
         return self.metadata_item("mother")
 
     @property
     def sex(self):
         """
-        !!!cmk need doc string
+        Sex of each individual (sample).
+       
+        :rtype:  :class:`numpy.ndarray` of {0,1,2}
+
+        0 is unknown, 1 is male, 2 is female
+
+        If needed, will cause a one-time read of the cmkstar.fam file.
+
+        Example
+        -------
+        .. doctest::
+
+            >>> from bed_reader import open_bed, sample_file
+            >>>
+            >>> file_name = sample_file("small.bed")
+            >>> with open_bed(file_name) as bed:
+            ...     print(bed.sex)
+            [1 2 0]
+
         """
         return self.metadata_item("sex")
 
     @property
     def pheno(self):
         """
-        !!!cmk need doc string
+        A phenotype for each individual (sample)
+        (seldom used).
+       
+        :rtype: :class:`numpy.ndarray` of str
+
+        If needed, will cause a one-time read of the cmkstar.fam file.
+
+        Example
+        -------
+
+        .. doctest::
+
+            >>> from bed_reader import open_bed, sample_file
+            >>>
+            >>> file_name = sample_file("small.bed")
+            >>> with open_bed(file_name) as bed:
+            ...     print(bed.pheno)
+            ['red' 'red' 'blue']
+
         """
         return self.metadata_item("pheno")
 
     @property
     def metadata(self):
         """
-        !!!cmk need doc string
-        !!!cmk tell that if needed, will open and read cmkstar.fam and cmkstar.bim files
+        All the metadata
+       
+        :rtype:  dict
+
+        The keys of the dictionary are the names of the metadata, namely:
+
+             "fid" (family id), "iid" (individual or sample id), "father" (father id),
+             "mother" (mother id), "sex", "pheno" (phenotype), "chromosome", "sid"
+             (SNP or variant id), "cm_position" (centimorgan position), "bp_position"
+             (base-pair position), "allele_1", "allele_2".
+            
+        The values are :class:`numpy.ndarray`.
+
+        If needed, will cause a one-time read of the cmkstar.fam and cmkstart.bim file.
+
+        Example
+        -------
+
+        .. doctest::
+
+            >>> from bed_reader import open_bed, sample_file
+            >>>
+            >>> file_name = sample_file("small.bed")
+            >>> with open_bed(file_name) as bed:
+            ...     print(len(bed.metadata)) #length of dict
+            12
+
         """
         for key in _meta_meta:
             self.metadata_item(key)
         return self.metadata_dict
 
-    def metadata_item(self, key):
+    def metadata_item(self, key: str) -> np.ndarray:
         """
-        !!!cmk need doc string
+        The metadata array for one key.
+       
+        :rtype: :class:`numpy.ndarray`
+
+        The key is one of these:
+
+             "fid" (family id), "iid" (individual or sample id), "father" (father id),
+             "mother" (mother id), "sex", "pheno" (phenotype), "chromosome", "sid"
+             (SNP or variant id), "cm_position" (centimorgan position), "bp_position"
+             (base-pair position), "allele_1", "allele_2".
+            
+        If needed, will cause a one-time read of the cmkstar.fam or cmkstart.bim file.
+
+        Example
+        -------
+
+        .. doctest::
+
+            >>> from bed_reader import open_bed, sample_file
+            >>>
+            >>> file_name = sample_file("small.bed")
+            >>> with open_bed(file_name) as bed:
+            ...     print(bed.metadata_item('chromosome'))
+            ['1' '1' '5' 'Y']
+
         """
         val = self.metadata_dict.get(key)
         if val is None:
@@ -616,56 +725,192 @@ class open_bed:  #!!!cmk need doc strings everywhere
     @property
     def chromosome(self):
         """
-        !!!cmk need doc string
+        Chromosome of each SNP (variant)
+       
+        :rtype: :class:`numpy.ndarray` of str
+
+        If needed, will cause a one-time read of the cmkstar.bim file.
+
+        Example
+        -------
+
+        .. doctest::
+
+            >>> from bed_reader import open_bed, sample_file
+            >>>
+            >>> file_name = sample_file("small.bed")
+            >>> with open_bed(file_name) as bed:
+            ...     print(bed.chromosome)
+            ['1' '1' '5' 'Y']
+
         """
         return self.metadata_item("chromosome")
 
     @property
     def sid(self):
         """
-        !!!cmk need doc string
-        """
+        SNP id of each SNP (variant)
+       
+        :rtype: :class:`numpy.ndarray` of str
+
+        If needed, will cause a one-time read of the cmkstar.bim file.
+
+        Example
+        -------
+
+        .. doctest::
+
+            >>> from bed_reader import open_bed, sample_file
+            >>>
+            >>> file_name = sample_file("small.bed")
+            >>> with open_bed(file_name) as bed:
+            ...     print(bed.sid)
+            ['sid1' 'sid2' 'sid3' 'sid4']
+
+        """ 
         return self.metadata_item("sid")
 
     @property
     def cm_position(self):
         """
-        !!!cmk need doc string
+        Centimorgan position of each SNP (variant)
+       
+        :rtype: :class:`numpy.ndarray` of float
+
+        If needed, will cause a one-time read of the cmkstar.bim file.
+
+        Example
+        -------
+
+        .. doctest::
+
+            >>> from bed_reader import open_bed, sample_file
+            >>>
+            >>> file_name = sample_file("small.bed")
+            >>> with open_bed(file_name) as bed:
+            ...     print(bed.cm_position)
+            [ 100.4 2000.5 4000.7 7000.9]
+
         """
         return self.metadata_item("cm_position")
 
     @property
     def bp_position(self):
         """
-        !!!cmk need doc string
+        Base-pair position of each SNP (variant)
+       
+        :rtype: :class:`numpy.ndarray` of int
+
+        If needed, will cause a one-time read of the cmkstar.bim file.
+
+        Example
+        -------
+
+        .. doctest::
+
+            >>> from bed_reader import open_bed, sample_file
+            >>>
+            >>> file_name = sample_file("small.bed")
+            >>> with open_bed(file_name) as bed:
+            ...     print(bed.bp_position)
+            [   1  100 1000 1004]
+
         """
         return self.metadata_item("bp_position")
 
     @property
     def allele_1(self):
         """
-        !!!cmk need doc string
+        First allele of each SNP (variant)
+       
+        :rtype: :class:`numpy.ndarray` of str
+
+        If needed, will cause a one-time read of the cmkstar.bim file.
+
+        Example
+        -------
+
+        .. doctest::
+
+            >>> from bed_reader import open_bed, sample_file
+            >>>
+            >>> file_name = sample_file("small.bed")
+            >>> with open_bed(file_name) as bed:
+            ...     print(bed.allele_1)
+            ['A' 'T' 'A' 'T']
+
         """
         return self.metadata_item("allele_1")
 
     @property
     def allele_2(self):
         """
-        !!!cmk need doc string
+        Second allele of each SNP (variant)
+       
+        :rtype: :class:`numpy.ndarray` of str
+
+        If needed, will cause a one-time read of the cmkstar.bim file.
+
+        Example
+        -------
+
+        .. doctest::
+
+            >>> from bed_reader import open_bed, sample_file
+            >>>
+            >>> file_name = sample_file("small.bed")
+            >>> with open_bed(file_name) as bed:
+            ...     print(bed.allele_2)
+            ['A' 'C' 'C' 'G']
+
         """
         return self.metadata_item("allele_2")
 
     @property
     def iid_count(self):
         """
-        !!!cmk need doc string
+        Number of individuals (samples) in the file.
+       
+        :rtype: int
+
+        If needed, will cause a fast line-count of the cmkstarfam file.
+
+        Example
+        -------
+
+        .. doctest::
+
+            >>> from bed_reader import open_bed, sample_file
+            >>>
+            >>> file_name = sample_file("small.bed")
+            >>> with open_bed(file_name) as bed:
+            ...     print(bed.iid_count)
+            3
+
         """
         return self._count("fam")
 
     @property
     def sid_count(self):
         """
-        !!!cmk need doc string
+        Number of SNPs (variants) in the file.
+       
+        :rtype: int
+
+        If needed, will cause a fast line-count of the cmkstarbim file.
+
+        Example
+        -------
+
+        .. doctest::
+
+            >>> from bed_reader import open_bed, sample_file
+            >>>
+            >>> file_name = sample_file("small.bed")
+            >>> with open_bed(file_name) as bed:
+            ...     print(bed.sid_count)
+            4
+
         """
         return self._count("bim")
 
@@ -768,6 +1013,26 @@ class open_bed:  #!!!cmk need doc strings everywhere
 
     @property
     def shape(self):
+        """
+        Number of individuals (samples) and SNPs (variants) in the file.
+       
+        :rtype: (int, int)
+
+        If needed, will cause a fast line-count of the cmkstarfam and cmkstarbim files.
+
+        Example
+        -------
+
+        .. doctest::
+
+            >>> from bed_reader import open_bed, sample_file
+            >>>
+            >>> file_name = sample_file("small.bed")
+            >>> with open_bed(file_name) as bed:
+            ...     print(bed.shape)
+            (3, 4)
+
+        """
         return (len(self.iid), len(self.sid))
 
     @staticmethod
@@ -1020,4 +1285,5 @@ if __name__ == "__main__":
     #     )  # Write data in Bed format
 
     import pytest
+
     pytest.main(["--doctest-modules", __file__])
