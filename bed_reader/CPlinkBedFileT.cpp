@@ -56,7 +56,7 @@ void SUFFIX(CBedFile)::Open(const string &filename_, size_t cIndividuals_, size_
 {
 	if (filename_.empty())
 	{
-		printf("Could not create BedFile Reader.  Parameter 'filename' is zero length string");
+		PyErr_SetString(PyExc_ValueError, "Input file is empty.");
 	}
 
 	filename = filename_; // TODO: removed FullPath
@@ -66,7 +66,7 @@ void SUFFIX(CBedFile)::Open(const string &filename_, size_t cIndividuals_, size_
 	pFile = fopen(filename.c_str(), "rb"); // read in binary to ensure ftell works right
 	if (!pFile)
 	{
-		printf("Cannot open input file [%s].\n", filename.c_str()); //TODO: removed errorNO
+		PyErr_SetString(PyExc_ValueError, "Cannot open input file.");
 	}
 
 	//  Verify 'magic' number
@@ -74,10 +74,7 @@ void SUFFIX(CBedFile)::Open(const string &filename_, size_t cIndividuals_, size_
 	unsigned char rd2 = NextChar();
 	if ((bedFileMagic1 != rd1) || (bedFileMagic2 != rd2))
 	{
-		printf("Ill-formed BED file [%s]."//!!!cmk use C++ to Python error message, here and elsewhere
-			   "\n  BED file header is incorrect."
-			   "\n  Expected magic number of 0x%02x 0x%02x, found 0x%02x 0x%02x",
-			   filename.c_str(), bedFileMagic1, bedFileMagic2, rd1, rd2);
+		PyErr_SetString(PyExc_ValueError, "Ill-formed BED file. BED file header is incorrect.");
 	}
 
 	// Verify 'mode' is valid
@@ -93,7 +90,7 @@ void SUFFIX(CBedFile)::Open(const string &filename_, size_t cIndividuals_, size_
 		cbStride = (cIndividuals + 3) / 4;	// 4 genotypes per byte so round up
 		break;
 	default:
-		printf("Ill-formed BED file [%s].  BED file header is incorrect.  Expected mode to be 0 or 1, found %d", filename.c_str(), rd3);//!!!cmk use C++ to Python error message, here and elsewhere
+		PyErr_SetString(PyExc_ValueError, "Ill-formed BED file. BED file header is incorrect. Expected mode to be 0 or 1.");
 		break;
 	}
 
@@ -112,7 +109,7 @@ int SUFFIX(CBedFile)::NextChar()
 	int value = fgetc(pFile);
 	if (value == EOF)
 	{
-		printf("Ill-formed BED file [%s]. Encountered EOF before expected.", filename.c_str());
+		PyErr_SetString(PyExc_ValueError, "Ill-formed BED file. Encountered EOF before expected.");
 	}
 	return ((unsigned char)value);
 }
@@ -124,12 +121,13 @@ size_t SUFFIX(CBedFile)::Read(BYTE *pb, size_t cbToRead)
 	{
 		if (feof(pFile))
 		{
-			printf("Encountered EOF before expected in BED file. Ill-formed BED file [%s]", filename.c_str());//!!!cmk use C++ to Python error message, here and elsewhere
+			PyErr_SetString(PyExc_ValueError, "Encountered EOF before expected in BED file. Ill-formed BED file.");
 		}
 		int err = ferror(pFile);
 		if (err)
 		{
-			printf("Encountered a file error %d in BED file [%s]", err, filename.c_str());//!!!cmk use C++ to Python error message, here and elsewhere
+			PyErr_SetString(PyExc_ValueError, "Encountered a file error in BED file.");
+
 		}
 	}
 	return (cbRead);
@@ -244,7 +242,7 @@ void SUFFIX(writePlinkBedFile)(std::string bed_fn, int iid_count, int sid_count,
 	FILE *bed_filepointer = fopen(bed_fn.c_str(), "wb");
 	if (!bed_filepointer)
 	{
-		printf("Cannot open input file [%s].\n", bed_fn.c_str()); //TODO: removed errorNO
+		PyErr_SetString(PyExc_ValueError, "Cannot open file for writing.");
 		return;
 	}
 
@@ -350,7 +348,7 @@ REAL SUFFIX(logGamma)(REAL x)
 {
 	if (x <= (REAL)0.0)
 	{
-		printf("LogGamma arg=%f must be > 0.", x);
+		PyErr_SetString(PyExc_ValueError, "LogGamma input must be > 0.");
 		throw(1);
 	}
 
@@ -393,7 +391,7 @@ double SUFFIX(LogBeta)(REAL x, REAL y)
 {
 	if (x <= 0.0 || y <= 0.0)
 	{
-		printf("LogBeta args must be > 0.");
+		PyErr_SetString(PyExc_ValueError, "LogBeta inputs must be > 0.");
 		throw(1);
 	}
 	return SUFFIX(logGamma)(x) + SUFFIX(logGamma)(y) - SUFFIX(logGamma)(x + y);
@@ -407,7 +405,7 @@ REAL SUFFIX(BetaPdf)(REAL x, REAL a, REAL b)
 {
 	if (a <= 0 || b <= 0)
 	{
-		printf("Beta.Pdf parameters, a and b, must be > 0");
+		PyErr_SetString(PyExc_ValueError, "BetaPdf inputs must be > 0.");
 		throw(1);
 	}
 
@@ -475,7 +473,7 @@ void SUFFIX(ImputeAndZeroMeanSNPs)(
 
 			if (n_observed < 1.0)
 			{
-				printf("No individual observed for the SNP.\n");
+				PyErr_SetString(PyExc_ValueError, "No individual observed for the SNP.");
 				//LATER make it work (in some form) for n of 0
 			}
 
@@ -487,7 +485,7 @@ void SUFFIX(ImputeAndZeroMeanSNPs)(
 				if (!seenSNC)
 				{
 					seenSNC = true;
-					fprintf(stderr, "Illegal SNP mean: %.2f for SNPs[:][%zu]\n", mean_s, iSnp);
+					PyErr_SetString(PyExc_ValueError, "Illegal SNP mean.");
 				}
 			}
 
@@ -589,7 +587,7 @@ void SUFFIX(ImputeAndZeroMeanSNPs)(
 		{
 			if (n_observed[iSnp] < 1.0)
 			{
-				printf("No individual observed for the SNP.\n");
+				PyErr_SetString(PyExc_ValueError, "No individual observed for the SNP.");
 			}
 
 			mean_s[iSnp] = sum_s[iSnp] / n_observed[iSnp];	 //compute the mean over observed individuals for the current SNP
@@ -600,7 +598,7 @@ void SUFFIX(ImputeAndZeroMeanSNPs)(
 				if (!seenSNC)
 				{
 					seenSNC = true;
-					fprintf(stderr, "Illegal SNP mean: %.2f for SNPs[:][%zu]\n", mean_s[iSnp], iSnp);
+					PyErr_SetString(PyExc_ValueError, "Illegal SNP mean.");
 				}
 			}
 

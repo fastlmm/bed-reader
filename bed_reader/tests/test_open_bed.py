@@ -397,7 +397,7 @@ def test_write12(tmp_path):
                 i += 1
                 to_bed(
                     filename, val, metadata=metadata
-                )  #!!!cmk is it weird to "to_bed"?
+                )
                 for subsetter in [None, np.s_[::2, ::3]]:
                     with open_bed(filename) as bed:
                         val2 = bed.read(index=subsetter, order="C", dtype="float32")
@@ -451,17 +451,12 @@ def test_writes_small(tmp_path):
     with open_bed(output_file) as bed:
         assert np.allclose(bed.read(), val, equal_nan=True)
         for key, value in bed.metadata.items():
-            if not np.array_equal(value, metadata[key]) and not np.allclose(
-                value, metadata[key]
-            ):  #!!!cmk
-                print("!!!cmk")
             assert np.array_equal(value, metadata[key]) or np.allclose(
                 value, metadata[key]
             )
 
 
 def test_index(shared_datadir):
-    print(shared_datadir)  #!!!cmk
     ref_val_float = reference_val(shared_datadir)
 
     with open_bed(shared_datadir / "some_missing.bed") as bed:

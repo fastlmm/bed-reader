@@ -1,6 +1,4 @@
-#!!!cmk todo: Offer to ignore some or all fam bim fields
-#!!!cmk add typing info
-#!!!cmk run flake8, isort, etc
+#LATER: Offer to ignore some or all fam bim fields
 import logging
 import math
 import multiprocessing
@@ -69,7 +67,7 @@ _meta_meta = {
 }
 
 
-class open_bed:  #!!!cmk need doc strings everywhere
+class open_bed:
     """
     A NumPy-inspired class for fast opening and reading of PLINK cmkstar.bed files.
 
@@ -151,8 +149,8 @@ class open_bed:  #!!!cmk need doc strings everywhere
     Replace the sample :attr:`iid`.
 
         >>> with open_bed(file_name, metadata={"iid":["sample1","sample2","sample3"]}) as bed:
-        ...     print(bed.iid)
-        ...     print(bed.sid)
+        ...     print(bed.iid) # replaced
+        ...     print(bed.sid) # same as before
         ['sample1' 'sample2' 'sample3']
         ['sid1' 'sid2' 'sid3' 'sid4']
 
@@ -499,13 +497,11 @@ class open_bed:  #!!!cmk need doc strings everywhere
 
         return val
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.__class__.__name__}('{self.filepath}',...)"
 
-    #!!!cmk make sure these are in a good order for the documentation
-
     @property
-    def fid(self):
+    def fid(self) -> np.ndarray:
         """
         Family id of each individual (sample).
        
@@ -530,7 +526,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
         return self.metadata_item("fid")
 
     @property
-    def iid(self):
+    def iid(self) -> np.ndarray:
         """
         Individual id of each individual (sample).
        
@@ -554,7 +550,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
         return self.metadata_item("iid")
 
     @property
-    def father(self):
+    def father(self) -> np.ndarray:
         """
         Father id of each individual (sample).
        
@@ -578,7 +574,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
         return self.metadata_item("father")
 
     @property
-    def mother(self):
+    def mother(self) -> np.ndarray:
         """
         Mother id of each individual (sample).
        
@@ -602,7 +598,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
         return self.metadata_item("mother")
 
     @property
-    def sex(self):
+    def sex(self) -> np.ndarray:
         """
         Sex of each individual (sample).
        
@@ -627,7 +623,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
         return self.metadata_item("sex")
 
     @property
-    def pheno(self):
+    def pheno(self) -> np.ndarray:
         """
         A phenotype for each individual (sample)
         (seldom used).
@@ -652,7 +648,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
         return self.metadata_item("pheno")
 
     @property
-    def metadata(self):
+    def metadata(self) -> Mapping[str, np.array]:
         """
         All the metadata
        
@@ -723,7 +719,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
             return val
 
     @property
-    def chromosome(self):
+    def chromosome(self) -> np.ndarray:
         """
         Chromosome of each SNP (variant)
        
@@ -747,9 +743,9 @@ class open_bed:  #!!!cmk need doc strings everywhere
         return self.metadata_item("chromosome")
 
     @property
-    def sid(self):
+    def sid(self) -> np.ndarray:
         """
-        SNP id of each SNP (variant)
+        SNP id of each SNP (variant).
        
         :rtype: :class:`numpy.ndarray` of str
 
@@ -771,9 +767,9 @@ class open_bed:  #!!!cmk need doc strings everywhere
         return self.metadata_item("sid")
 
     @property
-    def cm_position(self):
+    def cm_position(self) -> np.ndarray:
         """
-        Centimorgan position of each SNP (variant)
+        Centimorgan position of each SNP (variant).
        
         :rtype: :class:`numpy.ndarray` of float
 
@@ -795,9 +791,9 @@ class open_bed:  #!!!cmk need doc strings everywhere
         return self.metadata_item("cm_position")
 
     @property
-    def bp_position(self):
+    def bp_position(self) -> np.ndarray:
         """
-        Base-pair position of each SNP (variant)
+        Base-pair position of each SNP (variant).
        
         :rtype: :class:`numpy.ndarray` of int
 
@@ -819,9 +815,9 @@ class open_bed:  #!!!cmk need doc strings everywhere
         return self.metadata_item("bp_position")
 
     @property
-    def allele_1(self):
+    def allele_1(self) -> np.ndarray:
         """
-        First allele of each SNP (variant)
+        First allele of each SNP (variant).
        
         :rtype: :class:`numpy.ndarray` of str
 
@@ -843,9 +839,9 @@ class open_bed:  #!!!cmk need doc strings everywhere
         return self.metadata_item("allele_1")
 
     @property
-    def allele_2(self):
+    def allele_2(self) -> np.ndarray:
         """
-        Second allele of each SNP (variant)
+        Second allele of each SNP (variant),
        
         :rtype: :class:`numpy.ndarray` of str
 
@@ -867,7 +863,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
         return self.metadata_item("allele_2")
 
     @property
-    def iid_count(self):
+    def iid_count(self) -> np.ndarray:
         """
         Number of individuals (samples) in the file.
        
@@ -891,7 +887,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
         return self._count("fam")
 
     @property
-    def sid_count(self):
+    def sid_count(self) -> np.ndarray:
         """
         Number of SNPs (variants) in the file.
        
@@ -931,15 +927,37 @@ class open_bed:  #!!!cmk need doc strings everywhere
         if mode != b"\x01":
             raise ValueError(
                 "only SNP-major is implemented"
-            )  #!!!cmk should mention this
+            )
 
     def __del__(self):
         self.__exit__()
 
     def close(self):
         """
-        !!!cmk doc this
-            """
+        Close a :class:`open_bed` object that was opened for reading.
+
+        Notes
+        -----
+        Better alternatives to :meth:`close` include the
+        `with <https://docs.python.org/3/reference/compound_stmts.html#grammar-token-with-stmt>`__
+        statement (closes the file automatically) and the `del
+        <https://docs.python.org/3/reference/simple_stmts.html#grammar-token-del-stmt>`__
+        statement (which closes the file and *deletes* the object).
+        Doing nothing, while not better, is usually fine.
+
+        .. doctest::
+
+            >>> from bed_reader import open_bed, sample_file
+            >>>
+            >>> file_name = sample_file("small.bed")
+            >>> bed = open_bed(file_name)
+            >>> print(bed.read())
+            [[ 1.  0. nan  0.]
+             [ 2.  0. nan  2.]
+             [ 0.  1.  2.  0.]]
+            >>> bed.close()     #'del bed' is better.
+
+        """
         self.__exit__()
 
     def __enter__(self):
@@ -959,7 +977,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
         return HIWORD(ms), LOWORD(ms), HIWORD(ls), LOWORD(ls)
 
     @staticmethod
-    def _find_openmp():
+    def _find_openmp(): #!!!cmk dll in same directory???
         if "bed_reader.wrap_plink_parser_openmp" in sys.modules:
             return
         if platform.system() == "Windows":
@@ -969,7 +987,7 @@ class open_bed:  #!!!cmk need doc strings everywhere
 
             dllname = "libomp.dll"
             find_location = find_library(dllname)
-            if find_location is not None:  #!!!cmk
+            if find_location is not None:
                 logging.info(f"found '{dllname}' at '{find_library(dllname)}'")
                 found_ver = open_bed._get_version_number(find_location)
                 goal_ver = (5, 0, 2014, 926)
