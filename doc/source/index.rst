@@ -4,7 +4,7 @@
 
 .. currentmodule:: bed_reader
 
-Open, read, write
+Open, Read, and Write:
 
 .. autosummary::
 
@@ -12,7 +12,7 @@ Open, read, write
     open_bed.read
     to_bed
 
-Metadata
+Properties of Individuals (samples) and SNPs (variants)
 
 .. autosummary::
 
@@ -32,6 +32,9 @@ Metadata
     open_bed.bp_position
     open_bed.allele_1
     open_bed.allele_2
+
+    open_bed.properties
+    open_bed.property_item
 
 Utilities
 

@@ -12,33 +12,33 @@ from bed_reader import open_bed
 def to_bed(
     filepath: Union[str, Path],
     val: np.ndarray,
-    metadata: Mapping[str, List[Any]] = {},
+    properties: Mapping[str, List[Any]] = {},
     count_A1: bool = True,
     force_python_only: bool = False,
 ):
     """
-    Write values to a file in PLINK BED format.
+    Write values to a file in PLINK .bed format.
 
     Parameters
     ----------
     filepath:
-        Bed file path #!!!cmk Bed vs BED vs cmkstar.bed
+        File path to .bed file to write.
     val: array-like:
         A two-dimension array (or array-like object) of values. The values should
         be (or be convertable to) all floats or all integers. The values should be 0, 1, 2, or missing.
         If floats, missing is ``np.nan``. If integers, missing is -127.
-    metadata: dict, optional
-        A dictionary of metadata of interest. The default is an empty dictionary.
-        The keys of the dictionary are the names of the metadata of interest.
-        The possible keys are:
+    properties: dict, optional
+        A dictionary of property names and values to write to the .fam and .bim files. 
+        Any properties not mentioned will be filled in with default values.
+
+        The possible property names are:
 
              "fid" (family id), "iid" (individual or sample id), "father" (father id),
              "mother" (mother id), "sex", "pheno" (phenotype), "chromosome", "sid"
              (SNP or variant id), "cm_position" (centimorgan position), "bp_position"
              (base-pair position), "allele_1", "allele_2".
             
-        The values are lists or arrays. Any metadata not given will be filled in with
-        a default value. CMK see example
+         The values are lists or arrays. CMK see example
     count_A1: bool, optional
         True (default) to count the number of A1 alleles (the PLINK standard). False to count the number of A2 alleles.
     force_python_only
@@ -47,7 +47,7 @@ def to_bed(
     Examples
     --------
 
-    In this example, full metadata is given.
+    In this example, full properties is given.
 
     .. doctest::
 
@@ -56,7 +56,7 @@ def to_bed(
         >>>
         >>> output_file = tmp_path() / "small.bed"
         >>> val = [[1.0, 0.0, np.nan, 0.0], [2.0, 0.0, np.nan, 2.0], [0.0, 1.0, 2.0, 0.0]]
-        >>> metadata = {
+        >>> properties = {
         ...    "fid": ["fid1", "fid1", "fid2"],
         ...    "iid": ["iid1", "iid2", "iid3"],
         ...    "father": ["iid23", "iid23", "iid22"],
@@ -70,10 +70,10 @@ def to_bed(
         ...    "allele_1": ["A", "T", "A", "T"],
         ...    "allele_2": ["A", "C", "C", "G"],
         ... }
-        >>> to_bed(output_file, val, metadata=metadata)
+        >>> to_bed(output_file, val, properties=properties)
 
-    In this example, no metadata is given, so default values as assigned.
-    If we read the file and list the chromosome, it will be a list of '0's
+    In this example, no properties is given, so default values as assigned.
+    If we read the new file and list chromosome, it is an array of '0's
     the default chromosome value. cmkref
 
     .. doctest::
@@ -94,12 +94,12 @@ def to_bed(
     iid_count = val.shape[0]
     sid_count = val.shape[1]
 
-    metadata, _ = open_bed._fix_up_metadata(
-        metadata, iid_count=iid_count, sid_count=sid_count, use_fill_sequence=True
+    properties, _ = open_bed._fix_up_properties(
+        properties, iid_count=iid_count, sid_count=sid_count, use_fill_sequence=True
     )
 
-    open_bed._write_fam_or_bim(filepath, metadata, "fam")
-    open_bed._write_fam_or_bim(filepath, metadata, "bim")
+    open_bed._write_fam_or_bim(filepath, properties, "fam")
+    open_bed._write_fam_or_bim(filepath, properties, "bim")
 
     bedfile = str(
         open_bed._name_of_other_file(filepath, remove_suffix="bed", add_suffix="bed")
@@ -192,7 +192,7 @@ def to_bed(
                             code = 0b01  # backwards on purpose
                         else:
                             raise ValueError(
-                                "Attempt to write illegal value to BED file. Only 0,1,2,missing allowed."
+                                "Attempt to write illegal value to .bed file. Only 0,1,2,missing allowed."
                             )
                         byte |= code << (val_index * 2)
                     bed_filepointer.write(bytes(bytearray([byte])))

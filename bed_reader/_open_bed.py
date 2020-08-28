@@ -69,23 +69,23 @@ _meta_meta = {
 
 class open_bed:
     """
-    A NumPy-inspired class for fast opening and reading of PLINK cmkstar.bed files.
+    Open a PLINK .bed file for reading.
 
     Parameters
     ----------
     filepath:
-        Bed file path #!!!cmk Bed vs BED vs cmkstar.bed
+        file path to .bed file.
     iid_count: None or int, optional
-        Number of individuals (samples) in the BED file.
+        Number of individuals (samples) in the .bed file.
         The default (``iid_count=None``) finds the number
-        automatically by quickly scanning the FAM file.
+        automatically by quickly scanning the .fam file.
     sid_count: None or int, optional
-        Number of SNPs (variants) in the BED file.
+        Number of SNPs (variants) in the .bed file.
         The default (``sid_count=None``) finds the number
-        automatically by quickly scanning the BIM file.
-    metadata: dict, optional
-        A dictionary of any replacement metadata. The default is an empty dictionary.
-        The keys of the dictionary are the names of the metadata to replace.
+        automatically by quickly scanning the .bim file.
+    properties: dict, optional
+        A dictionary of any replacement properties. The default is an empty dictionary.
+        The keys of the dictionary are the names of the properties to replace.
         The possible keys are:
 
              "fid" (family id), "iid" (individual or sample id), "father" (father id),
@@ -104,7 +104,7 @@ class open_bed:
         parameter is ignored and all reads are singled threaded. On Windows, if reads create
         library-loading problems, setting this to 1 will fix the problems (but be slower).
     skip_format_check: bool, optional
-        False (default) to immediately check for expected starting bytes in the BED file.
+        False (default) to immediately check for expected starting bytes in the .bed file.
         True to delay the check until (and if) data is read.
         
     Returns
@@ -148,14 +148,14 @@ class open_bed:
 
     Replace the sample :attr:`iid`.
 
-        >>> with open_bed(file_name, metadata={"iid":["sample1","sample2","sample3"]}) as bed:
+        >>> with open_bed(file_name, properties={"iid":["sample1","sample2","sample3"]}) as bed:
         ...     print(bed.iid) # replaced
         ...     print(bed.sid) # same as before
         ['sample1' 'sample2' 'sample3']
         ['sid1' 'sid2' 'sid3' 'sid4']
 
     Tell it the number of individuals (samples) and SNPs (variants). This lets it read data without
-    the needing to ever open the cmkstar.fam and cmkstar.bim files.
+    the needing to ever open the .fam and .bim files.
 
         >>> with open_bed(file_name, iid_count=3, sid_count=4) as bed:
         ...     print(bed.read())
@@ -177,7 +177,7 @@ class open_bed:
         filepath: Union[str, Path],
         iid_count: Optional[int] = None,
         sid_count: Optional[int] = None,
-        metadata: Mapping[str, List[Any]] = {},
+        properties: Mapping[str, List[Any]] = {},
         count_A1: bool = True,
         num_threads: Optional[int] = None,
         skip_format_check: bool = False,
@@ -187,8 +187,8 @@ class open_bed:
         self._num_threads = num_threads
         self.skip_format_check = skip_format_check
 
-        self.metadata_dict, self._counts = open_bed._fix_up_metadata(
-            metadata, iid_count, sid_count, use_fill_sequence=False
+        self.properties_dict, self._counts = open_bed._fix_up_properties(
+            properties, iid_count, sid_count, use_fill_sequence=False
         )
         self._iid_range = None
         self._sid_range = None
@@ -206,7 +206,7 @@ class open_bed:
         force_python_only: Optional[bool] = False,
     ) -> np.ndarray:
         """
-        Read genotype information from an :class:`open_bed` object.
+        Read genotype information.
 
         Parameters
         ----------
@@ -232,7 +232,7 @@ class open_bed:
         --------
         * Index Examples
 
-        To read all data in a BED file, set ``index`` to ``None``. This is the default.
+        To read all data in a .bed file, set ``index`` to ``None``. This is the default.
 
         .. doctest::
 
@@ -507,7 +507,7 @@ class open_bed:
        
         :rtype:  :class:`numpy.ndarray` of ``str``
 
-        If needed, will cause a one-time read of the cmkstar.fam file.
+        If needed, will cause a one-time read of the .fam file.
 
         Example
         -------
@@ -523,7 +523,7 @@ class open_bed:
 
         """
 
-        return self.metadata_item("fid")
+        return self.property_item("fid")
 
     @property
     def iid(self) -> np.ndarray:
@@ -532,7 +532,7 @@ class open_bed:
        
         :rtype:  :class:`numpy.ndarray` of ``str``
         
-        If needed, will cause a one-time read of the cmkstar.fam file.
+        If needed, will cause a one-time read of the .fam file.
 
         Example
         -------
@@ -547,7 +547,7 @@ class open_bed:
             ['iid1' 'iid2' 'iid3']
 
         """
-        return self.metadata_item("iid")
+        return self.property_item("iid")
 
     @property
     def father(self) -> np.ndarray:
@@ -556,7 +556,7 @@ class open_bed:
        
         :rtype:  :class:`numpy.ndarray` of ``str``
         
-        If needed, will cause a one-time read of the cmkstar.fam file.
+        If needed, will cause a one-time read of the .fam file.
 
         Example
         -------
@@ -571,7 +571,7 @@ class open_bed:
             ['iid23' 'iid23' 'iid22']
 
         """
-        return self.metadata_item("father")
+        return self.property_item("father")
 
     @property
     def mother(self) -> np.ndarray:
@@ -580,7 +580,7 @@ class open_bed:
        
         :rtype:  :class:`numpy.ndarray` of ``str``
 
-        If needed, will cause a one-time read of the cmkstar.fam file.
+        If needed, will cause a one-time read of the .fam file.
 
         Example
         -------
@@ -595,7 +595,7 @@ class open_bed:
             ['iid34' 'iid34' 'iid33']
 
         """
-        return self.metadata_item("mother")
+        return self.property_item("mother")
 
     @property
     def sex(self) -> np.ndarray:
@@ -606,7 +606,7 @@ class open_bed:
 
         0 is unknown, 1 is male, 2 is female
 
-        If needed, will cause a one-time read of the cmkstar.fam file.
+        If needed, will cause a one-time read of the .fam file.
 
         Example
         -------
@@ -620,7 +620,7 @@ class open_bed:
             [1 2 0]
 
         """
-        return self.metadata_item("sex")
+        return self.property_item("sex")
 
     @property
     def pheno(self) -> np.ndarray:
@@ -630,7 +630,7 @@ class open_bed:
        
         :rtype: :class:`numpy.ndarray` of str
 
-        If needed, will cause a one-time read of the cmkstar.fam file.
+        If needed, will cause a one-time read of the .fam file.
 
         Example
         -------
@@ -645,16 +645,16 @@ class open_bed:
             ['red' 'red' 'blue']
 
         """
-        return self.metadata_item("pheno")
+        return self.property_item("pheno")
 
     @property
-    def metadata(self) -> Mapping[str, np.array]:
+    def properties(self) -> Mapping[str, np.array]:
         """
-        All the metadata
+        All the properties returned as a ``dict``.
        
         :rtype:  dict
 
-        The keys of the dictionary are the names of the metadata, namely:
+        The keys of the dictionary are the names of the properties, namely:
 
              "fid" (family id), "iid" (individual or sample id), "father" (father id),
              "mother" (mother id), "sex", "pheno" (phenotype), "chromosome", "sid"
@@ -663,7 +663,7 @@ class open_bed:
             
         The values are :class:`numpy.ndarray`.
 
-        If needed, will cause a one-time read of the cmkstar.fam and cmkstart.bim file.
+        If needed, will cause a one-time read of the .fam and .bim file.
 
         Example
         -------
@@ -674,28 +674,28 @@ class open_bed:
             >>>
             >>> file_name = sample_file("small.bed")
             >>> with open_bed(file_name) as bed:
-            ...     print(len(bed.metadata)) #length of dict
+            ...     print(len(bed.properties)) #length of dict
             12
 
         """
         for key in _meta_meta:
-            self.metadata_item(key)
-        return self.metadata_dict
+            self.property_item(key)
+        return self.properties_dict
 
-    def metadata_item(self, key: str) -> np.ndarray:
+    def property_item(self, name: str) -> np.ndarray:
         """
-        The metadata array for one key.
+        Retrieve one property by name.
        
         :rtype: :class:`numpy.ndarray`
 
-        The key is one of these:
+        The name is one of these:
 
              "fid" (family id), "iid" (individual or sample id), "father" (father id),
              "mother" (mother id), "sex", "pheno" (phenotype), "chromosome", "sid"
              (SNP or variant id), "cm_position" (centimorgan position), "bp_position"
              (base-pair position), "allele_1", "allele_2".
             
-        If needed, will cause a one-time read of the cmkstar.fam or cmkstart.bim file.
+        If needed, will cause a one-time read of the .fam or .bim file.
 
         Example
         -------
@@ -706,15 +706,15 @@ class open_bed:
             >>>
             >>> file_name = sample_file("small.bed")
             >>> with open_bed(file_name) as bed:
-            ...     print(bed.metadata_item('chromosome'))
+            ...     print(bed.property_item('chromosome'))
             ['1' '1' '5' 'Y']
 
         """
-        val = self.metadata_dict.get(key)
+        val = self.properties_dict.get(name)
         if val is None:
-            mm = _meta_meta[key]
+            mm = _meta_meta[name]
             self._read_fam_or_bim(suffix=mm.suffix)
-            return self.metadata_dict[key]
+            return self.properties_dict[name]
         else:
             return val
 
@@ -725,7 +725,7 @@ class open_bed:
        
         :rtype: :class:`numpy.ndarray` of str
 
-        If needed, will cause a one-time read of the cmkstar.bim file.
+        If needed, will cause a one-time read of the .bim file.
 
         Example
         -------
@@ -740,7 +740,7 @@ class open_bed:
             ['1' '1' '5' 'Y']
 
         """
-        return self.metadata_item("chromosome")
+        return self.property_item("chromosome")
 
     @property
     def sid(self) -> np.ndarray:
@@ -749,7 +749,7 @@ class open_bed:
        
         :rtype: :class:`numpy.ndarray` of str
 
-        If needed, will cause a one-time read of the cmkstar.bim file.
+        If needed, will cause a one-time read of the .bim file.
 
         Example
         -------
@@ -764,7 +764,7 @@ class open_bed:
             ['sid1' 'sid2' 'sid3' 'sid4']
 
         """ 
-        return self.metadata_item("sid")
+        return self.property_item("sid")
 
     @property
     def cm_position(self) -> np.ndarray:
@@ -773,7 +773,7 @@ class open_bed:
        
         :rtype: :class:`numpy.ndarray` of float
 
-        If needed, will cause a one-time read of the cmkstar.bim file.
+        If needed, will cause a one-time read of the .bim file.
 
         Example
         -------
@@ -788,7 +788,7 @@ class open_bed:
             [ 100.4 2000.5 4000.7 7000.9]
 
         """
-        return self.metadata_item("cm_position")
+        return self.property_item("cm_position")
 
     @property
     def bp_position(self) -> np.ndarray:
@@ -797,7 +797,7 @@ class open_bed:
        
         :rtype: :class:`numpy.ndarray` of int
 
-        If needed, will cause a one-time read of the cmkstar.bim file.
+        If needed, will cause a one-time read of the .bim file.
 
         Example
         -------
@@ -812,7 +812,7 @@ class open_bed:
             [   1  100 1000 1004]
 
         """
-        return self.metadata_item("bp_position")
+        return self.property_item("bp_position")
 
     @property
     def allele_1(self) -> np.ndarray:
@@ -821,7 +821,7 @@ class open_bed:
        
         :rtype: :class:`numpy.ndarray` of str
 
-        If needed, will cause a one-time read of the cmkstar.bim file.
+        If needed, will cause a one-time read of the r.bim file.
 
         Example
         -------
@@ -836,7 +836,7 @@ class open_bed:
             ['A' 'T' 'A' 'T']
 
         """
-        return self.metadata_item("allele_1")
+        return self.property_item("allele_1")
 
     @property
     def allele_2(self) -> np.ndarray:
@@ -845,7 +845,7 @@ class open_bed:
        
         :rtype: :class:`numpy.ndarray` of str
 
-        If needed, will cause a one-time read of the cmkstar.bim file.
+        If needed, will cause a one-time read of the .bim file.
 
         Example
         -------
@@ -860,16 +860,16 @@ class open_bed:
             ['A' 'C' 'C' 'G']
 
         """
-        return self.metadata_item("allele_2")
+        return self.property_item("allele_2")
 
     @property
     def iid_count(self) -> np.ndarray:
         """
-        Number of individuals (samples) in the file.
+        Number of individuals (samples).
        
         :rtype: int
 
-        If needed, will cause a fast line-count of the cmkstarfam file.
+        If needed, will cause a fast line-count of the .fam file.
 
         Example
         -------
@@ -889,11 +889,11 @@ class open_bed:
     @property
     def sid_count(self) -> np.ndarray:
         """
-        Number of SNPs (variants) in the file.
+        Number of SNPs (variants).
        
         :rtype: int
 
-        If needed, will cause a fast line-count of the cmkstarbim file.
+        If needed, will cause a fast line-count of the .bim file.
 
         Example
         -------
@@ -922,7 +922,7 @@ class open_bed:
     def _check_file(filepointer):
         mode = filepointer.read(2)
         if mode != b"l\x1b":
-            raise ValueError("No valid binary BED file")
+            raise ValueError("Not a valid .bed file")
         mode = filepointer.read(1)  # \x01 = SNP major \x00 = individual major
         if mode != b"\x01":
             raise ValueError(
@@ -1032,11 +1032,11 @@ class open_bed:
     @property
     def shape(self):
         """
-        Number of individuals (samples) and SNPs (variants) in the file.
+        Number of individuals (samples) and SNPs (variants).
        
         :rtype: (int, int)
 
-        If needed, will cause a fast line-count of the cmkstarfam and cmkstarbim files.
+        If needed, will cause a fast line-count of the .fam and .bim files.
 
         Example
         -------
@@ -1074,7 +1074,7 @@ class open_bed:
         return index
 
     @staticmethod
-    def _write_fam_or_bim(basefilepath, metadata, suffix_of_interest):
+    def _write_fam_or_bim(basefilepath, properties, suffix_of_interest):
         assert suffix_of_interest in {"fam", "bim"}, "real assert"
 
         filepath = open_bed._name_of_other_file(basefilepath, "bed", suffix_of_interest)
@@ -1083,7 +1083,7 @@ class open_bed:
         for key, mm in _meta_meta.items():
             if mm.suffix == suffix_of_interest:
                 assert len(fam_bim_list) == mm.column, "real assert"
-                fam_bim_list.append(metadata[key])
+                fam_bim_list.append(properties[key])
 
         sep = " " if suffix_of_interest == "fam" else "\t"
 
@@ -1094,12 +1094,12 @@ class open_bed:
                 )
 
     @staticmethod
-    def _fix_up_metadata_array(input, dtype, missing_value, key):
+    def _fix_up_properties_array(input, dtype, missing_value, key):
         if len(input) == 0:
             return np.zeros([0], dtype=dtype)
 
         if not isinstance(input, np.ndarray):
-            return open_bed._fix_up_metadata_array(
+            return open_bed._fix_up_properties_array(
                 np.array(input), dtype, missing_value, key
             )
 
@@ -1116,26 +1116,26 @@ class open_bed:
         return input
 
     @staticmethod
-    def _fix_up_metadata(metadata, iid_count, sid_count, use_fill_sequence):
+    def _fix_up_properties(properties, iid_count, sid_count, use_fill_sequence):
 
-        metadata_dict = {key: None for key in _meta_meta}
+        properties_dict = {key: None for key in _meta_meta}
         count_dict = {"fam": iid_count, "bim": sid_count}
 
-        for key, input in metadata.items():
+        for key, input in properties.items():
             if key not in _meta_meta:
-                raise KeyError(f"metadata key '{key}' not known")
+                raise KeyError(f"properties key '{key}' not known")
 
         for key, mm in _meta_meta.items():
             count = count_dict[mm.suffix]
 
-            input = metadata.get(key)
+            input = properties.get(key)
             if input is None:
                 if use_fill_sequence:
                     output = mm.fill_sequence(key, count, mm.missing_value, mm.dtype)
                 else:
                     continue
             else:
-                output = open_bed._fix_up_metadata_array(
+                output = open_bed._fix_up_properties_array(
                     input, mm.dtype, mm.missing_value, key
                 )
 
@@ -1146,8 +1146,8 @@ class open_bed:
                     raise ValueError(
                         f"The length of override {key}, {len(output)}, should not be different from the current {_count_name[mm.suffix]}, {count}"
                     )
-            metadata_dict[key] = output
-        return metadata_dict, count_dict
+            properties_dict[key] = output
+        return properties_dict, count_dict
 
     def _read_fam_or_bim(self, suffix):
         metafile = open_bed._name_of_other_file(self.filepath, "bed", suffix)
@@ -1184,7 +1184,7 @@ class open_bed:
         for key, mm in _meta_meta.items():
             if mm.suffix is not suffix:
                 continue
-            val = self.metadata_dict[key]
+            val = self.properties_dict[key]
             if val is None:
                 if len(fields) == 0:
                     output = np.array([], dtype=mm.dtype)
@@ -1194,7 +1194,7 @@ class open_bed:
                     output = np.array(
                         fields[mm.column].fillna(mm.missing_value), dtype=mm.dtype
                     )
-                self.metadata_dict[key] = output
+                self.properties_dict[key] = output
 
     @staticmethod
     def _name_of_other_file(filepath, remove_suffix, add_suffix):

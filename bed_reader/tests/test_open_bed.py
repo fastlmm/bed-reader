@@ -27,7 +27,7 @@ def test_write1(tmp_path, shared_datadir):
     out_file = tmp_path / "out.bed"
     with open_bed(in_file) as bed:
         val0 = bed.read()
-        metadata0 = {
+        properties0 = {
             "fid": bed.fid,
             "iid": bed.iid,
             "sid": bed.sid,
@@ -35,15 +35,15 @@ def test_write1(tmp_path, shared_datadir):
             "cm_position": bed.cm_position,
             "bp_position": bed.bp_position,
         }
-        to_bed(out_file, val0, metadata=metadata0)
+        to_bed(out_file, val0, properties=properties0)
         with open_bed(out_file) as bed1:
             assert np.allclose(val0, bed1.read(), equal_nan=True)
-            assert np.array_equal(bed.fid, metadata0["fid"])
-            assert np.array_equal(bed.iid, metadata0["iid"])
-            assert np.array_equal(bed.sid, metadata0["sid"])
-            assert np.array_equal(bed.chromosome, metadata0["chromosome"])
-            assert np.allclose(bed.cm_position, metadata0["cm_position"])
-            assert np.allclose(bed.bp_position, metadata0["bp_position"])
+            assert np.array_equal(bed.fid, properties0["fid"])
+            assert np.array_equal(bed.iid, properties0["iid"])
+            assert np.array_equal(bed.sid, properties0["sid"])
+            assert np.array_equal(bed.chromosome, properties0["chromosome"])
+            assert np.allclose(bed.cm_position, properties0["cm_position"])
+            assert np.allclose(bed.bp_position, properties0["bp_position"])
 
     val_float = val0.astype("float")
     val_float[0, 0] = 0.5
@@ -53,7 +53,7 @@ def test_write1(tmp_path, shared_datadir):
             to_bed(
                 out_file,
                 val_float,
-                metadata=metadata0,
+                properties=properties0,
                 force_python_only=force_python_only,
             )
     val_int8 = val0.astype("int8")
@@ -63,7 +63,7 @@ def test_write1(tmp_path, shared_datadir):
             to_bed(
                 out_file,
                 val_int8,
-                metadata=metadata0,
+                properties=properties0,
                 force_python_only=force_python_only,
             )
 
@@ -82,8 +82,8 @@ def test_overrides(shared_datadir):
         bp_position = bed.bp_position
         allele_1 = bed.allele_1
         allele_2 = bed.allele_2
-    # lock in the expected results: np.savez(shared_datadir / "some_missing.metadata.npz",fid=fid,iid=iid,father=father,mother=mother,sex=sex,pheno=pheno,chromosome=chromosome,sid=sid,cm_position=cm_position,bp_position=bp_position,allele_1=allele_1,allele_2=allele_2)
-    property_dict = np.load(shared_datadir / "some_missing.metadata.npz")
+    # lock in the expected results: np.savez(shared_datadir / "some_missing.properties.npz",fid=fid,iid=iid,father=father,mother=mother,sex=sex,pheno=pheno,chromosome=chromosome,sid=sid,cm_position=cm_position,bp_position=bp_position,allele_1=allele_1,allele_2=allele_2)
+    property_dict = np.load(shared_datadir / "some_missing.properties.npz")
     assert np.array_equal(property_dict["fid"], fid)
     assert np.array_equal(property_dict["iid"], iid)
     assert np.array_equal(property_dict["father"], father)
@@ -98,10 +98,10 @@ def test_overrides(shared_datadir):
     assert np.array_equal(property_dict["allele_2"], allele_2)
 
     with pytest.raises(KeyError):
-        open_bed(shared_datadir / "some_missing.bed", metadata={"unknown": [3, 4, 4]})
-    with open_bed(shared_datadir / "some_missing.bed", metadata={"iid": None}) as bed1:
+        open_bed(shared_datadir / "some_missing.bed", properties={"unknown": [3, 4, 4]})
+    with open_bed(shared_datadir / "some_missing.bed", properties={"iid": None}) as bed1:
         assert np.array_equal(bed1.iid, property_dict["iid"])
-    with open_bed(shared_datadir / "some_missing.bed", metadata={"iid": []}) as bed1:
+    with open_bed(shared_datadir / "some_missing.bed", properties={"iid": []}) as bed1:
         assert np.issubdtype(bed1.iid.dtype, np.str_)
         assert len(bed1.iid) == 0
         with pytest.raises(ValueError):
@@ -109,28 +109,28 @@ def test_overrides(shared_datadir):
 
     with open_bed(
         shared_datadir / "some_missing.bed",
-        metadata={"sid": [i for i in range(len(sid))]},
+        properties={"sid": [i for i in range(len(sid))]},
     ) as bed1:
         assert np.issubdtype(bed1.sid.dtype, np.str_)
         assert bed1.sid[0] == "0"
     with pytest.raises(ValueError):
         open_bed(
             shared_datadir / "some_missing.bed",
-            metadata={"sex": ["F" for i in range(len(sex))]},
+            properties={"sex": ["F" for i in range(len(sex))]},
         )  # Sex must be coded as a number
     with open_bed(
         shared_datadir / "some_missing.bed",
-        metadata={"sid": np.array([i for i in range(len(sid))])},
+        properties={"sid": np.array([i for i in range(len(sid))])},
     ) as bed1:
         assert np.issubdtype(bed1.sid.dtype, np.str_)
         assert bed1.sid[0] == "0"
     with pytest.raises(ValueError):
         open_bed(
             shared_datadir / "some_missing.bed",
-            metadata={"sid": np.array([(i, i) for i in range(len(sid))])},
+            properties={"sid": np.array([(i, i) for i in range(len(sid))])},
         )
     with open_bed(
-        shared_datadir / "some_missing.bed", metadata={"sid": [1, 2, 3]}
+        shared_datadir / "some_missing.bed", properties={"sid": [1, 2, 3]}
     ) as bed1:
         with pytest.raises(ValueError):
             bed1.chromosome
@@ -209,7 +209,7 @@ def test_properties(shared_datadir):
             file,
             iid_count=settings["iid_count"],
             sid_count=settings["sid_count"],
-            metadata={
+            properties={
                 "iid": settings["iid"],
                 "sid": settings["sid"],
                 "chromosome": settings["chromosome"],
@@ -320,7 +320,7 @@ def test_write1_x_x_cpp(tmp_path, shared_datadir):
             for order in ["C", "F"]:
                 for dtype in [np.float32, np.float64]:
                     val = bed.read(order=order, dtype=dtype)
-                    metadata = bed.metadata
+                    properties = bed.properties
                     val[-1, 0] = float("NAN")
                     output = str(
                         tmp_path
@@ -328,7 +328,7 @@ def test_write1_x_x_cpp(tmp_path, shared_datadir):
                             order, "32" if dtype == np.float32 else "64"
                         )
                     )
-                    to_bed(output, val, metadata=metadata, count_A1=count_A1)
+                    to_bed(output, val, properties=properties, count_A1=count_A1)
                     val2 = open_bed(output, count_A1=count_A1).read(dtype=dtype)
                     assert np.allclose(val, val2, equal_nan=True)
 
@@ -383,12 +383,12 @@ def test_write12(tmp_path):
             row1 = ["0", "1", "2", "3", "4"][:row_count]
             col = ["s0", "s1", "s2", "s3", "s4"][:col_count]
             for is_none in [True, False]:
-                metadata = {"fid": row0, "iid": row1, "sid": col}
+                properties = {"fid": row0, "iid": row1, "sid": col}
                 if is_none:
                     col_prop012 = [x for x in range(5)][:col_count]
-                    metadata["chromosome"] = col_prop012
-                    metadata["bp_position"] = col_prop012
-                    metadata["cm_position"] = col_prop012
+                    properties["chromosome"] = col_prop012
+                    properties["bp_position"] = col_prop012
+                    properties["cm_position"] = col_prop012
                 else:
                     col_prop012 = None
 
@@ -396,7 +396,7 @@ def test_write12(tmp_path):
                 logging.info(filename)
                 i += 1
                 to_bed(
-                    filename, val, metadata=metadata
+                    filename, val, properties=properties
                 )
                 for subsetter in [None, np.s_[::2, ::3]]:
                     with open_bed(filename) as bed:
@@ -431,7 +431,7 @@ def test_writes_small(tmp_path):
 
     val = [[1.0, 0, np.nan, 0], [2, 0, np.nan, 2], [0, 1, 2, 0]]
 
-    metadata = {
+    properties = {
         "fid": ["fid1", "fid1", "fid2"],
         "iid": ["iid1", "iid2", "iid3"],
         "father": ["iid23", "iid23", "iid22"],
@@ -446,13 +446,13 @@ def test_writes_small(tmp_path):
         "allele_2": ["A", "C", "C", "G"],
     }
 
-    to_bed(output_file, val, metadata=metadata)
+    to_bed(output_file, val, properties=properties)
 
     with open_bed(output_file) as bed:
         assert np.allclose(bed.read(), val, equal_nan=True)
-        for key, value in bed.metadata.items():
-            assert np.array_equal(value, metadata[key]) or np.allclose(
-                value, metadata[key]
+        for key, value in bed.properties.items():
+            assert np.array_equal(value, properties[key]) or np.allclose(
+                value, properties[key]
             )
 
 
@@ -526,19 +526,19 @@ def test_zero_files(tmp_path):
                     with open_bed(filename) as bed2:
                         val2 = bed2.read(dtype=dtype)
                         assert np.allclose(val, val2, equal_nan=True)
-                        metadata2 = bed2.metadata
-                        for prop in metadata2.values():
+                        properties2 = bed2.properties
+                        for prop in properties2.values():
                             assert len(prop) in {iid_count, sid_count}
 
-                    # Change metadata and write again
+                    # Change properties and write again
                     if iid_count > 0:
-                        metadata2["iid"][0] = "iidx"
+                        properties2["iid"][0] = "iidx"
                     if sid_count > 0:
-                        metadata2["sid"][0] = "sidx"
+                        properties2["sid"][0] = "sidx"
                     to_bed(
                         filename,
                         val2,
-                        metadata=metadata2,
+                        properties=properties2,
                         force_python_only=force_python_only,
                     )
 
@@ -546,9 +546,9 @@ def test_zero_files(tmp_path):
                     with open_bed(filename) as bed3:
                         val3 = bed3.read(dtype=dtype)
                         assert np.allclose(val, val3, equal_nan=True)
-                        metadata3 = bed3.metadata
-                        for key2, value_list2 in metadata2.items():
-                            value_list3 = metadata3[key2]
+                        properties3 = bed3.properties
+                        for key2, value_list2 in properties2.items():
+                            value_list3 = properties3[key2]
                             assert np.array_equal(value_list2, value_list3)
 
 
@@ -581,13 +581,13 @@ def test_sample_file():
 
 def test_coverage2(shared_datadir):
     with open_bed(
-        shared_datadir / "plink_sim_10s_100v_10pmiss.bed", metadata={"iid": None}
+        shared_datadir / "plink_sim_10s_100v_10pmiss.bed", properties={"iid": None}
     ) as bed:
         assert len(bed.iid) > 1
     with pytest.raises(ValueError):
         open_bed(
             shared_datadir / "plink_sim_10s_100v_10pmiss.bed",
-            metadata={"iid": [1, 2, 3], "mother": [1, 2]},
+            properties={"iid": [1, 2, 3], "mother": [1, 2]},
         )
     val = np.zeros((3, 5))[::2]
     assert not val.flags["C_CONTIGUOUS"] and not val.flags["F_CONTIGUOUS"]

@@ -27,19 +27,19 @@ registry_file = Path(__file__).parent / "tests/registry.txt"
 POOCH.load_registry(registry_file)
 
 
-def sample_file(filepath: Union[str, Path]) -> str:  #!!!cmk doc
+def sample_file(filepath: Union[str, Path]) -> str:
     """
-    Retrieve a bed_reader sample BED file.
+    Retrieve a sample .bed file. (Also retrieves associated .fam and .bim files).
 
     Parameters
     ----------
     filepath
-        Name of the sample file.
+        Name of the sample .bed file.
 
     Returns
     -------
     string
-        Local name of sample file.
+        Local name of sample .bed file.
 
     Example
     --------
@@ -60,7 +60,7 @@ def sample_file(filepath: Union[str, Path]) -> str:  #!!!cmk doc
     return POOCH.fetch(file_string)
 
 
-def tmp_path() -> Path:  #!!!cmk doc
+def tmp_path() -> Path:
     """
     Return a :class:`pathlib.Path` to a temporary directory.
 

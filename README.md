@@ -1,10 +1,9 @@
 bed-reader
 ====================
 
-A simple and efficient PLINK \*.bed file format reader and writer.
+A simple and efficient PLINK .bed file format reader and writer.
 
-Read and write genetic PLINK \*.bed/bim/fam files.
-Also, efficiently read parts of files and access metadata.
+Also, efficiently reads slices of data and accesses individual (sample) and SNP (variant) properties.
 
 CMK example
 
