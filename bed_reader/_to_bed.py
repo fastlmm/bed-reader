@@ -206,7 +206,7 @@ def _fix_up_val(input):
 
     if np.issubdtype(input.dtype, np.integer) and input.dtype != np.int8:
         return _fix_up_val(np.array(input, dtype=np.int8))
-    elif np.issubdtype(input.dtype, np.float) and input.dtype not in (
+    elif np.issubdtype(input.dtype, np.floating) and input.dtype not in (
         np.float32,
         np.float64,
     ):

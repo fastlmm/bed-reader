@@ -1,4 +1,4 @@
-#LATER: Offer to ignore some or all fam bim fields
+# LATER: Offer to ignore some or all fam bim fields
 import logging
 import math
 import multiprocessing
@@ -492,7 +492,8 @@ class open_bed:
                     val[0::4, SNPsIndex : SNPsIndex + 1][bytes >= 2] = 1
                     val[0::4, SNPsIndex : SNPsIndex + 1][bytes >= 3] = byteThree
                 val = val[iid_index, :]  # reorder or trim any extra allocation
-                if not open_bed._array_properties_are_ok(val, order, dtype):
+                assert val.dtype == np.dtype(dtype)  # real assert
+                if not open_bed._array_properties_are_ok(val, order):
                     val = val.copy(order=order)
 
         return val
@@ -763,7 +764,7 @@ class open_bed:
             ...     print(bed.sid)
             ['sid1' 'sid2' 'sid3' 'sid4']
 
-        """ 
+        """
         return self.property_item("sid")
 
     @property
@@ -925,9 +926,7 @@ class open_bed:
             raise ValueError("Not a valid .bed file")
         mode = filepointer.read(1)  # \x01 = SNP major \x00 = individual major
         if mode != b"\x01":
-            raise ValueError(
-                "only SNP-major is implemented"
-            )
+            raise ValueError("only SNP-major is implemented")
 
     def __del__(self):
         self.__exit__()
@@ -977,7 +976,7 @@ class open_bed:
         return HIWORD(ms), LOWORD(ms), HIWORD(ls), LOWORD(ls)
 
     @staticmethod
-    def _find_openmp(): #!!!cmk dll in same directory???
+    def _find_openmp():  #!!!cmk dll in same directory???
         if "bed_reader.wrap_plink_parser_openmp" in sys.modules:
             return
         if platform.system() == "Windows":
@@ -1017,17 +1016,13 @@ class open_bed:
         return multiprocessing.cpu_count()
 
     @staticmethod
-    def _array_properties_are_ok(val, order, dtype):
-        dtype = np.dtype(dtype)
+    def _array_properties_are_ok(val, order):
 
-        if val.dtype != dtype:
-            return False
         if order == "F":
             return val.flags["F_CONTIGUOUS"]
-        elif order == "C":
+        else:
+            assert order == "C"  # real assert
             return val.flags["C_CONTIGUOUS"]
-
-        return True
 
     @property
     def shape(self):
@@ -1109,8 +1104,10 @@ class open_bed:
         if not np.issubdtype(input.dtype, dtype):
             output = np.array(input, dtype=dtype)
             # If converting float to non-float: Change NaN to new missing value
-            if np.isrealobj(input) and not np.isrealobj(output):
-                output[input != input] = missing_value
+            if np.issubdtype(input.dtype, np.floating) and not np.issubdtype(output.dtype, np.floating):
+                output[
+                    input != input
+                ] = missing_value
             return output
 
         return input
@@ -1133,7 +1130,7 @@ class open_bed:
                 if use_fill_sequence:
                     output = mm.fill_sequence(key, count, mm.missing_value, mm.dtype)
                 else:
-                    continue
+                    continue  # Test coverage reaches this, but doesn't report it.
             else:
                 output = open_bed._fix_up_properties_array(
                     input, mm.dtype, mm.missing_value, key

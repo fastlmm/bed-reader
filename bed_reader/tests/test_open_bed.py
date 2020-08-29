@@ -99,7 +99,9 @@ def test_overrides(shared_datadir):
 
     with pytest.raises(KeyError):
         open_bed(shared_datadir / "some_missing.bed", properties={"unknown": [3, 4, 4]})
-    with open_bed(shared_datadir / "some_missing.bed", properties={"iid": None}) as bed1:
+    with open_bed(
+        shared_datadir / "some_missing.bed", properties={"iid": None}
+    ) as bed1:
         assert np.array_equal(bed1.iid, property_dict["iid"])
     with open_bed(shared_datadir / "some_missing.bed", properties={"iid": []}) as bed1:
         assert np.issubdtype(bed1.iid.dtype, np.str_)
@@ -395,9 +397,7 @@ def test_write12(tmp_path):
                 filename = output_template.format(i)
                 logging.info(filename)
                 i += 1
-                to_bed(
-                    filename, val, properties=properties
-                )
+                to_bed(filename, val, properties=properties)
                 for subsetter in [None, np.s_[::2, ::3]]:
                     with open_bed(filename) as bed:
                         val2 = bed.read(index=subsetter, order="C", dtype="float32")
@@ -598,8 +598,26 @@ def test_coverage2(shared_datadir):
         to_bed("ignore", val)
 
 
+def test_coverage3(shared_datadir, tmp_path):
+    with open_bed(
+        shared_datadir / "small.bed", properties={"sex": [1.0, np.nan, 1.0, 2.0]}
+    ) as bed:
+        assert np.array_equal(bed.sex, np.array([1, 0, 1, 2]))
+
+
+    list = [1.0, 0, np.nan, 0] 
+    output_file = tmp_path / "1d.bed"
+    with pytest.raises(ValueError):
+        to_bed(output_file, list)
+    to_bed(output_file, np.array([list],dtype=np.float16))
+    with open_bed(output_file) as bed:
+        assert np.allclose(bed.read(),[list],equal_nan=True)
+
+
 if __name__ == "__main__":  #!!cmk is this wanted?
     logging.basicConfig(level=logging.INFO)
 
-    test_writes_small(Path(r"m:/deldir/tests"))
+    shared_datadir = Path(r"D:\OneDrive\programs\bed-reader\bed_reader\tests\data")
+    tmp_path = Path(r"m:/deldir/tests")
+    test_coverage3(shared_datadir, tmp_path)
     pytest.main([__file__])
