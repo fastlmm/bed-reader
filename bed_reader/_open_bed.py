@@ -183,11 +183,15 @@ class open_bed:
         count_A1: bool = True,
         num_threads: Optional[int] = None,
         skip_format_check: bool = False,
+        fam_filepath: Union[str, Path] = None, #!!!cmk doc & test
+        bim_filepath: Union[str, Path] = None, #!!!cmk doc & test
     ):  #!!!document these new optionals. they are here
         self.filepath = Path(filepath)
         self.count_A1 = count_A1
         self._num_threads = num_threads
         self.skip_format_check = skip_format_check
+        self._fam_filepath = Path(fam_filepath) if fam_filepath is not None else self.filepath.parent / (self.filepath.stem + ".fam")
+        self._bim_filepath = Path(bim_filepath) if bim_filepath is not None else self.filepath.parent / (self.filepath.stem + ".bim")
 
         self.properties_dict, self._counts = open_bed._fix_up_properties(
             properties, iid_count, sid_count, use_fill_sequence=False
@@ -196,8 +200,7 @@ class open_bed:
         self._sid_range = None
 
         if not self.skip_format_check:
-            bedfile = open_bed._name_of_other_file(self.filepath, "bed", "bed")
-            with open(bedfile, "rb") as filepointer:
+            with open(self.filepath, "rb") as filepointer:
                 self._check_file(filepointer)
 
     def read(
@@ -356,9 +359,7 @@ class open_bed:
                 from bed_reader import wrap_plink_parser_onep as wrap_plink_parser
 
             val = np.zeros((len(iid_index), len(sid_index)), order=order, dtype=dtype)
-            bed_file_ascii = str(
-                open_bed._name_of_other_file(self.filepath, "bed", "bed")
-            ).encode("ascii")
+            bed_file_ascii = str(self.filepath).encode("ascii")
 
             if self.iid_count > 0 and self.sid_count > 0:
                 if dtype == np.int8:
@@ -463,8 +464,7 @@ class open_bed:
                 dtype=dtype,
             )  # allocate it a little big
 
-            bedfile = self._name_of_other_file(self.filepath, "bed", "bed")
-            with open(bedfile, "rb") as filepointer:
+            with open(self.filepath, "rb") as filepointer:
                 for SNPsIndex, bimIndex in enumerate(sid_index):
 
                     startbit = int(np.ceil(0.25 * self.iid_count) * bimIndex + 3)
@@ -910,11 +910,17 @@ class open_bed:
         """
         return self._count("bim")
 
+    def _property_filepath(self, suffix):
+        if suffix == "fam":
+            return self._fam_filepath
+        else:
+            assert suffix == "bim" # real assert
+            return self._bim_filepath
+
     def _count(self, suffix):
         count = self._counts[suffix]
         if count is None:
-            metafile = open_bed._name_of_other_file(self.filepath, "bed", suffix)
-            count = _rawincount(metafile)
+            count = _rawincount(self._property_filepath(suffix))
             self._counts[suffix] = count
         return count
 
@@ -1068,18 +1074,18 @@ class open_bed:
         return index
 
     @staticmethod
-    def _write_fam_or_bim(basefilepath, properties, suffix_of_interest):
-        assert suffix_of_interest in {"fam", "bim"}, "real assert"
+    def _write_fam_or_bim(base_filepath, properties, suffix, property_filepath):
+        assert suffix in {"fam", "bim"}, "real assert"
 
-        filepath = open_bed._name_of_other_file(basefilepath, "bed", suffix_of_interest)
+        filepath = Path(property_filepath) if property_filepath is not None else base_filepath.parent / (base_filepath.stem + "." + suffix)
 
         fam_bim_list = []
         for key, mm in _meta_meta.items():
-            if mm.suffix == suffix_of_interest:
+            if mm.suffix == suffix:
                 assert len(fam_bim_list) == mm.column, "real assert"
                 fam_bim_list.append(properties[key])
 
-        sep = " " if suffix_of_interest == "fam" else "\t"
+        sep = " " if suffix == "fam" else "\t"
 
         with open(filepath, "w") as filepointer:
             for index in range(len(fam_bim_list[0])):
@@ -1089,7 +1095,7 @@ class open_bed:
 
     @staticmethod
     def _fix_up_properties_array(input, dtype, missing_value, key):
-        if input is None:  #!!!cmk
+        if input is None:
             return None
         if len(input) == 0:
             return np.zeros([0], dtype=dtype)
@@ -1146,8 +1152,9 @@ class open_bed:
         return properties_dict, count_dict
 
     def _read_fam_or_bim(self, suffix):
-        metafile = open_bed._name_of_other_file(self.filepath, "bed", suffix)
-        logging.info("Loading {0} file {1}".format(suffix, metafile))
+        property_filepath = self._property_filepath(suffix)
+
+        logging.info("Loading {0} file {1}".format(suffix, property_filepath))
 
         count = self._counts[suffix]
 
@@ -1165,11 +1172,11 @@ class open_bed:
         assert list(usecolsdict.values()) == sorted(usecolsdict.values())  # real assert
         assert len(usecolsdict) > 0  # real assert
 
-        if os.path.getsize(metafile) == 0:
+        if os.path.getsize(property_filepath) == 0:
             fields = []
         else:
             fields = pd.read_csv(
-                metafile,
+                property_filepath,
                 delimiter=delimiter,
                 delim_whitespace=delim_whitespace,
                 header=None,
@@ -1196,12 +1203,6 @@ class open_bed:
                     fields[mm.column].fillna(mm.missing_value), dtype=mm.dtype
                 )
             self.properties_dict[key] = output
-
-    @staticmethod
-    def _name_of_other_file(filepath, remove_suffix, add_suffix):
-        if filepath.suffix.lower() == "." + remove_suffix:
-            filepath = filepath.parent / filepath.stem
-        return filepath.parent / (filepath.name + "." + add_suffix)
 
 
 if __name__ == "__main__":

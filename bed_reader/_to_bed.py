@@ -14,6 +14,8 @@ def to_bed(
     val: np.ndarray,
     properties: Mapping[str, List[Any]] = {},
     count_A1: bool = True,
+    fam_filepath: Union[str, Path] = None, #!!!cmk doc and test
+    bim_filepath: Union[str, Path] = None, #!!!cmk doc and test
     force_python_only: bool = False,
 ):
     """
@@ -98,12 +100,10 @@ def to_bed(
         properties, iid_count=iid_count, sid_count=sid_count, use_fill_sequence=True
     )
 
-    open_bed._write_fam_or_bim(filepath, properties, "fam")
-    open_bed._write_fam_or_bim(filepath, properties, "bim")
+    open_bed._write_fam_or_bim(filepath, properties, "fam", fam_filepath)
+    open_bed._write_fam_or_bim(filepath, properties, "bim", bim_filepath)
 
-    bedfile = str(
-        open_bed._name_of_other_file(filepath, remove_suffix="bed", add_suffix="bed")
-    ).encode("ascii")
+    bedfile = str(filepath).encode("ascii")
 
     if not force_python_only:
         from bed_reader import wrap_plink_parser_onep
