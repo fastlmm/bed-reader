@@ -60,7 +60,9 @@ _meta_meta = {
     "pheno": _MetaMeta("fam", 5, np.str_, "0", _all_same),
     "chromosome": _MetaMeta("bim", 0, np.str_, "0", _all_same),
     "sid": _MetaMeta("bim", 1, np.str_, None, _sequence),
-    "cm_position": _MetaMeta("bim", 2, np.float32, 0, _all_same), #!!!cmk add test where we try to write NaN to file. It should change to 0
+    "cm_position": _MetaMeta(
+        "bim", 2, np.float32, 0, _all_same
+    ),  #!!!cmk add test where we try to write NaN to file. It should change to 0
     "bp_position": _MetaMeta("bim", 3, np.int32, 0, _all_same),
     "allele_1": _MetaMeta("bim", 4, np.str_, "A1", _all_same),
     "allele_2": _MetaMeta("bim", 5, np.str_, "A2", _all_same),
@@ -1087,8 +1089,8 @@ class open_bed:
 
     @staticmethod
     def _fix_up_properties_array(input, dtype, missing_value, key):
-        if input is None: #!!!cmk
-            print("cmk")
+        if input is None:  #!!!cmk
+            return None
         if len(input) == 0:
             return np.zeros([0], dtype=dtype)
 
@@ -1107,26 +1109,22 @@ class open_bed:
 
         # Change NaN in input to correct missing value
         if np.issubdtype(input.dtype, np.floating):
-            output[
-                input != input
-            ] = missing_value
+            output[input != input] = missing_value
 
         return output
 
     @staticmethod
     def _fix_up_properties(properties, iid_count, sid_count, use_fill_sequence):
-
-        properties_dict = {}
-        count_dict = {"fam": iid_count, "bim": sid_count}
-
-        for key, input in properties.items():
+        for key in properties:
             if key not in _meta_meta:
                 raise KeyError(f"properties key '{key}' not known")
 
+        count_dict = {"fam": iid_count, "bim": sid_count}
+        properties_dict = {}
         for key, mm in _meta_meta.items():
             count = count_dict[mm.suffix]
 
-            if key not in properties:
+            if key not in properties or (use_fill_sequence and properties[key] is None):
                 if use_fill_sequence:
                     output = mm.fill_sequence(key, count, mm.missing_value, mm.dtype)
                 else:
@@ -1136,13 +1134,14 @@ class open_bed:
                     properties[key], mm.dtype, mm.missing_value, key
                 )
 
-            if count is None:
-                count_dict[mm.suffix] = len(output)
-            else:
-                if count != len(output):
-                    raise ValueError(
-                        f"The length of override {key}, {len(output)}, should not be different from the current {_count_name[mm.suffix]}, {count}"
-                    )
+            if output is not None:
+                if count is None:
+                    count_dict[mm.suffix] = len(output)
+                else:
+                    if count != len(output):
+                        raise ValueError(
+                            f"The length of override {key}, {len(output)}, should not be different from the current {_count_name[mm.suffix]}, {count}"
+                        )
             properties_dict[key] = output
         return properties_dict, count_dict
 
@@ -1159,6 +1158,13 @@ class open_bed:
         else:
             delim_whitespace = False
 
+        usecolsdict = {}
+        for key, mm in _meta_meta.items():
+            if mm.suffix is suffix and key not in self.properties_dict:
+                usecolsdict[key] = mm.column
+        assert list(usecolsdict.values()) == sorted(usecolsdict.values())  # real assert
+        assert len(usecolsdict) > 0  # real assert
+
         if os.path.getsize(metafile) == 0:
             fields = []
         else:
@@ -1169,6 +1175,7 @@ class open_bed:
                 header=None,
                 index_col=False,
                 comment=None,
+                usecols=usecolsdict.values(),
             )
 
         if count is None:
@@ -1178,19 +1185,17 @@ class open_bed:
                 raise ValueError(
                     f"The number of lines in the *.{suffix} file, {len(fields)}, should not be different from the current {_count_name[suffix]}, {count}"
                 )
-        for key, mm in _meta_meta.items():
-            if mm.suffix is not suffix:
-                continue
-            if key not in self.properties_dict:
-                if len(fields) == 0:
-                    output = np.array([], dtype=mm.dtype)
-                elif mm.missing_value is None:
-                    output = np.array(fields[mm.column], dtype=mm.dtype)
-                else:
-                    output = np.array(
-                        fields[mm.column].fillna(mm.missing_value), dtype=mm.dtype
-                    )
-                self.properties_dict[key] = output
+        for key in usecolsdict.keys():
+            mm = _meta_meta[key]
+            if len(fields) == 0:
+                output = np.array([], dtype=mm.dtype)
+            elif mm.missing_value is None:
+                output = np.array(fields[mm.column], dtype=mm.dtype)
+            else:
+                output = np.array(
+                    fields[mm.column].fillna(mm.missing_value), dtype=mm.dtype
+                )
+            self.properties_dict[key] = output
 
     @staticmethod
     def _name_of_other_file(filepath, remove_suffix, add_suffix):

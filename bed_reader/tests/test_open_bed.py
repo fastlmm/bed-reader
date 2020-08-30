@@ -99,9 +99,9 @@ def test_overrides(shared_datadir):
 
     with pytest.raises(KeyError):
         open_bed(shared_datadir / "some_missing.bed", properties={"unknown": [3, 4, 4]})
-    #with open_bed( #!!!cmkupdate
+    # with open_bed( #!!!cmkupdate
     #    shared_datadir / "some_missing.bed", properties={"iid": None}
-    #) as bed1:
+    # ) as bed1:
     #    assert np.array_equal(bed1.iid, property_dict["iid"])
     with open_bed(shared_datadir / "some_missing.bed", properties={"iid": []}) as bed1:
         assert np.issubdtype(bed1.iid.dtype, np.str_)
@@ -194,18 +194,21 @@ def test_properties(shared_datadir):
     test_count = 75
 
     seq_dict = {
-        "iid": ["leave_out", iid_list, np.array(iid_list)],
+        "iid": ["leave_out", None, iid_list, np.array(iid_list)],
         "iid_count": ["leave_out", len(iid_list)],
         "iid_before_read": [False, True],
         "iid_after_read": [False, True],
-        "sid": ["leave_out", sid_list, np.array(sid_list)],
+        "sid": ["leave_out", None, sid_list, np.array(sid_list)],
         "sid_count": [None, len(sid_list)],
         "sid_before_read": [False, True],
         "sid_after_read": [False, True],
-        "chromosome": ["leave_out", chromosome_list, np.array(chromosome_list),],
+        "chromosome": ["leave_out", None, chromosome_list, np.array(chromosome_list),],
         "chromosome_before_read": [False, True],
         "chromosome_after_read": [False, True],
     }
+
+    def _not_set_to_none(settings, key):
+        return key not in settings or settings[key] is not None
 
     for test_index, settings in enumerate(setting_generator(seq_dict)):
         if test_index >= test_count:
@@ -214,23 +217,43 @@ def test_properties(shared_datadir):
             file,
             iid_count=settings.get("iid_count"),
             sid_count=settings.get("sid_count"),
-            properties={k:v for k,v in settings.items() if k in {"iid","sid","chromosome"}},
+            properties={
+                k: v for k, v in settings.items() if k in {"iid", "sid", "chromosome"}
+            },
         ) as bed:
             logging.info(f"Test {test_count}")
             if settings["iid_before_read"]:
-                assert np.array_equal(bed.iid, iid_list)
+                if _not_set_to_none(settings, "iid"):
+                    assert np.array_equal(bed.iid, iid_list)
+                else:
+                    assert bed.iid is None
             if settings["sid_before_read"]:
-                assert np.array_equal(bed.sid, sid_list)
+                if _not_set_to_none(settings, "sid"):
+                    assert np.array_equal(bed.sid, sid_list)
+                else:
+                    assert bed.sid is None
             if settings["chromosome_before_read"]:
-                assert np.array_equal(bed.chromosome, chromosome_list,)
+                if _not_set_to_none(settings, "chromosome"):
+                    assert np.array_equal(bed.chromosome, chromosome_list)
+                else:
+                    assert bed.chromosome is None
             val = bed.read()
             assert val.shape == (len(iid_list), len(sid_list),)
             if settings["iid_after_read"]:
-                assert np.array_equal(bed.iid, iid_list)
+                if _not_set_to_none(settings, "iid"):
+                    assert np.array_equal(bed.iid, iid_list)
+                else:
+                    assert bed.iid is None
             if settings["sid_after_read"]:
-                assert np.array_equal(bed.sid, sid_list)
+                if _not_set_to_none(settings, "sid"):
+                    assert np.array_equal(bed.sid, sid_list)
+                else:
+                    assert bed.sid is None
             if settings["chromosome_after_read"]:
-                assert np.array_equal(bed.chromosome, chromosome_list,)
+                if _not_set_to_none(settings, "chromosome"):
+                    assert np.array_equal(bed.chromosome, chromosome_list)
+                else:
+                    assert bed.chromosome is None
             # bed._assert_iid_sid_chromosome()
 
 
@@ -579,9 +602,9 @@ def test_sample_file():
 
 
 def test_coverage2(shared_datadir):
-    #with open_bed( #!!!cmk update
+    # with open_bed( #!!!cmk update
     #    shared_datadir / "plink_sim_10s_100v_10pmiss.bed", properties={"iid": None}
-    #) as bed:
+    # ) as bed:
     #    assert len(bed.iid) > 1
     with pytest.raises(ValueError):
         open_bed(
@@ -604,18 +627,38 @@ def test_coverage3(shared_datadir, tmp_path):
         assert np.array_equal(bed.sex, np.array([1, 0, 1, 2]))
 
     with open_bed(
-        shared_datadir / "small.bed", properties={"cm_position": [1000.0, np.nan, 2000.0, 3000.0]}
+        shared_datadir / "small.bed",
+        properties={"cm_position": [1000.0, np.nan, 2000.0, 3000.0]},
     ) as bed:
-        assert np.array_equal(bed.cm_position, np.array([1000,0,2000,3000]))
+        assert np.array_equal(bed.cm_position, np.array([1000, 0, 2000, 3000]))
 
-
-    list = [1.0, 0, np.nan, 0] 
+    list = [1.0, 0, np.nan, 0]
     output_file = tmp_path / "1d.bed"
     with pytest.raises(ValueError):
         to_bed(output_file, list)
-    to_bed(output_file, np.array([list],dtype=np.float16))
+    to_bed(output_file, np.array([list], dtype=np.float16))
     with open_bed(output_file) as bed:
-        assert np.allclose(bed.read(),[list],equal_nan=True)
+        assert np.allclose(bed.read(), [list], equal_nan=True)
+
+
+def test_nones(shared_datadir, tmp_path):
+
+    properties = {
+        "father": None,
+        "mother": None,
+        "sex": None,
+        "pheno": None,
+        "allele_1": None,
+        "allele_2": None,
+    }
+
+    with open_bed(shared_datadir / "small.bed", properties=properties) as bed:
+        assert np.array_equal(bed.iid, ["iid1", "iid2", "iid3"])
+        assert bed.father is None
+
+    val = [[1.0, 0, np.nan, 0], [2, 0, np.nan, 2], [0, 1, 2, 0]]
+    out_file = tmp_path / "testnones.bed"
+    to_bed(out_file, val, properties=properties)
 
 
 if __name__ == "__main__":  #!!cmk is this wanted?
@@ -623,5 +666,5 @@ if __name__ == "__main__":  #!!cmk is this wanted?
 
     shared_datadir = Path(r"D:\OneDrive\programs\bed-reader\bed_reader\tests\data")
     tmp_path = Path(r"m:/deldir/tests")
-    test_overrides(shared_datadir)
+    test_properties(shared_datadir)
     pytest.main([__file__])
