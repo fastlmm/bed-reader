@@ -60,7 +60,7 @@ _meta_meta = {
     "pheno": _MetaMeta("fam", 5, np.str_, "0", _all_same),
     "chromosome": _MetaMeta("bim", 0, np.str_, "0", _all_same),
     "sid": _MetaMeta("bim", 1, np.str_, None, _sequence),
-    "cm_position": _MetaMeta("bim", 2, np.float32, 0, _all_same),
+    "cm_position": _MetaMeta("bim", 2, np.float32, 0, _all_same), #!!!cmk add test where we try to write NaN to file. It should change to 0
     "bp_position": _MetaMeta("bim", 3, np.int32, 0, _all_same),
     "allele_1": _MetaMeta("bim", 4, np.str_, "A1", _all_same),
     "allele_2": _MetaMeta("bim", 5, np.str_, "A2", _all_same),
@@ -711,13 +711,10 @@ class open_bed:
             ['1' '1' '5' 'Y']
 
         """
-        val = self.properties_dict.get(name)
-        if val is None:
+        if name not in self.properties_dict:
             mm = _meta_meta[name]
             self._read_fam_or_bim(suffix=mm.suffix)
-            return self.properties_dict[name]
-        else:
-            return val
+        return self.properties_dict[name]
 
     @property
     def chromosome(self) -> np.ndarray:
@@ -1090,6 +1087,8 @@ class open_bed:
 
     @staticmethod
     def _fix_up_properties_array(input, dtype, missing_value, key):
+        if input is None: #!!!cmk
+            print("cmk")
         if len(input) == 0:
             return np.zeros([0], dtype=dtype)
 
@@ -1103,19 +1102,21 @@ class open_bed:
 
         if not np.issubdtype(input.dtype, dtype):
             output = np.array(input, dtype=dtype)
-            # If converting float to non-float: Change NaN to new missing value
-            if np.issubdtype(input.dtype, np.floating) and not np.issubdtype(output.dtype, np.floating):
-                output[
-                    input != input
-                ] = missing_value
-            return output
+        else:
+            output = input
 
-        return input
+        # Change NaN in input to correct missing value
+        if np.issubdtype(input.dtype, np.floating):
+            output[
+                input != input
+            ] = missing_value
+
+        return output
 
     @staticmethod
     def _fix_up_properties(properties, iid_count, sid_count, use_fill_sequence):
 
-        properties_dict = {key: None for key in _meta_meta}
+        properties_dict = {}
         count_dict = {"fam": iid_count, "bim": sid_count}
 
         for key, input in properties.items():
@@ -1125,15 +1126,14 @@ class open_bed:
         for key, mm in _meta_meta.items():
             count = count_dict[mm.suffix]
 
-            input = properties.get(key)
-            if input is None:
+            if key not in properties:
                 if use_fill_sequence:
                     output = mm.fill_sequence(key, count, mm.missing_value, mm.dtype)
                 else:
                     continue  # Test coverage reaches this, but doesn't report it.
             else:
                 output = open_bed._fix_up_properties_array(
-                    input, mm.dtype, mm.missing_value, key
+                    properties[key], mm.dtype, mm.missing_value, key
                 )
 
             if count is None:
@@ -1181,8 +1181,7 @@ class open_bed:
         for key, mm in _meta_meta.items():
             if mm.suffix is not suffix:
                 continue
-            val = self.properties_dict[key]
-            if val is None:
+            if key not in self.properties_dict:
                 if len(fields) == 0:
                     output = np.array([], dtype=mm.dtype)
                 elif mm.missing_value is None:
