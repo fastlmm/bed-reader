@@ -59,7 +59,6 @@ html_theme_options = {
     "logo_only": False,
     "display_version": True,
     "style_external_links": True,
-    ""
 }
 htmlhelp_basename = "{}doc".format(project)
 
