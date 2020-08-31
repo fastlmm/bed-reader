@@ -1,1 +1,1071 @@
-Testing
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>bed_reader Documentation &mdash; bed-reader 0.0.3a2 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="#" class="icon icon-home" alt="Documentation Home"> bed-reader
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.0.3a2
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#"><code class="xref py py-mod docutils literal notranslate"><span class="pre">bed_reader</span></code> Documentation</a><ul>
+<li><a class="reference internal" href="#summary">Summary</a><ul>
+<li><a class="reference internal" href="#open-read-and-write">Open, Read, and Write</a></li>
+<li><a class="reference internal" href="#properties-of-individuals-samples-and-snps-variants">Properties of Individuals (samples) and SNPs (variants)</a></li>
+<li><a class="reference internal" href="#utilities">Utilities</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#details">Details</a><ul>
+<li><a class="reference internal" href="#open-bed">open_bed</a></li>
+<li><a class="reference internal" href="#to-bed">to_bed</a></li>
+<li><a class="reference internal" href="#sample-file">sample_file</a></li>
+<li><a class="reference internal" href="#tmp-path">tmp_path</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#indices-and-tables">Indices and Tables</a></li>
+</ul>
+</li>
+</ul>
+</div>
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">bed-reader</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content style-external-links">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="#" class="icon icon-home"></a> &raquo;</li>
+        
+      <li><code class="xref py py-mod docutils literal notranslate"><span class="pre">bed_reader</span></code> Documentation</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="bed-reader-documentation">
+<h1><code class="xref py py-mod docutils literal notranslate"><span class="pre">bed_reader</span></code> Documentation<a class="headerlink" href="#bed-reader-documentation" title="Permalink to this headline">¶</a></h1>
+<p>cmk example here, too?</p>
+<div class="toctree-wrapper compound">
+</div>
+<div class="section" id="summary">
+<h2>Summary<a class="headerlink" href="#summary" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="open-read-and-write">
+<h3>Open, Read, and Write<a class="headerlink" href="#open-read-and-write" title="Permalink to this headline">¶</a></h3>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#bed_reader.open_bed" title="bed_reader.open_bed"><code class="xref py py-obj docutils literal notranslate"><span class="pre">open_bed</span></code></a>(filepath[, iid_count, sid_count, …])</p></td>
+<td><p>Open a PLINK .bed file for reading.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#bed_reader.open_bed.read" title="bed_reader.open_bed.read"><code class="xref py py-obj docutils literal notranslate"><span class="pre">open_bed.read</span></code></a>([index, dtype, order, …])</p></td>
+<td><p>Read genotype information.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#bed_reader.to_bed" title="bed_reader.to_bed"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_bed</span></code></a>(filepath, val[, properties, …])</p></td>
+<td><p>Write values to a file in PLINK .bed format.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="properties-of-individuals-samples-and-snps-variants">
+<h3>Properties of Individuals (samples) and SNPs (variants)<a class="headerlink" href="#properties-of-individuals-samples-and-snps-variants" title="Permalink to this headline">¶</a></h3>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#bed_reader.open_bed.iid_count" title="bed_reader.open_bed.iid_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">open_bed.iid_count</span></code></a></p></td>
+<td><p>Number of individuals (samples).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#bed_reader.open_bed.sid_count" title="bed_reader.open_bed.sid_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">open_bed.sid_count</span></code></a></p></td>
+<td><p>Number of SNPs (variants).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#bed_reader.open_bed.shape" title="bed_reader.open_bed.shape"><code class="xref py py-obj docutils literal notranslate"><span class="pre">open_bed.shape</span></code></a></p></td>
+<td><p>Number of individuals (samples) and SNPs (variants).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#bed_reader.open_bed.fid" title="bed_reader.open_bed.fid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">open_bed.fid</span></code></a></p></td>
+<td><p>Family id of each individual (sample).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#bed_reader.open_bed.iid" title="bed_reader.open_bed.iid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">open_bed.iid</span></code></a></p></td>
+<td><p>Individual id of each individual (sample).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#bed_reader.open_bed.father" title="bed_reader.open_bed.father"><code class="xref py py-obj docutils literal notranslate"><span class="pre">open_bed.father</span></code></a></p></td>
+<td><p>Father id of each individual (sample).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#bed_reader.open_bed.mother" title="bed_reader.open_bed.mother"><code class="xref py py-obj docutils literal notranslate"><span class="pre">open_bed.mother</span></code></a></p></td>
+<td><p>Mother id of each individual (sample).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#bed_reader.open_bed.sex" title="bed_reader.open_bed.sex"><code class="xref py py-obj docutils literal notranslate"><span class="pre">open_bed.sex</span></code></a></p></td>
+<td><p>Sex of each individual (sample).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#bed_reader.open_bed.pheno" title="bed_reader.open_bed.pheno"><code class="xref py py-obj docutils literal notranslate"><span class="pre">open_bed.pheno</span></code></a></p></td>
+<td><p>A phenotype for each individual (sample) (seldom used).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#bed_reader.open_bed.sid" title="bed_reader.open_bed.sid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">open_bed.sid</span></code></a></p></td>
+<td><p>SNP id of each SNP (variant).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#bed_reader.open_bed.chromosome" title="bed_reader.open_bed.chromosome"><code class="xref py py-obj docutils literal notranslate"><span class="pre">open_bed.chromosome</span></code></a></p></td>
+<td><p>Chromosome of each SNP (variant)</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#bed_reader.open_bed.cm_position" title="bed_reader.open_bed.cm_position"><code class="xref py py-obj docutils literal notranslate"><span class="pre">open_bed.cm_position</span></code></a></p></td>
+<td><p>Centimorgan position of each SNP (variant).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#bed_reader.open_bed.bp_position" title="bed_reader.open_bed.bp_position"><code class="xref py py-obj docutils literal notranslate"><span class="pre">open_bed.bp_position</span></code></a></p></td>
+<td><p>Base-pair position of each SNP (variant).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#bed_reader.open_bed.allele_1" title="bed_reader.open_bed.allele_1"><code class="xref py py-obj docutils literal notranslate"><span class="pre">open_bed.allele_1</span></code></a></p></td>
+<td><p>First allele of each SNP (variant).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#bed_reader.open_bed.allele_2" title="bed_reader.open_bed.allele_2"><code class="xref py py-obj docutils literal notranslate"><span class="pre">open_bed.allele_2</span></code></a></p></td>
+<td><p>Second allele of each SNP (variant),</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#bed_reader.open_bed.properties" title="bed_reader.open_bed.properties"><code class="xref py py-obj docutils literal notranslate"><span class="pre">open_bed.properties</span></code></a></p></td>
+<td><p>All the properties returned as a <code class="docutils literal notranslate"><span class="pre">dict</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#bed_reader.open_bed.property_item" title="bed_reader.open_bed.property_item"><code class="xref py py-obj docutils literal notranslate"><span class="pre">open_bed.property_item</span></code></a>(name)</p></td>
+<td><p>Retrieve one property by name.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="utilities">
+<h3>Utilities<a class="headerlink" href="#utilities" title="Permalink to this headline">¶</a></h3>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#bed_reader.sample_file" title="bed_reader.sample_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample_file</span></code></a>(filepath)</p></td>
+<td><p>Retrieve a sample .bed file.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#bed_reader.tmp_path" title="bed_reader.tmp_path"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tmp_path</span></code></a>()</p></td>
+<td><p>Return a <a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">pathlib.Path</span></code></a> to a temporary directory.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="section" id="details">
+<h2>Details<a class="headerlink" href="#details" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="open-bed">
+<h3>open_bed<a class="headerlink" href="#open-bed" title="Permalink to this headline">¶</a></h3>
+<dl class="py class">
+<dt id="bed_reader.open_bed">
+<em class="property">class </em><code class="sig-prename descclassname">bed_reader.</code><code class="sig-name descname">open_bed</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filepath</span><span class="p">:</span> <span class="n">Union<span class="p">[</span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.8)">str</a><span class="p">, </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.8)">pathlib.Path</a><span class="p">]</span></span></em>, <em class="sig-param"><span class="n">iid_count</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.8)">int</a><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">sid_count</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.8)">int</a><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">properties</span><span class="p">:</span> <span class="n">Mapping<span class="p">[</span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.8)">str</a><span class="p">, </span>List<span class="p">[</span>Any<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">{}</span></em>, <em class="sig-param"><span class="n">count_A1</span><span class="p">:</span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.8)">bool</a></span> <span class="o">=</span> <span class="default_value">True</span></em>, <em class="sig-param"><span class="n">num_threads</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.8)">int</a><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">skip_format_check</span><span class="p">:</span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.8)">bool</a></span> <span class="o">=</span> <span class="default_value">False</span></em>, <em class="sig-param"><span class="n">fam_filepath</span><span class="p">:</span> <span class="n">Union<span class="p">[</span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.8)">str</a><span class="p">, </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.8)">pathlib.Path</a><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">bim_filepath</span><span class="p">:</span> <span class="n">Union<span class="p">[</span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.8)">str</a><span class="p">, </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.8)">pathlib.Path</a><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bed_reader/_open_bed.html#open_bed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bed_reader.open_bed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Open a PLINK .bed file for reading.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filepath</strong> – file path to .bed file.</p></li>
+<li><p><strong>iid_count</strong> (<a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.8)"><em>None</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.8)"><em>int</em></a><em>, </em><em>optional</em>) – Number of individuals (samples) in the .bed file.
+The default (<code class="docutils literal notranslate"><span class="pre">iid_count=None</span></code>) finds the number
+automatically by quickly scanning the .fam file.</p></li>
+<li><p><strong>sid_count</strong> (<a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.8)"><em>None</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.8)"><em>int</em></a><em>, </em><em>optional</em>) – Number of SNPs (variants) in the .bed file.
+The default (<code class="docutils literal notranslate"><span class="pre">sid_count=None</span></code>) finds the number
+automatically by quickly scanning the .bim file.</p></li>
+<li><p><strong>properties</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.8)"><em>dict</em></a><em>, </em><em>optional</em>) – <p>A dictionary of any replacement properties. The default is an empty dictionary.
+The keys of the dictionary are the names of the properties to replace.
+The possible keys are:</p>
+<blockquote>
+<div><p>”fid” (family id), “iid” (individual or sample id), “father” (father id),
+“mother” (mother id), “sex”, “pheno” (phenotype), “chromosome”, “sid”
+(SNP or variant id), “cm_position” (centimorgan position), “bp_position”
+(base-pair position), “allele_1”, “allele_2”.</p>
+</div></blockquote>
+<p>The values are the replacement lists or arrays. CMK see example</p>
+</p></li>
+<li><p><strong>count_A1</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.8)"><em>bool</em></a><em>, </em><em>optional</em>) – True (default) to count the number of A1 alleles (the PLINK standard). False to count the number of A2 alleles.</p></li>
+<li><p><strong>num_threads</strong> (<a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.8)"><em>None</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.8)"><em>int</em></a><em>, </em><em>optional</em>) – <p>The number of threads with which to read data. Defaults to all available threads.
+Can also be set with the ‘MKL_NUM_THREADS’ environment variable.</p>
+<p>On MacOS, this
+parameter is ignored and all reads are singled threaded. On Windows, if reads create
+library-loading problems, setting this to 1 will fix the problems (but be slower).</p>
+</p></li>
+<li><p><strong>skip_format_check</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.8)"><em>bool</em></a><em>, </em><em>optional</em>) – False (default) to immediately check for expected starting bytes in the .bed file.
+True to delay the check until (and if) data is read.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>an open_bed object</strong> (<a class="reference internal" href="#bed_reader.open_bed" title="bed_reader.open_bed"><code class="xref py py-class docutils literal notranslate"><span class="pre">open_bed</span></code></a>)</p></li>
+<li><p><em>.._open_examples</em></p></li>
+</ul>
+</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<p>With the <a class="reference external" href="https://docs.python.org/3/reference/compound_stmts.html#grammar-token-with-stmt">with</a> statement,
+list individual (sample) <a class="reference internal" href="#bed_reader.open_bed.iid" title="bed_reader.open_bed.iid"><code class="xref py py-attr docutils literal notranslate"><span class="pre">iid</span></code></a> and SNP (variant) <a class="reference internal" href="#bed_reader.open_bed.sid" title="bed_reader.open_bed.sid"><code class="xref py py-attr docutils literal notranslate"><span class="pre">sid</span></code></a>, then <a class="reference internal" href="#bed_reader.open_bed.read" title="bed_reader.open_bed.read"><code class="xref py py-meth docutils literal notranslate"><span class="pre">read()</span></code></a> the whole file.</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">open_bed</span><span class="p">,</span> <span class="n">sample_file</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">file_name</span> <span class="o">=</span> <span class="n">sample_file</span><span class="p">(</span><span class="s2">&quot;small.bed&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">open_bed</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span> <span class="k">as</span> <span class="n">bed</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">iid</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">sid</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+<span class="go">[&#39;iid1&#39; &#39;iid2&#39; &#39;iid3&#39;]</span>
+<span class="go">[&#39;sid1&#39; &#39;sid2&#39; &#39;sid3&#39; &#39;sid4&#39;]</span>
+<span class="go">[[ 1.  0. nan  0.]</span>
+<span class="go"> [ 2.  0. nan  2.]</span>
+<span class="go"> [ 0.  1.  2.  0.]]</span>
+</pre></div>
+</div>
+<p>Open the file (without <cite>with</cite>) and read probabilities for one SNP (variant)
+at index position 2.</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">bed</span> <span class="o">=</span> <span class="n">open_bed</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+<span class="go">[[nan]</span>
+<span class="go"> [nan]</span>
+<span class="go"> [ 2.]]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">del</span> <span class="n">bed</span>  <span class="c1"># optional: close and delete object</span>
+</pre></div>
+</div>
+<p>Replace the sample <a class="reference internal" href="#bed_reader.open_bed.iid" title="bed_reader.open_bed.iid"><code class="xref py py-attr docutils literal notranslate"><span class="pre">iid</span></code></a>.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">open_bed</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;iid&quot;</span><span class="p">:[</span><span class="s2">&quot;sample1&quot;</span><span class="p">,</span><span class="s2">&quot;sample2&quot;</span><span class="p">,</span><span class="s2">&quot;sample3&quot;</span><span class="p">]})</span> <span class="k">as</span> <span class="n">bed</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">iid</span><span class="p">)</span> <span class="c1"># replaced</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">sid</span><span class="p">)</span> <span class="c1"># same as before</span>
+<span class="go">[&#39;sample1&#39; &#39;sample2&#39; &#39;sample3&#39;]</span>
+<span class="go">[&#39;sid1&#39; &#39;sid2&#39; &#39;sid3&#39; &#39;sid4&#39;]</span>
+</pre></div>
+</div>
+<p>Tell it the number of individuals (samples) and SNPs (variants). This lets it read data without
+the needing to ever open the .fam and .bim files.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">open_bed</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="n">iid_count</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">sid_count</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span> <span class="k">as</span> <span class="n">bed</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+<span class="go">[[ 1.  0. nan  0.]</span>
+<span class="go"> [ 2.  0. nan  2.]</span>
+<span class="go"> [ 0.  1.  2.  0.]]</span>
+</pre></div>
+</div>
+<p>See the <a class="reference internal" href="#bed_reader.open_bed.read" title="bed_reader.open_bed.read"><code class="xref py py-meth docutils literal notranslate"><span class="pre">read()</span></code></a> for details of reading batches via slicing and fancy indexing.</p>
+<blockquote>
+<div><p>#!!!cmk in README say: Documentation not API Documatnion</p>
+</div></blockquote>
+<dl class="py method">
+<dt id="bed_reader.open_bed.allele_1">
+<em class="property">property </em><code class="sig-name descname">allele_1</code><a class="headerlink" href="#bed_reader.open_bed.allele_1" title="Permalink to this definition">¶</a></dt>
+<dd><p>First allele of each SNP (variant).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)"><code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></a> of str</p>
+</dd>
+</dl>
+<p>If needed, will cause a one-time read of the r.bim file.</p>
+<p class="rubric">Example</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">open_bed</span><span class="p">,</span> <span class="n">sample_file</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">file_name</span> <span class="o">=</span> <span class="n">sample_file</span><span class="p">(</span><span class="s2">&quot;small.bed&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">open_bed</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span> <span class="k">as</span> <span class="n">bed</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">allele_1</span><span class="p">)</span>
+<span class="go">[&#39;A&#39; &#39;T&#39; &#39;A&#39; &#39;T&#39;]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt id="bed_reader.open_bed.allele_2">
+<em class="property">property </em><code class="sig-name descname">allele_2</code><a class="headerlink" href="#bed_reader.open_bed.allele_2" title="Permalink to this definition">¶</a></dt>
+<dd><p>Second allele of each SNP (variant),</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)"><code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></a> of str</p>
+</dd>
+</dl>
+<p>If needed, will cause a one-time read of the .bim file.</p>
+<p class="rubric">Example</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">open_bed</span><span class="p">,</span> <span class="n">sample_file</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">file_name</span> <span class="o">=</span> <span class="n">sample_file</span><span class="p">(</span><span class="s2">&quot;small.bed&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">open_bed</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span> <span class="k">as</span> <span class="n">bed</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">allele_2</span><span class="p">)</span>
+<span class="go">[&#39;A&#39; &#39;C&#39; &#39;C&#39; &#39;G&#39;]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt id="bed_reader.open_bed.bp_position">
+<em class="property">property </em><code class="sig-name descname">bp_position</code><a class="headerlink" href="#bed_reader.open_bed.bp_position" title="Permalink to this definition">¶</a></dt>
+<dd><p>Base-pair position of each SNP (variant).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)"><code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></a> of int</p>
+</dd>
+</dl>
+<p>If needed, will cause a one-time read of the .bim file.</p>
+<p class="rubric">Example</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">open_bed</span><span class="p">,</span> <span class="n">sample_file</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">file_name</span> <span class="o">=</span> <span class="n">sample_file</span><span class="p">(</span><span class="s2">&quot;small.bed&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">open_bed</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span> <span class="k">as</span> <span class="n">bed</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">bp_position</span><span class="p">)</span>
+<span class="go">[   1  100 1000 1004]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt id="bed_reader.open_bed.chromosome">
+<em class="property">property </em><code class="sig-name descname">chromosome</code><a class="headerlink" href="#bed_reader.open_bed.chromosome" title="Permalink to this definition">¶</a></dt>
+<dd><p>Chromosome of each SNP (variant)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)"><code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></a> of str</p>
+</dd>
+</dl>
+<p>If needed, will cause a one-time read of the .bim file.</p>
+<p class="rubric">Example</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">open_bed</span><span class="p">,</span> <span class="n">sample_file</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">file_name</span> <span class="o">=</span> <span class="n">sample_file</span><span class="p">(</span><span class="s2">&quot;small.bed&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">open_bed</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span> <span class="k">as</span> <span class="n">bed</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">chromosome</span><span class="p">)</span>
+<span class="go">[&#39;1&#39; &#39;1&#39; &#39;5&#39; &#39;Y&#39;]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt id="bed_reader.open_bed.close">
+<code class="sig-name descname">close</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/bed_reader/_open_bed.html#open_bed.close"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bed_reader.open_bed.close" title="Permalink to this definition">¶</a></dt>
+<dd><p>Close a <a class="reference internal" href="#bed_reader.open_bed" title="bed_reader.open_bed"><code class="xref py py-class docutils literal notranslate"><span class="pre">open_bed</span></code></a> object that was opened for reading.</p>
+<p class="rubric">Notes</p>
+<p>Better alternatives to <a class="reference internal" href="#bed_reader.open_bed.close" title="bed_reader.open_bed.close"><code class="xref py py-meth docutils literal notranslate"><span class="pre">close()</span></code></a> include the
+<a class="reference external" href="https://docs.python.org/3/reference/compound_stmts.html#grammar-token-with-stmt">with</a>
+statement (closes the file automatically) and the <a class="reference external" href="https://docs.python.org/3/reference/simple_stmts.html#grammar-token-del-stmt">del</a>
+statement (which closes the file and <em>deletes</em> the object).
+Doing nothing, while not better, is usually fine.</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">open_bed</span><span class="p">,</span> <span class="n">sample_file</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">file_name</span> <span class="o">=</span> <span class="n">sample_file</span><span class="p">(</span><span class="s2">&quot;small.bed&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">bed</span> <span class="o">=</span> <span class="n">open_bed</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+<span class="go">[[ 1.  0. nan  0.]</span>
+<span class="go"> [ 2.  0. nan  2.]</span>
+<span class="go"> [ 0.  1.  2.  0.]]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">bed</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>     <span class="c1">#&#39;del bed&#39; is better.</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt id="bed_reader.open_bed.cm_position">
+<em class="property">property </em><code class="sig-name descname">cm_position</code><a class="headerlink" href="#bed_reader.open_bed.cm_position" title="Permalink to this definition">¶</a></dt>
+<dd><p>Centimorgan position of each SNP (variant).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)"><code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></a> of float</p>
+</dd>
+</dl>
+<p>If needed, will cause a one-time read of the .bim file.</p>
+<p class="rubric">Example</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">open_bed</span><span class="p">,</span> <span class="n">sample_file</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">file_name</span> <span class="o">=</span> <span class="n">sample_file</span><span class="p">(</span><span class="s2">&quot;small.bed&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">open_bed</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span> <span class="k">as</span> <span class="n">bed</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">cm_position</span><span class="p">)</span>
+<span class="go">[ 100.4 2000.5 4000.7 7000.9]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt id="bed_reader.open_bed.father">
+<em class="property">property </em><code class="sig-name descname">father</code><a class="headerlink" href="#bed_reader.open_bed.father" title="Permalink to this definition">¶</a></dt>
+<dd><p>Father id of each individual (sample).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)"><code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></a> of <code class="docutils literal notranslate"><span class="pre">str</span></code></p>
+</dd>
+</dl>
+<p>If needed, will cause a one-time read of the .fam file.</p>
+<p class="rubric">Example</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">open_bed</span><span class="p">,</span> <span class="n">sample_file</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">file_name</span> <span class="o">=</span> <span class="n">sample_file</span><span class="p">(</span><span class="s2">&quot;small.bed&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">open_bed</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span> <span class="k">as</span> <span class="n">bed</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">father</span><span class="p">)</span>
+<span class="go">[&#39;iid23&#39; &#39;iid23&#39; &#39;iid22&#39;]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt id="bed_reader.open_bed.fid">
+<em class="property">property </em><code class="sig-name descname">fid</code><a class="headerlink" href="#bed_reader.open_bed.fid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Family id of each individual (sample).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)"><code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></a> of <code class="docutils literal notranslate"><span class="pre">str</span></code></p>
+</dd>
+</dl>
+<p>If needed, will cause a one-time read of the .fam file.</p>
+<p class="rubric">Example</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">open_bed</span><span class="p">,</span> <span class="n">sample_file</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">file_name</span> <span class="o">=</span> <span class="n">sample_file</span><span class="p">(</span><span class="s2">&quot;small.bed&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">open_bed</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span> <span class="k">as</span> <span class="n">bed</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">fid</span><span class="p">)</span>
+<span class="go">[&#39;fid1&#39; &#39;fid1&#39; &#39;fid2&#39;]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt id="bed_reader.open_bed.iid">
+<em class="property">property </em><code class="sig-name descname">iid</code><a class="headerlink" href="#bed_reader.open_bed.iid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Individual id of each individual (sample).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)"><code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></a> of <code class="docutils literal notranslate"><span class="pre">str</span></code></p>
+</dd>
+</dl>
+<p>If needed, will cause a one-time read of the .fam file.</p>
+<p class="rubric">Example</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">open_bed</span><span class="p">,</span> <span class="n">sample_file</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">file_name</span> <span class="o">=</span> <span class="n">sample_file</span><span class="p">(</span><span class="s2">&quot;small.bed&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">open_bed</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span> <span class="k">as</span> <span class="n">bed</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">iid</span><span class="p">)</span>
+<span class="go">[&#39;iid1&#39; &#39;iid2&#39; &#39;iid3&#39;]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt id="bed_reader.open_bed.iid_count">
+<em class="property">property </em><code class="sig-name descname">iid_count</code><a class="headerlink" href="#bed_reader.open_bed.iid_count" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of individuals (samples).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.8)">int</a></p>
+</dd>
+</dl>
+<p>If needed, will cause a fast line-count of the .fam file.</p>
+<p class="rubric">Example</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">open_bed</span><span class="p">,</span> <span class="n">sample_file</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">file_name</span> <span class="o">=</span> <span class="n">sample_file</span><span class="p">(</span><span class="s2">&quot;small.bed&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">open_bed</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span> <span class="k">as</span> <span class="n">bed</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">iid_count</span><span class="p">)</span>
+<span class="go">3</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt id="bed_reader.open_bed.mother">
+<em class="property">property </em><code class="sig-name descname">mother</code><a class="headerlink" href="#bed_reader.open_bed.mother" title="Permalink to this definition">¶</a></dt>
+<dd><p>Mother id of each individual (sample).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)"><code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></a> of <code class="docutils literal notranslate"><span class="pre">str</span></code></p>
+</dd>
+</dl>
+<p>If needed, will cause a one-time read of the .fam file.</p>
+<p class="rubric">Example</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">open_bed</span><span class="p">,</span> <span class="n">sample_file</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">file_name</span> <span class="o">=</span> <span class="n">sample_file</span><span class="p">(</span><span class="s2">&quot;small.bed&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">open_bed</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span> <span class="k">as</span> <span class="n">bed</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">mother</span><span class="p">)</span>
+<span class="go">[&#39;iid34&#39; &#39;iid34&#39; &#39;iid33&#39;]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt id="bed_reader.open_bed.pheno">
+<em class="property">property </em><code class="sig-name descname">pheno</code><a class="headerlink" href="#bed_reader.open_bed.pheno" title="Permalink to this definition">¶</a></dt>
+<dd><p>A phenotype for each individual (sample)
+(seldom used).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)"><code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></a> of str</p>
+</dd>
+</dl>
+<p>If needed, will cause a one-time read of the .fam file.</p>
+<p class="rubric">Example</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">open_bed</span><span class="p">,</span> <span class="n">sample_file</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">file_name</span> <span class="o">=</span> <span class="n">sample_file</span><span class="p">(</span><span class="s2">&quot;small.bed&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">open_bed</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span> <span class="k">as</span> <span class="n">bed</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">pheno</span><span class="p">)</span>
+<span class="go">[&#39;red&#39; &#39;red&#39; &#39;blue&#39;]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt id="bed_reader.open_bed.properties">
+<em class="property">property </em><code class="sig-name descname">properties</code><a class="headerlink" href="#bed_reader.open_bed.properties" title="Permalink to this definition">¶</a></dt>
+<dd><p>All the properties returned as a <code class="docutils literal notranslate"><span class="pre">dict</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.8)">dict</a></p>
+</dd>
+</dl>
+<p>The keys of the dictionary are the names of the properties, namely:</p>
+<blockquote>
+<div><p>“fid” (family id), “iid” (individual or sample id), “father” (father id),
+“mother” (mother id), “sex”, “pheno” (phenotype), “chromosome”, “sid”
+(SNP or variant id), “cm_position” (centimorgan position), “bp_position”
+(base-pair position), “allele_1”, “allele_2”.</p>
+</div></blockquote>
+<p>The values are <a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)"><code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></a>.</p>
+<p>If needed, will cause a one-time read of the .fam and .bim file.</p>
+<p class="rubric">Example</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">open_bed</span><span class="p">,</span> <span class="n">sample_file</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">file_name</span> <span class="o">=</span> <span class="n">sample_file</span><span class="p">(</span><span class="s2">&quot;small.bed&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">open_bed</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span> <span class="k">as</span> <span class="n">bed</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">properties</span><span class="p">))</span> <span class="c1">#length of dict</span>
+<span class="go">12</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt id="bed_reader.open_bed.property_item">
+<code class="sig-name descname">property_item</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">name</span><span class="p">:</span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.8)">str</a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)">numpy.ndarray</a><a class="reference internal" href="_modules/bed_reader/_open_bed.html#open_bed.property_item"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bed_reader.open_bed.property_item" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retrieve one property by name.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)"><code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></a></p>
+</dd>
+</dl>
+<p>The name is one of these:</p>
+<blockquote>
+<div><p>“fid” (family id), “iid” (individual or sample id), “father” (father id),
+“mother” (mother id), “sex”, “pheno” (phenotype), “chromosome”, “sid”
+(SNP or variant id), “cm_position” (centimorgan position), “bp_position”
+(base-pair position), “allele_1”, “allele_2”.</p>
+</div></blockquote>
+<p>If needed, will cause a one-time read of the .fam or .bim file.</p>
+<p class="rubric">Example</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">open_bed</span><span class="p">,</span> <span class="n">sample_file</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">file_name</span> <span class="o">=</span> <span class="n">sample_file</span><span class="p">(</span><span class="s2">&quot;small.bed&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">open_bed</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span> <span class="k">as</span> <span class="n">bed</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">property_item</span><span class="p">(</span><span class="s1">&#39;chromosome&#39;</span><span class="p">))</span>
+<span class="go">[&#39;1&#39; &#39;1&#39; &#39;5&#39; &#39;Y&#39;]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt id="bed_reader.open_bed.read">
+<code class="sig-name descname">read</code><span class="sig-paren">(</span><em class="sig-param">index: Optional[Any] = None</em>, <em class="sig-param">dtype: Union[type</em>, <em class="sig-param">str</em>, <em class="sig-param">None] = &lt;class 'numpy.float32'&gt;</em>, <em class="sig-param">order: Optional[str] = 'F'</em>, <em class="sig-param">force_python_only: Optional[bool] = False</em><span class="sig-paren">)</span> &#x2192; <a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)">numpy.ndarray</a><a class="reference internal" href="_modules/bed_reader/_open_bed.html#open_bed.read"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bed_reader.open_bed.read" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read genotype information.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>index</strong> – An optional expression specifying the individuals (samples) and SNPs (variants)
+to read. (See <span class="xref std std-ref">read_examples</span>, below).
+Defaults to <code class="docutils literal notranslate"><span class="pre">None</span></code>, meaning read all.</p></li>
+<li><p><strong>dtype</strong> (<em>{'float32'</em><em> (</em><em>default</em><em>)</em><em>, </em><em>'float64'</em><em>, </em><em>'int8'}</em><em>, </em><em>optional</em>) – The desired data-type for the returned array.</p></li>
+<li><p><strong>order</strong> (<em>{'F'</em><em>,</em><em>'C'}</em><em>, </em><em>optional</em>) – The desired memory layout for the returned array.
+Defaults to <code class="docutils literal notranslate"><span class="pre">F</span></code> (Fortran order, which is SNP-major).</p></li>
+<li><p><strong>force_python_only</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.8)"><em>bool</em></a><em>, </em><em>optional</em>) – If False (default), uses the faster C++ code; otherwise it uses the slower pure Python code.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)"><code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></a> of 0, 1, 2, or missing values with <code class="docutils literal notranslate"><span class="pre">dtype</span></code> and shape <cite>(iid_count,sid_count)</cite></p></li>
+<li><p><em>.. _read_examples</em></p></li>
+</ul>
+</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<ul class="simple">
+<li><p>Index Examples</p></li>
+</ul>
+<p>To read all data in a .bed file, set <code class="docutils literal notranslate"><span class="pre">index</span></code> to <code class="docutils literal notranslate"><span class="pre">None</span></code>. This is the default.</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">open_bed</span><span class="p">,</span> <span class="n">sample_file</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">file_name</span> <span class="o">=</span> <span class="n">sample_file</span><span class="p">(</span><span class="s2">&quot;small.bed&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">open_bed</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span> <span class="k">as</span> <span class="n">bed</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+<span class="go">[[ 1.  0. nan  0.]</span>
+<span class="go"> [ 2.  0. nan  2.]</span>
+<span class="go"> [ 0.  1.  2.  0.]]</span>
+</pre></div>
+</div>
+<p>To read selected SNPs (variants), set <code class="docutils literal notranslate"><span class="pre">index</span></code> to an <code class="docutils literal notranslate"><span class="pre">int</span></code>, a list of <code class="docutils literal notranslate"><span class="pre">int</span></code>, a <a class="reference external" href="https://docs.python.org/3/library/functions.html#slice" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">slice</span></code></a>, or a list of <code class="docutils literal notranslate"><span class="pre">bool</span></code>.
+Negative integers count from the end of the data.</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">bed</span> <span class="o">=</span> <span class="n">open_bed</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span>  <span class="c1"># read the SNPs indexed by 2.</span>
+<span class="go">[[nan]</span>
+<span class="go"> [nan]</span>
+<span class="go"> [ 2.]]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">read</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">0</span><span class="p">]))</span>  <span class="c1"># read the SNPs indexed by 2, 3, and 0</span>
+<span class="go">[[nan  0.  1.]</span>
+<span class="go"> [nan  2.  2.]</span>
+<span class="go"> [ 2.  0.  0.]]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">2</span><span class="p">)))</span> <span class="c1">#read the first 2 SNPs</span>
+<span class="go">[[1. 0.]</span>
+<span class="go"> [2. 0.]</span>
+<span class="go"> [0. 1.]]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">4</span><span class="p">)))</span> <span class="c1">#read SNPs from 1 (inclusive) to 4 (exclusive)</span>
+<span class="go">[[ 0. nan  0.]</span>
+<span class="go"> [ 0. nan  2.]</span>
+<span class="go"> [ 1.  2.  0.]]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="kc">None</span><span class="p">)))</span> <span class="c1"># read SNPs starting at index 2.</span>
+<span class="go">[[nan  0.]</span>
+<span class="go"> [nan  2.]</span>
+<span class="go"> [ 2.  0.]]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span><span class="kc">None</span><span class="p">,</span><span class="mi">2</span><span class="p">)))</span> <span class="c1">#read every 2nd SNPs</span>
+<span class="go">[[ 1. nan]</span>
+<span class="go"> [ 2. nan]</span>
+<span class="go"> [ 0.  2.]]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">chromosome</span><span class="p">))</span> <span class="c1"># print unique chrom values</span>
+<span class="go">[&#39;1&#39; &#39;5&#39; &#39;Y&#39;]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">chromosome</span><span class="o">==</span><span class="s1">&#39;5&#39;</span><span class="p">))</span> <span class="c1"># read all SNPs in chrom 1</span>
+<span class="go">[[nan]</span>
+<span class="go"> [nan]</span>
+<span class="go"> [ 2.]]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span> <span class="c1"># read the last SNPs</span>
+<span class="go">[[0.]</span>
+<span class="go"> [2.]</span>
+<span class="go"> [0.]]</span>
+</pre></div>
+</div>
+<p>To read selected individuals (samples), set <code class="docutils literal notranslate"><span class="pre">index</span></code> to a tuple of the form <code class="docutils literal notranslate"><span class="pre">(individual_index,None)</span></code>, where <code class="docutils literal notranslate"><span class="pre">individual_index</span></code> follows the form
+of <code class="docutils literal notranslate"><span class="pre">SNP</span> <span class="pre">index</span></code>, above.</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">read</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span><span class="kc">None</span><span class="p">)))</span> <span class="c1"># Read 1st individual (across all SNPs)</span>
+<span class="go">[[ 1.  0. nan  0.]]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">read</span><span class="p">((</span><span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span><span class="kc">None</span><span class="p">,</span><span class="mi">2</span><span class="p">),</span><span class="kc">None</span><span class="p">)))</span> <span class="c1"># Read every 2nd individual</span>
+<span class="go">[[ 1.  0. nan  0.]</span>
+<span class="go"> [ 0.  1.  2.  0.]]</span>
+</pre></div>
+</div>
+<p>To read selected individuals and selected SNPs, set <code class="docutils literal notranslate"><span class="pre">index</span></code> to a tuple of the form <code class="docutils literal notranslate"><span class="pre">(individual_index,SNP_index)</span></code>,
+where <code class="docutils literal notranslate"><span class="pre">individual_index</span></code> and <code class="docutils literal notranslate"><span class="pre">SNP_index</span></code> follow the forms above.</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># Read individuals 1 (inclusive) to 3 (exclusive) and the first 2 SNPs.</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">read</span><span class="p">((</span><span class="nb">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">3</span><span class="p">),</span><span class="nb">slice</span><span class="p">(</span><span class="mi">2</span><span class="p">))))</span>
+<span class="go">[[2. 0.]</span>
+<span class="go"> [0. 1.]]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1">#read last and 2nd-to-last individuals and the last SNPs</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">read</span><span class="p">(([</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="o">-</span><span class="mi">2</span><span class="p">],</span><span class="o">-</span><span class="mi">1</span><span class="p">)))</span>
+<span class="go">[[0.]</span>
+<span class="go"> [2.]]</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>dtype example</p></li>
+</ul>
+<p>You can give a dtype. For float32 and float64, NaN indicates missing values.
+For int8, -127 indicates missing values.</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;int8&#39;</span><span class="p">))</span>
+<span class="go">[[   1    0 -127    0]</span>
+<span class="go"> [   2    0 -127    2]</span>
+<span class="go"> [   0    1    2    0]]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">del</span> <span class="n">bed</span>  <span class="c1"># optional: close and delete object</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt id="bed_reader.open_bed.sex">
+<em class="property">property </em><code class="sig-name descname">sex</code><a class="headerlink" href="#bed_reader.open_bed.sex" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sex of each individual (sample).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)"><code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></a> of {0,1,2}</p>
+</dd>
+</dl>
+<p>0 is unknown, 1 is male, 2 is female</p>
+<p>If needed, will cause a one-time read of the .fam file.</p>
+<p class="rubric">Example</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">open_bed</span><span class="p">,</span> <span class="n">sample_file</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">file_name</span> <span class="o">=</span> <span class="n">sample_file</span><span class="p">(</span><span class="s2">&quot;small.bed&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">open_bed</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span> <span class="k">as</span> <span class="n">bed</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">sex</span><span class="p">)</span>
+<span class="go">[1 2 0]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt id="bed_reader.open_bed.shape">
+<em class="property">property </em><code class="sig-name descname">shape</code><a class="headerlink" href="#bed_reader.open_bed.shape" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of individuals (samples) and SNPs (variants).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>(<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.8)">int</a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.8)">int</a>)</p>
+</dd>
+</dl>
+<p>If needed, will cause a fast line-count of the .fam and .bim files.</p>
+<p class="rubric">Example</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">open_bed</span><span class="p">,</span> <span class="n">sample_file</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">file_name</span> <span class="o">=</span> <span class="n">sample_file</span><span class="p">(</span><span class="s2">&quot;small.bed&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">open_bed</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span> <span class="k">as</span> <span class="n">bed</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+<span class="go">(3, 4)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt id="bed_reader.open_bed.sid">
+<em class="property">property </em><code class="sig-name descname">sid</code><a class="headerlink" href="#bed_reader.open_bed.sid" title="Permalink to this definition">¶</a></dt>
+<dd><p>SNP id of each SNP (variant).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)"><code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></a> of str</p>
+</dd>
+</dl>
+<p>If needed, will cause a one-time read of the .bim file.</p>
+<p class="rubric">Example</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">open_bed</span><span class="p">,</span> <span class="n">sample_file</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">file_name</span> <span class="o">=</span> <span class="n">sample_file</span><span class="p">(</span><span class="s2">&quot;small.bed&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">open_bed</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span> <span class="k">as</span> <span class="n">bed</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">sid</span><span class="p">)</span>
+<span class="go">[&#39;sid1&#39; &#39;sid2&#39; &#39;sid3&#39; &#39;sid4&#39;]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt id="bed_reader.open_bed.sid_count">
+<em class="property">property </em><code class="sig-name descname">sid_count</code><a class="headerlink" href="#bed_reader.open_bed.sid_count" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of SNPs (variants).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.8)">int</a></p>
+</dd>
+</dl>
+<p>If needed, will cause a fast line-count of the .bim file.</p>
+<p class="rubric">Example</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">open_bed</span><span class="p">,</span> <span class="n">sample_file</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">file_name</span> <span class="o">=</span> <span class="n">sample_file</span><span class="p">(</span><span class="s2">&quot;small.bed&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">open_bed</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span> <span class="k">as</span> <span class="n">bed</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">sid_count</span><span class="p">)</span>
+<span class="go">4</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="to-bed">
+<h3>to_bed<a class="headerlink" href="#to-bed" title="Permalink to this headline">¶</a></h3>
+<dl class="py function">
+<dt id="bed_reader.to_bed">
+<code class="sig-prename descclassname">bed_reader.</code><code class="sig-name descname">to_bed</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filepath</span><span class="p">:</span> <span class="n">Union<span class="p">[</span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.8)">str</a><span class="p">, </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.8)">pathlib.Path</a><span class="p">]</span></span></em>, <em class="sig-param"><span class="n">val</span><span class="p">:</span> <span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)">numpy.ndarray</a></span></em>, <em class="sig-param"><span class="n">properties</span><span class="p">:</span> <span class="n">Mapping<span class="p">[</span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.8)">str</a><span class="p">, </span>List<span class="p">[</span>Any<span class="p">]</span><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">{}</span></em>, <em class="sig-param"><span class="n">count_A1</span><span class="p">:</span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.8)">bool</a></span> <span class="o">=</span> <span class="default_value">True</span></em>, <em class="sig-param"><span class="n">fam_filepath</span><span class="p">:</span> <span class="n">Union<span class="p">[</span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.8)">str</a><span class="p">, </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.8)">pathlib.Path</a><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">bim_filepath</span><span class="p">:</span> <span class="n">Union<span class="p">[</span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.8)">str</a><span class="p">, </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.8)">pathlib.Path</a><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">force_python_only</span><span class="p">:</span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.8)">bool</a></span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bed_reader/_to_bed.html#to_bed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bed_reader.to_bed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write values to a file in PLINK .bed format.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filepath</strong> – File path to .bed file to write.</p></li>
+<li><p><strong>val</strong> (<em>array-like:</em>) – A two-dimension array (or array-like object) of values. The values should
+be (or be convertable to) all floats or all integers. The values should be 0, 1, 2, or missing.
+If floats, missing is <code class="docutils literal notranslate"><span class="pre">np.nan</span></code>. If integers, missing is -127.</p></li>
+<li><p><strong>properties</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.8)"><em>dict</em></a><em>, </em><em>optional</em>) – <p>A dictionary of property names and values to write to the .fam and .bim files.
+Any properties not mentioned will be filled in with default values.</p>
+<p>The possible property names are:</p>
+<blockquote>
+<div><blockquote>
+<div><p>”fid” (family id), “iid” (individual or sample id), “father” (father id),
+“mother” (mother id), “sex”, “pheno” (phenotype), “chromosome”, “sid”
+(SNP or variant id), “cm_position” (centimorgan position), “bp_position”
+(base-pair position), “allele_1”, “allele_2”.</p>
+</div></blockquote>
+<p>The values are lists or arrays. CMK see example</p>
+</div></blockquote>
+</p></li>
+<li><p><strong>count_A1</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.8)"><em>bool</em></a><em>, </em><em>optional</em>) – True (default) to count the number of A1 alleles (the PLINK standard). False to count the number of A2 alleles.</p></li>
+<li><p><strong>force_python_only</strong> – If False (default), uses the faster C++ code; otherwise it uses the slower pure Python code.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<p>In this example, full properties is given.</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">to_bed</span><span class="p">,</span> <span class="n">tmp_path</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">output_file</span> <span class="o">=</span> <span class="n">tmp_path</span><span class="p">()</span> <span class="o">/</span> <span class="s2">&quot;small.bed&quot;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">val</span> <span class="o">=</span> <span class="p">[[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">properties</span> <span class="o">=</span> <span class="p">{</span>
+<span class="gp">... </span>   <span class="s2">&quot;fid&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;fid1&quot;</span><span class="p">,</span> <span class="s2">&quot;fid1&quot;</span><span class="p">,</span> <span class="s2">&quot;fid2&quot;</span><span class="p">],</span>
+<span class="gp">... </span>   <span class="s2">&quot;iid&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;iid1&quot;</span><span class="p">,</span> <span class="s2">&quot;iid2&quot;</span><span class="p">,</span> <span class="s2">&quot;iid3&quot;</span><span class="p">],</span>
+<span class="gp">... </span>   <span class="s2">&quot;father&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;iid23&quot;</span><span class="p">,</span> <span class="s2">&quot;iid23&quot;</span><span class="p">,</span> <span class="s2">&quot;iid22&quot;</span><span class="p">],</span>
+<span class="gp">... </span>   <span class="s2">&quot;mother&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;iid34&quot;</span><span class="p">,</span> <span class="s2">&quot;iid34&quot;</span><span class="p">,</span> <span class="s2">&quot;iid33&quot;</span><span class="p">],</span>
+<span class="gp">... </span>   <span class="s2">&quot;sex&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+<span class="gp">... </span>   <span class="s2">&quot;pheno&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;red&quot;</span><span class="p">,</span> <span class="s2">&quot;red&quot;</span><span class="p">,</span> <span class="s2">&quot;blue&quot;</span><span class="p">],</span>
+<span class="gp">... </span>   <span class="s2">&quot;chromosome&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;5&quot;</span><span class="p">,</span> <span class="s2">&quot;Y&quot;</span><span class="p">],</span>
+<span class="gp">... </span>   <span class="s2">&quot;sid&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;sid1&quot;</span><span class="p">,</span> <span class="s2">&quot;sid2&quot;</span><span class="p">,</span> <span class="s2">&quot;sid3&quot;</span><span class="p">,</span> <span class="s2">&quot;sid4&quot;</span><span class="p">],</span>
+<span class="gp">... </span>   <span class="s2">&quot;cm_position&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mf">100.4</span><span class="p">,</span> <span class="mf">2000.5</span><span class="p">,</span> <span class="mf">4000.7</span><span class="p">,</span> <span class="mf">7000.9</span><span class="p">],</span>
+<span class="gp">... </span>   <span class="s2">&quot;bp_position&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="mi">1004</span><span class="p">],</span>
+<span class="gp">... </span>   <span class="s2">&quot;allele_1&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;A&quot;</span><span class="p">,</span> <span class="s2">&quot;T&quot;</span><span class="p">,</span> <span class="s2">&quot;A&quot;</span><span class="p">,</span> <span class="s2">&quot;T&quot;</span><span class="p">],</span>
+<span class="gp">... </span>   <span class="s2">&quot;allele_2&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;A&quot;</span><span class="p">,</span> <span class="s2">&quot;C&quot;</span><span class="p">,</span> <span class="s2">&quot;C&quot;</span><span class="p">,</span> <span class="s2">&quot;G&quot;</span><span class="p">],</span>
+<span class="gp">... </span><span class="p">}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">to_bed</span><span class="p">(</span><span class="n">output_file</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="n">properties</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>In this example, no properties is given, so default values as assigned.
+If we read the new file and list chromosome, it is an array of ‘0’s
+the default chromosome value. cmkref</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">output_file2</span> <span class="o">=</span> <span class="n">tmp_path</span><span class="p">()</span> <span class="o">/</span> <span class="s2">&quot;small2.bed&quot;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">val</span> <span class="o">=</span> <span class="p">[[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">127</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">127</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">]]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">to_bed</span><span class="p">(</span><span class="n">output_file2</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">open_bed</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">open_bed</span><span class="p">(</span><span class="n">output_file2</span><span class="p">)</span> <span class="k">as</span> <span class="n">bed2</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">bed2</span><span class="o">.</span><span class="n">chromosome</span><span class="p">)</span>
+<span class="go">[&#39;0&#39; &#39;0&#39; &#39;0&#39; &#39;0&#39;]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="sample-file">
+<h3>sample_file<a class="headerlink" href="#sample-file" title="Permalink to this headline">¶</a></h3>
+<dl class="py function">
+<dt id="bed_reader.sample_file">
+<code class="sig-prename descclassname">bed_reader.</code><code class="sig-name descname">sample_file</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filepath</span><span class="p">:</span> <span class="n">Union<span class="p">[</span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.8)">str</a><span class="p">, </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.8)">pathlib.Path</a><span class="p">]</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.8)">str</a><a class="reference internal" href="_modules/bed_reader/_sample_data.html#sample_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bed_reader.sample_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retrieve a sample .bed file. (Also retrieves associated .fam and .bim files).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>filepath</strong> – Name of the sample .bed file.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Local name of sample .bed file.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>string</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">sample_file</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">file_name</span> <span class="o">=</span> <span class="n">sample_file</span><span class="p">(</span><span class="s2">&quot;small.bed&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;The local file name is &#39;</span><span class="si">{file_name}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+<span class="go">The local file name is &#39;...small.bed&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="tmp-path">
+<h3>tmp_path<a class="headerlink" href="#tmp-path" title="Permalink to this headline">¶</a></h3>
+<dl class="py function">
+<dt id="bed_reader.tmp_path">
+<code class="sig-prename descclassname">bed_reader.</code><code class="sig-name descname">tmp_path</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; <a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.8)">pathlib.Path</a><a class="reference internal" href="_modules/bed_reader/_sample_data.html#tmp_path"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bed_reader.tmp_path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a <a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">pathlib.Path</span></code></a> to a temporary directory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>Path</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">to_bed</span><span class="p">,</span> <span class="n">tmp_path</span>
+<span class="go">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">output_file</span> <span class="o">=</span> <span class="n">tmp_path</span><span class="p">()</span> <span class="o">/</span> <span class="s2">&quot;small3.bed&quot;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">val</span> <span class="o">=</span> <span class="p">[[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">127</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">127</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">]]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">to_bed</span><span class="p">(</span><span class="n">output_file</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="indices-and-tables">
+<h2>Indices and Tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h2>
+<blockquote>
+<div><ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
+</ul>
+</div></blockquote>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2020, Carl Kadie
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
