@@ -6,7 +6,7 @@ env:
     - CIBW_BEFORE_BUILD="pip install numpy cython&&python setup.py build_ext --inplace"
     - CIBW_BEFORE_TEST="pip install -r requirements.txt&&pip install -r requirements-dev.txt"
     - CIBW_TEST_REQUIRES=pytest
-    - CIBW_TEST_COMMAND="pytest -s --doctest-modules {project}"
+    - CIBW_TEST_COMMAND="pytest --capture=no --doctest-modules {project} --ignore=\"setup.py\""
 
 jobs:
   include:
