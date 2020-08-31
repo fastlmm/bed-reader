@@ -12,7 +12,7 @@ Read everything
 
 ```python
 >>> import numpy as np
->>> from bed_reader import open_bed, cmksample_file
+>>> from bed_reader import open_bed, sample_file
 >>> file_name = sample_file("small.bed")
 >>> bed = open_bed(file_name)
 >>> val = bed.read()
