@@ -29,11 +29,11 @@ def read(filepath):
 
 
 # Version number
-version = find_version(Path(__file__).parents[0] / Path("bed_reader/__init__.py"))
+version = find_version(Path(__file__).parent / "bed_reader/__init__.py")
 
 
 def readme():
-    with open("README.md") as f:
+    with open(Path(__file__).parent / "README.md") as f:
         return f.read()
 
 
