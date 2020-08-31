@@ -54,11 +54,12 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "conf.py"]
 
 pygments_style = "default"
 
-html_theme = "bootstrap-limix"
+html_theme = "sphinx_rtd_theme"
 html_theme_options = {
     "logo_only": False,
     "display_version": True,
     "style_external_links": True,
+    'collapse_navigation': False,
 }
 htmlhelp_basename = "{}doc".format(project)
 
