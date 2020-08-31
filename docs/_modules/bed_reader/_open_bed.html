@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>bed_reader._open_bed &mdash; bed-reader 0.0.3a documentation</title>
+  <title>bed_reader._open_bed &mdash; bed-reader 0.0.3a2 documentation</title>
   
 
   
@@ -68,7 +68,7 @@
             
             
               <div class="version">
-                0.0.3a
+                0.0.3a2
               </div>
             
           
@@ -217,7 +217,9 @@
     <span class="s2">&quot;pheno&quot;</span><span class="p">:</span> <span class="n">_MetaMeta</span><span class="p">(</span><span class="s2">&quot;fam&quot;</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">str_</span><span class="p">,</span> <span class="s2">&quot;0&quot;</span><span class="p">,</span> <span class="n">_all_same</span><span class="p">),</span>
     <span class="s2">&quot;chromosome&quot;</span><span class="p">:</span> <span class="n">_MetaMeta</span><span class="p">(</span><span class="s2">&quot;bim&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">str_</span><span class="p">,</span> <span class="s2">&quot;0&quot;</span><span class="p">,</span> <span class="n">_all_same</span><span class="p">),</span>
     <span class="s2">&quot;sid&quot;</span><span class="p">:</span> <span class="n">_MetaMeta</span><span class="p">(</span><span class="s2">&quot;bim&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">str_</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">_sequence</span><span class="p">),</span>
-    <span class="s2">&quot;cm_position&quot;</span><span class="p">:</span> <span class="n">_MetaMeta</span><span class="p">(</span><span class="s2">&quot;bim&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">_all_same</span><span class="p">),</span>
+    <span class="s2">&quot;cm_position&quot;</span><span class="p">:</span> <span class="n">_MetaMeta</span><span class="p">(</span>
+        <span class="s2">&quot;bim&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">_all_same</span>
+    <span class="p">),</span>  <span class="c1">#!!!cmk add test where we try to write NaN to file. It should change to 0</span>
     <span class="s2">&quot;bp_position&quot;</span><span class="p">:</span> <span class="n">_MetaMeta</span><span class="p">(</span><span class="s2">&quot;bim&quot;</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">_all_same</span><span class="p">),</span>
     <span class="s2">&quot;allele_1&quot;</span><span class="p">:</span> <span class="n">_MetaMeta</span><span class="p">(</span><span class="s2">&quot;bim&quot;</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">str_</span><span class="p">,</span> <span class="s2">&quot;A1&quot;</span><span class="p">,</span> <span class="n">_all_same</span><span class="p">),</span>
     <span class="s2">&quot;allele_2&quot;</span><span class="p">:</span> <span class="n">_MetaMeta</span><span class="p">(</span><span class="s2">&quot;bim&quot;</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">str_</span><span class="p">,</span> <span class="s2">&quot;A2&quot;</span><span class="p">,</span> <span class="n">_all_same</span><span class="p">),</span>
@@ -338,11 +340,15 @@
         <span class="n">count_A1</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
         <span class="n">num_threads</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">skip_format_check</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">fam_filepath</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="c1">#!!!cmk doc &amp; test</span>
+        <span class="n">bim_filepath</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="c1">#!!!cmk doc &amp; test</span>
     <span class="p">):</span>  <span class="c1">#!!!document these new optionals. they are here</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">filepath</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">count_A1</span> <span class="o">=</span> <span class="n">count_A1</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_num_threads</span> <span class="o">=</span> <span class="n">num_threads</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">skip_format_check</span> <span class="o">=</span> <span class="n">skip_format_check</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_fam_filepath</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">fam_filepath</span><span class="p">)</span> <span class="k">if</span> <span class="n">fam_filepath</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="o">.</span><span class="n">stem</span> <span class="o">+</span> <span class="s2">&quot;.fam&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bim_filepath</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">bim_filepath</span><span class="p">)</span> <span class="k">if</span> <span class="n">bim_filepath</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="o">.</span><span class="n">stem</span> <span class="o">+</span> <span class="s2">&quot;.bim&quot;</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">properties_dict</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_counts</span> <span class="o">=</span> <span class="n">open_bed</span><span class="o">.</span><span class="n">_fix_up_properties</span><span class="p">(</span>
             <span class="n">properties</span><span class="p">,</span> <span class="n">iid_count</span><span class="p">,</span> <span class="n">sid_count</span><span class="p">,</span> <span class="n">use_fill_sequence</span><span class="o">=</span><span class="kc">False</span>
@@ -351,8 +357,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_sid_range</span> <span class="o">=</span> <span class="kc">None</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">skip_format_check</span><span class="p">:</span>
-            <span class="n">bedfile</span> <span class="o">=</span> <span class="n">open_bed</span><span class="o">.</span><span class="n">_name_of_other_file</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">,</span> <span class="s2">&quot;bed&quot;</span><span class="p">,</span> <span class="s2">&quot;bed&quot;</span><span class="p">)</span>
-            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">bedfile</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">filepointer</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">filepointer</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_check_file</span><span class="p">(</span><span class="n">filepointer</span><span class="p">)</span>
 
 <div class="viewcode-block" id="open_bed.read"><a class="viewcode-back" href="../../index.html#bed_reader.open_bed.read">[docs]</a>    <span class="k">def</span> <span class="nf">read</span><span class="p">(</span>
@@ -511,9 +516,7 @@
                 <span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">wrap_plink_parser_onep</span> <span class="k">as</span> <span class="n">wrap_plink_parser</span>
 
             <span class="n">val</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">iid_index</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">sid_index</span><span class="p">)),</span> <span class="n">order</span><span class="o">=</span><span class="n">order</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
-            <span class="n">bed_file_ascii</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span>
-                <span class="n">open_bed</span><span class="o">.</span><span class="n">_name_of_other_file</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">,</span> <span class="s2">&quot;bed&quot;</span><span class="p">,</span> <span class="s2">&quot;bed&quot;</span><span class="p">)</span>
-            <span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;ascii&quot;</span><span class="p">)</span>
+            <span class="n">bed_file_ascii</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;ascii&quot;</span><span class="p">)</span>
 
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">iid_count</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">sid_count</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="k">if</span> <span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">:</span>
@@ -618,8 +621,7 @@
                 <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span>
             <span class="p">)</span>  <span class="c1"># allocate it a little big</span>
 
-            <span class="n">bedfile</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_name_of_other_file</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">,</span> <span class="s2">&quot;bed&quot;</span><span class="p">,</span> <span class="s2">&quot;bed&quot;</span><span class="p">)</span>
-            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">bedfile</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">filepointer</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">filepointer</span><span class="p">:</span>
                 <span class="k">for</span> <span class="n">SNPsIndex</span><span class="p">,</span> <span class="n">bimIndex</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sid_index</span><span class="p">):</span>
 
                     <span class="n">startbit</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="mf">0.25</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">iid_count</span><span class="p">)</span> <span class="o">*</span> <span class="n">bimIndex</span> <span class="o">+</span> <span class="mi">3</span><span class="p">)</span>
@@ -868,13 +870,10 @@
 <span class="sd">            [&#39;1&#39; &#39;1&#39; &#39;5&#39; &#39;Y&#39;]</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">val</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties_dict</span><span class="p">:</span>
             <span class="n">mm</span> <span class="o">=</span> <span class="n">_meta_meta</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_read_fam_or_bim</span><span class="p">(</span><span class="n">suffix</span><span class="o">=</span><span class="n">mm</span><span class="o">.</span><span class="n">suffix</span><span class="p">)</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">val</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span></div>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">chromosome</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
@@ -1068,11 +1067,17 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_count</span><span class="p">(</span><span class="s2">&quot;bim&quot;</span><span class="p">)</span>
 
+    <span class="k">def</span> <span class="nf">_property_filepath</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">suffix</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">suffix</span> <span class="o">==</span> <span class="s2">&quot;fam&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fam_filepath</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">suffix</span> <span class="o">==</span> <span class="s2">&quot;bim&quot;</span> <span class="c1"># real assert</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bim_filepath</span>
+
     <span class="k">def</span> <span class="nf">_count</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">suffix</span><span class="p">):</span>
         <span class="n">count</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_counts</span><span class="p">[</span><span class="n">suffix</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">count</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">metafile</span> <span class="o">=</span> <span class="n">open_bed</span><span class="o">.</span><span class="n">_name_of_other_file</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">,</span> <span class="s2">&quot;bed&quot;</span><span class="p">,</span> <span class="n">suffix</span><span class="p">)</span>
-            <span class="n">count</span> <span class="o">=</span> <span class="n">_rawincount</span><span class="p">(</span><span class="n">metafile</span><span class="p">)</span>
+            <span class="n">count</span> <span class="o">=</span> <span class="n">_rawincount</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_property_filepath</span><span class="p">(</span><span class="n">suffix</span><span class="p">))</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_counts</span><span class="p">[</span><span class="n">suffix</span><span class="p">]</span> <span class="o">=</span> <span class="n">count</span>
         <span class="k">return</span> <span class="n">count</span>
 
@@ -1226,18 +1231,18 @@
         <span class="k">return</span> <span class="n">index</span>
 
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">_write_fam_or_bim</span><span class="p">(</span><span class="n">basefilepath</span><span class="p">,</span> <span class="n">properties</span><span class="p">,</span> <span class="n">suffix_of_interest</span><span class="p">):</span>
-        <span class="k">assert</span> <span class="n">suffix_of_interest</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;fam&quot;</span><span class="p">,</span> <span class="s2">&quot;bim&quot;</span><span class="p">},</span> <span class="s2">&quot;real assert&quot;</span>
+    <span class="k">def</span> <span class="nf">_write_fam_or_bim</span><span class="p">(</span><span class="n">base_filepath</span><span class="p">,</span> <span class="n">properties</span><span class="p">,</span> <span class="n">suffix</span><span class="p">,</span> <span class="n">property_filepath</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="n">suffix</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;fam&quot;</span><span class="p">,</span> <span class="s2">&quot;bim&quot;</span><span class="p">},</span> <span class="s2">&quot;real assert&quot;</span>
 
-        <span class="n">filepath</span> <span class="o">=</span> <span class="n">open_bed</span><span class="o">.</span><span class="n">_name_of_other_file</span><span class="p">(</span><span class="n">basefilepath</span><span class="p">,</span> <span class="s2">&quot;bed&quot;</span><span class="p">,</span> <span class="n">suffix_of_interest</span><span class="p">)</span>
+        <span class="n">filepath</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">property_filepath</span><span class="p">)</span> <span class="k">if</span> <span class="n">property_filepath</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">base_filepath</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="p">(</span><span class="n">base_filepath</span><span class="o">.</span><span class="n">stem</span> <span class="o">+</span> <span class="s2">&quot;.&quot;</span> <span class="o">+</span> <span class="n">suffix</span><span class="p">)</span>
 
         <span class="n">fam_bim_list</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">mm</span> <span class="ow">in</span> <span class="n">_meta_meta</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="k">if</span> <span class="n">mm</span><span class="o">.</span><span class="n">suffix</span> <span class="o">==</span> <span class="n">suffix_of_interest</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">mm</span><span class="o">.</span><span class="n">suffix</span> <span class="o">==</span> <span class="n">suffix</span><span class="p">:</span>
                 <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">fam_bim_list</span><span class="p">)</span> <span class="o">==</span> <span class="n">mm</span><span class="o">.</span><span class="n">column</span><span class="p">,</span> <span class="s2">&quot;real assert&quot;</span>
                 <span class="n">fam_bim_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">properties</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
 
-        <span class="n">sep</span> <span class="o">=</span> <span class="s2">&quot; &quot;</span> <span class="k">if</span> <span class="n">suffix_of_interest</span> <span class="o">==</span> <span class="s2">&quot;fam&quot;</span> <span class="k">else</span> <span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span>
+        <span class="n">sep</span> <span class="o">=</span> <span class="s2">&quot; &quot;</span> <span class="k">if</span> <span class="n">suffix</span> <span class="o">==</span> <span class="s2">&quot;fam&quot;</span> <span class="k">else</span> <span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span>
 
         <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">filepointer</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">fam_bim_list</span><span class="p">[</span><span class="mi">0</span><span class="p">])):</span>
@@ -1247,6 +1252,8 @@
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">_fix_up_properties_array</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">dtype</span><span class="p">,</span> <span class="n">missing_value</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">input</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
 
@@ -1260,52 +1267,51 @@
 
         <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="nb">input</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">dtype</span><span class="p">):</span>
             <span class="n">output</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
-            <span class="c1"># If converting float to non-float: Change NaN to new missing value</span>
-            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="nb">input</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">output</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">):</span>
-                <span class="n">output</span><span class="p">[</span>
-                    <span class="nb">input</span> <span class="o">!=</span> <span class="nb">input</span>
-                <span class="p">]</span> <span class="o">=</span> <span class="n">missing_value</span>
-            <span class="k">return</span> <span class="n">output</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">output</span> <span class="o">=</span> <span class="nb">input</span>
 
-        <span class="k">return</span> <span class="nb">input</span>
+        <span class="c1"># Change NaN in input to correct missing value</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="nb">input</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">):</span>
+            <span class="n">output</span><span class="p">[</span><span class="nb">input</span> <span class="o">!=</span> <span class="nb">input</span><span class="p">]</span> <span class="o">=</span> <span class="n">missing_value</span>
+
+        <span class="k">return</span> <span class="n">output</span>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">_fix_up_properties</span><span class="p">(</span><span class="n">properties</span><span class="p">,</span> <span class="n">iid_count</span><span class="p">,</span> <span class="n">sid_count</span><span class="p">,</span> <span class="n">use_fill_sequence</span><span class="p">):</span>
-
-        <span class="n">properties_dict</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">_meta_meta</span><span class="p">}</span>
-        <span class="n">count_dict</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;fam&quot;</span><span class="p">:</span> <span class="n">iid_count</span><span class="p">,</span> <span class="s2">&quot;bim&quot;</span><span class="p">:</span> <span class="n">sid_count</span><span class="p">}</span>
-
-        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="nb">input</span> <span class="ow">in</span> <span class="n">properties</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">properties</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_meta_meta</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;properties key &#39;</span><span class="si">{key}</span><span class="s2">&#39; not known&quot;</span><span class="p">)</span>
 
+        <span class="n">count_dict</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;fam&quot;</span><span class="p">:</span> <span class="n">iid_count</span><span class="p">,</span> <span class="s2">&quot;bim&quot;</span><span class="p">:</span> <span class="n">sid_count</span><span class="p">}</span>
+        <span class="n">properties_dict</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">mm</span> <span class="ow">in</span> <span class="n">_meta_meta</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="n">count</span> <span class="o">=</span> <span class="n">count_dict</span><span class="p">[</span><span class="n">mm</span><span class="o">.</span><span class="n">suffix</span><span class="p">]</span>
 
-            <span class="nb">input</span> <span class="o">=</span> <span class="n">properties</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
-            <span class="k">if</span> <span class="nb">input</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">properties</span> <span class="ow">or</span> <span class="p">(</span><span class="n">use_fill_sequence</span> <span class="ow">and</span> <span class="n">properties</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">):</span>
                 <span class="k">if</span> <span class="n">use_fill_sequence</span><span class="p">:</span>
                     <span class="n">output</span> <span class="o">=</span> <span class="n">mm</span><span class="o">.</span><span class="n">fill_sequence</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">count</span><span class="p">,</span> <span class="n">mm</span><span class="o">.</span><span class="n">missing_value</span><span class="p">,</span> <span class="n">mm</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="k">continue</span>  <span class="c1"># Test coverage reaches this, but doesn&#39;t report it.</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">output</span> <span class="o">=</span> <span class="n">open_bed</span><span class="o">.</span><span class="n">_fix_up_properties_array</span><span class="p">(</span>
-                    <span class="nb">input</span><span class="p">,</span> <span class="n">mm</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">mm</span><span class="o">.</span><span class="n">missing_value</span><span class="p">,</span> <span class="n">key</span>
+                    <span class="n">properties</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="n">mm</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">mm</span><span class="o">.</span><span class="n">missing_value</span><span class="p">,</span> <span class="n">key</span>
                 <span class="p">)</span>
 
-            <span class="k">if</span> <span class="n">count</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">count_dict</span><span class="p">[</span><span class="n">mm</span><span class="o">.</span><span class="n">suffix</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">count</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">output</span><span class="p">):</span>
-                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                        <span class="n">f</span><span class="s2">&quot;The length of override </span><span class="si">{key}</span><span class="s2">, {len(output)}, should not be different from the current </span><span class="si">{_count_name[mm.suffix]}</span><span class="s2">, </span><span class="si">{count}</span><span class="s2">&quot;</span>
-                    <span class="p">)</span>
+            <span class="k">if</span> <span class="n">output</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">count</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">count_dict</span><span class="p">[</span><span class="n">mm</span><span class="o">.</span><span class="n">suffix</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">count</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">output</span><span class="p">):</span>
+                        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                            <span class="n">f</span><span class="s2">&quot;The length of override </span><span class="si">{key}</span><span class="s2">, {len(output)}, should not be different from the current </span><span class="si">{_count_name[mm.suffix]}</span><span class="s2">, </span><span class="si">{count}</span><span class="s2">&quot;</span>
+                        <span class="p">)</span>
             <span class="n">properties_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">output</span>
         <span class="k">return</span> <span class="n">properties_dict</span><span class="p">,</span> <span class="n">count_dict</span>
 
     <span class="k">def</span> <span class="nf">_read_fam_or_bim</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">suffix</span><span class="p">):</span>
-        <span class="n">metafile</span> <span class="o">=</span> <span class="n">open_bed</span><span class="o">.</span><span class="n">_name_of_other_file</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">,</span> <span class="s2">&quot;bed&quot;</span><span class="p">,</span> <span class="n">suffix</span><span class="p">)</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Loading </span><span class="si">{0}</span><span class="s2"> file </span><span class="si">{1}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">suffix</span><span class="p">,</span> <span class="n">metafile</span><span class="p">))</span>
+        <span class="n">property_filepath</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_property_filepath</span><span class="p">(</span><span class="n">suffix</span><span class="p">)</span>
+
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Loading </span><span class="si">{0}</span><span class="s2"> file </span><span class="si">{1}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">suffix</span><span class="p">,</span> <span class="n">property_filepath</span><span class="p">))</span>
 
         <span class="n">count</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_counts</span><span class="p">[</span><span class="n">suffix</span><span class="p">]</span>
 
@@ -1316,16 +1322,24 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="n">delim_whitespace</span> <span class="o">=</span> <span class="kc">False</span>
 
-        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">getsize</span><span class="p">(</span><span class="n">metafile</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">usecolsdict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">mm</span> <span class="ow">in</span> <span class="n">_meta_meta</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">mm</span><span class="o">.</span><span class="n">suffix</span> <span class="ow">is</span> <span class="n">suffix</span> <span class="ow">and</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties_dict</span><span class="p">:</span>
+                <span class="n">usecolsdict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">mm</span><span class="o">.</span><span class="n">column</span>
+        <span class="k">assert</span> <span class="nb">list</span><span class="p">(</span><span class="n">usecolsdict</span><span class="o">.</span><span class="n">values</span><span class="p">())</span> <span class="o">==</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">usecolsdict</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>  <span class="c1"># real assert</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">usecolsdict</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>  <span class="c1"># real assert</span>
+
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">getsize</span><span class="p">(</span><span class="n">property_filepath</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">fields</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">fields</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span>
-                <span class="n">metafile</span><span class="p">,</span>
+                <span class="n">property_filepath</span><span class="p">,</span>
                 <span class="n">delimiter</span><span class="o">=</span><span class="n">delimiter</span><span class="p">,</span>
                 <span class="n">delim_whitespace</span><span class="o">=</span><span class="n">delim_whitespace</span><span class="p">,</span>
                 <span class="n">header</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                 <span class="n">index_col</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                 <span class="n">comment</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="n">usecols</span><span class="o">=</span><span class="n">usecolsdict</span><span class="o">.</span><span class="n">values</span><span class="p">(),</span>
             <span class="p">)</span>
 
         <span class="k">if</span> <span class="n">count</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -1335,26 +1349,17 @@
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                     <span class="n">f</span><span class="s2">&quot;The number of lines in the *.</span><span class="si">{suffix}</span><span class="s2"> file, {len(fields)}, should not be different from the current </span><span class="si">{_count_name[suffix]}</span><span class="s2">, </span><span class="si">{count}</span><span class="s2">&quot;</span>
                 <span class="p">)</span>
-        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">mm</span> <span class="ow">in</span> <span class="n">_meta_meta</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="k">if</span> <span class="n">mm</span><span class="o">.</span><span class="n">suffix</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">suffix</span><span class="p">:</span>
-                <span class="k">continue</span>
-            <span class="n">val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
-            <span class="k">if</span> <span class="n">val</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">fields</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-                    <span class="n">output</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">mm</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
-                <span class="k">elif</span> <span class="n">mm</span><span class="o">.</span><span class="n">missing_value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">output</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">fields</span><span class="p">[</span><span class="n">mm</span><span class="o">.</span><span class="n">column</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">mm</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">output</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
-                        <span class="n">fields</span><span class="p">[</span><span class="n">mm</span><span class="o">.</span><span class="n">column</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="n">mm</span><span class="o">.</span><span class="n">missing_value</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">mm</span><span class="o">.</span><span class="n">dtype</span>
-                    <span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">properties_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">output</span>
-
-    <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">_name_of_other_file</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="n">remove_suffix</span><span class="p">,</span> <span class="n">add_suffix</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">filepath</span><span class="o">.</span><span class="n">suffix</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;.&quot;</span> <span class="o">+</span> <span class="n">remove_suffix</span><span class="p">:</span>
-            <span class="n">filepath</span> <span class="o">=</span> <span class="n">filepath</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="n">filepath</span><span class="o">.</span><span class="n">stem</span>
-        <span class="k">return</span> <span class="n">filepath</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="p">(</span><span class="n">filepath</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;.&quot;</span> <span class="o">+</span> <span class="n">add_suffix</span><span class="p">)</span></div>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">usecolsdict</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">mm</span> <span class="o">=</span> <span class="n">_meta_meta</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">fields</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">output</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">mm</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">mm</span><span class="o">.</span><span class="n">missing_value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">output</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">fields</span><span class="p">[</span><span class="n">mm</span><span class="o">.</span><span class="n">column</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">mm</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">output</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+                    <span class="n">fields</span><span class="p">[</span><span class="n">mm</span><span class="o">.</span><span class="n">column</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="n">mm</span><span class="o">.</span><span class="n">missing_value</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">mm</span><span class="o">.</span><span class="n">dtype</span>
+                <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">properties_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">output</span></div>
 
 
 <span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>

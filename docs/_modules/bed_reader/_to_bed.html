@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>bed_reader._to_bed &mdash; bed-reader 0.0.3a documentation</title>
+  <title>bed_reader._to_bed &mdash; bed-reader 0.0.3a2 documentation</title>
   
 
   
@@ -68,7 +68,7 @@
             
             
               <div class="version">
-                0.0.3a
+                0.0.3a2
               </div>
             
           
@@ -171,6 +171,8 @@
     <span class="n">val</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">properties</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{},</span>
     <span class="n">count_A1</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">fam_filepath</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="c1">#!!!cmk doc and test</span>
+    <span class="n">bim_filepath</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="c1">#!!!cmk doc and test</span>
     <span class="n">force_python_only</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
@@ -255,12 +257,10 @@
         <span class="n">properties</span><span class="p">,</span> <span class="n">iid_count</span><span class="o">=</span><span class="n">iid_count</span><span class="p">,</span> <span class="n">sid_count</span><span class="o">=</span><span class="n">sid_count</span><span class="p">,</span> <span class="n">use_fill_sequence</span><span class="o">=</span><span class="kc">True</span>
     <span class="p">)</span>
 
-    <span class="n">open_bed</span><span class="o">.</span><span class="n">_write_fam_or_bim</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="n">properties</span><span class="p">,</span> <span class="s2">&quot;fam&quot;</span><span class="p">)</span>
-    <span class="n">open_bed</span><span class="o">.</span><span class="n">_write_fam_or_bim</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="n">properties</span><span class="p">,</span> <span class="s2">&quot;bim&quot;</span><span class="p">)</span>
+    <span class="n">open_bed</span><span class="o">.</span><span class="n">_write_fam_or_bim</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="n">properties</span><span class="p">,</span> <span class="s2">&quot;fam&quot;</span><span class="p">,</span> <span class="n">fam_filepath</span><span class="p">)</span>
+    <span class="n">open_bed</span><span class="o">.</span><span class="n">_write_fam_or_bim</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="n">properties</span><span class="p">,</span> <span class="s2">&quot;bim&quot;</span><span class="p">,</span> <span class="n">bim_filepath</span><span class="p">)</span>
 
-    <span class="n">bedfile</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span>
-        <span class="n">open_bed</span><span class="o">.</span><span class="n">_name_of_other_file</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="n">remove_suffix</span><span class="o">=</span><span class="s2">&quot;bed&quot;</span><span class="p">,</span> <span class="n">add_suffix</span><span class="o">=</span><span class="s2">&quot;bed&quot;</span><span class="p">)</span>
-    <span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;ascii&quot;</span><span class="p">)</span>
+    <span class="n">bedfile</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;ascii&quot;</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="ow">not</span> <span class="n">force_python_only</span><span class="p">:</span>
         <span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">wrap_plink_parser_onep</span>

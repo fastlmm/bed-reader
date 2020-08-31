@@ -4,7 +4,20 @@
 
 .. currentmodule:: bed_reader
 
-Open, Read, and Write:
+cmk example here, too?
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Contents:
+
+   
+
+***********************
+Summary
+***********************
+
+Open, Read, and Write
+======================
 
 .. autosummary::
 
@@ -13,6 +26,7 @@ Open, Read, and Write:
     to_bed
 
 Properties of Individuals (samples) and SNPs (variants)
+==========================================================
 
 .. autosummary::
 
@@ -37,20 +51,46 @@ Properties of Individuals (samples) and SNPs (variants)
     open_bed.property_item
 
 Utilities
+==========
 
 .. autosummary::
 
     sample_file
     tmp_path
 
+***********************
+Details
+***********************
+
+open_bed
+==========
+
 .. autoclass:: open_bed
    :members:
    :inherited-members:
 
+to_bed
+==========
+
 .. autofunction:: to_bed
+
+sample_file
+==============
 
 .. autofunction:: sample_file
 
+tmp_path
+==========
+
 .. autofunction:: tmp_path
 
-CMKTOC
+.. only:: html 
+
+***********************
+Indices and Tables
+***********************
+
+   * :ref:`genindex`
+   * :ref:`modindex`
+   * :ref:`search`
+
