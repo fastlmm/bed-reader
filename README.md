@@ -5,7 +5,54 @@ A simple and efficient PLINK .bed file format reader and writer.
 
 Also, efficiently reads slices of data and accesses individual (sample) and SNP (variant) properties.
 
-CMK example
+Examples
+========
+
+Read everything
+
+```python
+>>> import numpy as np
+>>> from bed_reader import open_bed, sample_file
+>>> file_name = sample_file("small.bed")
+>>> bed = open_bed(file_name)
+>>> val = bed.read()
+>>> print(val)
+[[ 1.  0. nan  0.]
+ [ 2.  0. nan  2.]
+ [ 0.  1.  2.  0.]]
+>>> del bed
+
+
+Read every 2nd individual (sample) from
+SNP (variant) index position 20 (inclusive)
+to 30 (exclusive).
+
+>>> file_name2 = sample_file("some_missing.bed")
+>>> bed2 = open_bed(file_name2)
+>>> val2 = bed2.read(index=np.s_[::2,20:30])
+>>> print(val2.shape)
+(50, 10)
+>>> del bed2
+
+List the first 5 individual (sample) ids, the
+first 5 SNP (variant) ids, and every unique
+chromosome. Then, read every chromosome 5 value.
+
+>>> with open_bed(file_name2) as bed3:
+...     print(bed3.iid[:5])
+...     print(bed3.sid[:5])
+...     print(np.unique(bed3.chromosome))
+...     val3 = bed3.read(index=np.s_[:,bed3.chromosome=='5'])
+...     print(val3.shape)
+['iid_0' 'iid_1' 'iid_2' 'iid_3' 'iid_4']
+['sid_0' 'sid_1' 'sid_2' 'sid_3' 'sid_4']
+['1' '10' '11' '12' '13' '14' '15' '16' '17' '18' '19' '2' '20' '21' '22'
+ '3' '4' '5' '6' '7' '8' '9']
+(100, 6)
+
+```
+
+#cmk Doc test python -m doctest -v README.md
 
 Documentation
 =================================
@@ -34,7 +81,7 @@ If you have pip installed, installation is as easy as:
     pip install bed-reader
 
 
-Detailed Package Install Instructions:
+Detailed Package Install Instructions: #cmk need this???
 ========================================
 
 pysnptools has the following dependencies:
