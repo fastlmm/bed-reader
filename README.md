@@ -21,6 +21,7 @@ Read everything in a .bed file.
  [ 2.  0. nan  2.]
  [ 0.  1.  2.  0.]]
 >>> del bed
+
 ```
 
 Read a slice: every 2nd individual (sample) and 
@@ -34,6 +35,7 @@ to 30 (exclusive).
 >>> print(val2.shape)
 (50, 10)
 >>> del bed2
+
 ```
 
 List the first 5 individual (sample) ids, the
@@ -52,6 +54,7 @@ chromosome. Then, read every value in chromosome 5.
 ['1' '10' '11' '12' '13' '14' '15' '16' '17' '18' '19' '2' '20' '21' '22'
  '3' '4' '5' '6' '7' '8' '9']
 (100, 6)
+
 ```
 
 #cmk Doc test python -m doctest -v README.md
