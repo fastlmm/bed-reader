@@ -148,11 +148,10 @@ else:
 
 install_requires = ["numpy>=1.11.3"]
 
-win_data = (
-    [("lib/site-packages/bed_reader", ["external/llvm/windows/bin/libomp.dll"])]
-    if platform.system() == "Windows"
-    else []
-)
+package_data = {"bed_reader/tests": ["registry.txt"]}
+if platform.system() == "Windows":
+    package_data["bed_reader"] = ["libomp.dll"]
+
 setup(
     name="bed-reader",
     version=version,
@@ -174,8 +173,7 @@ setup(
         "bed_reader",
         "bed_reader/tests",
     ],  # basically everything with a __init__.py
-    data_files=win_data,
-    package_data={"bed_reader/tests": ["registry.txt"],},
+    package_data=package_data,
     install_requires=install_requires,
     # extensions
     cmdclass=cmdclass,

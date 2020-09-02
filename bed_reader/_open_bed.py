@@ -353,7 +353,7 @@ class open_bed:
         if not force_python_only:
             num_threads = self._get_num_threads()
             if num_threads > 1:
-                open_bed._find_openmp()
+                #!!!cmk open_bed._find_openmp()
                 from bed_reader import wrap_plink_parser_openmp as wrap_plink_parser
             else:
                 from bed_reader import wrap_plink_parser_onep as wrap_plink_parser
@@ -969,47 +969,6 @@ class open_bed:
 
     def __exit__(self, *_):
         pass
-
-    @staticmethod
-    def _get_version_number(filename):
-        # http://timgolden.me.uk/python/win32_how_do_i/get_dll_version.html
-        from win32api import GetFileVersionInfo, LOWORD, HIWORD
-
-        info = GetFileVersionInfo(filename, "\\")
-        ms = info["FileVersionMS"]
-        ls = info["FileVersionLS"]
-        return HIWORD(ms), LOWORD(ms), HIWORD(ls), LOWORD(ls)
-
-    @staticmethod
-    def _find_openmp():  #!!!cmk dll in same directory???
-        if "bed_reader.wrap_plink_parser_openmp" in sys.modules:
-            return
-        if platform.system() == "Windows":
-            logging.info("in windows _find_openmp")
-            from ctypes import cdll
-            from ctypes.util import find_library
-
-            dllname = "libomp.dll"
-            find_location = find_library(dllname)
-            if find_location is not None:
-                logging.info(f"found '{dllname}' at '{find_library(dllname)}'")
-                found_ver = open_bed._get_version_number(find_location)
-                goal_ver = (5, 0, 2014, 926)
-                logging.info(f"found ver is '{found_ver}'. Goal ver is '{goal_ver}'")
-                if found_ver >= goal_ver:
-                    logging.info("found version looks good, so load that")
-                    cdll.LoadLibrary(str(find_location))
-                    return
-            location_list = [
-                Path(__file__).parent / dllname,
-                Path(__file__).parent.parent / "external/llvm/windows/bin" / dllname,
-            ]
-            for location in location_list:
-                if location.exists():
-                    logging.info(f"loading my own version from '{location}'")
-                    cdll.LoadLibrary(str(location))
-                    return
-            raise Exception(f"Can't find '{dllname}'")
 
     def _get_num_threads(self):
         if platform.system() == "Darwin":
