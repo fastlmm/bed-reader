@@ -146,7 +146,7 @@ if use_cython:
 else:
     cmdclass = {}
 
-install_requires = ["numpy>=1.11.3"]
+install_requires = ["numpy>=1.11.3", "pandas>=0.25.1", "pooch>=1.1.1"]
 
 package_data = {"bed_reader/tests": ["registry.txt"]}
 if platform.system() == "Windows":

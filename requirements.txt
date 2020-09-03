@@ -1,4 +1,3 @@
-numpy
-pandas
-dataclass
-pooch
+numpy>=1.11.3
+pandas>=0.25.1
+pooch>=1.1.1
