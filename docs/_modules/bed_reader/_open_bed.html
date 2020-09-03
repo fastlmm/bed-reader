@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>bed_reader._open_bed &mdash; bed-reader 0.0.3a2 documentation</title>
+  <title>bed_reader._open_bed &mdash; bed-reader 0.0.4a0 documentation</title>
   
 
   
@@ -59,7 +59,7 @@
             
             
               <div class="version">
-                0.0.3a2
+                0.0.4a0
               </div>
             
           
@@ -503,7 +503,7 @@
         <span class="k">if</span> <span class="ow">not</span> <span class="n">force_python_only</span><span class="p">:</span>
             <span class="n">num_threads</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_num_threads</span><span class="p">()</span>
             <span class="k">if</span> <span class="n">num_threads</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
-                <span class="n">open_bed</span><span class="o">.</span><span class="n">_find_openmp</span><span class="p">()</span>
+                <span class="c1">#!!!cmk open_bed._find_openmp()</span>
                 <span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">wrap_plink_parser_openmp</span> <span class="k">as</span> <span class="n">wrap_plink_parser</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">wrap_plink_parser_onep</span> <span class="k">as</span> <span class="n">wrap_plink_parser</span>
@@ -1119,47 +1119,6 @@
 
     <span class="k">def</span> <span class="nf">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">_</span><span class="p">):</span>
         <span class="k">pass</span>
-
-    <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">_get_version_number</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
-        <span class="c1"># http://timgolden.me.uk/python/win32_how_do_i/get_dll_version.html</span>
-        <span class="kn">from</span> <span class="nn">win32api</span> <span class="k">import</span> <span class="n">GetFileVersionInfo</span><span class="p">,</span> <span class="n">LOWORD</span><span class="p">,</span> <span class="n">HIWORD</span>
-
-        <span class="n">info</span> <span class="o">=</span> <span class="n">GetFileVersionInfo</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s2">&quot;</span><span class="se">\\</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="n">ms</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="s2">&quot;FileVersionMS&quot;</span><span class="p">]</span>
-        <span class="n">ls</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="s2">&quot;FileVersionLS&quot;</span><span class="p">]</span>
-        <span class="k">return</span> <span class="n">HIWORD</span><span class="p">(</span><span class="n">ms</span><span class="p">),</span> <span class="n">LOWORD</span><span class="p">(</span><span class="n">ms</span><span class="p">),</span> <span class="n">HIWORD</span><span class="p">(</span><span class="n">ls</span><span class="p">),</span> <span class="n">LOWORD</span><span class="p">(</span><span class="n">ls</span><span class="p">)</span>
-
-    <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">_find_openmp</span><span class="p">():</span>  <span class="c1">#!!!cmk dll in same directory???</span>
-        <span class="k">if</span> <span class="s2">&quot;bed_reader.wrap_plink_parser_openmp&quot;</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">:</span>
-            <span class="k">return</span>
-        <span class="k">if</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;Windows&quot;</span><span class="p">:</span>
-            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;in windows _find_openmp&quot;</span><span class="p">)</span>
-            <span class="kn">from</span> <span class="nn">ctypes</span> <span class="k">import</span> <span class="n">cdll</span>
-            <span class="kn">from</span> <span class="nn">ctypes.util</span> <span class="k">import</span> <span class="n">find_library</span>
-
-            <span class="n">dllname</span> <span class="o">=</span> <span class="s2">&quot;libomp.dll&quot;</span>
-            <span class="n">find_location</span> <span class="o">=</span> <span class="n">find_library</span><span class="p">(</span><span class="n">dllname</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">find_location</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;found &#39;</span><span class="si">{dllname}</span><span class="s2">&#39; at &#39;{find_library(dllname)}&#39;&quot;</span><span class="p">)</span>
-                <span class="n">found_ver</span> <span class="o">=</span> <span class="n">open_bed</span><span class="o">.</span><span class="n">_get_version_number</span><span class="p">(</span><span class="n">find_location</span><span class="p">)</span>
-                <span class="n">goal_ver</span> <span class="o">=</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2014</span><span class="p">,</span> <span class="mi">926</span><span class="p">)</span>
-                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;found ver is &#39;</span><span class="si">{found_ver}</span><span class="s2">&#39;. Goal ver is &#39;</span><span class="si">{goal_ver}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">found_ver</span> <span class="o">&gt;=</span> <span class="n">goal_ver</span><span class="p">:</span>
-                    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;found version looks good, so load that&quot;</span><span class="p">)</span>
-                    <span class="n">cdll</span><span class="o">.</span><span class="n">LoadLibrary</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">find_location</span><span class="p">))</span>
-                    <span class="k">return</span>
-            <span class="n">location_list</span> <span class="o">=</span> <span class="p">[</span>
-                <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="n">dllname</span><span class="p">,</span>
-                <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">&quot;external/llvm/windows/bin&quot;</span> <span class="o">/</span> <span class="n">dllname</span><span class="p">,</span>
-            <span class="p">]</span>
-            <span class="k">for</span> <span class="n">location</span> <span class="ow">in</span> <span class="n">location_list</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">location</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-                    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;loading my own version from &#39;</span><span class="si">{location}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
-                    <span class="n">cdll</span><span class="o">.</span><span class="n">LoadLibrary</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">location</span><span class="p">))</span>
-                    <span class="k">return</span>
-            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;Can&#39;t find &#39;</span><span class="si">{dllname}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_get_num_threads</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;Darwin&quot;</span><span class="p">:</span>
