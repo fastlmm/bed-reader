@@ -8,14 +8,13 @@ import numpy as np
 from bed_reader import open_bed
 
 
-#!!!cmk say something about support for snp-minor vs major
 def to_bed(
     filepath: Union[str, Path],
     val: np.ndarray,
     properties: Mapping[str, List[Any]] = {},
     count_A1: bool = True,
-    fam_filepath: Union[str, Path] = None, #!!!cmk doc and test
-    bim_filepath: Union[str, Path] = None, #!!!cmk doc and test
+    fam_filepath: Union[str, Path] = None,
+    bim_filepath: Union[str, Path] = None,
     force_python_only: bool = False,
 ):
     """
@@ -27,7 +26,7 @@ def to_bed(
         File path to .bed file to write.
     val: array-like:
         A two-dimension array (or array-like object) of values. The values should
-        be (or be convertable to) all floats or all integers. The values should be 0, 1, 2, or missing.
+        be (or be convertible to) all floats or all integers. The values should be 0, 1, 2, or missing.
         If floats, missing is ``np.nan``. If integers, missing is -127.
     properties: dict, optional
         A dictionary of property names and values to write to the .fam and .bim files. 
@@ -40,16 +39,22 @@ def to_bed(
              (SNP or variant id), "cm_position" (centimorgan position), "bp_position"
              (base-pair position), "allele_1", "allele_2".
             
-         The values are lists or arrays. CMK see example
+         The values are lists or arrays. See example, below.
     count_A1: bool, optional
         True (default) to count the number of A1 alleles (the PLINK standard). False to count the number of A2 alleles.
+    fam_filepath: pathlib.Path or str, optional
+        Path to the file containing information about each individual (sample). Defaults to .fam
+        as the suffix on ``filepath``.
+    bim_filepath: pathlib.Path or str, optional
+        Path to the file containing information about each SNP (variant). Defaults to .bim
+        as the suffix on ``filepath``.
     force_python_only
         If False (default), uses the faster C++ code; otherwise it uses the slower pure Python code.
 
     Examples
     --------
 
-    In this example, full properties is given.
+    In this example, all properties is given.
 
     .. doctest::
 
@@ -74,9 +79,9 @@ def to_bed(
         ... }
         >>> to_bed(output_file, val, properties=properties)
 
-    In this example, no properties is given, so default values as assigned.
-    If we read the new file and list chromosome, it is an array of '0's
-    the default chromosome value. cmkref
+    Here, no properties is given, so default values are assigned.
+    If we then read the new file and list the chromosome property, it is an array of '0's,
+    the default chromosome value.
 
     .. doctest::
 

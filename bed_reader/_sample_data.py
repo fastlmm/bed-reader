@@ -82,11 +82,13 @@ def tmp_path() -> Path:
     """
     temp_dir = tempfile.gettempdir()
     path = Path(temp_dir) / "bed_reader_tmp_path"
-    path.mkdir(parents=True,exist_ok=True)
+    path.mkdir(parents=True, exist_ok=True)
     return path
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
     import pytest
+
     pytest.main(["--doctest-modules", __file__])

@@ -19,7 +19,7 @@ def find_version(filepath):
     raise RuntimeError("Unable to find version string.")
 
 
-project = "bed-reader"
+project = "Bed Reader"
 copyright = "2020, Carl Kadie"
 author = "Carl Kadie"
 
@@ -59,7 +59,7 @@ html_theme_options = {
     "logo_only": False,
     "display_version": True,
     "style_external_links": True,
-    'collapse_navigation': False,
+    "collapse_navigation": False,
 }
 htmlhelp_basename = "{}doc".format(project)
 

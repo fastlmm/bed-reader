@@ -158,10 +158,15 @@ setup(
     description="Bed Reader",
     long_description=readme(),
     long_description_content_type="text/markdown",
-    keywords="bioinformatics plink",
+    keywords="bioinformatics plink genomics genetics file-format reader genotype bed-format writer python snps",
     url="https://fastlmm.github.io/",
     author="FaST-LMM Team",
     author_email="fastlmm-dev@python.org",
+    project_urls={
+        "Bug Tracker": "https://github.com/fastlmm/bed-reader/issues",
+        "Documentation": "http://fastlmm.github.io/bed-reader",
+        "Source Code": "https://github.com/fastlmm/bed-reader",
+    },
     license="Apache 2.0",
     classifiers=[
         "Programming Language :: Python :: 3.7",

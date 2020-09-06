@@ -99,10 +99,10 @@ def test_overrides(shared_datadir):
 
     with pytest.raises(KeyError):
         open_bed(shared_datadir / "some_missing.bed", properties={"unknown": [3, 4, 4]})
-    # with open_bed( #!!!cmkupdate
-    #    shared_datadir / "some_missing.bed", properties={"iid": None}
-    # ) as bed1:
-    #    assert np.array_equal(bed1.iid, property_dict["iid"])
+    with open_bed(
+        shared_datadir / "some_missing.bed", properties={"iid": None}
+    ) as bed1:
+        assert bed1.iid is None
     with open_bed(shared_datadir / "some_missing.bed", properties={"iid": []}) as bed1:
         assert np.issubdtype(bed1.iid.dtype, np.str_)
         assert len(bed1.iid) == 0
@@ -274,7 +274,7 @@ def test_c_reader_bed(shared_datadir):
         ref_val = ref_val.astype("int8")
         assert np.all(ref_val == val)
 
-        bed.close()
+        del bed
 
         with open_bed(shared_datadir / "some_missing.bed") as bed:
             val = bed.read(
@@ -601,11 +601,11 @@ def test_sample_file():
         print(bed.read())
 
 
-def test_coverage2(shared_datadir):
-    # with open_bed( #!!!cmk update
-    #    shared_datadir / "plink_sim_10s_100v_10pmiss.bed", properties={"iid": None}
-    # ) as bed:
-    #    assert len(bed.iid) > 1
+def test_coverage2(shared_datadir, tmp_path):
+    with open_bed(
+        shared_datadir / "plink_sim_10s_100v_10pmiss.bed", properties={"iid": None}
+    ) as bed:
+        assert bed.iid is None
     with pytest.raises(ValueError):
         open_bed(
             shared_datadir / "plink_sim_10s_100v_10pmiss.bed",
@@ -614,10 +614,10 @@ def test_coverage2(shared_datadir):
     val = np.zeros((3, 5))[::2]
     assert not val.flags["C_CONTIGUOUS"] and not val.flags["F_CONTIGUOUS"]
     with pytest.raises(ValueError):
-        to_bed("ignore", val)
+        to_bed(tmp_path/"ignore", val)
     val = np.zeros((3, 5), dtype=np.str)
     with pytest.raises(ValueError):
-        to_bed("ignore", val)
+        to_bed(tmp_path/"ignore", val)
 
 
 def test_coverage3(shared_datadir, tmp_path):
@@ -661,7 +661,65 @@ def test_nones(shared_datadir, tmp_path):
     to_bed(out_file, val, properties=properties)
 
 
-if __name__ == "__main__":  #!!cmk is this wanted?
+def test_fam_bim_filepath(shared_datadir, tmp_path):
+    with open_bed(shared_datadir / "small.bed") as bed:
+        val = bed.read()
+        properties = bed.properties
+    output_file = tmp_path / "small.deb"
+    fam_file = tmp_path / "small.maf"
+    bim_file = tmp_path / "small.mib"
+    to_bed(
+        output_file,
+        val,
+        properties=properties,
+        fam_filepath=fam_file,
+        bim_filepath=bim_file,
+    )
+    assert output_file.exists() and fam_file.exists() and bim_file.exists()
+
+    with open_bed(output_file, fam_filepath=fam_file, bim_filepath=bim_file) as deb:
+        val2 = deb.read()
+        properties2 = deb.properties
+        assert np.allclose(val, val2, equal_nan=True)
+        for key in properties:
+            np.array_equal(properties[key], properties2[key])
+
+def test_write_nan_properties(shared_datadir, tmp_path):
+    with open_bed(shared_datadir / "small.bed") as bed:
+        val = bed.read()
+        properties = bed.properties
+        chrom = bed.chromosome.copy()
+        chrom[bed.chromosome=='Y']=0
+        chrom = np.array(chrom,dtype='float')
+        chrom2 = chrom.copy()
+        chrom2[chrom2==0]=np.nan
+        cm_p = bed.cm_position.copy()
+        cm_p[cm_p<3000]=0
+        cm_p2 = cm_p.copy()
+        cm_p2[cm_p==0]=np.nan
+        properties["chromosome"] = chrom2
+        properties["cm_position"] = cm_p2
+
+    output_file = tmp_path / "nan.bed"
+    to_bed(
+        output_file,
+        val,
+        properties=properties
+        )
+
+    with open_bed(output_file) as bed2:
+        assert np.array_equal(bed2.chromosome,['1.0', '1.0', '5.0', '0'])
+        assert np.array_equal(bed2.cm_position,cm_p)
+
+    with open_bed(shared_datadir / "small.bed", properties={'chromosome':chrom2, "cm_position": cm_p2}) as bed3:
+        assert np.array_equal(bed3.chromosome,['1.0', '1.0', '5.0', '0'])
+        assert np.array_equal(bed3.cm_position,cm_p)
+
+    
+    
+
+
+if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
     shared_datadir = Path(r"D:\OneDrive\programs\bed-reader\bed_reader\tests\data")

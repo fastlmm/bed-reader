@@ -1,18 +1,31 @@
-bed-reader
+[![PyPI version](https://badge.fury.io/py/bed-reader.svg)](https://badge.fury.io/py/bed-reader)
+[![Build Status](https://travis-ci.com/fastlmm/bed-reader.svg?branch=master)](https://travis-ci.com/fastlmm/bed-reader)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/bed-reader)
+
+Read and write the PLINK BED format, simply and efficiently.
+
+Features:
+
+* Fast multi-threaded C++ engine.
+* Supports all Python indexing methods. Slice data by individuals (samples) and/or SNPs (variants).
+* Used by [PySnpTools](https://github.com/fastlmm/PySnpTools), [FaST-LMM](https://github.com/fastlmm/FaST-LMM), and [PyStatGen](https://github.com/pystatgen).
+* Supports [PLINK 1.9](https://www.cog-genomics.org/plink2/formats).
+
+Install
 ====================
 
-A simple and efficient PLINK .bed file format reader and writer.
+    pip install bed-reader
 
-Also, efficiently reads slices of data and accesses individual (sample) and SNP (variant) properties.
 
-Examples
+Usage
 ========
 
-Read everything in a .bed file.
+Read genomic data from a .bed file.
 
 ```python
 >>> import numpy as np
 >>> from bed_reader import open_bed, sample_file
+>>>
 >>> file_name = sample_file("small.bed")
 >>> bed = open_bed(file_name)
 >>> val = bed.read()
@@ -24,9 +37,7 @@ Read everything in a .bed file.
 
 ```
 
-Read a slice: every 2nd individual (sample) and 
-SNP (variant) index position 20 (inclusive)
-to 30 (exclusive).
+Read every second individual and SNPs (variants) from 20 to 30.
 
 ```python
 >>> file_name2 = sample_file("some_missing.bed")
@@ -57,99 +68,14 @@ chromosome. Then, read every value in chromosome 5.
 
 ```
 
-#cmk Doc test python -m doctest -v README.md
+Project Links
+==============
 
-Documentation
-=================================
+- [**Documentation**](http://fastlmm.github.io/bed-reader)
+- **Questions to**: [fastlmm-dev@python.org](mailto:fastlmm-dev@python.org)
+- [**Source code**](https://github.com/fastlmm/bed-reader)
+- [**PyPI**](https://pypi.org/project/bed-reader)
+- [**Bug reports**](https://github.com/fastlmm/bed-reader/issues)
+- [**Mailing list**](https://mail.python.org/mailman3/lists/fastlmm-user.python.org)
+- [**Project Website**](https://fastlmm.github.io/)
 
-* [Documentation](http://fastlmm.github.io/bed-reader/) with examples.
-* [Project Home and Full Annotated Bibliography](https://fastlmm.github.io/)
-
-Code
-=================================
-* [PyPi](https://pypi.org/project/bed-reader/)
-* [GitHub](https://github.com/fastlmm/bed-reader)
-
-Contacts
-=================================
-
-* Email the developers at fastlmm-dev@python.org.
-* [Join](mailto:fastlmm-user-join@python.org?subject=Subscribe) the user discussion and announcement list (or use [web sign up](https://mail.python.org/mailman3/lists/fastlmm-user.python.org)).
-* [Open an issue](https://github.com/fastlmm/PySnpTools/issues) on GitHub.
-
-
-Quick install:
-====================
-
-If you have pip installed, installation is as easy as:
-
-    pip install bed-reader
-
-
-Detailed Package Install Instructions: #cmk need this???
-========================================
-
-pysnptools has the following dependencies:
-
-python 3.7 or 3.8
-
-Package(s):
-
-* numpy
-
-(1) Installing from source
------------------------------------------
-
-Go to the directory where you copied the source code for bed-reader
-
-On Linux:
-
-At the shell, type: 
-
-    sudo python setup.py install
-
-
-On Windows:
-
-At the OS command prompt, type 
-
-    python setup.py install
-
-
-
-For developers (and also to run regression tests)
-=========================================================
-
-pip install -r requirements-dev.txt
-
-When working on the developer version, first add the src directory of the package to your PYTHONPATH 
-environment variable.
-
-To build extension (from .\src dir), type the following at the OS prompt:
-
-    python setup.py build_ext --inplace
-
-Don't forget to set your PYTHONPATH to point to the directory above the one named bed-reader in
-the bed-reader source code. For e.g. if bed-reader is in the [somedir] directory, then
-in the Unix shell use:
-
-    export PYTHONPATH=$PYTHONPATH:[somedir]
-
-Or in the Windows DOS terminal,
-one can use: 
-
-    set PYTHONPATH=%PYTHONPATH%;[somedir]
-
-Note for Windows: You must have Visual Studio installed.
-
-Running regression tests
------------------------------
-
-From the directory tests at the top level, run:
-
-    pytest
-
-This will run a series of regression tests.
-
-Note that you must use "python setup.py build_ext --inplace" to run the 
-regression tests, and not "python setup.py install".

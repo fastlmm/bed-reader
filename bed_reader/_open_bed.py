@@ -75,7 +75,7 @@ class open_bed:
 
     Parameters
     ----------
-    filepath:
+    filepath: pathlib.Path or str
         file path to .bed file.
     iid_count: None or int, optional
         Number of individuals (samples) in the .bed file.
@@ -95,69 +95,80 @@ class open_bed:
              (SNP or variant id), "cm_position" (centimorgan position), "bp_position"
              (base-pair position), "allele_1", "allele_2".
             
-        The values are the replacement lists or arrays. CMK see example
+        The values are the replacement lists or arrays. A value can also be ``None``
+        which tells that this property need not be read. See examples, below.
+
+        (If necessary, the list or array will be converted to a `numpy.ndarray`
+        of the appropriate dtype. Any `np.nan` values will converted to
+        the appropriate missing value. The PLINK `.fam <https://www.cog-genomics.org/plink2/formats#fam>`_
+        and `.bim <https://www.cog-genomics.org/plink2/formats#bim>`_ specification lists
+        the dtypes and missing values for each property.)
+
     count_A1: bool, optional
         True (default) to count the number of A1 alleles (the PLINK standard). False to count the number of A2 alleles.
     num_threads: None or int, optional
         The number of threads with which to read data. Defaults to all available threads.
         Can also be set with the 'MKL_NUM_THREADS' environment variable.
         
-        On MacOS, this
-        parameter is ignored and all reads are singled threaded. On Windows, if reads create
-        library-loading problems, setting this to 1 will fix the problems (but be slower).
+        On MacOS, this parameter is ignored and all reads are singled threaded.
     skip_format_check: bool, optional
         False (default) to immediately check for expected starting bytes in the .bed file.
         True to delay the check until (and if) data is read.
+    fam_filepath: pathlib.Path or str, optional
+        Path to the file containing information about each individual (sample). Defaults to .fam
+        as the suffix on ``filepath``.
+    bim_filepath: pathlib.Path or str, optional
+        Path to the file containing information about each SNP (variant). Defaults to .bim
+        as the suffix on ``filepath``.
         
     Returns
     -------
     an open_bed object : :class:`open_bed`
 
-    .._open_examples:
-
     Examples
     --------
 
-    With the `with <https://docs.python.org/3/reference/compound_stmts.html#grammar-token-with-stmt>`__ statement,
-    list individual (sample) :attr:`iid` and SNP (variant) :attr:`sid`, then :meth:`read` the whole file.
+    List individual (sample) :attr:`iid` and SNP (variant) :attr:`sid`, then :meth:`read` the whole file.
 
     .. doctest::
 
         >>> from bed_reader import open_bed, sample_file
         >>>
         >>> file_name = sample_file("small.bed")
-        >>> with open_bed(file_name) as bed:
-        ...     print(bed.iid)
-        ...     print(bed.sid)
-        ...     print(bed.read())
+        >>> bed = open_bed(file_name)
+        >>> print(bed.iid)
         ['iid1' 'iid2' 'iid3']
+        >>> print(bed.sid)
         ['sid1' 'sid2' 'sid3' 'sid4']
+        >>> print(bed.read())
         [[ 1.  0. nan  0.]
          [ 2.  0. nan  2.]
          [ 0.  1.  2.  0.]]
+        >>> del bed  # optional: close and delete object
 
-    Open the file (without `with`) and read probabilities for one SNP (variant)
+    Open the file and read data for one SNP (variant)
     at index position 2.
 
     .. doctest::
 
-        >>> bed = open_bed(file_name)
-        >>> print(bed.read(index=2))
+        >>> import numpy as np
+        >>> with open_bed(file_name) as bed:
+        ...     print(bed.read(np.s_[:,2]))
         [[nan]
          [nan]
          [ 2.]]
-        >>> del bed  # optional: close and delete object
 
-    Replace the sample :attr:`iid`.
+    Instead of reading the individual :attr:`iid` from a file, use a replacement
+    list.
 
-        >>> with open_bed(file_name, properties={"iid":["sample1","sample2","sample3"]}) as bed:
-        ...     print(bed.iid) # replaced
-        ...     print(bed.sid) # same as before
+        >>> bed = open_bed(file_name, properties={"iid":["sample1","sample2","sample3"]})
+        >>> print(bed.iid) # replaced
         ['sample1' 'sample2' 'sample3']
+        >>> print(bed.sid) # same as before
         ['sid1' 'sid2' 'sid3' 'sid4']
 
     Tell it the number of individuals (samples) and SNPs (variants). This lets it read data without
-    the needing to ever open the .fam and .bim files.
+    needing to ever open the .fam and .bim files.
 
         >>> with open_bed(file_name, iid_count=3, sid_count=4) as bed:
         ...     print(bed.read())
@@ -165,12 +176,17 @@ class open_bed:
          [ 2.  0. nan  2.]
          [ 0.  1.  2.  0.]]
 
+    Tell it that some properties will never be used, so don't bother to read them.
+
+        >>> bed = open_bed(file_name, properties={
+        ...    "father" : None, "mother" : None, "sex" : None, "pheno" : None,
+        ...    "allele_1" : None, "allele_2":None })
+        >>> print(bed.iid)        # read from file
+        ['iid1' 'iid2' 'iid3']
+        >>> print(bed.allele_2)   # Don't bother reading this from file
+        None
 
     See the :meth:`read` for details of reading batches via slicing and fancy indexing.
-
-        #!!!cmk in README say: Documentation not API Documatnion
-
-    .. _sample format: https://www.well.ox.ac.uk/~gav/qctool/documentation/sample_file_formats.html #!!!cmk
 
     """
 
@@ -183,8 +199,8 @@ class open_bed:
         count_A1: bool = True,
         num_threads: Optional[int] = None,
         skip_format_check: bool = False,
-        fam_filepath: Union[str, Path] = None, #!!!cmk doc & test
-        bim_filepath: Union[str, Path] = None, #!!!cmk doc & test
+        fam_filepath: Union[str, Path] = None,
+        bim_filepath: Union[str, Path] = None,
     ):  #!!!document these new optionals. they are here
         self.filepath = Path(filepath)
         self.count_A1 = count_A1
@@ -217,8 +233,12 @@ class open_bed:
         ----------
         index:
             An optional expression specifying the individuals (samples) and SNPs (variants)
-            to read. (See :ref:`read_examples`, below).
+            to read. (See examples, below).
             Defaults to ``None``, meaning read all.
+
+            (If index is a tuple, the first component indexes the individuals and the second indexes
+            the SNPs. If it is not a tuple and not None, it indexes SNPs.)
+
         dtype: {'float32' (default), 'float64', 'int8'}, optional
             The desired data-type for the returned array.
         order : {'F','C'}, optional
@@ -229,13 +249,15 @@ class open_bed:
 
         Returns
         -------
-        :class:`numpy.ndarray` of 0, 1, 2, or missing values with ``dtype`` and shape `(iid_count,sid_count)`
+        2-D :class:`numpy.ndarray` containing values of 0, 1, 2, or missing.
 
-        .. _read_examples:
+        Rows represent individuals (samples). Columns represent SNPs (variants). 
+        
+        For ``dtype`` 'float32' and 'float64', NaN indicates missing values.
+        For 'int8', -127 indicates missing values.
 
         Examples
         --------
-        * Index Examples
 
         To read all data in a .bed file, set ``index`` to ``None``. This is the default.
 
@@ -250,80 +272,44 @@ class open_bed:
              [ 2.  0. nan  2.]
              [ 0.  1.  2.  0.]]
 
-        To read selected SNPs (variants), set ``index`` to an ``int``, a list of ``int``, a :class:`slice`, or a list of ``bool``.
+        To read selected individuals (samples) and/or SNPs (variants), set a `numpy.s_` to an ``int``, a list of ``int``, a :class:`slice`, or a list of ``bool``.
         Negative integers count from the end of the data.
 
 
         .. doctest::
 
+            >>> import numpy as np
             >>> bed = open_bed(file_name)
-            >>> print(bed.read(2))  # read the SNPs indexed by 2.
+            >>> print(bed.read(np.s_[:,2]))  # read the SNPs indexed by 2.
             [[nan]
              [nan]
              [ 2.]]
-            >>> print(bed.read([2,3,0]))  # read the SNPs indexed by 2, 3, and 0
+            >>> print(bed.read(np.s_[:,[2,3,0]]))  # read the SNPs indexed by 2, 3, and 0
             [[nan  0.  1.]
              [nan  2.  2.]
              [ 2.  0.  0.]]
-            >>> print(bed.read(slice(2))) #read the first 2 SNPs
-            [[1. 0.]
-             [2. 0.]
-             [0. 1.]]
-            >>> print(bed.read(slice(1,4))) #read SNPs from 1 (inclusive) to 4 (exclusive)
+            >>> print(bed.read(np.s_[:,1:4])) #read SNPs from 1 (inclusive) to 4 (exclusive)
             [[ 0. nan  0.]
              [ 0. nan  2.]
              [ 1.  2.  0.]]
-            >>> print(bed.read(slice(2,None))) # read SNPs starting at index 2.
-            [[nan  0.]
-             [nan  2.]
-             [ 2.  0.]]
-            >>> print(bed.read(slice(None,None,2))) #read every 2nd SNPs
-            [[ 1. nan]
-             [ 2. nan]
-             [ 0.  2.]]
             >>> print(np.unique(bed.chromosome)) # print unique chrom values
             ['1' '5' 'Y']
-            >>> print(bed.read(bed.chromosome=='5')) # read all SNPs in chrom 1
+            >>> print(bed.read(np.s_[:,bed.chromosome=='5'])) # read all SNPs in chrom 5
             [[nan]
              [nan]
              [ 2.]]
-            >>> print(bed.read(-1)) # read the last SNPs
-            [[0.]
-             [2.]
-             [0.]]
-
-
-        To read selected individuals (samples), set ``index`` to a tuple of the form ``(individual_index,None)``, where ``individual_index`` follows the form
-        of ``SNP index``, above.
-
-        .. doctest::
-
-            >>> print(bed.read((0,None))) # Read 1st individual (across all SNPs)
+            >>> print(bed.read(np.s_[0,:])) # Read 1st individual (across all SNPs)
             [[ 1.  0. nan  0.]]
-            >>> print(bed.read((slice(None,None,2),None))) # Read every 2nd individual
+            >>> print(bed.read(np.s_[::2,:])) # Read every 2nd individual
             [[ 1.  0. nan  0.]
              [ 0.  1.  2.  0.]]
-
-
-        To read selected individuals and selected SNPs, set ``index`` to a tuple of the form ``(individual_index,SNP_index)``,
-        where ``individual_index`` and ``SNP_index`` follow the forms above.
-
-        .. doctest::
-
-            >>> # Read individuals 1 (inclusive) to 3 (exclusive) and the first 2 SNPs.
-            >>> print(bed.read((slice(1,3),slice(2))))
-            [[2. 0.]
-             [0. 1.]]
             >>> #read last and 2nd-to-last individuals and the last SNPs
-            >>> print(bed.read(([-1,-2],-1)))
+            >>> print(bed.read(np.s_[[-1,-2],-1]))
             [[0.]
              [2.]]
 
 
-        * dtype example
-
-        You can give a dtype. For float32 and float64, NaN indicates missing values.
-        For int8, -127 indicates missing values.
+        You can give a dtype for the output.
 
         .. doctest::
 
@@ -353,7 +339,6 @@ class open_bed:
         if not force_python_only:
             num_threads = self._get_num_threads()
             if num_threads > 1:
-                #!!!cmk open_bed._find_openmp()
                 from bed_reader import wrap_plink_parser_openmp as wrap_plink_parser
             else:
                 from bed_reader import wrap_plink_parser_onep as wrap_plink_parser
@@ -821,7 +806,7 @@ class open_bed:
        
         :rtype: :class:`numpy.ndarray` of str
 
-        If needed, will cause a one-time read of the r.bim file.
+        If needed, will cause a one-time read of the .bim file.
 
         Example
         -------
@@ -934,34 +919,6 @@ class open_bed:
             raise ValueError("only SNP-major is implemented")
 
     def __del__(self):
-        self.__exit__()
-
-    def close(self):
-        """
-        Close a :class:`open_bed` object that was opened for reading.
-
-        Notes
-        -----
-        Better alternatives to :meth:`close` include the
-        `with <https://docs.python.org/3/reference/compound_stmts.html#grammar-token-with-stmt>`__
-        statement (closes the file automatically) and the `del
-        <https://docs.python.org/3/reference/simple_stmts.html#grammar-token-del-stmt>`__
-        statement (which closes the file and *deletes* the object).
-        Doing nothing, while not better, is usually fine.
-
-        .. doctest::
-
-            >>> from bed_reader import open_bed, sample_file
-            >>>
-            >>> file_name = sample_file("small.bed")
-            >>> bed = open_bed(file_name)
-            >>> print(bed.read())
-            [[ 1.  0. nan  0.]
-             [ 2.  0. nan  2.]
-             [ 0.  1.  2.  0.]]
-            >>> bed.close()     #'del bed' is better.
-
-        """
         self.__exit__()
 
     def __enter__(self):
@@ -1125,9 +1082,11 @@ class open_bed:
             delim_whitespace = False
 
         usecolsdict = {}
+        dtype_dict = {}
         for key, mm in _meta_meta.items():
             if mm.suffix is suffix and key not in self.properties_dict:
                 usecolsdict[key] = mm.column
+                dtype_dict[mm.column] = mm.dtype
         assert list(usecolsdict.values()) == sorted(usecolsdict.values())  # real assert
         assert len(usecolsdict) > 0  # real assert
 
@@ -1141,6 +1100,7 @@ class open_bed:
                 header=None,
                 index_col=False,
                 comment=None,
+                dtype=dtype_dict,
                 usecols=usecolsdict.values(),
             )
 
@@ -1155,12 +1115,8 @@ class open_bed:
             mm = _meta_meta[key]
             if len(fields) == 0:
                 output = np.array([], dtype=mm.dtype)
-            elif mm.missing_value is None:
-                output = np.array(fields[mm.column], dtype=mm.dtype)
             else:
-                output = np.array(
-                    fields[mm.column].fillna(mm.missing_value), dtype=mm.dtype
-                )
+                output = fields[mm.column].values
             self.properties_dict[key] = output
 
 
@@ -1168,7 +1124,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     import os
 
-    if True:  #!!!cmk
+    if False:
         from bed_reader import open_bed, sample_file
 
         file_name = sample_file("small.bed")
@@ -1177,7 +1133,7 @@ if __name__ == "__main__":
             print(bed.sid)
             print(bed.read())
 
-    # if False:  #!!!cmk
+    # if False:
     #     import numpy as np
     #     from bed_reader._open_bed import open_bed
 

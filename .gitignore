@@ -133,3 +133,5 @@ dmypy.json
 /releases/
 /bed_reader/tests/ignore.fam
 /bed_reader/tests/ignore.bim
+/.vscode
+/doc/source/_build/html
