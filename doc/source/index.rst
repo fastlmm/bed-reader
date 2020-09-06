@@ -163,10 +163,20 @@ tmp_path
 
 .. only:: html 
 
+
+Environment Variables
+======================
+
+By default :meth:`sample_file` puts files under the user's cache directory. Override this by setting
+the `BED_READER_DATA_DIR` environment variable.
+
+By default, :class:`open_bed` uses all available processors. Override this with the `num_threads`
+parameter or by setting the `MKL_NUM_THREADS` environment variable.
+
+
 Indices and Tables
 ====================
 
    * :ref:`genindex`
    * :ref:`modindex`
    * :ref:`search`
-

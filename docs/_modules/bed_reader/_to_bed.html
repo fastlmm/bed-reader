@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>bed_reader._to_bed &mdash; bed-reader 0.0.4a0 documentation</title>
+  <title>bed_reader._to_bed &mdash; Bed Reader 0.0.5a5 documentation</title>
   
 
   
@@ -49,7 +49,7 @@
           
 
           
-            <a href="../../index.html" class="icon icon-home" alt="Documentation Home"> bed-reader
+            <a href="../../index.html" class="icon icon-home" alt="Documentation Home"> Bed Reader
           
 
           
@@ -59,7 +59,7 @@
             
             
               <div class="version">
-                0.0.4a0
+                0.0.5a5
               </div>
             
           
@@ -99,7 +99,7 @@
       <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="../../index.html">bed-reader</a>
+          <a href="../../index.html">Bed Reader</a>
         
       </nav>
 
@@ -158,14 +158,13 @@
 <span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">open_bed</span>
 
 
-<span class="c1">#!!!cmk say something about support for snp-minor vs major</span>
 <div class="viewcode-block" id="to_bed"><a class="viewcode-back" href="../../index.html#bed_reader.to_bed">[docs]</a><span class="k">def</span> <span class="nf">to_bed</span><span class="p">(</span>
     <span class="n">filepath</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">],</span>
     <span class="n">val</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">properties</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{},</span>
     <span class="n">count_A1</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-    <span class="n">fam_filepath</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="c1">#!!!cmk doc and test</span>
-    <span class="n">bim_filepath</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="c1">#!!!cmk doc and test</span>
+    <span class="n">fam_filepath</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">bim_filepath</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">force_python_only</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
@@ -177,7 +176,7 @@
 <span class="sd">        File path to .bed file to write.</span>
 <span class="sd">    val: array-like:</span>
 <span class="sd">        A two-dimension array (or array-like object) of values. The values should</span>
-<span class="sd">        be (or be convertable to) all floats or all integers. The values should be 0, 1, 2, or missing.</span>
+<span class="sd">        be (or be convertible to) all floats or all integers. The values should be 0, 1, 2, or missing.</span>
 <span class="sd">        If floats, missing is ``np.nan``. If integers, missing is -127.</span>
 <span class="sd">    properties: dict, optional</span>
 <span class="sd">        A dictionary of property names and values to write to the .fam and .bim files. </span>
@@ -190,16 +189,22 @@
 <span class="sd">             (SNP or variant id), &quot;cm_position&quot; (centimorgan position), &quot;bp_position&quot;</span>
 <span class="sd">             (base-pair position), &quot;allele_1&quot;, &quot;allele_2&quot;.</span>
 <span class="sd">            </span>
-<span class="sd">         The values are lists or arrays. CMK see example</span>
+<span class="sd">         The values are lists or arrays. See example, below.</span>
 <span class="sd">    count_A1: bool, optional</span>
 <span class="sd">        True (default) to count the number of A1 alleles (the PLINK standard). False to count the number of A2 alleles.</span>
+<span class="sd">    fam_filepath: pathlib.Path or str, optional</span>
+<span class="sd">        Path to the file containing information about each individual (sample). Defaults to .fam</span>
+<span class="sd">        as the suffix on ``filepath``.</span>
+<span class="sd">    bim_filepath: pathlib.Path or str, optional</span>
+<span class="sd">        Path to the file containing information about each SNP (variant). Defaults to .bim</span>
+<span class="sd">        as the suffix on ``filepath``.</span>
 <span class="sd">    force_python_only</span>
 <span class="sd">        If False (default), uses the faster C++ code; otherwise it uses the slower pure Python code.</span>
 
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
 
-<span class="sd">    In this example, full properties is given.</span>
+<span class="sd">    In this example, all properties is given.</span>
 
 <span class="sd">    .. doctest::</span>
 
@@ -224,9 +229,9 @@
 <span class="sd">        ... }</span>
 <span class="sd">        &gt;&gt;&gt; to_bed(output_file, val, properties=properties)</span>
 
-<span class="sd">    In this example, no properties is given, so default values as assigned.</span>
-<span class="sd">    If we read the new file and list chromosome, it is an array of &#39;0&#39;s</span>
-<span class="sd">    the default chromosome value. cmkref</span>
+<span class="sd">    Here, no properties is given, so default values are assigned.</span>
+<span class="sd">    If we then read the new file and list the chromosome property, it is an array of &#39;0&#39;s,</span>
+<span class="sd">    the default chromosome value.</span>
 
 <span class="sd">    .. doctest::</span>
 

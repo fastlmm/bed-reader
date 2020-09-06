@@ -18,7 +18,7 @@ POOCH = pooch.create(
     # If this is a development version, get the data from the master branch
     version_dev="master",
     # The registry specifies the files that can be fetched
-    env="BED_READER_DATA_DIR",  #!!!cmk document this
+    env="BED_READER_DATA_DIR",
 )
 
 # Get registry file from package_data
@@ -40,6 +40,9 @@ def sample_file(filepath: Union[str, Path]) -> str:
     -------
     string
         Local name of sample .bed file.
+
+    By default this function puts files under the user's cache directory. Override this by setting
+    the `BED_READER_DATA_DIR` environment variable.
 
     Example
     --------

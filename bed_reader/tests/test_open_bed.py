@@ -1,4 +1,5 @@
 import logging
+import os
 from pathlib import Path
 
 import numpy as np
@@ -183,7 +184,6 @@ def setting_generator(seq_dict, seed=9392):
         yield setting
 
 
-#!!!cmk learn about pytest fixture parameters
 def test_properties(shared_datadir):
     file = shared_datadir / "plink_sim_10s_100v_10pmiss.bed"
     with open_bed(file) as bed:
@@ -715,14 +715,31 @@ def test_write_nan_properties(shared_datadir, tmp_path):
         assert np.array_equal(bed3.chromosome,['1.0', '1.0', '5.0', '0'])
         assert np.array_equal(bed3.cm_position,cm_p)
 
-    
-    
-
+def test_env(shared_datadir):
+    key = "MKL_NUM_THREADS"
+    original_val = os.environ.get(key)
+    try:
+        os.environ[key] = '1'
+        with open_bed(shared_datadir / "some_missing.bed") as bed:
+            val = bed.read(np.s_[:100,:100])
+        os.environ[key] = '10'
+        with open_bed(shared_datadir / "some_missing.bed") as bed:
+            val = bed.read(np.s_[:100,:100])
+        os.environ[key] = 'BADVALUE'
+        with pytest.raises(ValueError):
+            with open_bed(shared_datadir / "some_missing.bed") as bed:
+                val = bed.read(np.s_[:100,:100])
+    finally:
+        if original_val is None:
+           if key in os.environ:
+               del os.environ[key]
+        else:
+            os.environ[key] = original_val
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
     shared_datadir = Path(r"D:\OneDrive\programs\bed-reader\bed_reader\tests\data")
     tmp_path = Path(r"m:/deldir/tests")
-    test_properties(shared_datadir)
+    test_env(shared_datadir)
     pytest.main([__file__])
