@@ -168,7 +168,7 @@
     <span class="c1"># If this is a development version, get the data from the master branch</span>
     <span class="n">version_dev</span><span class="o">=</span><span class="s2">&quot;master&quot;</span><span class="p">,</span>
     <span class="c1"># The registry specifies the files that can be fetched</span>
-    <span class="n">env</span><span class="o">=</span><span class="s2">&quot;BED_READER_DATA_DIR&quot;</span><span class="p">,</span>  <span class="c1">#!!!cmk document this</span>
+    <span class="n">env</span><span class="o">=</span><span class="s2">&quot;BED_READER_DATA_DIR&quot;</span><span class="p">,</span>
 <span class="p">)</span>
 
 <span class="c1"># Get registry file from package_data</span>
@@ -190,6 +190,9 @@
 <span class="sd">    -------</span>
 <span class="sd">    string</span>
 <span class="sd">        Local name of sample .bed file.</span>
+
+<span class="sd">    By default this function puts files under the user&#39;s cache directory. Override this by setting</span>
+<span class="sd">    the `BED_READER_DATA_DIR` environment variable.</span>
 
 <span class="sd">    Example</span>
 <span class="sd">    --------</span>
