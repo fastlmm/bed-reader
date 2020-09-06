@@ -1,5 +1,6 @@
 import logging
 import os
+import platform
 from pathlib import Path
 
 import numpy as np
@@ -717,6 +718,9 @@ def test_write_nan_properties(shared_datadir, tmp_path):
 
 
 def test_env(shared_datadir):
+    if platform.system() == "Darwin":
+        return
+
     key = "MKL_NUM_THREADS"
     original_val = os.environ.get(key)
     try:
