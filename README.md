@@ -2,6 +2,7 @@
 [![Build Status](https://travis-ci.com/fastlmm/bed-reader.svg?branch=master)](https://travis-ci.com/fastlmm/bed-reader)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/bed-reader)
 
+
 Read and write the PLINK BED format, simply and efficiently.
 
 Features:

@@ -441,10 +441,10 @@ def test_write12(tmp_path):
                             assert np.array_equal(
                                 bed.cm_position, np.array(col_prop012)
                             )
-                    try:
-                        os.remove(filename)
-                    except:
-                        pass
+                try:
+                    os.remove(filename)
+                except:
+                    pass
     logging.info("done with 'test_writes'")
 
 
@@ -614,10 +614,10 @@ def test_coverage2(shared_datadir, tmp_path):
     val = np.zeros((3, 5))[::2]
     assert not val.flags["C_CONTIGUOUS"] and not val.flags["F_CONTIGUOUS"]
     with pytest.raises(ValueError):
-        to_bed(tmp_path/"ignore", val)
+        to_bed(tmp_path / "ignore", val)
     val = np.zeros((3, 5), dtype=np.str)
     with pytest.raises(ValueError):
-        to_bed(tmp_path/"ignore", val)
+        to_bed(tmp_path / "ignore", val)
 
 
 def test_coverage3(shared_datadir, tmp_path):
@@ -684,62 +684,64 @@ def test_fam_bim_filepath(shared_datadir, tmp_path):
         for key in properties:
             np.array_equal(properties[key], properties2[key])
 
+
 def test_write_nan_properties(shared_datadir, tmp_path):
     with open_bed(shared_datadir / "small.bed") as bed:
         val = bed.read()
         properties = bed.properties
         chrom = bed.chromosome.copy()
-        chrom[bed.chromosome=='Y']=0
-        chrom = np.array(chrom,dtype='float')
+        chrom[bed.chromosome == "Y"] = 0
+        chrom = np.array(chrom, dtype="float")
         chrom2 = chrom.copy()
-        chrom2[chrom2==0]=np.nan
+        chrom2[chrom2 == 0] = np.nan
         cm_p = bed.cm_position.copy()
-        cm_p[cm_p<3000]=0
+        cm_p[cm_p < 3000] = 0
         cm_p2 = cm_p.copy()
-        cm_p2[cm_p==0]=np.nan
+        cm_p2[cm_p == 0] = np.nan
         properties["chromosome"] = chrom2
         properties["cm_position"] = cm_p2
 
     output_file = tmp_path / "nan.bed"
-    to_bed(
-        output_file,
-        val,
-        properties=properties
-        )
+    to_bed(output_file, val, properties=properties)
 
     with open_bed(output_file) as bed2:
-        assert np.array_equal(bed2.chromosome,['1.0', '1.0', '5.0', '0'])
-        assert np.array_equal(bed2.cm_position,cm_p)
+        assert np.array_equal(bed2.chromosome, ["1.0", "1.0", "5.0", "0"])
+        assert np.array_equal(bed2.cm_position, cm_p)
 
-    with open_bed(shared_datadir / "small.bed", properties={'chromosome':chrom2, "cm_position": cm_p2}) as bed3:
-        assert np.array_equal(bed3.chromosome,['1.0', '1.0', '5.0', '0'])
-        assert np.array_equal(bed3.cm_position,cm_p)
+    with open_bed(
+        shared_datadir / "small.bed",
+        properties={"chromosome": chrom2, "cm_position": cm_p2},
+    ) as bed3:
+        assert np.array_equal(bed3.chromosome, ["1.0", "1.0", "5.0", "0"])
+        assert np.array_equal(bed3.cm_position, cm_p)
+
 
 def test_env(shared_datadir):
     key = "MKL_NUM_THREADS"
     original_val = os.environ.get(key)
     try:
-        os.environ[key] = '1'
+        os.environ[key] = "1"
         with open_bed(shared_datadir / "some_missing.bed") as bed:
-            val = bed.read(np.s_[:100,:100])
-        os.environ[key] = '10'
+            _ = bed.read(np.s_[:100, :100])
+        os.environ[key] = "10"
         with open_bed(shared_datadir / "some_missing.bed") as bed:
-            val = bed.read(np.s_[:100,:100])
-        os.environ[key] = 'BADVALUE'
+            _ = bed.read(np.s_[:100, :100])
+        os.environ[key] = "BADVALUE"
         with pytest.raises(ValueError):
             with open_bed(shared_datadir / "some_missing.bed") as bed:
-                val = bed.read(np.s_[:100,:100])
+                _ = bed.read(np.s_[:100, :100])
     finally:
         if original_val is None:
-           if key in os.environ:
-               del os.environ[key]
+            if key in os.environ:
+                del os.environ[key]
         else:
             os.environ[key] = original_val
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
     shared_datadir = Path(r"D:\OneDrive\programs\bed-reader\bed_reader\tests\data")
     tmp_path = Path(r"m:/deldir/tests")
-    test_env(shared_datadir)
+    test_write12(tmp_path)
     pytest.main([__file__])

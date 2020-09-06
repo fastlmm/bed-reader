@@ -60,9 +60,7 @@ _meta_meta = {
     "pheno": _MetaMeta("fam", 5, np.str_, "0", _all_same),
     "chromosome": _MetaMeta("bim", 0, np.str_, "0", _all_same),
     "sid": _MetaMeta("bim", 1, np.str_, None, _sequence),
-    "cm_position": _MetaMeta(
-        "bim", 2, np.float32, 0, _all_same
-    ),
+    "cm_position": _MetaMeta("bim", 2, np.float32, 0, _all_same),
     "bp_position": _MetaMeta("bim", 3, np.int32, 0, _all_same),
     "allele_1": _MetaMeta("bim", 4, np.str_, "A1", _all_same),
     "allele_2": _MetaMeta("bim", 5, np.str_, "A2", _all_same),
@@ -206,8 +204,16 @@ class open_bed:
         self.count_A1 = count_A1
         self._num_threads = num_threads
         self.skip_format_check = skip_format_check
-        self._fam_filepath = Path(fam_filepath) if fam_filepath is not None else self.filepath.parent / (self.filepath.stem + ".fam")
-        self._bim_filepath = Path(bim_filepath) if bim_filepath is not None else self.filepath.parent / (self.filepath.stem + ".bim")
+        self._fam_filepath = (
+            Path(fam_filepath)
+            if fam_filepath is not None
+            else self.filepath.parent / (self.filepath.stem + ".fam")
+        )
+        self._bim_filepath = (
+            Path(bim_filepath)
+            if bim_filepath is not None
+            else self.filepath.parent / (self.filepath.stem + ".bim")
+        )
 
         self.properties_dict, self._counts = open_bed._fix_up_properties(
             properties, iid_count, sid_count, use_fill_sequence=False
@@ -899,7 +905,7 @@ class open_bed:
         if suffix == "fam":
             return self._fam_filepath
         else:
-            assert suffix == "bim" # real assert
+            assert suffix == "bim"  # real assert
             return self._bim_filepath
 
     def _count(self, suffix):
@@ -993,7 +999,11 @@ class open_bed:
     def _write_fam_or_bim(base_filepath, properties, suffix, property_filepath):
         assert suffix in {"fam", "bim"}, "real assert"
 
-        filepath = Path(property_filepath) if property_filepath is not None else base_filepath.parent / (base_filepath.stem + "." + suffix)
+        filepath = (
+            Path(property_filepath)
+            if property_filepath is not None
+            else base_filepath.parent / (base_filepath.stem + "." + suffix)
+        )
 
         fam_bim_list = []
         for key, mm in _meta_meta.items():

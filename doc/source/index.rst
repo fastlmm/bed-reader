@@ -2,10 +2,7 @@
     :target: https://badge.fury.io/py/bed-reader
 .. image:: https://travis-ci.com/fastlmm/bed-reader.svg?branch=master
     :target: https://travis-ci.com/fastlmm/bed-reader
-.. image:: https://img.shields.io/pypi/pyversions/bed-reader   :alt: PyPI - Python Version  
-
-
-
+.. image:: https://img.shields.io/pypi/pyversions/bed-reader
 
 ################################
 :mod:`bed_reader` Documentation
