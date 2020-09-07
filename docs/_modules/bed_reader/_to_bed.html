@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>bed_reader._to_bed &mdash; Bed Reader 0.0.5a5 documentation</title>
+  <title>bed_reader._to_bed &mdash; Bed Reader 0.1.0 documentation</title>
   
 
   
@@ -59,7 +59,7 @@
             
             
               <div class="version">
-                0.0.5a5
+                0.1.0
               </div>
             
           
@@ -173,7 +173,7 @@
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    filepath:</span>
-<span class="sd">        File path to .bed file to write.</span>
+<span class="sd">        .bed file to write to.</span>
 <span class="sd">    val: array-like:</span>
 <span class="sd">        A two-dimension array (or array-like object) of values. The values should</span>
 <span class="sd">        be (or be convertible to) all floats or all integers. The values should be 0, 1, 2, or missing.</span>
@@ -193,18 +193,18 @@
 <span class="sd">    count_A1: bool, optional</span>
 <span class="sd">        True (default) to count the number of A1 alleles (the PLINK standard). False to count the number of A2 alleles.</span>
 <span class="sd">    fam_filepath: pathlib.Path or str, optional</span>
-<span class="sd">        Path to the file containing information about each individual (sample). Defaults to .fam</span>
-<span class="sd">        as the suffix on ``filepath``.</span>
+<span class="sd">        Path to the file containing information about each individual (sample).</span>
+<span class="sd">        Defaults to replacing the .bed file’s suffix with .fam.</span>
 <span class="sd">    bim_filepath: pathlib.Path or str, optional</span>
-<span class="sd">        Path to the file containing information about each SNP (variant). Defaults to .bim</span>
-<span class="sd">        as the suffix on ``filepath``.</span>
+<span class="sd">        Path to the file containing information about each SNP (variant).</span>
+<span class="sd">        Defaults to replacing the .bed file’s suffix with .bim.</span>
 <span class="sd">    force_python_only</span>
 <span class="sd">        If False (default), uses the faster C++ code; otherwise it uses the slower pure Python code.</span>
 
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
 
-<span class="sd">    In this example, all properties is given.</span>
+<span class="sd">    In this example, all properties are given.</span>
 
 <span class="sd">    .. doctest::</span>
 
@@ -229,7 +229,7 @@
 <span class="sd">        ... }</span>
 <span class="sd">        &gt;&gt;&gt; to_bed(output_file, val, properties=properties)</span>
 
-<span class="sd">    Here, no properties is given, so default values are assigned.</span>
+<span class="sd">    Here, no properties are given, so default values are assigned.</span>
 <span class="sd">    If we then read the new file and list the chromosome property, it is an array of &#39;0&#39;s,</span>
 <span class="sd">    the default chromosome value.</span>
 
@@ -373,12 +373,12 @@
     <span class="k">return</span> <span class="nb">input</span>
 
 
-<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
-    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+<span class="c1">#if __name__ == &quot;__main__&quot;:</span>
+<span class="c1">#    logging.basicConfig(level=logging.INFO)</span>
 
-    <span class="kn">import</span> <span class="nn">pytest</span>
+<span class="c1">#    import pytest</span>
 
-    <span class="n">pytest</span><span class="o">.</span><span class="n">main</span><span class="p">([</span><span class="s2">&quot;--doctest-modules&quot;</span><span class="p">,</span> <span class="vm">__file__</span><span class="p">])</span>
+<span class="c1">#    pytest.main([&quot;--doctest-modules&quot;, __file__])</span>
 </pre></div>
 
            </div>

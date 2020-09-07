@@ -38,8 +38,9 @@ def sample_file(filepath: Union[str, Path]) -> str:
 
     Returns
     -------
-    string
+    str
         Local name of sample .bed file.
+
 
     By default this function puts files under the user's cache directory. Override this by setting
     the `BED_READER_DATA_DIR` environment variable.
@@ -69,7 +70,8 @@ def tmp_path() -> Path:
 
     Returns
     -------
-    Path
+    pathlib.Path
+        a temporary directory
 
     Example
     --------
@@ -89,9 +91,9 @@ def tmp_path() -> Path:
     return path
 
 
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
+#if __name__ == "__main__":
+#    logging.basicConfig(level=logging.INFO)
 
-    import pytest
+#    import pytest
 
-    pytest.main(["--doctest-modules", __file__])
+#    pytest.main(["--doctest-modules", __file__])

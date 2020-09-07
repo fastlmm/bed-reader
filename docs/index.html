@@ -7,7 +7,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>bed_reader Documentation &mdash; Bed Reader 0.0.5a5 documentation</title>
+  <title>bed_reader Documentation &mdash; Bed Reader 0.1.0 documentation</title>
   
 
   
@@ -59,7 +59,7 @@
             
             
               <div class="version">
-                0.0.5a5
+                0.1.0
               </div>
             
           
@@ -323,7 +323,7 @@ chromosome. Then, read every value in chromosome 5.</p>
 <td><p>Second allele of each SNP (variant),</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#bed_reader.open_bed.properties" title="bed_reader.open_bed.properties"><code class="xref py py-obj docutils literal notranslate"><span class="pre">open_bed.properties</span></code></a></p></td>
-<td><p>All the properties returned as a <code class="docutils literal notranslate"><span class="pre">dict</span></code>.</p></td>
+<td><p>All the properties returned as a dictionary.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#bed_reader.open_bed.property_item" title="bed_reader.open_bed.property_item"><code class="xref py py-obj docutils literal notranslate"><span class="pre">open_bed.property_item</span></code></a>(name)</p></td>
 <td><p>Retrieve one property by name.</p></td>
@@ -360,7 +360,7 @@ chromosome. Then, read every value in chromosome 5.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>filepath</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.8)"><em>pathlib.Path</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.8)"><em>str</em></a>) – file path to .bed file.</p></li>
+<li><p><strong>filepath</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.8)"><em>pathlib.Path</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.8)"><em>str</em></a>) – File path to the .bed file.</p></li>
 <li><p><strong>iid_count</strong> (<a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.8)"><em>None</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.8)"><em>int</em></a><em>, </em><em>optional</em>) – Number of individuals (samples) in the .bed file.
 The default (<code class="docutils literal notranslate"><span class="pre">iid_count=None</span></code>) finds the number
 automatically by quickly scanning the .fam file.</p></li>
@@ -371,37 +371,39 @@ automatically by quickly scanning the .bim file.</p></li>
 The keys of the dictionary are the names of the properties to replace.
 The possible keys are:</p>
 <blockquote>
+<div><blockquote>
 <div><p>”fid” (family id), “iid” (individual or sample id), “father” (father id),
 “mother” (mother id), “sex”, “pheno” (phenotype), “chromosome”, “sid”
 (SNP or variant id), “cm_position” (centimorgan position), “bp_position”
 (base-pair position), “allele_1”, “allele_2”.</p>
 </div></blockquote>
-<p>The values are the replacement lists or arrays. A value can also be <code class="docutils literal notranslate"><span class="pre">None</span></code>
-which tells that this property need not be read. See examples, below.</p>
-<p>(If necessary, the list or array will be converted to a <cite>numpy.ndarray</cite>
-of the appropriate dtype. Any <cite>np.nan</cite> values will converted to
-the appropriate missing value. The PLINK <a class="reference external" href="https://www.cog-genomics.org/plink2/formats#fam">.fam</a>
-and <a class="reference external" href="https://www.cog-genomics.org/plink2/formats#bim">.bim</a> specification lists
-the dtypes and missing values for each property.)</p>
+<p>The values are replacement lists or arrays. A value can also be <cite>None</cite>,
+meaning do not read or offer this property. See examples, below.</p>
+<p>The list or array will be converted to a <a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)"><code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></a>
+of the appropriate dtype, if necessary. Any <code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.nan</span></code> values will converted to
+the appropriate missing value. The PLINK <a class="reference external" href="https://www.cog-genomics.org/plink2/formats#fam">.fam specification</a>
+and <a class="reference external" href="https://www.cog-genomics.org/plink2/formats#bim">.bim specification</a> lists
+the dtypes and missing values for each property.</p>
+</div></blockquote>
 </p></li>
 <li><p><strong>count_A1</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.8)"><em>bool</em></a><em>, </em><em>optional</em>) – True (default) to count the number of A1 alleles (the PLINK standard). False to count the number of A2 alleles.</p></li>
-<li><p><strong>num_threads</strong> (<a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.8)"><em>None</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.8)"><em>int</em></a><em>, </em><em>optional</em>) – <p>The number of threads with which to read data. Defaults to all available threads.
+<li><p><strong>num_threads</strong> (<a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.8)"><em>None</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.8)"><em>int</em></a><em>, </em><em>optional</em>) – <p>The number of threads with which to read data. Defaults to all available processors.
 Can also be set with the ‘MKL_NUM_THREADS’ environment variable.</p>
 <p>On MacOS, this parameter is ignored and all reads are singled threaded.</p>
 </p></li>
 <li><p><strong>skip_format_check</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.8)"><em>bool</em></a><em>, </em><em>optional</em>) – False (default) to immediately check for expected starting bytes in the .bed file.
 True to delay the check until (and if) data is read.</p></li>
-<li><p><strong>fam_filepath</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.8)"><em>pathlib.Path</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.8)"><em>str</em></a><em>, </em><em>optional</em>) – Path to the file containing information about each individual (sample). Defaults to .fam
-as the suffix on <code class="docutils literal notranslate"><span class="pre">filepath</span></code>.</p></li>
-<li><p><strong>bim_filepath</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.8)"><em>pathlib.Path</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.8)"><em>str</em></a><em>, </em><em>optional</em>) – Path to the file containing information about each SNP (variant). Defaults to .bim
-as the suffix on <code class="docutils literal notranslate"><span class="pre">filepath</span></code>.</p></li>
+<li><p><strong>fam_filepath</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.8)"><em>pathlib.Path</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.8)"><em>str</em></a><em>, </em><em>optional</em>) – Path to the file containing information about each individual (sample).
+Defaults to replacing the .bed file’s suffix with .fam.</p></li>
+<li><p><strong>bim_filepath</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.8)"><em>pathlib.Path</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.8)"><em>str</em></a><em>, </em><em>optional</em>) – Path to the file containing information about each SNP (variant).
+Defaults to replacing the .bed file’s suffix with .bim.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
-<dd class="field-even"><p><strong>an open_bed object</strong></p>
+<dd class="field-even"><p>an open_bed object</p>
 </dd>
 <dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p><a class="reference internal" href="#bed_reader.open_bed" title="bed_reader.open_bed"><code class="xref py py-class docutils literal notranslate"><span class="pre">open_bed</span></code></a></p>
+<dd class="field-odd"><p><a class="reference internal" href="#bed_reader.open_bed" title="bed_reader.open_bed">open_bed</a></p>
 </dd>
 </dl>
 <p class="rubric">Examples</p>
@@ -418,7 +420,7 @@ as the suffix on <code class="docutils literal notranslate"><span class="pre">fi
 <span class="go">[[ 1.  0. nan  0.]</span>
 <span class="go"> [ 2.  0. nan  2.]</span>
 <span class="go"> [ 0.  1.  2.  0.]]</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="k">del</span> <span class="n">bed</span>  <span class="c1"># optional: close and delete object</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">del</span> <span class="n">bed</span>  <span class="c1"># optional: delete bed object</span>
 </pre></div>
 </div>
 <p>Open the file and read data for one SNP (variant)
@@ -431,8 +433,7 @@ at index position 2.</p>
 <span class="go"> [ 2.]]</span>
 </pre></div>
 </div>
-<p>Instead of reading the individual <a class="reference internal" href="#bed_reader.open_bed.iid" title="bed_reader.open_bed.iid"><code class="xref py py-attr docutils literal notranslate"><span class="pre">iid</span></code></a> from a file, use a replacement
-list.</p>
+<p>Replace <a class="reference internal" href="#bed_reader.open_bed.iid" title="bed_reader.open_bed.iid"><code class="xref py py-attr docutils literal notranslate"><span class="pre">iid</span></code></a>.</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">bed</span> <span class="o">=</span> <span class="n">open_bed</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;iid&quot;</span><span class="p">:[</span><span class="s2">&quot;sample1&quot;</span><span class="p">,</span><span class="s2">&quot;sample2&quot;</span><span class="p">,</span><span class="s2">&quot;sample3&quot;</span><span class="p">]})</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">iid</span><span class="p">)</span> <span class="c1"># replaced</span>
 <span class="go">[&#39;sample1&#39; &#39;sample2&#39; &#39;sample3&#39;]</span>
@@ -440,8 +441,7 @@ list.</p>
 <span class="go">[&#39;sid1&#39; &#39;sid2&#39; &#39;sid3&#39; &#39;sid4&#39;]</span>
 </pre></div>
 </div>
-<p>Tell it the number of individuals (samples) and SNPs (variants). This lets it read data without
-needing to ever open the .fam and .bim files.</p>
+<p>Give the number of individuals (samples) and SNPs (variants) so that the .fam and .bim files need never be opened.</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">open_bed</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="n">iid_count</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">sid_count</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span> <span class="k">as</span> <span class="n">bed</span><span class="p">:</span>
 <span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
 <span class="go">[[ 1.  0. nan  0.]</span>
@@ -449,13 +449,13 @@ needing to ever open the .fam and .bim files.</p>
 <span class="go"> [ 0.  1.  2.  0.]]</span>
 </pre></div>
 </div>
-<p>Tell it that some properties will never be used, so don’t bother to read them.</p>
+<p>Mark some properties as “don’t read or offer”.</p>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">bed</span> <span class="o">=</span> <span class="n">open_bed</span><span class="p">(</span><span class="n">file_name</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="p">{</span>
 <span class="gp">... </span>   <span class="s2">&quot;father&quot;</span> <span class="p">:</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;mother&quot;</span> <span class="p">:</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;sex&quot;</span> <span class="p">:</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;pheno&quot;</span> <span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
 <span class="gp">... </span>   <span class="s2">&quot;allele_1&quot;</span> <span class="p">:</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;allele_2&quot;</span><span class="p">:</span><span class="kc">None</span> <span class="p">})</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">iid</span><span class="p">)</span>        <span class="c1"># read from file</span>
 <span class="go">[&#39;iid1&#39; &#39;iid2&#39; &#39;iid3&#39;]</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">allele_2</span><span class="p">)</span>   <span class="c1"># Don&#39;t bother reading this from file</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">allele_2</span><span class="p">)</span>   <span class="c1"># not read and not offered</span>
 <span class="go">None</span>
 </pre></div>
 </div>
@@ -465,8 +465,11 @@ needing to ever open the .fam and .bim files.</p>
 <em class="property">property </em><code class="sig-name descname">allele_1</code><a class="headerlink" href="#bed_reader.open_bed.allele_1" title="Permalink to this definition">¶</a></dt>
 <dd><p>First allele of each SNP (variant).</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)"><code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></a> of str</p>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>array of str</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)">numpy.ndarray</a></p>
 </dd>
 </dl>
 <p>If needed, will cause a one-time read of the .bim file.</p>
@@ -486,8 +489,11 @@ needing to ever open the .fam and .bim files.</p>
 <em class="property">property </em><code class="sig-name descname">allele_2</code><a class="headerlink" href="#bed_reader.open_bed.allele_2" title="Permalink to this definition">¶</a></dt>
 <dd><p>Second allele of each SNP (variant),</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)"><code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></a> of str</p>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>array of str</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)">numpy.ndarray</a></p>
 </dd>
 </dl>
 <p>If needed, will cause a one-time read of the .bim file.</p>
@@ -507,10 +513,14 @@ needing to ever open the .fam and .bim files.</p>
 <em class="property">property </em><code class="sig-name descname">bp_position</code><a class="headerlink" href="#bed_reader.open_bed.bp_position" title="Permalink to this definition">¶</a></dt>
 <dd><p>Base-pair position of each SNP (variant).</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)"><code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></a> of int</p>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>array of int</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)">numpy.ndarray</a></p>
 </dd>
 </dl>
+<p>0 represents a missing value.</p>
 <p>If needed, will cause a one-time read of the .bim file.</p>
 <p class="rubric">Example</p>
 <div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">open_bed</span><span class="p">,</span> <span class="n">sample_file</span>
@@ -528,10 +538,14 @@ needing to ever open the .fam and .bim files.</p>
 <em class="property">property </em><code class="sig-name descname">chromosome</code><a class="headerlink" href="#bed_reader.open_bed.chromosome" title="Permalink to this definition">¶</a></dt>
 <dd><p>Chromosome of each SNP (variant)</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)"><code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></a> of str</p>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>array of str</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)">numpy.ndarray</a></p>
 </dd>
 </dl>
+<p>‘0’ represents a missing value.</p>
 <p>If needed, will cause a one-time read of the .bim file.</p>
 <p class="rubric">Example</p>
 <div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">open_bed</span><span class="p">,</span> <span class="n">sample_file</span>
@@ -549,10 +563,14 @@ needing to ever open the .fam and .bim files.</p>
 <em class="property">property </em><code class="sig-name descname">cm_position</code><a class="headerlink" href="#bed_reader.open_bed.cm_position" title="Permalink to this definition">¶</a></dt>
 <dd><p>Centimorgan position of each SNP (variant).</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)"><code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></a> of float</p>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>array of float</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)">numpy.ndarray</a></p>
 </dd>
 </dl>
+<p>0.0 represents a missing value.</p>
 <p>If needed, will cause a one-time read of the .bim file.</p>
 <p class="rubric">Example</p>
 <div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">open_bed</span><span class="p">,</span> <span class="n">sample_file</span>
@@ -570,10 +588,14 @@ needing to ever open the .fam and .bim files.</p>
 <em class="property">property </em><code class="sig-name descname">father</code><a class="headerlink" href="#bed_reader.open_bed.father" title="Permalink to this definition">¶</a></dt>
 <dd><p>Father id of each individual (sample).</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)"><code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></a> of <code class="docutils literal notranslate"><span class="pre">str</span></code></p>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>array of str</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)">numpy.ndarray</a></p>
 </dd>
 </dl>
+<p>‘0’ represents a missing value.</p>
 <p>If needed, will cause a one-time read of the .fam file.</p>
 <p class="rubric">Example</p>
 <div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">open_bed</span><span class="p">,</span> <span class="n">sample_file</span>
@@ -591,10 +613,14 @@ needing to ever open the .fam and .bim files.</p>
 <em class="property">property </em><code class="sig-name descname">fid</code><a class="headerlink" href="#bed_reader.open_bed.fid" title="Permalink to this definition">¶</a></dt>
 <dd><p>Family id of each individual (sample).</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)"><code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></a> of <code class="docutils literal notranslate"><span class="pre">str</span></code></p>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>array of str</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)">numpy.ndarray</a></p>
 </dd>
 </dl>
+<p>‘0’ represents a missing value.</p>
 <p>If needed, will cause a one-time read of the .fam file.</p>
 <p class="rubric">Example</p>
 <div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">open_bed</span><span class="p">,</span> <span class="n">sample_file</span>
@@ -612,8 +638,11 @@ needing to ever open the .fam and .bim files.</p>
 <em class="property">property </em><code class="sig-name descname">iid</code><a class="headerlink" href="#bed_reader.open_bed.iid" title="Permalink to this definition">¶</a></dt>
 <dd><p>Individual id of each individual (sample).</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)"><code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></a> of <code class="docutils literal notranslate"><span class="pre">str</span></code></p>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>array of str</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)">numpy.ndarray</a></p>
 </dd>
 </dl>
 <p>If needed, will cause a one-time read of the .fam file.</p>
@@ -633,8 +662,11 @@ needing to ever open the .fam and .bim files.</p>
 <em class="property">property </em><code class="sig-name descname">iid_count</code><a class="headerlink" href="#bed_reader.open_bed.iid_count" title="Permalink to this definition">¶</a></dt>
 <dd><p>Number of individuals (samples).</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.8)">int</a></p>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>number of individuals</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.8)">int</a></p>
 </dd>
 </dl>
 <p>If needed, will cause a fast line-count of the .fam file.</p>
@@ -654,10 +686,14 @@ needing to ever open the .fam and .bim files.</p>
 <em class="property">property </em><code class="sig-name descname">mother</code><a class="headerlink" href="#bed_reader.open_bed.mother" title="Permalink to this definition">¶</a></dt>
 <dd><p>Mother id of each individual (sample).</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)"><code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></a> of <code class="docutils literal notranslate"><span class="pre">str</span></code></p>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>array of str</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)">numpy.ndarray</a></p>
 </dd>
 </dl>
+<p>‘0’ represents a missing value.</p>
 <p>If needed, will cause a one-time read of the .fam file.</p>
 <p class="rubric">Example</p>
 <div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">open_bed</span><span class="p">,</span> <span class="n">sample_file</span>
@@ -676,10 +712,14 @@ needing to ever open the .fam and .bim files.</p>
 <dd><p>A phenotype for each individual (sample)
 (seldom used).</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)"><code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></a> of str</p>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>array of str</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)">numpy.ndarray</a></p>
 </dd>
 </dl>
+<p>‘0’ may represent a missing value.</p>
 <p>If needed, will cause a one-time read of the .fam file.</p>
 <p class="rubric">Example</p>
 <div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">open_bed</span><span class="p">,</span> <span class="n">sample_file</span>
@@ -695,10 +735,13 @@ needing to ever open the .fam and .bim files.</p>
 <dl class="py method">
 <dt id="bed_reader.open_bed.properties">
 <em class="property">property </em><code class="sig-name descname">properties</code><a class="headerlink" href="#bed_reader.open_bed.properties" title="Permalink to this definition">¶</a></dt>
-<dd><p>All the properties returned as a <code class="docutils literal notranslate"><span class="pre">dict</span></code>.</p>
+<dd><p>All the properties returned as a dictionary.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.8)">dict</a></p>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>all the properties</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.8)">dict</a></p>
 </dd>
 </dl>
 <p>The keys of the dictionary are the names of the properties, namely:</p>
@@ -726,8 +769,11 @@ needing to ever open the .fam and .bim files.</p>
 <code class="sig-name descname">property_item</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">name</span><span class="p">:</span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.8)">str</a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)">numpy.ndarray</a><a class="reference internal" href="_modules/bed_reader/_open_bed.html#open_bed.property_item"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bed_reader.open_bed.property_item" title="Permalink to this definition">¶</a></dt>
 <dd><p>Retrieve one property by name.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)"><code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></a></p>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>a property value</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)">numpy.ndarray</a></p>
 </dd>
 </dl>
 <p>The name is one of these:</p>
@@ -751,7 +797,7 @@ needing to ever open the .fam and .bim files.</p>
 
 <dl class="py method">
 <dt id="bed_reader.open_bed.read">
-<code class="sig-name descname">read</code><span class="sig-paren">(</span><em class="sig-param">index: Optional[Any] = None</em>, <em class="sig-param">dtype: Union[type</em>, <em class="sig-param">str</em>, <em class="sig-param">None] = &lt;class 'numpy.float32'&gt;</em>, <em class="sig-param">order: Optional[str] = 'F'</em>, <em class="sig-param">force_python_only: Optional[bool] = False</em><span class="sig-paren">)</span> &#x2192; <a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)">numpy.ndarray</a><a class="reference internal" href="_modules/bed_reader/_open_bed.html#open_bed.read"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bed_reader.open_bed.read" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">read</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">index</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span>Any<span class="p">]</span></span> <span class="o">=</span> <span class="default_value">None</span></em>, <em class="sig-param"><span class="n">dtype</span><span class="p">:</span> <span class="n">Union[type, str, None]</span> <span class="o">=</span> <span class="default_value">'float32'</span></em>, <em class="sig-param"><span class="n">order</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.8)">str</a><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">'F'</span></em>, <em class="sig-param"><span class="n">force_python_only</span><span class="p">:</span> <span class="n">Optional<span class="p">[</span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.8)">bool</a><span class="p">]</span></span> <span class="o">=</span> <span class="default_value">False</span></em><span class="sig-paren">)</span> &#x2192; <a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)">numpy.ndarray</a><a class="reference internal" href="_modules/bed_reader/_open_bed.html#open_bed.read"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#bed_reader.open_bed.read" title="Permalink to this definition">¶</a></dt>
 <dd><p>Read genotype information.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -769,15 +815,15 @@ Defaults to <code class="docutils literal notranslate"><span class="pre">F</span
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
-<dd class="field-even"><p><ul class="simple">
-<li><p>2-D <a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)"><code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></a> containing values of 0, 1, 2, or missing.</p></li>
-<li><p><em>Rows represent individuals (samples). Columns represent SNPs (variants).</em></p></li>
-<li><p>For <code class="docutils literal notranslate"><span class="pre">dtype</span></code> ‘float32’ and ‘float64’, NaN indicates missing values.</p></li>
-<li><p><em>For ‘int8’, -127 indicates missing values.</em></p></li>
-</ul>
-</p>
+<dd class="field-even"><p>2-D array containing values of 0, 1, 2, or missing</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)">numpy.ndarray</a></p>
 </dd>
 </dl>
+<p>Rows represent individuals (samples). Columns represent SNPs (variants).</p>
+<p>For <code class="docutils literal notranslate"><span class="pre">dtype</span></code> ‘float32’ and ‘float64’, NaN indicates missing values.
+For ‘int8’, -127 indicates missing values.</p>
 <p class="rubric">Examples</p>
 <p>To read all data in a .bed file, set <code class="docutils literal notranslate"><span class="pre">index</span></code> to <code class="docutils literal notranslate"><span class="pre">None</span></code>. This is the default.</p>
 <div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">open_bed</span><span class="p">,</span> <span class="n">sample_file</span>
@@ -790,8 +836,8 @@ Defaults to <code class="docutils literal notranslate"><span class="pre">F</span
 <span class="go"> [ 0.  1.  2.  0.]]</span>
 </pre></div>
 </div>
-<p>To read selected individuals (samples) and/or SNPs (variants), set a <cite>numpy.s_</cite> to an <code class="docutils literal notranslate"><span class="pre">int</span></code>, a list of <code class="docutils literal notranslate"><span class="pre">int</span></code>, a <a class="reference external" href="https://docs.python.org/3/library/functions.html#slice" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">slice</span></code></a>, or a list of <code class="docutils literal notranslate"><span class="pre">bool</span></code>.
-Negative integers count from the end of the data.</p>
+<p>To read selected individuals (samples) and/or SNPs (variants), set each part of a <code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.s_</span></code> to an <cite>int</cite>, a list of <cite>int</cite>, a slice expression, or a list of <cite>bool</cite>.
+Negative integers count from the end of the list.</p>
 <div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">bed</span> <span class="o">=</span> <span class="n">open_bed</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">s_</span><span class="p">[:,</span><span class="mi">2</span><span class="p">]))</span>  <span class="c1"># read the SNPs indexed by 2.</span>
@@ -828,7 +874,7 @@ Negative integers count from the end of the data.</p>
 <span class="go">[[   1    0 -127    0]</span>
 <span class="go"> [   2    0 -127    2]</span>
 <span class="go"> [   0    1    2    0]]</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="k">del</span> <span class="n">bed</span>  <span class="c1"># optional: close and delete object</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">del</span> <span class="n">bed</span>  <span class="c1"># optional: delete bed object</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -838,8 +884,11 @@ Negative integers count from the end of the data.</p>
 <em class="property">property </em><code class="sig-name descname">sex</code><a class="headerlink" href="#bed_reader.open_bed.sex" title="Permalink to this definition">¶</a></dt>
 <dd><p>Sex of each individual (sample).</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)"><code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></a> of {0,1,2}</p>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>array of 0, 1, or 2</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)">numpy.ndarray</a></p>
 </dd>
 </dl>
 <p>0 is unknown, 1 is male, 2 is female</p>
@@ -860,8 +909,11 @@ Negative integers count from the end of the data.</p>
 <em class="property">property </em><code class="sig-name descname">shape</code><a class="headerlink" href="#bed_reader.open_bed.shape" title="Permalink to this definition">¶</a></dt>
 <dd><p>Number of individuals (samples) and SNPs (variants).</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p>(<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.8)">int</a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.8)">int</a>)</p>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>number of individuals, number of SNPs</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>(<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.8)">int</a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.8)">int</a>)</p>
 </dd>
 </dl>
 <p>If needed, will cause a fast line-count of the .fam and .bim files.</p>
@@ -881,8 +933,11 @@ Negative integers count from the end of the data.</p>
 <em class="property">property </em><code class="sig-name descname">sid</code><a class="headerlink" href="#bed_reader.open_bed.sid" title="Permalink to this definition">¶</a></dt>
 <dd><p>SNP id of each SNP (variant).</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)"><code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></a> of str</p>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>array of str</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.19)">numpy.ndarray</a></p>
 </dd>
 </dl>
 <p>If needed, will cause a one-time read of the .bim file.</p>
@@ -902,8 +957,11 @@ Negative integers count from the end of the data.</p>
 <em class="property">property </em><code class="sig-name descname">sid_count</code><a class="headerlink" href="#bed_reader.open_bed.sid_count" title="Permalink to this definition">¶</a></dt>
 <dd><p>Number of SNPs (variants).</p>
 <dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.8)">int</a></p>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>number of SNPs</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.8)">int</a></p>
 </dd>
 </dl>
 <p>If needed, will cause a fast line-count of the .bim file.</p>
@@ -930,7 +988,7 @@ Negative integers count from the end of the data.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>filepath</strong> – File path to .bed file to write.</p></li>
+<li><p><strong>filepath</strong> – .bed file to write to.</p></li>
 <li><p><strong>val</strong> (<em>array-like:</em>) – A two-dimension array (or array-like object) of values. The values should
 be (or be convertible to) all floats or all integers. The values should be 0, 1, 2, or missing.
 If floats, missing is <code class="docutils literal notranslate"><span class="pre">np.nan</span></code>. If integers, missing is -127.</p></li>
@@ -948,16 +1006,16 @@ Any properties not mentioned will be filled in with default values.</p>
 </div></blockquote>
 </p></li>
 <li><p><strong>count_A1</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.8)"><em>bool</em></a><em>, </em><em>optional</em>) – True (default) to count the number of A1 alleles (the PLINK standard). False to count the number of A2 alleles.</p></li>
-<li><p><strong>fam_filepath</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.8)"><em>pathlib.Path</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.8)"><em>str</em></a><em>, </em><em>optional</em>) – Path to the file containing information about each individual (sample). Defaults to .fam
-as the suffix on <code class="docutils literal notranslate"><span class="pre">filepath</span></code>.</p></li>
-<li><p><strong>bim_filepath</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.8)"><em>pathlib.Path</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.8)"><em>str</em></a><em>, </em><em>optional</em>) – Path to the file containing information about each SNP (variant). Defaults to .bim
-as the suffix on <code class="docutils literal notranslate"><span class="pre">filepath</span></code>.</p></li>
+<li><p><strong>fam_filepath</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.8)"><em>pathlib.Path</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.8)"><em>str</em></a><em>, </em><em>optional</em>) – Path to the file containing information about each individual (sample).
+Defaults to replacing the .bed file’s suffix with .fam.</p></li>
+<li><p><strong>bim_filepath</strong> (<a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.8)"><em>pathlib.Path</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.8)"><em>str</em></a><em>, </em><em>optional</em>) – Path to the file containing information about each SNP (variant).
+Defaults to replacing the .bed file’s suffix with .bim.</p></li>
 <li><p><strong>force_python_only</strong> – If False (default), uses the faster C++ code; otherwise it uses the slower pure Python code.</p></li>
 </ul>
 </dd>
 </dl>
 <p class="rubric">Examples</p>
-<p>In this example, all properties is given.</p>
+<p>In this example, all properties are given.</p>
 <div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">to_bed</span><span class="p">,</span> <span class="n">tmp_path</span>
 <span class="go">&gt;&gt;&gt;</span>
@@ -980,7 +1038,7 @@ as the suffix on <code class="docutils literal notranslate"><span class="pre">fi
 <span class="gp">&gt;&gt;&gt; </span><span class="n">to_bed</span><span class="p">(</span><span class="n">output_file</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">properties</span><span class="o">=</span><span class="n">properties</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Here, no properties is given, so default values are assigned.
+<p>Here, no properties are given, so default values are assigned.
 If we then read the new file and list the chromosome property, it is an array of ‘0’s,
 the default chromosome value.</p>
 <div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">output_file2</span> <span class="o">=</span> <span class="n">tmp_path</span><span class="p">()</span> <span class="o">/</span> <span class="s2">&quot;small2.bed&quot;</span>
@@ -1007,14 +1065,14 @@ the default chromosome value.</p>
 <dd class="field-odd"><p><strong>filepath</strong> – Name of the sample .bed file.</p>
 </dd>
 <dt class="field-even">Returns</dt>
-<dd class="field-even"><p><ul class="simple">
-<li><p><em>string</em> – Local name of sample .bed file.</p></li>
-<li><p><em>By default this function puts files under the user’s cache directory. Override this by setting</em></p></li>
-<li><p>the <cite>BED_READER_DATA_DIR</cite> environment variable.</p></li>
-</ul>
-</p>
+<dd class="field-even"><p>Local name of sample .bed file.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.8)">str</a></p>
 </dd>
 </dl>
+<p>By default this function puts files under the user’s cache directory. Override this by setting
+the <cite>BED_READER_DATA_DIR</cite> environment variable.</p>
 <p class="rubric">Example</p>
 <div class="highlight-pycon3 notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">sample_file</span>
 <span class="go">&gt;&gt;&gt;</span>
@@ -1034,10 +1092,10 @@ the default chromosome value.</p>
 <dd><p>Return a <a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">pathlib.Path</span></code></a> to a temporary directory.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p></p>
+<dd class="field-odd"><p>a temporary directory</p>
 </dd>
 <dt class="field-even">Return type</dt>
-<dd class="field-even"><p>Path</p>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.8)">pathlib.Path</a></p>
 </dd>
 </dl>
 <p class="rubric">Example</p>

@@ -23,7 +23,7 @@ def to_bed(
     Parameters
     ----------
     filepath:
-        File path to .bed file to write.
+        .bed file to write to.
     val: array-like:
         A two-dimension array (or array-like object) of values. The values should
         be (or be convertible to) all floats or all integers. The values should be 0, 1, 2, or missing.
@@ -43,18 +43,18 @@ def to_bed(
     count_A1: bool, optional
         True (default) to count the number of A1 alleles (the PLINK standard). False to count the number of A2 alleles.
     fam_filepath: pathlib.Path or str, optional
-        Path to the file containing information about each individual (sample). Defaults to .fam
-        as the suffix on ``filepath``.
+        Path to the file containing information about each individual (sample).
+        Defaults to replacing the .bed file’s suffix with .fam.
     bim_filepath: pathlib.Path or str, optional
-        Path to the file containing information about each SNP (variant). Defaults to .bim
-        as the suffix on ``filepath``.
+        Path to the file containing information about each SNP (variant).
+        Defaults to replacing the .bed file’s suffix with .bim.
     force_python_only
         If False (default), uses the faster C++ code; otherwise it uses the slower pure Python code.
 
     Examples
     --------
 
-    In this example, all properties is given.
+    In this example, all properties are given.
 
     .. doctest::
 
@@ -79,7 +79,7 @@ def to_bed(
         ... }
         >>> to_bed(output_file, val, properties=properties)
 
-    Here, no properties is given, so default values are assigned.
+    Here, no properties are given, so default values are assigned.
     If we then read the new file and list the chromosome property, it is an array of '0's,
     the default chromosome value.
 
@@ -223,9 +223,9 @@ def _fix_up_val(input):
     return input
 
 
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
+#if __name__ == "__main__":
+#    logging.basicConfig(level=logging.INFO)
 
-    import pytest
+#    import pytest
 
-    pytest.main(["--doctest-modules", __file__])
+#    pytest.main(["--doctest-modules", __file__])

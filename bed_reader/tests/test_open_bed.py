@@ -742,10 +742,10 @@ def test_env(shared_datadir):
             os.environ[key] = original_val
 
 
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
+#if __name__ == "__main__":
+#    logging.basicConfig(level=logging.INFO)
 
-    shared_datadir = Path(r"D:\OneDrive\programs\bed-reader\bed_reader\tests\data")
-    tmp_path = Path(r"m:/deldir/tests")
-    test_write12(tmp_path)
-    pytest.main([__file__])
+#    shared_datadir = Path(r"D:\OneDrive\programs\bed-reader\bed_reader\tests\data")
+#    tmp_path = Path(r"m:/deldir/tests")
+#    test_write12(tmp_path)
+#    pytest.main([__file__])

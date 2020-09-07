@@ -74,7 +74,7 @@ class open_bed:
     Parameters
     ----------
     filepath: pathlib.Path or str
-        file path to .bed file.
+        File path to the .bed file.
     iid_count: None or int, optional
         Number of individuals (samples) in the .bed file.
         The default (``iid_count=None``) finds the number
@@ -91,21 +91,21 @@ class open_bed:
              "fid" (family id), "iid" (individual or sample id), "father" (father id),
              "mother" (mother id), "sex", "pheno" (phenotype), "chromosome", "sid"
              (SNP or variant id), "cm_position" (centimorgan position), "bp_position"
-             (base-pair position), "allele_1", "allele_2".
-            
-        The values are the replacement lists or arrays. A value can also be ``None``
-        which tells that this property need not be read. See examples, below.
+             (base-pair position), "allele_1", "allele_2".            
 
-        (If necessary, the list or array will be converted to a `numpy.ndarray`
-        of the appropriate dtype. Any `np.nan` values will converted to
-        the appropriate missing value. The PLINK `.fam <https://www.cog-genomics.org/plink2/formats#fam>`_
-        and `.bim <https://www.cog-genomics.org/plink2/formats#bim>`_ specification lists
-        the dtypes and missing values for each property.)
+          The values are replacement lists or arrays. A value can also be `None`,
+          meaning do not read or offer this property. See examples, below.
+
+          The list or array will be converted to a :class:`numpy.ndarray`
+          of the appropriate dtype, if necessary. Any :class:`numpy.nan` values will converted to
+          the appropriate missing value. The PLINK `.fam specification <https://www.cog-genomics.org/plink2/formats#fam>`_
+          and `.bim specification <https://www.cog-genomics.org/plink2/formats#bim>`_ lists
+          the dtypes and missing values for each property.
 
     count_A1: bool, optional
         True (default) to count the number of A1 alleles (the PLINK standard). False to count the number of A2 alleles.
     num_threads: None or int, optional
-        The number of threads with which to read data. Defaults to all available threads.
+        The number of threads with which to read data. Defaults to all available processors.
         Can also be set with the 'MKL_NUM_THREADS' environment variable.
         
         On MacOS, this parameter is ignored and all reads are singled threaded.
@@ -113,15 +113,16 @@ class open_bed:
         False (default) to immediately check for expected starting bytes in the .bed file.
         True to delay the check until (and if) data is read.
     fam_filepath: pathlib.Path or str, optional
-        Path to the file containing information about each individual (sample). Defaults to .fam
-        as the suffix on ``filepath``.
+        Path to the file containing information about each individual (sample).
+        Defaults to replacing the .bed file’s suffix with .fam.
     bim_filepath: pathlib.Path or str, optional
-        Path to the file containing information about each SNP (variant). Defaults to .bim
-        as the suffix on ``filepath``.
+        Path to the file containing information about each SNP (variant).
+        Defaults to replacing the .bed file’s suffix with .bim.
         
     Returns
     -------
-    an open_bed object : :class:`open_bed`
+    open_bed
+        an open_bed object
 
     Examples
     --------
@@ -142,7 +143,7 @@ class open_bed:
         [[ 1.  0. nan  0.]
          [ 2.  0. nan  2.]
          [ 0.  1.  2.  0.]]
-        >>> del bed  # optional: close and delete object
+        >>> del bed  # optional: delete bed object
 
     Open the file and read data for one SNP (variant)
     at index position 2.
@@ -156,8 +157,7 @@ class open_bed:
          [nan]
          [ 2.]]
 
-    Instead of reading the individual :attr:`iid` from a file, use a replacement
-    list.
+    Replace :attr:`iid`.
 
         >>> bed = open_bed(file_name, properties={"iid":["sample1","sample2","sample3"]})
         >>> print(bed.iid) # replaced
@@ -165,8 +165,7 @@ class open_bed:
         >>> print(bed.sid) # same as before
         ['sid1' 'sid2' 'sid3' 'sid4']
 
-    Tell it the number of individuals (samples) and SNPs (variants). This lets it read data without
-    needing to ever open the .fam and .bim files.
+    Give the number of individuals (samples) and SNPs (variants) so that the .fam and .bim files need never be opened.
 
         >>> with open_bed(file_name, iid_count=3, sid_count=4) as bed:
         ...     print(bed.read())
@@ -174,14 +173,14 @@ class open_bed:
          [ 2.  0. nan  2.]
          [ 0.  1.  2.  0.]]
 
-    Tell it that some properties will never be used, so don't bother to read them.
+    Mark some properties as "don’t read or offer".
 
         >>> bed = open_bed(file_name, properties={
         ...    "father" : None, "mother" : None, "sex" : None, "pheno" : None,
         ...    "allele_1" : None, "allele_2":None })
         >>> print(bed.iid)        # read from file
         ['iid1' 'iid2' 'iid3']
-        >>> print(bed.allele_2)   # Don't bother reading this from file
+        >>> print(bed.allele_2)   # not read and not offered
         None
 
     See the :meth:`read` for details of reading batches via slicing and fancy indexing.
@@ -228,7 +227,7 @@ class open_bed:
     def read(
         self,
         index: Optional[Any] = None,
-        dtype: Optional[Union[type, str]] = np.float32,
+        dtype: Optional[Union[type, str]] = 'float32',
         order: Optional[str] = "F",
         force_python_only: Optional[bool] = False,
     ) -> np.ndarray:
@@ -255,7 +254,9 @@ class open_bed:
 
         Returns
         -------
-        2-D :class:`numpy.ndarray` containing values of 0, 1, 2, or missing.
+        numpy.ndarray
+            2-D array containing values of 0, 1, 2, or missing
+
 
         Rows represent individuals (samples). Columns represent SNPs (variants). 
         
@@ -278,8 +279,8 @@ class open_bed:
              [ 2.  0. nan  2.]
              [ 0.  1.  2.  0.]]
 
-        To read selected individuals (samples) and/or SNPs (variants), set a `numpy.s_` to an ``int``, a list of ``int``, a :class:`slice`, or a list of ``bool``.
-        Negative integers count from the end of the data.
+        To read selected individuals (samples) and/or SNPs (variants), set each part of a :class:`numpy.s_` to an `int`, a list of `int`, a slice expression, or a list of `bool`.
+        Negative integers count from the end of the list.
 
 
         .. doctest::
@@ -323,7 +324,7 @@ class open_bed:
             [[   1    0 -127    0]
              [   2    0 -127    2]
              [   0    1    2    0]]
-            >>> del bed  # optional: close and delete object
+            >>> del bed  # optional: delete bed object
 
         """
 
@@ -365,7 +366,8 @@ class open_bed:
                             val,
                             num_threads,
                         )
-                    elif order == "C":
+                    else:
+                        assert order == "C" # real assert
                         wrap_plink_parser.readPlinkBedFile2int8CAAA(
                             bed_file_ascii,
                             self.iid_count,
@@ -376,8 +378,6 @@ class open_bed:
                             val,
                             num_threads,
                         )
-                    else:
-                        assert False, "real assert"
                 elif dtype == np.float64:
                     if order == "F":
                         wrap_plink_parser.readPlinkBedFile2doubleFAAA(
@@ -390,7 +390,8 @@ class open_bed:
                             val,
                             num_threads,
                         )
-                    elif order == "C":
+                    else: 
+                        assert order == "C" #real assert
                         wrap_plink_parser.readPlinkBedFile2doubleCAAA(
                             bed_file_ascii,
                             self.iid_count,
@@ -401,8 +402,6 @@ class open_bed:
                             val,
                             num_threads,
                         )
-                    else:
-                        assert False, "real assert"
                 elif dtype == np.float32:
                     if order == "F":
                         wrap_plink_parser.readPlinkBedFile2floatFAAA(
@@ -415,7 +414,8 @@ class open_bed:
                             val,
                             num_threads,
                         )
-                    elif order == "C":
+                    else:
+                        assert order == "C" # real assert
                         wrap_plink_parser.readPlinkBedFile2floatCAAA(
                             bed_file_ascii,
                             self.iid_count,
@@ -426,9 +426,6 @@ class open_bed:
                             val,
                             num_threads,
                         )
-                    else:
-                        assert False, "real assert"
-
                 else:
                     raise ValueError(
                         f"dtype '{val.dtype}' not known, only 'int8', 'float32', and 'float64' are allowed."
@@ -499,8 +496,14 @@ class open_bed:
         """
         Family id of each individual (sample).
        
-        :rtype:  :class:`numpy.ndarray` of ``str``
+        Returns
+        -------
+        numpy.ndarray
+            array of str
 
+
+        '0' represents a missing value.
+        
         If needed, will cause a one-time read of the .fam file.
 
         Example
@@ -524,8 +527,12 @@ class open_bed:
         """
         Individual id of each individual (sample).
        
-        :rtype:  :class:`numpy.ndarray` of ``str``
-        
+        Returns
+        -------
+        numpy.ndarray
+            array of str
+
+
         If needed, will cause a one-time read of the .fam file.
 
         Example
@@ -548,7 +555,13 @@ class open_bed:
         """
         Father id of each individual (sample).
        
-        :rtype:  :class:`numpy.ndarray` of ``str``
+        Returns
+        -------
+        numpy.ndarray
+            array of str
+
+
+        '0' represents a missing value.
         
         If needed, will cause a one-time read of the .fam file.
 
@@ -572,8 +585,14 @@ class open_bed:
         """
         Mother id of each individual (sample).
        
-        :rtype:  :class:`numpy.ndarray` of ``str``
+        Returns
+        -------
+        numpy.ndarray
+            array of str
 
+
+        '0' represents a missing value.
+        
         If needed, will cause a one-time read of the .fam file.
 
         Example
@@ -596,7 +615,11 @@ class open_bed:
         """
         Sex of each individual (sample).
        
-        :rtype:  :class:`numpy.ndarray` of {0,1,2}
+        Returns
+        -------
+        numpy.ndarray
+            array of 0, 1, or 2
+
 
         0 is unknown, 1 is male, 2 is female
 
@@ -622,8 +645,14 @@ class open_bed:
         A phenotype for each individual (sample)
         (seldom used).
        
-        :rtype: :class:`numpy.ndarray` of str
+        Returns
+        -------
+        numpy.ndarray
+            array of str
 
+
+        '0' may represent a missing value.
+        
         If needed, will cause a one-time read of the .fam file.
 
         Example
@@ -644,9 +673,13 @@ class open_bed:
     @property
     def properties(self) -> Mapping[str, np.array]:
         """
-        All the properties returned as a ``dict``.
+        All the properties returned as a dictionary.
        
-        :rtype:  dict
+        Returns
+        -------
+        dict
+            all the properties
+
 
         The keys of the dictionary are the names of the properties, namely:
 
@@ -680,7 +713,11 @@ class open_bed:
         """
         Retrieve one property by name.
        
-        :rtype: :class:`numpy.ndarray`
+        Returns
+        -------
+        numpy.ndarray
+            a property value
+
 
         The name is one of these:
 
@@ -714,8 +751,14 @@ class open_bed:
         """
         Chromosome of each SNP (variant)
        
-        :rtype: :class:`numpy.ndarray` of str
+        Returns
+        -------
+        numpy.ndarray
+            array of str
 
+
+        '0' represents a missing value.
+        
         If needed, will cause a one-time read of the .bim file.
 
         Example
@@ -738,7 +781,11 @@ class open_bed:
         """
         SNP id of each SNP (variant).
        
-        :rtype: :class:`numpy.ndarray` of str
+        Returns
+        -------
+        numpy.ndarray
+            array of str
+
 
         If needed, will cause a one-time read of the .bim file.
 
@@ -762,8 +809,14 @@ class open_bed:
         """
         Centimorgan position of each SNP (variant).
        
-        :rtype: :class:`numpy.ndarray` of float
+        Returns
+        -------
+        numpy.ndarray
+            array of float
 
+
+        0.0 represents a missing value.
+        
         If needed, will cause a one-time read of the .bim file.
 
         Example
@@ -786,8 +839,14 @@ class open_bed:
         """
         Base-pair position of each SNP (variant).
        
-        :rtype: :class:`numpy.ndarray` of int
+        Returns
+        -------
+        numpy.ndarray
+            array of int
 
+
+        0 represents a missing value.
+        
         If needed, will cause a one-time read of the .bim file.
 
         Example
@@ -810,7 +869,11 @@ class open_bed:
         """
         First allele of each SNP (variant).
        
-        :rtype: :class:`numpy.ndarray` of str
+        Returns
+        -------
+        numpy.ndarray
+            array of str
+
 
         If needed, will cause a one-time read of the .bim file.
 
@@ -834,7 +897,11 @@ class open_bed:
         """
         Second allele of each SNP (variant),
        
-        :rtype: :class:`numpy.ndarray` of str
+        Returns
+        -------
+        numpy.ndarray
+            array of str
+
 
         If needed, will cause a one-time read of the .bim file.
 
@@ -858,7 +925,11 @@ class open_bed:
         """
         Number of individuals (samples).
        
-        :rtype: int
+        Returns
+        -------
+        int
+            number of individuals
+
 
         If needed, will cause a fast line-count of the .fam file.
 
@@ -882,7 +953,11 @@ class open_bed:
         """
         Number of SNPs (variants).
        
-        :rtype: int
+        Returns
+        -------
+        int
+            number of SNPs
+
 
         If needed, will cause a fast line-count of the .bim file.
 
@@ -956,7 +1031,11 @@ class open_bed:
         """
         Number of individuals (samples) and SNPs (variants).
        
-        :rtype: (int, int)
+        Returns
+        -------
+        (int, int)
+            number of individuals, number of SNPs
+
 
         If needed, will cause a fast line-count of the .fam and .bim files.
 
@@ -1130,18 +1209,18 @@ class open_bed:
             self.properties_dict[key] = output
 
 
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    import os
+#if __name__ == "__main__":
+    #logging.basicConfig(level=logging.INFO)
+    #import os
 
-    if False:
-        from bed_reader import open_bed, sample_file
+    #if False:
+    #    from bed_reader import open_bed, sample_file
 
-        file_name = sample_file("small.bed")
-        with open_bed(file_name) as bed:
-            print(bed.iid)
-            print(bed.sid)
-            print(bed.read())
+    #    file_name = sample_file("small.bed")
+    #    with open_bed(file_name) as bed:
+    #        print(bed.iid)
+    #        print(bed.sid)
+    #        print(bed.read())
 
     # if False:
     #     import numpy as np
@@ -1229,6 +1308,6 @@ if __name__ == "__main__":
     #         "tempdir/toydata.5chrom.bed", snpdata, count_A1=False
     #     )  # Write data in Bed format
 
-    import pytest
+    #import pytest
 
-    pytest.main(["--doctest-modules", __file__])
+    #pytest.main(["--doctest-modules", __file__])
