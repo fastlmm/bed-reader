@@ -1206,6 +1206,8 @@ class open_bed:
                 output = np.array([], dtype=mm.dtype)
             else:
                 output = fields[mm.column].values
+                if not np.issubdtype(output.dtype,mm.dtype):
+                    output = np.array(output,dtype=mm.dtype)
             self.properties_dict[key] = output
 
 

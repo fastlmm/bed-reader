@@ -43,6 +43,7 @@ def test_write1(tmp_path, shared_datadir):
             assert np.array_equal(bed.fid, properties0["fid"])
             assert np.array_equal(bed.iid, properties0["iid"])
             assert np.array_equal(bed.sid, properties0["sid"])
+            assert np.issubdtype(bed.sid.dtype,np.str_)
             assert np.array_equal(bed.chromosome, properties0["chromosome"])
             assert np.allclose(bed.cm_position, properties0["cm_position"])
             assert np.allclose(bed.bp_position, properties0["bp_position"])
@@ -742,10 +743,11 @@ def test_env(shared_datadir):
             os.environ[key] = original_val
 
 
-#if __name__ == "__main__":
-#    logging.basicConfig(level=logging.INFO)
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
 
-#    shared_datadir = Path(r"D:\OneDrive\programs\bed-reader\bed_reader\tests\data")
-#    tmp_path = Path(r"m:/deldir/tests")
-#    test_write12(tmp_path)
-#    pytest.main([__file__])
+    shared_datadir = Path(r"D:\OneDrive\programs\bed-reader\bed_reader\tests\data")
+    tmp_path = Path(r"m:/deldir/tests")
+    test_read1(shared_datadir)
+    test_write1(tmp_path, shared_datadir)
+    pytest.main([__file__])
