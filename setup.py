@@ -70,14 +70,16 @@ class CleanCommand(Clean):
 # set up macro
 if platform.system() == "Darwin":
     macros = [("__APPLE__", "1")]
+    extra_compile_args = ["-Wc++11-extensions"]
     openmp_root = os.path.join(os.path.dirname(__file__), "external/intel/linux")
     mp5lib = "iomp5"
-    openmp_compiler_args = ["-fopenmp", "-std=c++11", "-Wc++11-extensions"]
+    openmp_compiler_args = ["-fopenmp", "-std=c++11"]
     library_list = [openmp_root + "/compiler/lib/intel64"]
     runtime_library_dirs = library_list
 
 elif platform.system() == "Windows":
     macros = [("_WIN32", "1"), ("_CRT_SECURE_NO_WARNINGS", "1")]
+    extra_compile_args = []
     openmp_root = os.path.join(os.path.dirname(__file__), "external/llvm/windows")
     mp5lib = "libomp"
     openmp_compiler_args = ["/EHsc", "/openmp"]
@@ -86,6 +88,7 @@ elif platform.system() == "Windows":
 
 else:
     macros = [("_UNIX", "1")]
+    extra_compile_args = []
     openmp_root = os.path.join(os.path.dirname(__file__), "external/intel/linux")
     mp5lib = "iomp5"
     openmp_compiler_args = ["-fopenmp", "-std=c++11"]
@@ -105,6 +108,7 @@ ext_modules = [
             "bed_reader/CPlinkBedFile.cpp",
         ],
         include_dirs=[numpy.get_include()],
+        extra_compile_args=extra_compile_args,
         define_macros=macros,
     ),
     Extension(
@@ -117,6 +121,7 @@ ext_modules = [
             "bed_reader/MatrixSubset.cpp",
         ],
         include_dirs=[numpy.get_include()],
+        extra_compile_args=extra_compile_args,
         define_macros=macros,
     ),
 ]
