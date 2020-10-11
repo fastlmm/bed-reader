@@ -169,7 +169,7 @@ def setting_generator(seq_dict, seed=9392):
         setting = {}
         for offset, (key, value_list) in enumerate(seq_dict.items()):
             val = value_list[(test_index + offset) % len(value_list)]
-            if "leave_out" != val:
+            if not (isinstance(val,str) and "leave_out" == val):
                 setting[key] = val
         yield setting
 
@@ -180,8 +180,8 @@ def setting_generator(seq_dict, seed=9392):
     for combo in all_combo:
         setting = {
             key: value_list
-            for key, value_list in itertools.zip_longest(seq_dict, combo)
-            if value_list != "leave_out"
+                for key, value_list in itertools.zip_longest(seq_dict, combo)
+                if not (isinstance(value_list,str) and "leave_out" == value_list)
         }
         yield setting
 
