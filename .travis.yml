@@ -2,7 +2,7 @@ language: python
 
 env:
   global:
-    - CIBW_SKIP="pp* cp27-* cp34-* cp35-* cp36-* *i686* *-win32"
+    - CIBW_SKIP="pp* cp27-* cp34-* cp35-* cp36-* *i686* *-win32" cp37-* cp38-* #cmk put 37,38 back in
     - CIBW_BEFORE_BUILD="pip install numpy cython&&python setup.py build_ext --inplace"
     - CIBW_BEFORE_TEST="pip install -r requirements.txt&&pip install -r requirements-dev.txt"
     - CIBW_TEST_REQUIRES=pytest
