@@ -44,8 +44,7 @@ except ImportError:
 else:
     use_cython = True
 
-# use_cython=False
-
+print(f"use_cython={use_cython}")
 
 class CleanCommand(Clean):
     description = "Remove build directories, and compiled files (including .pyc)"
@@ -73,7 +72,7 @@ if platform.system() == "Darwin":
     macros = [("__APPLE__", "1")]
     openmp_root = os.path.join(os.path.dirname(__file__), "external/intel/linux")
     mp5lib = "iomp5"
-    openmp_compiler_args = ["-fopenmp", "-std=c++11"]
+    openmp_compiler_args = ["-fopenmp", "-std=c++11", "-Wc++11-extensions"]
     library_list = [openmp_root + "/compiler/lib/intel64"]
     runtime_library_dirs = library_list
 
