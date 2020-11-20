@@ -46,6 +46,7 @@ else:
 
 print(f"use_cython={use_cython}")
 
+
 class CleanCommand(Clean):
     description = "Remove build directories, and compiled files (including .pyc)"
 
@@ -70,7 +71,7 @@ class CleanCommand(Clean):
 # set up macro
 if platform.system() == "Darwin":
     macros = [("__APPLE__", "1")]
-    extra_compile_args = ["-Wc++11-extensions"]
+    extra_compile_args = ["-Wc++11-extensions", "-Wc++11-long-long"]
     openmp_root = os.path.join(os.path.dirname(__file__), "external/intel/linux")
     mp5lib = "iomp5"
     openmp_compiler_args = ["-fopenmp", "-std=c++11"]
@@ -175,6 +176,7 @@ setup(
     classifiers=[
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python",
     ],
