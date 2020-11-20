@@ -1,9 +1,6 @@
-import distutils.sysconfig
 import os
 import platform
-import re
 import shutil
-import sys
 from distutils.command.clean import clean as Clean
 from pathlib import Path
 
@@ -59,8 +56,9 @@ class CleanCommand(Clean):
                 if (
                     filename.endswith(".so")
                     or filename.endswith(".pyd")
-                    # or filename.find("wrap_plink_parser.cpp") != -1 # remove automatically generated source file
-                    # or filename.find("wrap_matrix_subset.cpp") != -1 # remove automatically generated source file
+                    # remove automatically generated source file
+                    # or filename.find("wrap_plink_parser.cpp") != -1
+                    # or filename.find("wrap_matrix_subset.cpp") != -1
                     or filename.endswith(".pyc")
                 ):
                     tmp_fn = os.path.join(dirpath, filename)
@@ -163,7 +161,10 @@ setup(
     description="Bed Reader",
     long_description=readme(),
     long_description_content_type="text/markdown",
-    keywords="bioinformatics plink genomics genetics file-format reader genotype bed-format writer python snps",
+    keywords=(
+        "bioinformatics plink genomics genetics file-format"
+        + " reader genotype bed-format writer python snps"
+    ),
     url="https://fastlmm.github.io/",
     author="FaST-LMM Team",
     author_email="fastlmm-dev@python.org",
