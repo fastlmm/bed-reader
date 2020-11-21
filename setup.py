@@ -95,7 +95,7 @@ else:
     runtime_library_dirs = library_list
 
 
-# see http://stackoverflow.com/questions/4505747/how-should-i-structure-a-python-package-that-contains-cython-code
+# see http://stackoverflow.com/questions/4505747/how-should-i-structure-a-python-package-that-contains-cython-code # noqa
 ext_modules = [
     Extension(
         name="bed_reader.wrap_plink_parser_onep",

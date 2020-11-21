@@ -2,7 +2,7 @@ language: python
 
 env:
   global:
-    - CIBW_SKIP="pp* cp27-* cp34-* cp35-* cp36-* *i686* *-win32 cp37-* cp38-*"
+    - CIBW_SKIP="pp* cp27-* cp34-* cp35-* cp36-* *i686* *-win32 cp37-* cp38-*" #cmk put back 37 38
     - CIBW_BEFORE_BUILD="pip install numpy cython&&python setup.py build_ext --inplace"
     - CIBW_BEFORE_TEST="pip install -r requirements.txt&&pip install -r requirements-dev.txt"
     - CIBW_TEST_REQUIRES=pytest
@@ -20,12 +20,12 @@ jobs:
     - os: windows
       language: shell
       before_install:
-        - choco install python --version 3.8.1 --no-progress
-        - export PATH="/c/Python38:/c/Python38/Scripts:$PATH"
-        - cp /c/Python38/python.exe /c/Python38/python3.exe
+        - choco install python --version 3.9.0 --no-progress
+        - export PATH="/c/Python39:/c/Python39/Scripts:$PATH"
+        - cp /c/Python39/python.exe /c/Python39/python3.exe
 
 install:
-  - python3 -m pip install cibuildwheel==1.6.2
+  - python3 -m pip install cibuildwheel==1.6.4
 
 script:
   # build the wheels, put them into './wheelhouse'
