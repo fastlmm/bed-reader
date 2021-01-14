@@ -84,6 +84,7 @@ void SUFFIX(CBedFile)::Open(const string &filename_, size_t cIndividuals_, size_
 	case 0:										   // mode = 'IndividualMajor' or RowMajor
 		layout = LayoutGroupGenotypesByIndividual; // all SNPs per individual are sequential in memory
 		cbStride = (cSnps + 3) / 4;				   // 4 genotypes per byte so round up
+		// !!!cmk does this actually work? likely not
 		break;
 	case 1:									// mode = 'SnpMajor' or ColumnMajor
 		layout = LayoutGroupGenotypesBySnp; // all individuals per SNP are sequential in memory
@@ -127,7 +128,6 @@ size_t SUFFIX(CBedFile)::Read(BYTE *pb, size_t cbToRead)
 		if (err)
 		{
 			PyErr_SetString(PyExc_ValueError, "Encountered a file error in BED file.");
-
 		}
 	}
 	return (cbRead);
@@ -135,27 +135,35 @@ size_t SUFFIX(CBedFile)::Read(BYTE *pb, size_t cbToRead)
 
 size_t SUFFIX(CBedFile)::ReadLine(BYTE *pb, size_t idx)
 {
+	// !!!cmk need a lock here?
 	long long fpos = cbHeader + (idx * cbStride);
-#ifdef _WIN32
-	long long fposCur = _ftelli64(pFile);
-#elif __APPLE__
-	long long fposCur = ftello(pFile);
-#else
-	long long fposCur = ftello64(pFile);
-#endif
-	if (fpos != fposCur)
-	{
-#ifdef _WIN32
-		_fseeki64(pFile, fpos, SEEK_SET);
-#elif __APPLE__
-		fseeko(pFile, fpos, SEEK_SET);
-#else
-		fseeko64(pFile, fpos, SEEK_SET);
-#endif
-	}
 
-	size_t cbRead = Read(pb, cbStride);
-	return (cbRead);
+#ifdef _OPENMP
+#pragma omp critical
+#endif
+	{
+
+#ifdef _WIN32
+		long long fposCur = _ftelli64(pFile);
+#elif __APPLE__
+		long long fposCur = ftello(pFile);
+#else
+		long long fposCur = ftello64(pFile);
+#endif
+		if (fpos != fposCur)
+		{
+#ifdef _WIN32
+			_fseeki64(pFile, fpos, SEEK_SET);
+#elif __APPLE__
+			fseeko(pFile, fpos, SEEK_SET);
+#else
+			fseeko64(pFile, fpos, SEEK_SET);
+#endif
+		}
+
+		size_t cbRead = Read(pb, cbStride);
+		return (cbRead);
+	}
 }
 
 /*
@@ -206,7 +214,7 @@ void SUFFIX(CBedFile)::ReadGenotypes(size_t iSnp, bool count_A1, const vector<si
 void SUFFIX(readPlinkBedFile)(std::string bed_fn, int inputNumIndividuals, int inputNumSNPs,
 							  bool count_A1, std::vector<size_t> individuals_idx, std::vector<int> snpIdxList, REAL *out, int num_threads)
 {
-#ifdef _OPENMP	
+#ifdef _OPENMP
 	omp_set_num_threads(num_threads);
 
 #pragma omp parallel default(none) shared(bed_fn, inputNumIndividuals, inputNumSNPs, count_A1, individuals_idx, snpIdxList, out)
@@ -220,10 +228,10 @@ void SUFFIX(readPlinkBedFile)(std::string bed_fn, int inputNumIndividuals, int i
 		bedFile = SUFFIX(CBedFile)();
 		bedFile.Open(bed_fn, inputNumIndividuals, inputNumSNPs);
 
-#ifdef _OPENMP	
+#ifdef _OPENMP
 #pragma omp for schedule(guided)
 #endif
-		for (long i = 0; i < (long) outputNumSNPs; i++)
+		for (long i = 0; i < (long)outputNumSNPs; i++)
 		{
 			int idx = snpIdxList[i];
 #ifdef ORDERF
@@ -331,7 +339,7 @@ void SUFFIX(writePlinkBedFile)(std::string bed_fn, int iid_count, int sid_count,
 
 #ifndef MISSING_VALUE
 
-const REAL SUFFIX(_PI) = (REAL) 2.0 * (REAL) acos(0.0);
+const REAL SUFFIX(_PI) = (REAL)2.0 * (REAL)acos(0.0);
 const REAL SUFFIX(_halflog2pi) = (REAL)0.5 * log((REAL)2.0 * SUFFIX(_PI));
 const REAL SUFFIX(coeffsForLogGamma)[] = {12.0, -360.0, 1260.0, -1680.0, 1188.0};
 
@@ -414,7 +422,7 @@ REAL SUFFIX(BetaPdf)(REAL x, REAL a, REAL b)
 	if (x < 0)
 		return 0;
 
-	REAL lnb = (REAL) SUFFIX(LogBeta)(a, b);
+	REAL lnb = (REAL)SUFFIX(LogBeta)(a, b);
 	return exp((a - 1) * log(x) + (b - 1) * log(1 - x) - lnb);
 }
 
@@ -525,7 +533,7 @@ void SUFFIX(ImputeAndZeroMeanSNPs)(
 					SNPs[ind] -= mean_s;	 //subtract the mean from the data
 					if (betaNotUnitVariance) //compute snp-freq as in the Visscher Height paper (Nat Gen, Yang et al 2010).
 					{
-						REAL freq = (REAL) mean_s / (REAL) 2.0;
+						REAL freq = (REAL)mean_s / (REAL)2.0;
 						if (freq > .5)
 						{
 							freq = ((REAL)1.0) - freq;
@@ -643,7 +651,7 @@ void SUFFIX(ImputeAndZeroMeanSNPs)(
 					if (betaNotUnitVariance)
 					{
 						//compute snp-freq as in the Visscher Height paper (Nat Gen, Yang et al 2010).
-						REAL freq = (REAL) mean_s[iSnp] / (REAL) 2.0;
+						REAL freq = (REAL)mean_s[iSnp] / (REAL)2.0;
 						if (freq > .5)
 						{
 							freq = ((REAL)1.0) - freq;

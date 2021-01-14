@@ -38,8 +38,8 @@ enum LayoutMode
 {
 	LayoutUnknown = -1
 	, LayoutRowMajor = 0                  // all elements of a row are sequential in memory
-	, LayoutColumnMajor = 1                  // all elements of a colomn are sequential in memory
-	, LayoutGroupGenotypesByIndividual = 0   // all SNP genotypes for a specific individual are seqential in memory
+	, LayoutColumnMajor = 1                  // all elements of a column are sequential in memory
+	, LayoutGroupGenotypesByIndividual = 0   // all SNP genotypes for a specific individual are sequential in memory
 	, LayoutGroupGenotypesBySnp = 1          // all Individual's genotypes for a specific SNP are sequential in memory
 };
 

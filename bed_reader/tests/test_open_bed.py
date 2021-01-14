@@ -16,7 +16,8 @@ def test_read1(shared_datadir):
         assert bed.fid[-1] == "0"
         assert bed.iid[-1] == "9"
         assert bed.shape == (10, 100)
-        val = bed.read(dtype="int8")
+
+        val = bed.read(dtype="int8", force_python_only=True)  # !!!cmk
         assert (
             val.mean() == -13.142
         )  # really shouldn't do mean on data where -127 represents missing
@@ -43,7 +44,7 @@ def test_write1(tmp_path, shared_datadir):
             assert np.array_equal(bed.fid, properties0["fid"])
             assert np.array_equal(bed.iid, properties0["iid"])
             assert np.array_equal(bed.sid, properties0["sid"])
-            assert np.issubdtype(bed.sid.dtype,np.str_)
+            assert np.issubdtype(bed.sid.dtype, np.str_)
             assert np.array_equal(bed.chromosome, properties0["chromosome"])
             assert np.allclose(bed.cm_position, properties0["cm_position"])
             assert np.allclose(bed.bp_position, properties0["bp_position"])
@@ -169,7 +170,7 @@ def setting_generator(seq_dict, seed=9392):
         setting = {}
         for offset, (key, value_list) in enumerate(seq_dict.items()):
             val = value_list[(test_index + offset) % len(value_list)]
-            if not (isinstance(val,str) and "leave_out" == val):
+            if not (isinstance(val, str) and "leave_out" == val):
                 setting[key] = val
         yield setting
 
@@ -180,8 +181,8 @@ def setting_generator(seq_dict, seed=9392):
     for combo in all_combo:
         setting = {
             key: value_list
-                for key, value_list in itertools.zip_longest(seq_dict, combo)
-                if not (isinstance(value_list,str) and "leave_out" == value_list)
+            for key, value_list in itertools.zip_longest(seq_dict, combo)
+            if not (isinstance(value_list, str) and "leave_out" == value_list)
         }
         yield setting
 
@@ -272,7 +273,6 @@ def test_c_reader_bed(shared_datadir):
         val = bed.read(order="F", dtype="int8", force_python_only=False)
         assert val.dtype == np.int8
         ref_val[ref_val != ref_val] = -127
-        ref_val = ref_val.astype("int8")
         ref_val = ref_val.astype("int8")
         assert np.all(ref_val == val)
 
@@ -748,6 +748,8 @@ if __name__ == "__main__":
 
     shared_datadir = Path(r"D:\OneDrive\programs\bed-reader\bed_reader\tests\data")
     tmp_path = Path(r"m:/deldir/tests")
-    test_read1(shared_datadir)
-    test_write1(tmp_path, shared_datadir)
-    pytest.main([__file__])
+    test_index(shared_datadir)
+    # test_c_reader_bed(shared_datadir)
+    # test_read1(shared_datadir)
+    # test_write1(tmp_path, shared_datadir)
+    # pytest.main([__file__])

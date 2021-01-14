@@ -1,11 +1,7 @@
-# LATER: Offer to ignore some or all fam bim fields
 import logging
-import math
 import multiprocessing
-import numbers
 import os
 import platform
-import sys
 from dataclasses import dataclass
 from itertools import repeat, takewhile
 from pathlib import Path
@@ -13,6 +9,7 @@ from typing import Any, List, Mapping, Optional, Union
 
 import numpy as np
 import pandas as pd
+import rust_bed_reader
 
 
 # https://stackoverflow.com/questions/845058/how-to-get-line-count-of-a-large-file-cheaply-in-python
@@ -227,7 +224,7 @@ class open_bed:
     def read(
         self,
         index: Optional[Any] = None,
-        dtype: Optional[Union[type, str]] = 'float32',
+        dtype: Optional[Union[type, str]] = "float32",
         order: Optional[str] = "F",
         force_python_only: Optional[bool] = False,
     ) -> np.ndarray:
@@ -336,12 +333,16 @@ class open_bed:
 
         # Later happy with _iid_range and _sid_range or could it be done with allocation them?
         if self._iid_range is None:
-            self._iid_range = np.arange(self.iid_count)
+            self._iid_range = np.arange(self.iid_count, dtype="uintp")
         if self._sid_range is None:
-            self._sid_range = np.arange(self.sid_count)
+            self._sid_range = np.arange(self.sid_count, dtype="uintp")
 
-        iid_index = self._iid_range[iid_index_or_slice_etc]
-        sid_index = self._sid_range[sid_index_or_slice_etc]
+        iid_index = np.ascontiguousarray(
+            self._iid_range[iid_index_or_slice_etc], dtype="uintp"
+        )
+        sid_index = np.ascontiguousarray(
+            self._sid_range[sid_index_or_slice_etc], dtype="uintp"
+        )
 
         if not force_python_only:
             num_threads = self._get_num_threads()
@@ -351,85 +352,29 @@ class open_bed:
                 from bed_reader import wrap_plink_parser_onep as wrap_plink_parser
 
             val = np.zeros((len(iid_index), len(sid_index)), order=order, dtype=dtype)
-            bed_file_ascii = str(self.filepath).encode("ascii")
 
             if self.iid_count > 0 and self.sid_count > 0:
                 if dtype == np.int8:
-                    if order == "F":
-                        wrap_plink_parser.readPlinkBedFile2int8FAAA(
-                            bed_file_ascii,
-                            self.iid_count,
-                            self.sid_count,
-                            self.count_A1,
-                            iid_index,
-                            sid_index,
-                            val,
-                            num_threads,
-                        )
-                    else:
-                        assert order == "C" # real assert
-                        wrap_plink_parser.readPlinkBedFile2int8CAAA(
-                            bed_file_ascii,
-                            self.iid_count,
-                            self.sid_count,
-                            self.count_A1,
-                            iid_index,
-                            sid_index,
-                            val,
-                            num_threads,
-                        )
+                    reader = rust_bed_reader.read_i8
                 elif dtype == np.float64:
-                    if order == "F":
-                        wrap_plink_parser.readPlinkBedFile2doubleFAAA(
-                            bed_file_ascii,
-                            self.iid_count,
-                            self.sid_count,
-                            self.count_A1,
-                            iid_index,
-                            sid_index,
-                            val,
-                            num_threads,
-                        )
-                    else: 
-                        assert order == "C" #real assert
-                        wrap_plink_parser.readPlinkBedFile2doubleCAAA(
-                            bed_file_ascii,
-                            self.iid_count,
-                            self.sid_count,
-                            self.count_A1,
-                            iid_index,
-                            sid_index,
-                            val,
-                            num_threads,
-                        )
+                    reader = rust_bed_reader.read_f64
                 elif dtype == np.float32:
-                    if order == "F":
-                        wrap_plink_parser.readPlinkBedFile2floatFAAA(
-                            bed_file_ascii,
-                            self.iid_count,
-                            self.sid_count,
-                            self.count_A1,
-                            iid_index,
-                            sid_index,
-                            val,
-                            num_threads,
-                        )
-                    else:
-                        assert order == "C" # real assert
-                        wrap_plink_parser.readPlinkBedFile2floatCAAA(
-                            bed_file_ascii,
-                            self.iid_count,
-                            self.sid_count,
-                            self.count_A1,
-                            iid_index,
-                            sid_index,
-                            val,
-                            num_threads,
-                        )
+                    reader = rust_bed_reader.read_f32
                 else:
                     raise ValueError(
                         f"dtype '{val.dtype}' not known, only 'int8', 'float32', and 'float64' are allowed."
                     )
+
+                # !!!cmk add num_threads
+                reader(
+                    str(self.filepath),
+                    iid_count=self.iid_count,
+                    sid_count=self.sid_count,
+                    count_a1=self.count_A1,
+                    iid_index=iid_index,
+                    sid_index=sid_index,
+                    val=val,
+                )
 
         else:
             if not self.count_A1:
@@ -457,7 +402,9 @@ class open_bed:
 
                     startbit = int(np.ceil(0.25 * self.iid_count) * bimIndex + 3)
                     filepointer.seek(startbit)
-                    nbyte = int(np.ceil(0.25 * self.iid_count))
+                    nbyte = int(
+                        np.ceil(0.25 * self.iid_count)
+                    )  # !!!cmk move out of loop
                     bytes = np.array(bytearray(filepointer.read(nbyte))).reshape(
                         (int(np.ceil(0.25 * self.iid_count)), 1), order="F"
                     )
@@ -712,7 +659,7 @@ class open_bed:
     def property_item(self, name: str) -> np.ndarray:
         """
         Retrieve one property by name.
-       
+      
         Returns
         -------
         numpy.ndarray
@@ -1206,110 +1153,111 @@ class open_bed:
                 output = np.array([], dtype=mm.dtype)
             else:
                 output = fields[mm.column].values
-                if not np.issubdtype(output.dtype,mm.dtype):
-                    output = np.array(output,dtype=mm.dtype)
+                if not np.issubdtype(output.dtype, mm.dtype):
+                    output = np.array(output, dtype=mm.dtype)
             self.properties_dict[key] = output
 
 
-#if __name__ == "__main__":
-    #logging.basicConfig(level=logging.INFO)
-    #import os
+# !!!cmk
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
 
-    #if False:
-    #    from bed_reader import open_bed, sample_file
+    if True:
+        from bed_reader import sample_file
 
-    #    file_name = sample_file("small.bed")
-    #    with open_bed(file_name) as bed:
-    #        print(bed.iid)
-    #        print(bed.sid)
-    #        print(bed.read())
+        file_name = sample_file("small.bed")
+        with open_bed(file_name) as bed:
+            print(bed.iid)
+            print(bed.sid)
+            print(bed.read())
 
-    # if False:
-    #     import numpy as np
-    #     from bed_reader._open_bed import open_bed
+# if False:
+#     import numpy as np
+#     from bed_reader._open_bed import open_bed
 
-    #     # Can get file from https://www.dropbox.com/sh/xluk9opjiaobteg/AABgEggLk0ZoO0KQq0I4CaTJa?dl=0
-    #     bigfile = r"M:\deldir\genbgen\2\merged_487400x220000.1.bed"
-    #     # bigfile = '/mnt/m/deldir/genbgen/2/merged_487400x220000.1.bed'
-    #     with open_bed(bigfile, num_threads=20) as bed:
-    #         sid_batch = 22 * 1000
-    #         for sid_start in range(0, 10 * sid_batch, sid_batch):
-    #             slicer = np.s_[:10000, sid_start : sid_start + sid_batch]
-    #             print(slicer)
-    #             val = bed.read(slicer)
-    #         print(val.shape)
+#     # Can get file from https://www.dropbox.com/sh/xluk9opjiaobteg/AABgEggLk0ZoO0KQq0I4CaTJa?dl=0
+#     bigfile = r"M:\deldir\genbgen\2\merged_487400x220000.1.bed"
+#     # bigfile = '/mnt/m/deldir/genbgen/2/merged_487400x220000.1.bed'
+#     with open_bed(bigfile, num_threads=20) as bed:
+#         sid_batch = 22 * 1000
+#         for sid_start in range(0, 10 * sid_batch, sid_batch):
+#             slicer = np.s_[:10000, sid_start : sid_start + sid_batch]
+#             print(slicer)
+#             val = bed.read(slicer)
+#         print(val.shape)
 
-    # if False:
-    #     file = r"D:\OneDrive\programs\sgkit-plink\bed_reader\tests\data/plink_sim_10s_100v_10pmiss.bed"
-    #     with open_bed(file) as bed:
-    #         print(bed.iid)
-    #         print(bed.shape)
-    #         val = bed.read()
-    #         print(val)
+# if False:
+#     file = r"D:\OneDrive\programs\sgkit-plink\bed_reader\tests\data/plink_sim_10s_100v_10pmiss.bed"
+#     with open_bed(file) as bed:
+#         print(bed.iid)
+#         print(bed.shape)
+#         val = bed.read()
+#         print(val)
 
-    # if False:
+# if False:
 
-    #     # bed_file = example_file('doc/ipynb/all.*','*.bed')
-    #     bed_file = r"F:\backup\carlk4d\data\carlk\cachebio\genetics\onemil\id1000000.sid_1000000.seed0.byiid\iid990000to1000000.bed"
-    #     bed = Bed(bed_file, count_A1=False)
-    #     snpdata1 = bed[:, :1000].read()
-    #     snpdata2 = bed[:, :1000].read(dtype="int8", _require_float32_64=False)
-    #     print(snpdata2)
-    #     snpdata3 = bed[:, :1000].read(
-    #         dtype="int8", order="C", _require_float32_64=False
-    #     )
-    #     print(snpdata3)
-    #     snpdata3.val = snpdata3.val.astype("float32")
-    #     snpdata3.val.dtype
+#     # bed_file = example_file('doc/ipynb/all.*','*.bed')
+#     bed_file = r"F:\backup\carlk4d\data\carlk\cachebio\genetics\onemil\id1000000.sid_1000000.seed0.byiid\iid990000to1000000.bed"
+#     bed = Bed(bed_file, count_A1=False)
+#     snpdata1 = bed[:, :1000].read()
+#     snpdata2 = bed[:, :1000].read(dtype="int8", _require_float32_64=False)
+#     print(snpdata2)
+#     snpdata3 = bed[:, :1000].read(
+#         dtype="int8", order="C", _require_float32_64=False
+#     )
+#     print(snpdata3)
+#     snpdata3.val = snpdata3.val.astype("float32")
+#     snpdata3.val.dtype
 
-    # if False:
-    #     from bed_reader import Bed, SnpGen
+# if False:
+#     from bed_reader import Bed, SnpGen
 
-    #     iid_count = 487409
-    #     sid_count = 5000
-    #     sid_count_max = 5765294
-    #     sid_batch_size = 50
+#     iid_count = 487409
+#     sid_count = 5000
+#     sid_count_max = 5765294
+#     sid_batch_size = 50
 
-    #     sid_batch_count = -(sid_count // -sid_batch_size)
-    #     sid_batch_count_max = -(sid_count_max // -sid_batch_size)
-    #     snpgen = SnpGen(seed=234, iid_count=iid_count, sid_count=sid_count_max)
+#     sid_batch_count = -(sid_count // -sid_batch_size)
+#     sid_batch_count_max = -(sid_count_max // -sid_batch_size)
+#     snpgen = SnpGen(seed=234, iid_count=iid_count, sid_count=sid_count_max)
 
-    #     for batch_index in range(sid_batch_count):
-    #         sid_index_start = batch_index * sid_batch_size
-    #         sid_index_end = (batch_index + 1) * sid_batch_size  # what about rounding
-    #         filename = r"d:\deldir\rand\fakeukC{0}x{1}-{2}.bed".format(
-    #             iid_count, sid_index_start, sid_index_end
-    #         )
-    #         if not os.path.exists(filename):
-    #             Bed.write(
-    #                 filename + ".temp", snpgen[:, sid_index_start:sid_index_end].read()
-    #             )
-    #             os.rename(filename + ".temp", filename)
+#     for batch_index in range(sid_batch_count):
+#         sid_index_start = batch_index * sid_batch_size
+#         sid_index_end = (batch_index + 1) * sid_batch_size  # what about rounding
+#         filename = r"d:\deldir\rand\fakeukC{0}x{1}-{2}.bed".format(
+#             iid_count, sid_index_start, sid_index_end
+#         )
+#         if not os.path.exists(filename):
+#             Bed.write(
+#                 filename + ".temp", snpgen[:, sid_index_start:sid_index_end].read()
+#             )
+#             os.rename(filename + ".temp", filename)
 
-    # if False:
-    #     from bed_reader import Pheno, Bed
+# if False:
+#     from bed_reader import Pheno, Bed
 
-    #     filename = r"m:\deldir\New folder (4)\all_chr.maf0.001.N300.bed"
-    #     iid_count = 300
-    #     iid = [["0", "iid_{0}".format(iid_index)] for iid_index in range(iid_count)]
-    #     bed = Bed(filename, iid=iid, count_A1=False)
-    #     print(bed.iid_count)
+#     filename = r"m:\deldir\New folder (4)\all_chr.maf0.001.N300.bed"
+#     iid_count = 300
+#     iid = [["0", "iid_{0}".format(iid_index)] for iid_index in range(iid_count)]
+#     bed = Bed(filename, iid=iid, count_A1=False)
+#     print(bed.iid_count)
 
-    # if False:
-    #     from pysnptools.util import example_file
+# if False:
+#     from pysnptools.util import example_file
 
-    #     pheno_fn = example_file("pysnptools/examples/toydata.phe")
+#     pheno_fn = example_file("pysnptools/examples/toydata.phe")
 
-    # if False:
-    #     from bed_reader import Pheno, Bed
+# if False:
+#     from bed_reader import Pheno, Bed
 
-    #     print(os.getcwd())
-    #     snpdata = Pheno("../examples/toydata.phe").read()  # Read data from Pheno format
-    #     # pstutil.create_directory_if_necessary("tempdir/toydata.5chrom.bed")
-    #     Bed.write(
-    #         "tempdir/toydata.5chrom.bed", snpdata, count_A1=False
-    #     )  # Write data in Bed format
+#     print(os.getcwd())
+#     snpdata = Pheno("../examples/toydata.phe").read()  # Read data from Pheno format
+#     # pstutil.create_directory_if_necessary("tempdir/toydata.5chrom.bed")
+#     Bed.write(
+#         "tempdir/toydata.5chrom.bed", snpdata, count_A1=False
+#     )  # Write data in Bed format
 
-    #import pytest
+# import pytest
 
-    #pytest.main(["--doctest-modules", __file__])
+# pytest.main(["--doctest-modules", __file__])
+
