@@ -346,10 +346,6 @@ class open_bed:
 
         if not force_python_only:
             num_threads = self._get_num_threads()
-            if num_threads > 1:
-                from bed_reader import wrap_plink_parser_openmp as wrap_plink_parser
-            else:
-                from bed_reader import wrap_plink_parser_onep as wrap_plink_parser
 
             val = np.zeros((len(iid_index), len(sid_index)), order=order, dtype=dtype)
 

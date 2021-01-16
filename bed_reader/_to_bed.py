@@ -6,6 +6,7 @@ from typing import Any, List, Mapping, Optional, Union
 import numpy as np
 
 from bed_reader import open_bed
+import rust_bed_reader
 
 
 def to_bed(
@@ -111,7 +112,6 @@ def to_bed(
     bedfile = str(filepath).encode("ascii")
 
     if not force_python_only:
-        from bed_reader import wrap_plink_parser_onep
 
         if val.flags["C_CONTIGUOUS"]:
             order = "C"
@@ -123,39 +123,18 @@ def to_bed(
         iid_count, sid_count = val.shape
         try:
             if val.dtype == np.float64:
-                if order == "F":
-                    wrap_plink_parser_onep.writePlinkBedFile2doubleFAAA(
-                        bedfile, iid_count, sid_count, count_A1, val,
-                    )
-                else:
-                    wrap_plink_parser_onep.writePlinkBedFile2doubleCAAA(
-                        bedfile, iid_count, sid_count, count_A1, val,
-                    )
+                rust_bed_reader.write_f64(str(filepath), count_a1=count_A1, val=val)
             elif val.dtype == np.float32:
-                if order == "F":
-                    wrap_plink_parser_onep.writePlinkBedFile2floatFAAA(
-                        bedfile, iid_count, sid_count, count_A1, val,
-                    )
-                else:
-                    wrap_plink_parser_onep.writePlinkBedFile2floatCAAA(
-                        bedfile, iid_count, sid_count, count_A1, val,
-                    )
+                rust_bed_reader.write_f32(str(filepath), count_a1=count_A1, val=val)
             elif val.dtype == np.int8:
-                if order == "F":
-                    wrap_plink_parser_onep.writePlinkBedFile2int8FAAA(
-                        bedfile, iid_count, sid_count, count_A1, val,
-                    )
-                else:
-                    wrap_plink_parser_onep.writePlinkBedFile2int8CAAA(
-                        bedfile, iid_count, sid_count, count_A1, val,
-                    )
+                rust_bed_reader.write_i8(str(filepath), count_a1=count_A1, val=val)
             else:
                 raise ValueError(
                     f"dtype '{val.dtype}' not known, only 'int8', 'float32', and 'float64' are allowed."
                 )
         except SystemError as system_error:
             try:
-                os.unlink(bedfile)
+                os.unlink(filepath)
             except Exception:
                 pass
             raise system_error.__cause__
@@ -167,7 +146,7 @@ def to_bed(
             zero_code = 0b11
             two_code = 0b00
 
-        with open(bedfile, "wb") as bed_filepointer:
+        with open(filepath, "wb") as bed_filepointer:
             # see http://zzz.bwh.harvard.edu/plink/binary.shtml
             bed_filepointer.write(bytes(bytearray([0b01101100])))  # magic numbers
             bed_filepointer.write(bytes(bytearray([0b00011011])))  # magic numbers
@@ -223,7 +202,7 @@ def _fix_up_val(input):
     return input
 
 
-#if __name__ == "__main__":
+# if __name__ == "__main__":
 #    logging.basicConfig(level=logging.INFO)
 
 #    import pytest

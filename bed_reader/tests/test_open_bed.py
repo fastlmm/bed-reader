@@ -748,8 +748,8 @@ if __name__ == "__main__":
 
     shared_datadir = Path(r"D:\OneDrive\programs\bed-reader\bed_reader\tests\data")
     tmp_path = Path(r"m:/deldir/tests")
-    test_index(shared_datadir)
+    test_write1(tmp_path, shared_datadir)
+    # test_index(shared_datadir)
     # test_c_reader_bed(shared_datadir)
     # test_read1(shared_datadir)
-    # test_write1(tmp_path, shared_datadir)
     # pytest.main([__file__])
