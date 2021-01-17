@@ -97,19 +97,19 @@ else:
 
 # see http://stackoverflow.com/questions/4505747/how-should-i-structure-a-python-package-that-contains-cython-code # noqa
 ext_modules = [
-    Extension(
-        name="bed_reader.wrap_plink_parser_onep",
-        language="c++",
-        sources=[
-            "bed_reader/wrap_plink_parser_onep.pyx"
-            if use_cython
-            else "bed_reader/wrap_plink_parser_onep.cpp",
-            "bed_reader/CPlinkBedFile.cpp",
-        ],
-        include_dirs=[numpy.get_include()],
-        extra_compile_args=extra_compile_args,
-        define_macros=macros,
-    ),
+    # Extension(
+    #     name="bed_reader.wrap_plink_parser_onep",
+    #     language="c++",
+    #     sources=[
+    #         "bed_reader/wrap_plink_parser_onep.pyx"
+    #         if use_cython
+    #         else "bed_reader/wrap_plink_parser_onep.cpp",
+    #         "bed_reader/CPlinkBedFile.cpp",
+    #     ],
+    #     include_dirs=[numpy.get_include()],
+    #     extra_compile_args=extra_compile_args,
+    #     define_macros=macros,
+    # ),
     Extension(
         name="bed_reader.wrap_matrix_subset",
         language="c++",
@@ -124,25 +124,25 @@ ext_modules = [
         define_macros=macros,
     ),
 ]
-if platform.system() != "Darwin":
-    ext_modules.append(
-        Extension(
-            name="bed_reader.wrap_plink_parser_openmp",
-            language="c++",
-            sources=[
-                "bed_reader/wrap_plink_parser_openmp.pyx"
-                if use_cython
-                else "bed_reader/wrap_plink_parser_openmp.cpp",
-                "bed_reader/CPlinkBedFile.cpp",
-            ],
-            libraries=[mp5lib],
-            library_dirs=library_list,
-            runtime_library_dirs=runtime_library_dirs,
-            include_dirs=library_list + [numpy.get_include()],
-            extra_compile_args=openmp_compiler_args,
-            define_macros=macros,
-        )
-    )
+# if platform.system() != "Darwin":
+#     ext_modules.append(
+#         Extension(
+#             name="bed_reader.wrap_plink_parser_openmp",
+#             language="c++",
+#             sources=[
+#                 "bed_reader/wrap_plink_parser_openmp.pyx"
+#                 if use_cython
+#                 else "bed_reader/wrap_plink_parser_openmp.cpp",
+#                 "bed_reader/CPlinkBedFile.cpp",
+#             ],
+#             libraries=[mp5lib],
+#             library_dirs=library_list,
+#             runtime_library_dirs=runtime_library_dirs,
+#             include_dirs=library_list + [numpy.get_include()],
+#             extra_compile_args=openmp_compiler_args,
+#             define_macros=macros,
+#         )
+#     )
 
 if use_cython:
     cmdclass = {"build_ext": build_ext, "clean": CleanCommand}
