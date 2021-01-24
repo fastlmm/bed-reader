@@ -17,7 +17,7 @@ def test_read1(shared_datadir):
         assert bed.iid[-1] == "9"
         assert bed.shape == (10, 100)
 
-        val = bed.read(dtype="int8", force_python_only=True)  # !!!cmk
+        val = bed.read(dtype="int8")
         assert (
             val.mean() == -13.142
         )  # really shouldn't do mean on data where -127 represents missing

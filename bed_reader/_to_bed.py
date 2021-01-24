@@ -5,7 +5,7 @@ from typing import Any, List, Mapping, Optional, Union
 
 import numpy as np
 
-from bed_reader import open_bed
+from bed_reader import open_bed, get_num_threads
 import rust_bed_reader
 
 
@@ -17,6 +17,7 @@ def to_bed(
     fam_filepath: Union[str, Path] = None,
     bim_filepath: Union[str, Path] = None,
     force_python_only: bool = False,
+    num_threads=None,  #!!!cmk document (tell that it doesn't do anything now)
 ):
     """
     Write values to a file in PLINK .bed format.
@@ -109,8 +110,6 @@ def to_bed(
     open_bed._write_fam_or_bim(filepath, properties, "fam", fam_filepath)
     open_bed._write_fam_or_bim(filepath, properties, "bim", bim_filepath)
 
-    bedfile = str(filepath).encode("ascii")
-
     if not force_python_only:
 
         if val.flags["C_CONTIGUOUS"]:
@@ -120,14 +119,22 @@ def to_bed(
         else:
             raise ValueError(f"val must be contiguous.")
 
+        num_threads = get_num_threads(num_threads)
+
         iid_count, sid_count = val.shape
         try:
             if val.dtype == np.float64:
-                rust_bed_reader.write_f64(str(filepath), count_a1=count_A1, val=val)
+                rust_bed_reader.write_f64(
+                    str(filepath), count_a1=count_A1, val=val, num_threads=num_threads
+                )
             elif val.dtype == np.float32:
-                rust_bed_reader.write_f32(str(filepath), count_a1=count_A1, val=val)
+                rust_bed_reader.write_f32(
+                    str(filepath), count_a1=count_A1, val=val, num_threads=num_threads
+                )
             elif val.dtype == np.int8:
-                rust_bed_reader.write_i8(str(filepath), count_a1=count_A1, val=val)
+                rust_bed_reader.write_i8(
+                    str(filepath), count_a1=count_A1, val=val, num_threads=num_threads
+                )
             else:
                 raise ValueError(
                     f"dtype '{val.dtype}' not known, only 'int8', 'float32', and 'float64' are allowed."

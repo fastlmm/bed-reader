@@ -67,8 +67,12 @@ _meta_meta = {
 def get_num_threads(num_threads):
     if num_threads is not None:
         return num_threads
+    if "PST_NUM_THREADS" in os.environ:
+        return int(os.environ["PST_NUM_THREADS"])  # !!!cmk document
+    if "NUM_THREADS" in os.environ:
+        return int(os.environ["NUM_THREADS"])
     if "MKL_NUM_THREADS" in os.environ:
-        return int(os.environ["MKL_NUM_THREADS"])  # !!!cmk PST_NUM_THREADS, NUM_THREADS
+        return int(os.environ["MKL_NUM_THREADS"])
     return multiprocessing.cpu_count()
 
 
@@ -233,6 +237,7 @@ class open_bed:
         dtype: Optional[Union[type, str]] = "float32",
         order: Optional[str] = "F",
         force_python_only: Optional[bool] = False,
+        num_threads=None,  #!!!cmk doc
     ) -> np.ndarray:
         """
         Read genotype information.
@@ -351,7 +356,9 @@ class open_bed:
         )
 
         if not force_python_only:
-            num_threads = self._get_num_threads()
+            num_threads = get_num_threads(
+                self._num_threads if num_threads is None else num_threads
+            )  # !!!cmk doc
 
             val = np.zeros((len(iid_index), len(sid_index)), order=order, dtype=dtype)
 
@@ -367,7 +374,6 @@ class open_bed:
                         f"dtype '{val.dtype}' not known, only 'int8', 'float32', and 'float64' are allowed."
                     )
 
-                # !!!cmk add num_threads
                 reader(
                     str(self.filepath),
                     iid_count=self.iid_count,
@@ -376,6 +382,7 @@ class open_bed:
                     iid_index=iid_index,
                     sid_index=sid_index,
                     val=val,
+                    num_threads=num_threads,
                 )
 
         else:
@@ -956,9 +963,6 @@ class open_bed:
 
     def __exit__(self, *_):
         pass
-
-    def _get_num_threads(self):
-        return get_num_threads(self._num_threads)
 
     @staticmethod
     def _array_properties_are_ok(val, order):
