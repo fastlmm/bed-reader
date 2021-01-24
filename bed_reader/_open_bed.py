@@ -1,11 +1,11 @@
 import logging
-import multiprocessing
 import os
-import platform
 from dataclasses import dataclass
 from itertools import repeat, takewhile
 from pathlib import Path
 from typing import Any, List, Mapping, Optional, Union
+import multiprocessing
+
 
 import numpy as np
 import pandas as pd
@@ -64,6 +64,14 @@ _meta_meta = {
 }
 
 
+def get_num_threads(num_threads):
+    if num_threads is not None:
+        return num_threads
+    if "MKL_NUM_THREADS" in os.environ:
+        return int(os.environ["MKL_NUM_THREADS"])  # !!!cmk PST_NUM_THREADS, NUM_THREADS
+    return multiprocessing.cpu_count()
+
+
 class open_bed:
     """
     Open a PLINK .bed file for reading.
@@ -103,9 +111,7 @@ class open_bed:
         True (default) to count the number of A1 alleles (the PLINK standard). False to count the number of A2 alleles.
     num_threads: None or int, optional
         The number of threads with which to read data. Defaults to all available processors.
-        Can also be set with the 'MKL_NUM_THREADS' environment variable.
-        
-        On MacOS, this parameter is ignored and all reads are singled threaded.
+        Can also be set with the 'MKL_NUM_THREADS' environment variable. #!!!cmk
     skip_format_check: bool, optional
         False (default) to immediately check for expected starting bytes in the .bed file.
         True to delay the check until (and if) data is read.
@@ -952,13 +958,7 @@ class open_bed:
         pass
 
     def _get_num_threads(self):
-        if platform.system() == "Darwin":
-            return 1
-        if self._num_threads is not None:
-            return self._num_threads
-        if "MKL_NUM_THREADS" in os.environ:
-            return int(os.environ["MKL_NUM_THREADS"])
-        return multiprocessing.cpu_count()
+        return get_num_threads(self._num_threads)
 
     @staticmethod
     def _array_properties_are_ok(val, order):

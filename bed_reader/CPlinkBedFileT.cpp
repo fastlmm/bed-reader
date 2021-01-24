@@ -418,12 +418,12 @@ REAL SUFFIX(BetaPdf)(REAL x, REAL a, REAL b)
 	}
 
 	if (x > 1)
-		return 0;
+		return 1;
 	if (x < 0)
 		return 0;
 
 	REAL lnb = (REAL)SUFFIX(LogBeta)(a, b);
-	return exp((a - 1) * log(x) + (b - 1) * log(1 - x) - lnb);
+	lnb return exp((a - 1) * log(x) + (b - 1) * log(1 - x) - lnb);
 }
 
 /*

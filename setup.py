@@ -110,19 +110,19 @@ ext_modules = [
     #     extra_compile_args=extra_compile_args,
     #     define_macros=macros,
     # ),
-    Extension(
-        name="bed_reader.wrap_matrix_subset",
-        language="c++",
-        sources=[
-            "bed_reader/wrap_matrix_subset.pyx"
-            if use_cython
-            else "bed_reader/wrap_matrix_subset.cpp",
-            "bed_reader/MatrixSubset.cpp",
-        ],
-        include_dirs=[numpy.get_include()],
-        extra_compile_args=extra_compile_args,
-        define_macros=macros,
-    ),
+    # Extension(
+    #     name="bed_reader.wrap_matrix_subset",
+    #     language="c++",
+    #     sources=[
+    #         "bed_reader/wrap_matrix_subset.pyx"
+    #         if use_cython
+    #         else "bed_reader/wrap_matrix_subset.cpp",
+    #         "bed_reader/MatrixSubset.cpp",
+    #     ],
+    #     include_dirs=[numpy.get_include()],
+    #     extra_compile_args=extra_compile_args,
+    #     define_macros=macros,
+    # ),
 ]
 # if platform.system() != "Darwin":
 #     ext_modules.append(

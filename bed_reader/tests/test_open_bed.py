@@ -752,4 +752,4 @@ if __name__ == "__main__":
     # test_index(shared_datadir)
     # test_c_reader_bed(shared_datadir)
     # test_read1(shared_datadir)
-    # pytest.main([__file__])
+    pytest.main([__file__])
