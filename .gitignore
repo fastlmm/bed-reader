@@ -71,6 +71,7 @@ docs/_build/
 
 # PyBuilder
 target/
+baddangertarget/
 
 # Jupyter Notebook
 .ipynb_checkpoints

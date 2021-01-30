@@ -9,7 +9,7 @@ import multiprocessing
 
 import numpy as np
 import pandas as pd
-import rust_bed_reader
+from .bed_reader import read_i8, read_f64, read_f32
 
 
 # https://stackoverflow.com/questions/845058/how-to-get-line-count-of-a-large-file-cheaply-in-python
@@ -364,11 +364,11 @@ class open_bed:
 
             if self.iid_count > 0 and self.sid_count > 0:
                 if dtype == np.int8:
-                    reader = rust_bed_reader.read_i8
+                    reader = read_i8
                 elif dtype == np.float64:
-                    reader = rust_bed_reader.read_f64
+                    reader = read_f64
                 elif dtype == np.float32:
-                    reader = rust_bed_reader.read_f32
+                    reader = read_f32
                 else:
                     raise ValueError(
                         f"dtype '{val.dtype}' not known, only 'int8', 'float32', and 'float64' are allowed."

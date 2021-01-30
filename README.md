@@ -7,7 +7,7 @@ Read and write the PLINK BED format, simply and efficiently.
 
 Features:
 
-* Fast multi-threaded C++ engine.
+* Fast multi-threaded Rust engine.
 * Supports all Python indexing methods. Slice data by individuals (samples) and/or SNPs (variants).
 * Used by [PySnpTools](https://github.com/fastlmm/PySnpTools), [FaST-LMM](https://github.com/fastlmm/FaST-LMM), and [PyStatGen](https://github.com/pystatgen).
 * Supports [PLINK 1.9](https://www.cog-genomics.org/plink2/formats).

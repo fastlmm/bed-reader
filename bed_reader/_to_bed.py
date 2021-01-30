@@ -6,7 +6,7 @@ from typing import Any, List, Mapping, Optional, Union
 import numpy as np
 
 from bed_reader import open_bed, get_num_threads
-import rust_bed_reader
+from .bed_reader import write_i8, write_f64, write_f32
 
 
 def to_bed(
@@ -124,15 +124,15 @@ def to_bed(
         iid_count, sid_count = val.shape
         try:
             if val.dtype == np.float64:
-                rust_bed_reader.write_f64(
+                write_f64(
                     str(filepath), count_a1=count_A1, val=val, num_threads=num_threads
                 )
             elif val.dtype == np.float32:
-                rust_bed_reader.write_f32(
+                write_f32(
                     str(filepath), count_a1=count_A1, val=val, num_threads=num_threads
                 )
             elif val.dtype == np.int8:
-                rust_bed_reader.write_i8(
+                write_i8(
                     str(filepath), count_a1=count_A1, val=val, num_threads=num_threads
                 )
             else:

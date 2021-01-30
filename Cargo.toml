@@ -1,0 +1,28 @@
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+
+[package]
+name = "bed_reader"
+version = "0.1.0"
+authors = ["Carl Kadie <fastlmm-dev@python.org>"]
+edition = "2018"
+
+[lib]
+name = "bed_reader"
+crate-type = ["cdylib", "rlib"]
+
+# !!!cmk how can we specify dependencies that only tests need to have?
+[dependencies]
+thiserror = "1.0.23"
+num-traits = "0.2"
+ndarray-npy = { version = "0.7", default-features = false }
+rayon = "1.5"
+numpy = "0.13"
+ndarray = {version = "0.14", features = ["approx", "rayon"] }
+approx = "0.4"
+tempfile = "3.2"
+statrs = "0.13"
+
+[dependencies.pyo3]
+version = "0.13.0"
+features = ["extension-module"]
