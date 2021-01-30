@@ -1,7 +1,7 @@
 import logging
 import os
 from pathlib import Path
-from typing import Any, List, Mapping, Optional, Union
+from typing import Any, List, Mapping, Union
 
 import numpy as np
 
@@ -17,7 +17,7 @@ def to_bed(
     fam_filepath: Union[str, Path] = None,
     bim_filepath: Union[str, Path] = None,
     force_python_only: bool = False,
-    num_threads=None,  #!!!cmk document (tell that it doesn't do anything now)
+    num_threads=None,  # !!!cmk document including that not used
 ):
     """
     Write values to a file in PLINK .bed format.
@@ -112,12 +112,8 @@ def to_bed(
 
     if not force_python_only:
 
-        if val.flags["C_CONTIGUOUS"]:
-            order = "C"
-        elif val.flags["F_CONTIGUOUS"]:
-            order = "F"
-        else:
-            raise ValueError(f"val must be contiguous.")
+        if not val.flags["C_CONTIGUOUS"] and not val.flags["F_CONTIGUOUS"]:
+            raise ValueError("val must be contiguous.")
 
         num_threads = get_num_threads(num_threads)
 

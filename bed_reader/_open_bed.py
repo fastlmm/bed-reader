@@ -205,7 +205,7 @@ class open_bed:
         skip_format_check: bool = False,
         fam_filepath: Union[str, Path] = None,
         bim_filepath: Union[str, Path] = None,
-    ):  #!!!document these new optionals. they are here
+    ):  # !!!document these new optionals. they are here
         self.filepath = Path(filepath)
         self.count_A1 = count_A1
         self._num_threads = num_threads
@@ -237,7 +237,7 @@ class open_bed:
         dtype: Optional[Union[type, str]] = "float32",
         order: Optional[str] = "F",
         force_python_only: Optional[bool] = False,
-        num_threads=None,  #!!!cmk doc
+        num_threads=None,  # !!!cmk doc
     ) -> np.ndarray:
         """
         Read genotype information.
