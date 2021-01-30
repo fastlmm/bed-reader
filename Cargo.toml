@@ -3,7 +3,7 @@
 
 [package]
 name = "bed_reader"
-version = "0.1.0"
+version = "0.1.4"
 authors = ["Carl Kadie <fastlmm-dev@python.org>"]
 edition = "2018"
 
