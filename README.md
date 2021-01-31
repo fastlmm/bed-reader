@@ -79,4 +79,3 @@ Project Links
 - [**Bug reports**](https://github.com/fastlmm/bed-reader/issues)
 - [**Mailing list**](https://mail.python.org/mailman3/lists/fastlmm-user.python.org)
 - [**Project Website**](https://fastlmm.github.io/)
-

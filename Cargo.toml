@@ -1,11 +1,30 @@
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-
 [package]
+authors = ["Carl Kadie <fastlmm-dev@python.org>"]
 name = "bed_reader"
 version = "0.1.4"
-authors = ["Carl Kadie <fastlmm-dev@python.org>"]
+description = "Read and write the PLINK BED format, simply and efficiently."
+exclude = ["tests/*", "doc/*", "docs/*"]
+readme = "README.md"
+license="Apache 2.0"
+keywords=["bioinformatics", "plink", "genomics", "genetics", "file-format", "reader", "genotype", "bed-format", "writer"]
 edition = "2018"
+
+[package.metadata.maturin]
+requires-python = ">=3.7"
+classifiers=[
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python",
+    ]
+requires-dist = ["numpy>=1.11.3", "pandas>=0.25.1", "pooch>=1.1.1"]
+
+# cmk add badges
+# cmk what are dev-dependencies?
+# cmk what are features
 
 [lib]
 name = "bed_reader"
