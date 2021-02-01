@@ -58,11 +58,10 @@ fn best_int8() {
 fn reference_val_i8(count_a1: bool) -> nd::Array2<i8> {
     let ref_val = reference_val(count_a1);
 
-    let row_count = ref_val.shape()[0]; // !!!cmk must be a more concise way to do this
-    let col_count = ref_val.shape()[1];
+    let (row_count, col_count) = ref_val.dim();
     let mut ref_val_i8 = nd::Array2::<i8>::zeros((row_count, col_count));
-    for i in 0..ref_val.shape()[0] {
-        for j in 0..ref_val.shape()[1] {
+    for i in 0..row_count {
+        for j in 0..col_count {
             // !!!cmk use map?
             if ref_val[[i, j]].is_nan() {
                 ref_val_i8[[i, j]] = -127i8;
@@ -126,7 +125,7 @@ fn allclose<
     atol: T1,
     equal_nan: bool,
 ) -> bool {
-    assert!(val1.shape() == val2.shape());
+    assert!(val1.dim() == val2.dim());
     // !!!cmk could be run in parallel
     let result = nd::Zip::from(val1)
         .and(val2)
@@ -290,7 +289,7 @@ fn fill_in() {
 
     for output_is_order_f_ptr in [false, true].iter() {
         let mut val = read(filename, *output_is_order_f_ptr, true, f64::NAN);
-        let mut stats = nd::Array2::<f64>::zeros((val.shape()[1], 2));
+        let mut stats = nd::Array2::<f64>::zeros((val.dim().1, 2));
 
         impute_and_zero_mean_snps(
             &mut val.view_mut(),
@@ -316,7 +315,7 @@ fn standardize_unit() {
             false,
             f64::NAN,
         );
-        let mut stats = nd::Array2::<f64>::zeros((val.shape()[1], 2));
+        let mut stats = nd::Array2::<f64>::zeros((val.dim().1, 2));
         impute_and_zero_mean_snps(
             &mut val.view_mut(),
             false,
@@ -341,7 +340,7 @@ fn standardize_beta() {
             false,
             f64::NAN,
         );
-        let mut stats = nd::Array2::<f64>::zeros((val.shape()[1], 2));
+        let mut stats = nd::Array2::<f64>::zeros((val.dim().1, 2));
         impute_and_zero_mean_snps(
             &mut val.view_mut(),
             true,
