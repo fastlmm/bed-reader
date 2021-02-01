@@ -2,23 +2,17 @@
 
 use core::fmt::Debug;
 use ndarray as nd;
-use ndarray::ShapeBuilder as ndsb;
+use ndarray::ShapeBuilder;
 use num_traits::{Float, FromPrimitive, ToPrimitive};
-use numpy::{PyArray1, PyArray2, PyArray3};
-use pyo3::{
-    exceptions::{PyOSError, PyValueError}, // !!!cmk make sure give right Python error for each bederror
-    prelude::{pymodule, PyModule, PyResult, Python},
-    PyErr,
-};
 use rayon::iter::ParallelBridge;
 use rayon::iter::ParallelIterator;
 use statrs::distribution::{Beta, Continuous};
 use std::{
     fs::File,
     io::{BufRead, BufWriter, Read, Write},
-    mem::{self, size_of},
+    // cmk mem::{self, size_of},
     num::TryFromIntError,
-    time::Instant,
+    // cmk time::Instant,
     vec,
 };
 use std::{io::SeekFrom, path::PathBuf};
@@ -94,7 +88,7 @@ fn read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
         0 => {
             //This option -- Sample major -- is untested because it is (almost?) never used.
             // cmk return Err(BedError::BadMode);
-            let mut valt = val.view_mut().reversed_axes();
+            let mut val_t = val.view_mut().reversed_axes();
             return _internal_read_no_alloc(
                 filename,
                 sid_count,
@@ -102,7 +96,7 @@ fn read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
                 sid_index,
                 iid_index,
                 missing_value,
-                &mut valt,
+                &mut val_t,
             );
         }
         1 => {
@@ -155,7 +149,7 @@ fn _internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send
             let snp_in_i = sid_index[snp_out_i];
             let mut bytes_vector: Vec<u8> = vec![0; iid_count_div4];
             let pos: u64 = (snp_in_i as u64) * iid_count_div4_u64 + CB_HEADER; // !!!raise error
-            reader.seek(SeekFrom::Start(pos)).unwrap(); // !!! cmk think about what it means to have uwrap here not ?
+            reader.seek(SeekFrom::Start(pos)).unwrap(); // !!! cmk think about what it means to have unwrap here not ?
             reader.read_exact(&mut bytes_vector).unwrap();
             bytes_vector
         })
@@ -165,7 +159,7 @@ fn _internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send
         .par_bridge()
         .for_each(|(bytes_vector, mut col)| {
             for iid_out_i in 0..iid_out_count {
-                // Possible optimization: We could precompute the conversion, the division, the mod, and the multiply*2
+                // Possible optimization: We could pre-compute the conversion, the division, the mod, and the multiply*2
                 let iid_in_i = iid_index[iid_out_i];
                 let i_div_4 = iid_in_i / 4;
                 let i_mod_4 = iid_in_i % 4;
@@ -202,7 +196,7 @@ fn set_up_two_bits_to_value<TOut: From<i8>>(count_a1: bool, missing_value: TOut)
 }
 
 // make count_a1 optional
-fn read_with_indexes<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
+pub fn read_with_indexes<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
     filename: &str,
     iid_index: &[usize],
     sid_index: &[usize],
@@ -214,7 +208,7 @@ fn read_with_indexes<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
     let iid_count = count_lines(path.with_extension("fam"));
     let sid_count = count_lines(path.with_extension("bim"));
 
-    let shape = ndsb::set_f((iid_index.len(), sid_index.len()), output_is_order_f);
+    let shape = ShapeBuilder::set_f((iid_index.len(), sid_index.len()), output_is_order_f);
     let mut val = nd::Array2::<TOut>::default(shape);
 
     let _ = read_no_alloc(
@@ -247,7 +241,7 @@ pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
     let iid_index: Vec<usize> = (0..iid_count).collect();
     let sid_index: Vec<usize> = (0..sid_count).collect();
 
-    let mut val = nd::Array2::<TOut>::default(ndsb::set_f(
+    let mut val = nd::Array2::<TOut>::default(ShapeBuilder::set_f(
         (iid_count as usize, sid_count as usize),
         output_is_order_f,
     ));
@@ -267,7 +261,7 @@ pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
 }
 
 // !!!cmk add thread control
-fn write<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
+pub fn write<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
     filename: &str,
     val: &nd::ArrayView2<'_, T>,
     count_a1: bool,
@@ -305,7 +299,7 @@ fn write<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
                 // println!("cmk bad value '{:?}'", v0);
                 return Err(BedError::BadValue);
             };
-            // Possible optimization: We could precompute the conversion, the division, the mod, and the multiply*2
+            // Possible optimization: We could pre-compute the conversion, the division, the mod, and the multiply*2
             let i_div_4 = iid_i / 4;
             let i_mod_4 = iid_i % 4;
             bytes_vector[i_div_4] |= genotype_byte << (i_mod_4 * 2);
@@ -322,7 +316,7 @@ fn count_lines(path_buf: PathBuf) -> usize {
     return count;
 }
 // !!!cmk where are the return codes? Here and elsewhere
-fn counts(filename: &str) -> (usize, usize) {
+pub fn counts(filename: &str) -> (usize, usize) {
     let path = Path::new(filename);
     let iid_count = count_lines(path.with_extension("fam"));
     let sid_count = count_lines(path.with_extension("bim"));
@@ -388,7 +382,7 @@ pub fn matrix_subset_no_alloc<
     } else {
         //If output is C-order, transpose input and output and recurse
         let val_in_t = in_val.view().permuted_axes([1, 0, 2]);
-        let mut val_out_t = out_val.view_mut().permuted_axes([1, 0, 2]); // !!!cmk out_val or val_out -- be consistant
+        let mut val_out_t = out_val.view_mut().permuted_axes([1, 0, 2]); // !!!cmk out_val or val_out -- be consistent
         return matrix_subset_no_alloc(&val_in_t, &sid_index, &iid_index, &mut val_out_t);
     }
 
@@ -491,7 +485,7 @@ fn _process_sid<T: Default + Copy + Debug + Sync + Send + Float + ToPrimitive + 
             return Err(BedError::IllegalSnpMean);
         }
 
-        let variance: T = mean2_s - mean_s * mean_s; //By the Cauchy Shwartz inequality this should always be positive
+        let variance: T = mean2_s - mean_s * mean_s; //By the Cauchy Schwartz inequality this should always be positive
 
         let mut std = variance.sqrt();
         if std.is_nan() || std <= T::zero() {
@@ -582,7 +576,7 @@ fn _process_all_iids<
                 // !!!cmk return Err(BedError::IllegalSnpMean);
             }
 
-            let variance: T = mean2_s - mean_s * mean_s; //By the Cauchy Shwartz inequality this should always be positive
+            let variance: T = mean2_s - mean_s * mean_s; //By the Cauchy Schwartz inequality this should always be positive
             let mut std = variance.sqrt();
             if std.is_nan() || std <= T::zero() {
                 // All "SNPs" have the same value (aka SNC)
@@ -631,333 +625,8 @@ pub fn create_pool(num_threads: usize) -> rayon::ThreadPool {
         .unwrap();
 }
 
+mod python_module;
 mod tests;
-
-#[pymodule]
-fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
-    // See User's guide: https://pyo3.rs/v0.13.1/
-    // mutable example (no return) see https://github.com/PyO3/rust-numpy
-    // https://pyo3.rs/v0.13.1/exception.html
-
-    mod io {
-        pyo3::import_exception!(io, UnsupportedOperation);
-    }
-
-    impl std::convert::From<BedError> for PyErr {
-        fn from(err: BedError) -> PyErr {
-            PyOSError::new_err(err.to_string())
-        }
-    }
-
-    #[pyfn(m, "read_f64")]
-    fn read_f64_py(
-        _py: Python<'_>,
-        filename: &str,
-        iid_count: usize,
-        sid_count: usize,
-        count_a1: bool,
-        iid_index: &PyArray1<usize>,
-        sid_index: &PyArray1<usize>,
-        val: &PyArray2<f64>,
-        num_threads: usize,
-    ) -> Result<(), PyErr> {
-        let iid_index = iid_index.readonly();
-        let sid_index = sid_index.readonly();
-        let mut val = unsafe { val.as_array_mut() };
-
-        let ii = &iid_index.as_slice()?;
-        let si = &sid_index.as_slice()?;
-
-        let result = create_pool(num_threads).install(|| {
-            read_no_alloc(
-                filename,
-                iid_count,
-                sid_count,
-                count_a1,
-                ii,
-                si,
-                f64::NAN,
-                &mut val,
-            )
-        });
-
-        match result {
-            Err(result) => Err(PyOSError::new_err(result.to_string())),
-            _ => Ok(()),
-        }
-    }
-
-    #[pyfn(m, "read_f32")]
-    fn read_f32_py(
-        _py: Python<'_>,
-        filename: &str,
-        iid_count: usize,
-        sid_count: usize,
-        count_a1: bool,
-        iid_index: &PyArray1<usize>,
-        sid_index: &PyArray1<usize>,
-        val: &PyArray2<f32>,
-        num_threads: usize,
-    ) -> Result<(), PyErr> {
-        let iid_index = iid_index.readonly();
-        let sid_index = sid_index.readonly();
-        let mut val = unsafe { val.as_array_mut() };
-
-        let ii = &iid_index.as_slice()?;
-        let si = &sid_index.as_slice()?;
-
-        let result = create_pool(num_threads).install(|| {
-            read_no_alloc(
-                filename,
-                iid_count,
-                sid_count,
-                count_a1,
-                ii,
-                si,
-                f32::NAN,
-                &mut val,
-            )
-        });
-
-        match result {
-            Err(result) => Err(PyValueError::new_err(result.to_string())), // !!!cmk make all ValueError not Os error?
-            _ => Ok(()),
-        }
-    }
-
-    #[pyfn(m, "read_i8")]
-    fn read_i8_py(
-        _py: Python<'_>,
-        filename: &str,
-        iid_count: usize,
-        sid_count: usize,
-        count_a1: bool,
-        iid_index: &PyArray1<usize>,
-        sid_index: &PyArray1<usize>,
-        val: &PyArray2<i8>,
-        num_threads: usize,
-    ) -> Result<(), PyErr> {
-        let iid_index = iid_index.readonly();
-        let sid_index = sid_index.readonly();
-        let mut val = unsafe { val.as_array_mut() };
-
-        let ii = &iid_index.as_slice()?;
-        let si = &sid_index.as_slice()?;
-
-        let result = create_pool(num_threads).install(|| {
-            read_no_alloc(
-                filename, iid_count, sid_count, count_a1, ii, si, -127i8, &mut val,
-            )
-        });
-
-        match result {
-            Err(result) => Err(PyValueError::new_err(result.to_string())),
-            _ => Ok(()),
-        }
-    }
-
-    #[pyfn(m, "write_f64")]
-    fn write_f64_py(
-        _py: Python<'_>,
-        filename: &str,
-        count_a1: bool,
-        val: &PyArray2<f64>,
-        num_threads: usize,
-    ) -> Result<(), PyErr> {
-        let val = unsafe { val.as_array() };
-        let result =
-            create_pool(num_threads).install(|| write(filename, &val, count_a1, (true, f64::NAN)));
-
-        match result {
-            Err(result) => Err(PyValueError::new_err(result.to_string())),
-            _ => Ok(()),
-        }
-    }
-
-    #[pyfn(m, "write_f32")]
-    fn write_f32_py(
-        _py: Python<'_>,
-        filename: &str,
-        count_a1: bool,
-        val: &PyArray2<f32>,
-        num_threads: usize,
-    ) -> Result<(), PyErr> {
-        let val = unsafe { val.as_array() };
-        let result =
-            create_pool(num_threads).install(|| write(filename, &val, count_a1, (true, f32::NAN)));
-
-        match result {
-            Err(result) => Err(PyValueError::new_err(result.to_string())),
-            _ => Ok(()),
-        }
-    }
-
-    #[pyfn(m, "write_i8")]
-    fn write_i8_py(
-        _py: Python<'_>,
-        filename: &str,
-        count_a1: bool,
-        val: &PyArray2<i8>,
-        num_threads: usize,
-    ) -> Result<(), PyErr> {
-        let val = unsafe { val.as_array() };
-        let result =
-            create_pool(num_threads).install(|| write(filename, &val, count_a1, (false, -127)));
-
-        match result {
-            Err(result) => Err(PyValueError::new_err(result.to_string())),
-            _ => Ok(()),
-        }
-    }
-
-    #[pyfn(m, "subset_f64_f64")]
-    fn subset_f64_f64(
-        _py: Python<'_>,
-        val_in: &PyArray3<f64>,
-        iid_index: &PyArray1<usize>,
-        sid_index: &PyArray1<usize>,
-        val_out: &PyArray3<f64>,
-        num_threads: usize,
-    ) -> Result<(), PyErr> {
-        println!("cmk subset6464 {:?}", num_threads);
-
-        let iid_index = iid_index.readonly();
-        let sid_index = sid_index.readonly();
-        let val_in = unsafe { val_in.as_array() };
-        let mut val_out = unsafe { val_out.as_array_mut() };
-
-        let ii = &iid_index.as_slice()?;
-        let si = &sid_index.as_slice()?;
-
-        let result = create_pool(num_threads)
-            .install(|| matrix_subset_no_alloc(&val_in, ii, si, &mut val_out));
-
-        match result {
-            Err(result) => Err(PyOSError::new_err(result.to_string())),
-            _ => Ok(()),
-        }
-    }
-
-    #[pyfn(m, "subset_f32_f64")]
-    fn subset_f32_f64(
-        _py: Python<'_>,
-        val_in: &PyArray3<f32>,
-        iid_index: &PyArray1<usize>,
-        sid_index: &PyArray1<usize>,
-        val_out: &PyArray3<f64>,
-        num_threads: usize,
-    ) -> Result<(), PyErr> {
-        println!("cmk subset3264 {:?}", num_threads);
-        let iid_index = iid_index.readonly();
-        let sid_index = sid_index.readonly();
-        let val_in = unsafe { val_in.as_array() };
-        let mut val_out = unsafe { val_out.as_array_mut() };
-
-        let ii = &iid_index.as_slice()?;
-        let si = &sid_index.as_slice()?;
-
-        let result = create_pool(num_threads)
-            .install(|| matrix_subset_no_alloc(&val_in, ii, si, &mut val_out));
-
-        match result {
-            Err(result) => Err(PyOSError::new_err(result.to_string())),
-            _ => Ok(()),
-        }
-    }
-
-    #[pyfn(m, "subset_f32_f32")]
-    fn subset_f32_f32(
-        _py: Python<'_>,
-        val_in: &PyArray3<f32>,
-        iid_index: &PyArray1<usize>,
-        sid_index: &PyArray1<usize>,
-        val_out: &PyArray3<f32>,
-        num_threads: usize,
-    ) -> Result<(), PyErr> {
-        println!("cmk subset3232 {:?}", num_threads);
-        let iid_index = iid_index.readonly();
-        let sid_index = sid_index.readonly();
-        let val_in = unsafe { val_in.as_array() };
-        let mut val_out = unsafe { val_out.as_array_mut() };
-
-        let ii = &iid_index.as_slice()?;
-        let si = &sid_index.as_slice()?;
-
-        let result = create_pool(num_threads)
-            .install(|| matrix_subset_no_alloc(&val_in, ii, si, &mut val_out));
-
-        match result {
-            Err(result) => Err(PyOSError::new_err(result.to_string())),
-            _ => Ok(()),
-        }
-    }
-
-    #[pyfn(m, "standardize_f32")]
-    fn standardize_f32(
-        _py: Python<'_>,
-        val: &PyArray2<f32>,
-        beta_not_unit_variance: bool,
-        beta_a: f64,
-        beta_b: f64,
-        apply_in_place: bool,
-        use_stats: bool,
-        stats: &PyArray2<f32>,
-        num_threads: usize,
-    ) -> Result<(), PyErr> {
-        let mut val = unsafe { val.as_array_mut() };
-        let mut stats = unsafe { stats.as_array_mut() };
-        let result = create_pool(num_threads).install(|| {
-            impute_and_zero_mean_snps(
-                &mut val.view_mut(),
-                beta_not_unit_variance,
-                beta_a,
-                beta_b,
-                apply_in_place,
-                use_stats,
-                &mut stats.view_mut(),
-            )
-        });
-        match result {
-            Err(result) => Err(PyOSError::new_err(result.to_string())),
-            _ => Ok(()),
-        }
-    }
-
-    #[pyfn(m, "standardize_f64")]
-    fn standardize_f64(
-        _py: Python<'_>,
-        val: &PyArray2<f64>,
-        beta_not_unit_variance: bool,
-        beta_a: f64,
-        beta_b: f64,
-        apply_in_place: bool,
-        use_stats: bool,
-        stats: &PyArray2<f64>,
-        num_threads: usize,
-    ) -> Result<(), PyErr> {
-        println!("cmk std64 {:?}", num_threads);
-
-        let mut val = unsafe { val.as_array_mut() };
-        let mut stats = unsafe { stats.as_array_mut() };
-        // println!("cmk a");
-        let result = create_pool(num_threads).install(|| {
-            impute_and_zero_mean_snps(
-                &mut val.view_mut(),
-                beta_not_unit_variance,
-                beta_a,
-                beta_b,
-                apply_in_place,
-                use_stats,
-                &mut stats.view_mut(),
-            )
-        });
-        match result {
-            Err(result) => Err(PyOSError::new_err(result.to_string())),
-            _ => Ok(()),
-        }
-    }
-    Ok(())
-}
 
 // !!!cmk add default values
 // !!!cmk add thread control

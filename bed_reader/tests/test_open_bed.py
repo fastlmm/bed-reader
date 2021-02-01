@@ -86,7 +86,11 @@ def test_overrides(shared_datadir):
         bp_position = bed.bp_position
         allele_1 = bed.allele_1
         allele_2 = bed.allele_2
-    # lock in the expected results: np.savez(shared_datadir / "some_missing.properties.npz",fid=fid,iid=iid,father=father,mother=mother,sex=sex,pheno=pheno,chromosome=chromosome,sid=sid,cm_position=cm_position,bp_position=bp_position,allele_1=allele_1,allele_2=allele_2)
+    # lock in the expected results:
+    # np.savez(shared_datadir / "some_missing.properties.npz",fid=fid,iid=iid,
+    # father=father,mother=mother,sex=sex,pheno=pheno,chromosome=chromosome,
+    # sid=sid,cm_position=cm_position,bp_position=bp_position,
+    # allele_1=allele_1,allele_2=allele_2)
     property_dict = np.load(shared_datadir / "some_missing.properties.npz")
     assert np.array_equal(property_dict["fid"], fid)
     assert np.array_equal(property_dict["iid"], iid)
@@ -205,7 +209,7 @@ def test_properties(shared_datadir):
         "sid_count": [None, len(sid_list)],
         "sid_before_read": [False, True],
         "sid_after_read": [False, True],
-        "chromosome": ["leave_out", None, chromosome_list, np.array(chromosome_list),],
+        "chromosome": ["leave_out", None, chromosome_list, np.array(chromosome_list)],
         "chromosome_before_read": [False, True],
         "chromosome_after_read": [False, True],
     }
@@ -445,7 +449,7 @@ def test_write12(tmp_path):
                             )
                 try:
                     os.remove(filename)
-                except:
+                except Exception:
                     pass
     logging.info("done with 'test_writes'")
 

@@ -1,43 +1,46 @@
-// !!!cmk understand how to get these warning to go away
+// !!!cmk https://stackoverflow.com/questions/32900809/how-to-suppress-function-is-never-used-warning-for-a-function-used-by-tests
+
+#[cfg(test)]
 use crate::{
     counts, impute_and_zero_mean_snps, matrix_subset_no_alloc, read, read_with_indexes, write,
 };
-use nd::{ArrayView2, ArrayViewMut2};
-use ndarray as nd;
-use ndarray::ShapeBuilder as ndsb;
-use ndarray_npy::read_npy;
-use num_traits::{abs, Float, FromPrimitive, Signed, ToPrimitive};
-use std::{env, path::Path, time::Instant};
-
 #[cfg(test)]
+use ndarray as nd;
+#[cfg(test)]
+use ndarray::ShapeBuilder;
+#[cfg(test)]
+use ndarray_npy::read_npy;
+#[cfg(test)]
+use num_traits::{abs, Signed};
+#[cfg(test)]
+use std::path::Path;
 
-fn big1() {
-    let bigfile = r"M:\deldir\genbgen\2\merged_487400x220000.1.bed"; // !!!cmk not in datafolder
-                                                                     //slicer = np.s_[4000:6000,:20000]
-                                                                     //with open_bed(bigfile,num_threads=None) as bed:
-    for fortran_order in [false, true].iter() {
-        for dtype in ["f64"].iter() {
-            let start = Instant::now();
-            let iid_index = (4000..6000).collect::<Vec<usize>>();
-            let sid_index = (0..20_000).collect::<Vec<usize>>();
-            let _val1 = read_with_indexes(
-                bigfile,
-                &iid_index,
-                &sid_index,
-                *fortran_order,
-                true,
-                f64::NAN,
-            );
-            println!(
-                "{},{},{}",
-                fortran_order,
-                dtype,
-                start.elapsed().as_secs_f32()
-            );
-        }
-    }
-}
-
+// fn big1() {
+//     let bigfile = r"M:\deldir\genbgen\2\merged_487400x220000.1.bed"; // !!!cmk not in datafolder
+//                                                                      //slicer = np.s_[4000:6000,:20000]
+//                                                                      //with open_bed(bigfile,num_threads=None) as bed:
+//     for fortran_order in [false, true].iter() {
+//         for dtype in ["f64"].iter() {
+//             let start = Instant::now();
+//             let iid_index = (4000..6000).collect::<Vec<usize>>();
+//             let sid_index = (0..20_000).collect::<Vec<usize>>();
+//             let _val1 = read_with_indexes(
+//                 bigfile,
+//                 &iid_index,
+//                 &sid_index,
+//                 *fortran_order,
+//                 true,
+//                 f64::NAN,
+//             );
+//             println!(
+//                 "{},{},{}",
+//                 fortran_order,
+//                 dtype,
+//                 start.elapsed().as_secs_f32()
+//             );
+//         }
+//     }
+// }
 #[test]
 fn best_int8() {
     let path = std::env::current_dir().unwrap();
@@ -51,6 +54,7 @@ fn best_int8() {
     }
 }
 
+#[cfg(test)]
 fn reference_val_i8(count_a1: bool) -> nd::Array2<i8> {
     let ref_val = reference_val(count_a1);
 
@@ -100,6 +104,7 @@ fn rest_reader_bed() {
     assert_eq!(val2, ref_val_i8);
 }
 
+#[cfg(test)]
 fn reference_val(count_a1: bool) -> nd::Array2<f64> {
     let file = "bed_reader/tests/data/some_missing.val.npy";
 
@@ -111,6 +116,7 @@ fn reference_val(count_a1: bool) -> nd::Array2<f64> {
     return val;
 }
 
+#[cfg(test)]
 fn allclose<
     T1: 'static + Copy + PartialEq + PartialOrd + Signed,
     T2: 'static + Copy + PartialEq + PartialOrd + Signed + Into<T1>,
@@ -150,7 +156,6 @@ fn index() {
     let filename = "bed_reader/tests/data/some_missing.bed";
     let (iid_count, sid_count) = counts(filename);
     let iid_index_full = (0..iid_count).collect::<Vec<usize>>();
-    let sid_index_full = (0..sid_count).collect::<Vec<usize>>();
     let ref_val_float = reference_val(true);
 
     let val = read(filename, true, true, f32::NAN);
@@ -256,10 +261,10 @@ fn subset1() {
 
     assert_eq!(out_val1, answer64);
 
-    let shape_in = ndsb::set_f((3, 3, 1), true);
+    let shape_in = ShapeBuilder::set_f((3, 3, 1), true);
     let mut in_val2 = nd::Array3::<f32>::default(shape_in);
     in_val2.assign(&in_val1);
-    let shape_out = ndsb::set_f((3, 4, 1), true);
+    let shape_out = ShapeBuilder::set_f((3, 4, 1), true);
     let mut out_val2 = nd::Array3::<f64>::zeros(shape_out);
 
     let _ = matrix_subset_no_alloc(

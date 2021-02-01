@@ -1,7 +1,6 @@
-# Workaround to bootstrap maturin on non-manylinux platforms
 [build-system]
-requires = ["setuptools~=41.2.0", "wheel~=0.33.6", "toml~=0.10.0"]
-build-backend = "setuptools.build_meta"
+requires = ["maturin==0.9.0"]
+build-backend = "maturin"
 
 [tool.black]
-target_version = ['py37']
+line-length = 88
