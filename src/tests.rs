@@ -48,7 +48,7 @@ fn best_int8() {
     let filename = "bed_reader/tests/data/some_missing.bed";
 
     for output_order_is_f in [true, false].iter() {
-        let val = read(filename, *output_order_is_f, true, -127);
+        let val = read(filename, *output_order_is_f, true, -127).unwrap();
         let ref_val_i8 = reference_val_i8(true);
         assert_eq!(val, ref_val_i8);
     }
@@ -76,10 +76,10 @@ fn reference_val_i8(count_a1: bool) -> nd::Array2<i8> {
 #[test]
 fn read1() {
     let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
-    let (iid_count, sid_count) = counts(file);
+    let (iid_count, sid_count) = counts(file).unwrap();
     assert!(iid_count == 10);
     assert!(sid_count == 100);
-    let val = read(file, true, true, -127);
+    let val = read(file, true, true, -127).unwrap(); // !!!cmk7 why can't we use "?" here?
     let val_f64 = val.mapv(|elem| elem as f64);
     let mean_ = val_f64.mean().unwrap();
     assert!(mean_ == -13.142); // really shouldn't do mean on data where -127 represents missing
@@ -93,13 +93,13 @@ fn rest_reader_bed() {
     let ref_val = reference_val(count_a1);
     let ref_val_i8 = reference_val_i8(count_a1);
 
-    let val = read(file, true, count_a1, f32::NAN);
+    let val = read(file, true, count_a1, f32::NAN).unwrap();
     assert!(allclose(&ref_val.view(), &val.view(), 1e-08, true));
 
-    let val_f64 = read(file, true, count_a1, f64::NAN);
+    let val_f64 = read(file, true, count_a1, f64::NAN).unwrap();
     assert!(allclose(&ref_val.view(), &val_f64.view(), 1e-08, true));
 
-    let val2 = read(file, true, count_a1, -127);
+    let val2 = read(file, true, count_a1, -127).unwrap();
     assert_eq!(val2, ref_val_i8);
 }
 
@@ -153,14 +153,14 @@ fn allclose<
 #[test]
 fn index() {
     let filename = "bed_reader/tests/data/some_missing.bed";
-    let (iid_count, sid_count) = counts(filename);
+    let (iid_count, sid_count) = counts(filename).unwrap();
     let iid_index_full = (0..iid_count).collect::<Vec<usize>>();
     let ref_val_float = reference_val(true);
 
-    let val = read(filename, true, true, f32::NAN);
+    let val = read(filename, true, true, f32::NAN).unwrap();
     assert!(allclose(&ref_val_float.view(), &val.view(), 1e-08, true));
 
-    let val = read_with_indexes(filename, &iid_index_full, &[2], true, true, f32::NAN);
+    let val = read_with_indexes(filename, &iid_index_full, &[2], true, true, f32::NAN).unwrap();
     assert!(allclose(
         &(ref_val_float.slice(nd::s![.., 2..3])),
         &val.view(),
@@ -168,7 +168,7 @@ fn index() {
         true
     ));
 
-    let val = read_with_indexes(filename, &[1usize], &[2usize], true, true, f32::NAN);
+    let val = read_with_indexes(filename, &[1usize], &[2usize], true, true, f32::NAN).unwrap();
     assert!(allclose(
         &ref_val_float.slice(nd::s![1..2, 2..3]),
         &val.view(),
@@ -184,7 +184,8 @@ fn index() {
         true,
         true,
         f32::NAN,
-    );
+    )
+    .unwrap();
 
     // !!!cmk look for nd::ndarray macro/function to stack columns
     let col1 = ref_val_float.slice(nd::s![.., 2..3]);
@@ -198,7 +199,7 @@ fn index() {
 #[test]
 fn writer() {
     let filename = "bed_reader/tests/data/some_missing.bed";
-    let val = read(filename, false, true, -127);
+    let val = read(filename, false, true, -127).unwrap();
 
     let filename2 = r"m:\deldir\rusttest\rust_bed_reader_writer_test.bed";
     write(filename2, &val.view(), true, (false, -127)).unwrap();
@@ -209,13 +210,13 @@ fn writer() {
     }
     println!("{}", filename2);
 
-    let val2 = read(filename2, false, true, -127);
+    let val2 = read(filename2, false, true, -127).unwrap();
 
     println!("{}", val);
     println!("{}", val2);
     assert!(allclose(&val.view(), &val2.view(), 0, true));
 
-    let val = read(filename, false, true, f64::NAN);
+    let val = read(filename, false, true, f64::NAN).unwrap();
 
     let filename2 = r"m:\deldir\rusttest\rust_bed_reader_writer_testf64.bed";
     write(filename2, &val.view(), true, (true, f64::NAN)).unwrap();
@@ -226,7 +227,7 @@ fn writer() {
     }
     println!("{}", filename2);
 
-    let val2 = read(filename2, false, true, f64::NAN);
+    let val2 = read(filename2, false, true, f64::NAN).unwrap();
 
     println!("{}", val);
     println!("{}", val2);
@@ -288,7 +289,7 @@ fn fill_in() {
     let filename = "bed_reader/tests/data/some_missing.bed";
 
     for output_is_order_f_ptr in [false, true].iter() {
-        let mut val = read(filename, *output_is_order_f_ptr, true, f64::NAN);
+        let mut val = read(filename, *output_is_order_f_ptr, true, f64::NAN).unwrap();
         let mut stats = nd::Array2::<f64>::zeros((val.dim().1, 2));
 
         impute_and_zero_mean_snps(
@@ -314,7 +315,8 @@ fn standardize_unit() {
             *output_is_order_f_ptr,
             false,
             f64::NAN,
-        );
+        )
+        .unwrap();
         let mut stats = nd::Array2::<f64>::zeros((val.dim().1, 2));
         impute_and_zero_mean_snps(
             &mut val.view_mut(),
@@ -339,7 +341,8 @@ fn standardize_beta() {
             *output_is_order_f_ptr,
             false,
             f64::NAN,
-        );
+        )
+        .unwrap();
         let mut stats = nd::Array2::<f64>::zeros((val.dim().1, 2));
         impute_and_zero_mean_snps(
             &mut val.view_mut(),

@@ -7,6 +7,7 @@ use num_traits::{Float, FromPrimitive, ToPrimitive};
 use rayon::iter::ParallelBridge;
 use rayon::iter::ParallelIterator;
 use statrs::distribution::{Beta, Continuous};
+use std::convert::TryFrom;
 use std::{
     fs::File,
     io::{BufRead, BufWriter, Read, Write},
@@ -18,7 +19,7 @@ use std::{
     io::{BufReader, Seek},
     path::Path,
 };
-use thiserror::Error; // !!!cmk
+use thiserror::Error;
 
 const BED_FILE_MAGIC1: u8 = 0x6C; // 0b01101100 or 'l' (lowercase 'L')
 const BED_FILE_MAGIC2: u8 = 0x1B; // 0b00011011 or <esc>
@@ -51,6 +52,18 @@ pub enum BedError {
 
     #[error("Illegal SNP mean.")]
     IllegalSnpMean,
+
+    #[error("Index to individual too large.")]
+    IidIndexTooBig,
+
+    #[error("Index to SNP too large.")]
+    SidIndexTooBig,
+
+    #[error("Length of iid_index and sid_index must match dimensions of output array.")]
+    IndexMismatch,
+
+    #[error("Length of iid_index and sid_index must match dimensions of output array.")]
+    IndexesTooBigForFiles,
 
     #[error("Output matrix dimensions doesn't match the length of the indexes.")]
     SubsetMismatch,
@@ -88,6 +101,7 @@ fn read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
             let mut val_t = val.view_mut().reversed_axes();
             return _internal_read_no_alloc(
                 filename,
+                iid_count,
                 sid_count,
                 count_a1,
                 sid_index,
@@ -100,6 +114,7 @@ fn read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
             return _internal_read_no_alloc(
                 filename,
                 iid_count,
+                sid_count,
                 count_a1,
                 iid_index,
                 sid_index,
@@ -115,53 +130,85 @@ fn read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
 
 fn _internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
     filename: &str,
-    iid_count: usize,
+    in_iid_count: usize,
+    in_sid_count: usize,
     count_a1: bool,
     iid_index: &[usize],
     sid_index: &[usize],
     missing_value: TOut,
-    val: &mut nd::ArrayViewMut2<'_, TOut>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
+    out_val: &mut nd::ArrayViewMut2<'_, TOut>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
 ) -> Result<(), BedError> {
     // !!!cmk7good
-    {}
 
-    let iid_count_div4 = (iid_count + 3) / 4; // 4 genotypes per byte so round up
-    let iid_count_div4_u64 = iid_count_div4 as u64; // !!!cmk7fix
-    let iid_out_count = iid_index.len();
-    let sid_out_count = sid_index.len();
+    // !!!cmk test on length zero *_indexes
+    // Find the largest in_iid_i (if any) and check its size.
+    if let Some(in_max_iid_i) = iid_index.iter().max() {
+        if *in_max_iid_i >= in_iid_count {
+            return Err(BedError::IidIndexTooBig);
+        }
+    }
+
+    let out_iid_count = iid_index.len();
+    let out_sid_count = sid_index.len();
+    if out_iid_count != out_val.dim().0 || out_sid_count != out_val.dim().1 {
+        return Err(BedError::IndexMismatch);
+    }
+
+    if std::usize::MAX - in_iid_count < 3 {
+        return Err(BedError::IndexesTooBigForFiles);
+    }
+    let in_iid_count_div4 = (in_iid_count + 3) / 4; // 4 genotypes per byte so round up
+    let in_iid_count_div4_u64 = match u64::try_from(in_iid_count_div4) {
+        Ok(v) => v,
+        Err(_) => return Err(BedError::IndexesTooBigForFiles),
+    };
+    let in_sid_count_u64 = match u64::try_from(in_sid_count) {
+        Ok(v) => v,
+        Err(_) => return Err(BedError::IndexesTooBigForFiles),
+    };
+    if (std::u64::MAX - CB_HEADER) / in_sid_count_u64 < in_iid_count_div4_u64 {
+        return Err(BedError::IndexesTooBigForFiles);
+    }
 
     let from_two_bits_to_value = set_up_two_bits_to_value(count_a1, missing_value);
-
-    let mut reader = BufReader::new(File::open(filename)?); // !!!cmk7check
+    let mut reader = BufReader::new(File::open(filename)?); // !!!cmk7good but test
 
     // See https://morestina.net/blog/1432/parallel-stream-processing-with-rayon
     // Possible optimization: We could try to read only the iid info needed
     // Possible optimization: We could read snp in their input order instead of their output order
-    let _ = (0..sid_out_count)
+    (0..out_sid_count)
         // Read all the iid info for one snp from the disk
-        .map(|snp_out_i| {
-            let snp_in_i = sid_index[snp_out_i];
-            let mut bytes_vector: Vec<u8> = vec![0; iid_count_div4];
-            let pos: u64 = (snp_in_i as u64) * iid_count_div4_u64 + CB_HEADER; // !!!cmk7fix
-            reader.seek(SeekFrom::Start(pos)).unwrap(); // !!!cmk7fix
-            reader.read_exact(&mut bytes_vector).unwrap(); // !!!cmk7fix
-            bytes_vector
+        .map(|out_sid_i| {
+            let in_sid_i = sid_index[out_sid_i];
+            if in_sid_i >= in_sid_count {
+                return Err(BedError::SidIndexTooBig);
+            }
+            let mut bytes_vector: Vec<u8> = vec![0; in_iid_count_div4];
+            let pos: u64 = (in_sid_i as u64) * in_iid_count_div4_u64 + CB_HEADER; // "as" is safe because of early checks
+            reader.seek(SeekFrom::Start(pos))?; // !!!cmk construct a test for a short bed file and show that the error is passed up
+            reader.read_exact(&mut bytes_vector)?;
+            return Ok(bytes_vector);
         })
         // Zip in the column of the output array
-        .zip(val.axis_iter_mut(nd::Axis(1)))
+        .zip(out_val.axis_iter_mut(nd::Axis(1)))
         // In parallel, decompress the iid info and put it in its column
         .par_bridge() // This seems faster that parallel zip
-        .for_each(|(bytes_vector, mut col)| {
-            for iid_out_i in 0..iid_out_count {
-                // Possible optimization: We could pre-compute the conversion, the division, the mod, and the multiply*2
-                let iid_in_i = iid_index[iid_out_i];
-                let i_div_4 = iid_in_i / 4;
-                let i_mod_4 = iid_in_i % 4;
-                let genotype_byte: u8 = (bytes_vector[i_div_4] >> (i_mod_4 * 2)) & 0x03;
-                col[iid_out_i] = from_two_bits_to_value[genotype_byte as usize];
-                // !!!cmk7good
+        .try_for_each(|(bytes_vector_result, mut col)| {
+            match bytes_vector_result {
+                Err(e) => Err(e),
+                Ok(bytes_vector) => {
+                    for iid_out_i in 0..out_iid_count {
+                        // Possible optimization: We could pre-compute the conversion, the division, the mod, and the multiply*2
+                        let iid_in_i = iid_index[iid_out_i];
+                        let i_div_4 = iid_in_i / 4;
+                        let i_mod_4 = iid_in_i % 4;
+                        let genotype_byte: u8 = (bytes_vector[i_div_4] >> (i_mod_4 * 2)) & 0x03;
+                        col[iid_out_i] = from_two_bits_to_value[genotype_byte as usize];
+                    }
+                    Ok(())
+                }
             }
-        });
+        })?; // !!!cmk7good but test
 
     return Ok(()); // !!!cmk7good
 }
@@ -198,15 +245,15 @@ pub fn read_with_indexes<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
     output_is_order_f: bool,
     count_a1: bool,
     missing_value: TOut,
-) -> nd::Array2<TOut> {
+) -> Result<nd::Array2<TOut>, BedError> {
     let path = Path::new(filename);
-    let iid_count = count_lines(path.with_extension("fam")); // !!!cmk7fix
-    let sid_count = count_lines(path.with_extension("bim")); // !!!cmk7fix
+    let iid_count = count_lines(path.with_extension("fam"))?; // !!!cmk7good
+    let sid_count = count_lines(path.with_extension("bim"))?; // !!!cmk7good
 
     let shape = ShapeBuilder::set_f((iid_index.len(), sid_index.len()), output_is_order_f);
     let mut val = nd::Array2::<TOut>::default(shape); // !!!cmk7good panic is oK here
 
-    let _ = read_no_alloc(
+    read_no_alloc(
         filename,
         iid_count,
         sid_count,
@@ -215,9 +262,9 @@ pub fn read_with_indexes<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
         sid_index,
         missing_value,
         &mut val.view_mut(),
-    );
+    )?;
 
-    return val;
+    return Ok(val);
 }
 
 // !!!cmk put in [No ignore] thing to force results to be used
@@ -228,10 +275,10 @@ pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
     output_is_order_f: bool,
     count_a1: bool,
     missing_value: TOut,
-) -> nd::Array2<TOut> {
+) -> Result<nd::Array2<TOut>, BedError> {
     let path = Path::new(filename);
-    let iid_count = count_lines(path.with_extension("fam")); // !!!cmk7fix
-    let sid_count = count_lines(path.with_extension("bim")); // !!!cmk7fix
+    let iid_count = count_lines(path.with_extension("fam"))?; // !!!cmk7good
+    let sid_count = count_lines(path.with_extension("bim"))?; // !!!cmk7good
 
     let iid_index: Vec<usize> = (0..iid_count).collect();
     let sid_index: Vec<usize> = (0..sid_count).collect();
@@ -239,7 +286,7 @@ pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
     let shape = ShapeBuilder::set_f((iid_count, sid_count), output_is_order_f);
     let mut val = nd::Array2::<TOut>::default(shape); // !!!cmk7good
 
-    let _ = read_no_alloc(
+    read_no_alloc(
         filename,
         iid_count,
         sid_count,
@@ -248,9 +295,9 @@ pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
         &sid_index,
         missing_value,
         &mut val.view_mut(),
-    );
+    )?; // !!!cmk7fix
 
-    return val;
+    return Ok(val);
 }
 
 // !!!cmk add thread control
@@ -298,17 +345,17 @@ pub fn write<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
     return Ok(());
 }
 
-fn count_lines(path_buf: PathBuf) -> usize {
-    let reader = BufReader::new(File::open(path_buf).expect("Cannot open file")); // !!!cmk7fix -- should return a BedError
+fn count_lines(path_buf: PathBuf) -> Result<usize, BedError> {
+    let reader = BufReader::new(File::open(path_buf)?); // !!!cmk7good
     let count = reader.lines().count();
-    return count;
+    return Ok(count);
 }
 // !!!cmk7fix -- should return a BedError
-pub fn counts(filename: &str) -> (usize, usize) {
+pub fn counts(filename: &str) -> Result<(usize, usize), BedError> {
     let path = Path::new(filename);
-    let iid_count = count_lines(path.with_extension("fam")); // !!!cmk7fix -- should return a BedError
-    let sid_count = count_lines(path.with_extension("bim")); // !!!cmk7fix -- should return a BedError
-    return (iid_count, sid_count);
+    let iid_count = count_lines(path.with_extension("fam"))?; // !!!cmk7good
+    let sid_count = count_lines(path.with_extension("bim"))?; // !!!cmk7good
+    return Ok((iid_count, sid_count));
 }
 
 // !!!cmk7review
