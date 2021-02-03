@@ -4,6 +4,7 @@
 use crate::{
     counts, impute_and_zero_mean_snps, matrix_subset_no_alloc, read, read_with_indexes, write,
 };
+use crate::{try_div_4, BedError};
 #[cfg(test)]
 use ndarray as nd;
 #[cfg(test)]
@@ -331,6 +332,58 @@ fn standardize_unit() {
 
         assert!((val[(0, 0)] - -0.3050261832617668).abs() < 1e-8);
     }
+}
+
+#[test]
+fn div_4() {
+    match try_div_4(0, 16, 0u8) {
+        Ok(tup) => assert_eq!(tup, (0usize, 0u8)),
+        Err(_) => {}
+    };
+
+    match try_div_4(1, 16, 0u8) {
+        Ok(tup) => assert_eq!(tup, (1usize, 1u8)),
+        Err(_) => {}
+    };
+
+    match try_div_4(4, 16, 0u8) {
+        Ok(tup) => assert_eq!(tup, (1usize, 1u8)),
+        Err(_) => {}
+    };
+
+    match try_div_4(5, 16, 0u8) {
+        Ok(tup) => assert_eq!(tup, (2usize, 2u8)),
+        Err(_) => {}
+    };
+
+    match try_div_4(2000, 0, 0u8) {
+        Err(BedError::IndexesTooBigForFiles) => (),
+        _ => panic!("test failure"),
+    };
+    match try_div_4(0, 256, 0u8) {
+        Err(BedError::IndexesTooBigForFiles) => (),
+        _ => panic!("test failure"),
+    };
+
+    match try_div_4(25 * 4, 10, 5u8) {
+        Ok(tup) => assert_eq!(tup, (25usize, 25u8)),
+        Err(_) => {}
+    };
+
+    match try_div_4(25 * 4 + 1, 10, 5u8) {
+        Err(BedError::IndexesTooBigForFiles) => (),
+        _ => panic!("test failure"),
+    };
+
+    match try_div_4(25 * 4, 11, 5u8) {
+        Err(BedError::IndexesTooBigForFiles) => (),
+        _ => panic!("test failure"),
+    };
+
+    match try_div_4(25 * 4, 10, 6u8) {
+        Err(BedError::IndexesTooBigForFiles) => (),
+        _ => panic!("test failure"),
+    };
 }
 
 #[test]

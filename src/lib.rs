@@ -7,7 +7,10 @@ use num_traits::{Float, FromPrimitive, ToPrimitive};
 use rayon::iter::ParallelBridge;
 use rayon::iter::ParallelIterator;
 use statrs::distribution::{Beta, Continuous};
-use std::convert::TryFrom;
+use std::{
+    convert::TryFrom,
+    ops::{Div, Sub},
+};
 use std::{
     fs::File,
     io::{BufRead, BufWriter, Read, Write},
@@ -128,6 +131,50 @@ fn read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
     }
 }
 
+trait Max {
+    fn max() -> Self;
+}
+
+impl Max for u8 {
+    fn max() -> u8 {
+        std::u8::MAX
+    }
+}
+
+impl Max for u64 {
+    fn max() -> u64 {
+        std::u64::MAX
+    }
+}
+
+// We make this generic instead of u64, so that we can test it via u8
+fn try_div_4<T: Max + TryFrom<usize> + Sub<Output = T> + Div<Output = T> + Ord>(
+    in_iid_count: usize,
+    in_sid_count: usize,
+    cb_header: T,
+) -> Result<(usize, T), BedError> {
+    // 4 genotypes per byte so round up without overflow
+    let in_iid_count_div4 = if in_iid_count > 0 {
+        (in_iid_count - 1) / 4 + 1
+    } else {
+        0
+    };
+    let in_iid_count_div4_t = match T::try_from(in_iid_count_div4) {
+        Ok(v) => v,
+        Err(_) => return Err(BedError::IndexesTooBigForFiles),
+    };
+    let in_sid_count_t = match T::try_from(in_sid_count) {
+        Ok(v) => v,
+        Err(_) => return Err(BedError::IndexesTooBigForFiles),
+    };
+    let m: T = Max::max(); // Don't know how to move this into the next line.
+    if (m - cb_header) / in_sid_count_t < in_iid_count_div4_t {
+        return Err(BedError::IndexesTooBigForFiles);
+    }
+
+    return Ok((in_iid_count_div4, in_iid_count_div4_t));
+}
+
 fn _internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
     filename: &str,
     in_iid_count: usize,
@@ -150,25 +197,9 @@ fn _internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send
 
     let out_iid_count = iid_index.len();
     let out_sid_count = sid_index.len();
-    if out_iid_count != out_val.dim().0 || out_sid_count != out_val.dim().1 {
-        return Err(BedError::IndexMismatch);
-    }
 
-    if std::usize::MAX - in_iid_count < 3 {
-        return Err(BedError::IndexesTooBigForFiles);
-    }
-    let in_iid_count_div4 = (in_iid_count + 3) / 4; // 4 genotypes per byte so round up
-    let in_iid_count_div4_u64 = match u64::try_from(in_iid_count_div4) {
-        Ok(v) => v,
-        Err(_) => return Err(BedError::IndexesTooBigForFiles),
-    };
-    let in_sid_count_u64 = match u64::try_from(in_sid_count) {
-        Ok(v) => v,
-        Err(_) => return Err(BedError::IndexesTooBigForFiles),
-    };
-    if (std::u64::MAX - CB_HEADER) / in_sid_count_u64 < in_iid_count_div4_u64 {
-        return Err(BedError::IndexesTooBigForFiles);
-    }
+    let (in_iid_count_div4, in_iid_count_div4_u64) =
+        try_div_4(in_iid_count, in_sid_count, CB_HEADER)?; // !!!cmk7good
 
     let from_two_bits_to_value = set_up_two_bits_to_value(count_a1, missing_value);
     let mut reader = BufReader::new(File::open(filename)?); // !!!cmk7good but test
@@ -295,7 +326,7 @@ pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
         &sid_index,
         missing_value,
         &mut val.view_mut(),
-    )?; // !!!cmk7fix
+    )?; // !!!cmk7good
 
     return Ok(val);
 }
@@ -307,8 +338,8 @@ pub fn write<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
     count_a1: bool,
     missing: (bool, T), // !!!cmk change to a enum?
 ) -> Result<(), BedError> {
-    let mut writer = BufWriter::new(File::create(filename)?); // !!!cmk7check
-    writer.write_all(&[BED_FILE_MAGIC1, BED_FILE_MAGIC2, 0x01])?; // !!!cmk7check
+    let mut writer = BufWriter::new(File::create(filename)?); // !!!cmk7good
+    writer.write_all(&[BED_FILE_MAGIC1, BED_FILE_MAGIC2, 0x01])?; // !!!cmk7good
 
     let zero_code = if count_a1 { 3u8 } else { 0u8 };
     let two_code = if count_a1 { 0u8 } else { 3u8 };
@@ -317,8 +348,11 @@ pub fn write<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
     let heterozygous_allele = T::from(1);
     let homozygous_secondary_allele = T::from(2); // Minor Allele
 
-    let iid_count = val.dim().0;
-    let iid_count_div4 = (iid_count + 3) / 4; // 4 genotypes per byte so round up
+    let (iid_count, sid_count) = val.dim();
+
+    // 4 genotypes per byte so round up
+    let (iid_count_div4, _) = try_div_4(iid_count, sid_count, CB_HEADER)?; // !!!cmk7good
+
     let (use_nan, other_missing_value) = missing;
 
     for column in val.axis_iter(nd::Axis(1)) {
