@@ -1,10 +1,11 @@
 // !!!cmk https://stackoverflow.com/questions/32900809/how-to-suppress-function-is-never-used-warning-for-a-function-used-by-tests
 
+use crate::try_div_4;
 #[cfg(test)]
 use crate::{
     counts, impute_and_zero_mean_snps, matrix_subset_no_alloc, read, read_with_indexes, write,
 };
-use crate::{try_div_4, BedErrorPlus};
+
 #[cfg(test)]
 use ndarray as nd;
 #[cfg(test)]

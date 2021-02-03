@@ -20,8 +20,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         pyo3::import_exception!(io, UnsupportedOperation);
     }
 
-    impl std::convert::From<BedError> for PyErr {
-        fn from(err: BedError) -> PyErr {
+    impl std::convert::From<BedErrorPlus> for PyErr {
+        fn from(err: BedErrorPlus) -> PyErr {
             PyOSError::new_err(err.to_string())
         }
     }

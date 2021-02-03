@@ -1,7 +1,6 @@
 // Inspired by C++ version by Chris Widmer and Carl Kadie
 
 use core::fmt::Debug;
-use nd::Zip;
 use ndarray as nd;
 use ndarray::ShapeBuilder;
 use num_traits::{Float, FromPrimitive, ToPrimitive};
@@ -9,14 +8,12 @@ use rayon::iter::ParallelBridge;
 use rayon::iter::ParallelIterator;
 use statrs::distribution::{Beta, Continuous};
 use std::{
-    convert::{TryFrom, TryInto},
+    convert::TryFrom,
     ops::{Div, Sub},
 };
 use std::{
     fs::File,
     io::{BufRead, BufWriter, Read, Write},
-    num::TryFromIntError,
-    vec,
 };
 use std::{io::SeekFrom, path::PathBuf};
 use std::{
@@ -42,9 +39,6 @@ const CB_HEADER: u64 = 3;
 /// Based on https://nick.groenen.me/posts/rust-error-handling/#the-library-error-type
 #[derive(Error, Debug)]
 pub enum BedErrorPlus {
-    // #[error(transparent)]
-    // ConversionError(#[from] TryFromIntError),
-    /// Represents all other cases of `std::io::Error`.
     #[error(transparent)]
     IOError(#[from] std::io::Error),
 
@@ -83,6 +77,12 @@ pub enum BedError {
 
     #[error("Output matrix dimensions doesn't match the length of the indexes.")]
     SubsetMismatch,
+
+    #[error("Cannot convert beta values to/from float 64")]
+    CannotConvertToFromF64,
+
+    #[error("Cannot create Beta Dist with given parameters")]
+    CannotCreateBetaDist,
 }
 
 // !!!cmk "no_net_alloc"???
@@ -452,21 +452,6 @@ pub fn impute_and_zero_mean_snps<
 
     // If output is F-order (or in general if iid stride is no more than sid_stride)
     if val.stride_of(nd::Axis(0)) <= val.stride_of(nd::Axis(1)) {
-        //     Idea: use zip map par_bridge and try_for_each as above
-        //     // let mut result_list: Vec<Result<(), BedError>> = vec![Ok(()); val.dim().1];
-        //     // nd::par_azip!((mut col in val.axis_iter_mut(nd::Axis(1)),
-        //     //            mut stats_row in stats.axis_iter_mut(nd::Axis(0))){
-        //     // _process_sid(
-        //     //     &mut col,
-        //     //     apply_in_place,
-        //     //     use_stats,
-        //     //     &mut stats_row,
-        //     //     beta_a,
-        //     //     beta_b,
-        //     //     beta_not_unit_variance,
-        //     //     two).unwrap(); // !!!cmk7fix
-        //     // });
-
         let result_list = nd::Zip::from(val.axis_iter_mut(nd::Axis(1)))
             .and(stats.axis_iter_mut(nd::Axis(0)))
             .par_apply_collect(|mut col, mut stats_row| {
@@ -513,16 +498,33 @@ fn find_factor<T: Default + Copy + Debug + Sync + Send + Float + ToPrimitive + F
     beta_b: f64,
     mean_s: T,
     std: T,
-) -> T {
+) -> Result<T, BedError> {
     if beta_not_unit_variance {
-        let beta_dist = Beta::new(beta_a, beta_b).unwrap(); // !!!cmk7fix
-        let mut maf = mean_s.to_f64().unwrap() / 2.0; // !!!cmk7fix
+        // Try to create a beta dist
+        let beta_dist = if let Ok(beta_dist) = Beta::new(beta_a, beta_b) {
+            beta_dist
+        } else {
+            return Err(BedError::CannotCreateBetaDist);
+        };
+
+        // Try to an f64 maf
+        let mut maf = if let Some(mean_u64) = mean_s.to_f64() {
+            mean_u64 / 2.0
+        } else {
+            return Err(BedError::CannotConvertToFromF64);
+        };
         if maf > 0.5 {
             maf = 1.0 - maf;
         }
-        return T::from_f64(beta_dist.pdf(maf)).unwrap(); // !!!cmk7fix
+
+        // Try to put the maf in the beta dist
+        return if let Some(b) = T::from_f64(beta_dist.pdf(maf)) {
+            Ok(b)
+        } else {
+            Err(BedError::CannotConvertToFromF64)
+        };
     } else {
-        return T::one() / std;
+        return Ok(T::one() / std);
     }
 }
 
@@ -578,7 +580,7 @@ fn _process_sid<T: Default + Copy + Debug + Sync + Send + Float + ToPrimitive + 
             let std = stats_row[1];
             let is_snc = std.is_infinite();
 
-            let factor = find_factor(beta_not_unit_variance, beta_a, beta_b, mean_s, std); // !!!cmk7fix
+            let factor = find_factor(beta_not_unit_variance, beta_a, beta_b, mean_s, std)?; // !!!cmk7good
 
             for iid_i in 0..col.len() {
                 //check for Missing (NAN) or SNC
@@ -665,17 +667,26 @@ fn _process_all_iids<
     if apply_in_place {
         // O(sid_count)
         let mut factor_array = nd::Array1::<T>::zeros(stats.dim().0);
-        nd::par_azip!((factor_ptr in &mut factor_array, stats_row in stats.axis_iter_mut(nd::Axis(0)))
-            {
-                *factor_ptr = find_factor(
+
+        stats
+            .axis_iter_mut(nd::Axis(0))
+            .zip(&mut factor_array)
+            .par_bridge()
+            .try_for_each(|(stats_row, factor_ptr)| {
+                match find_factor(
                     beta_not_unit_variance,
                     beta_a,
                     beta_b,
                     stats_row[0],
                     stats_row[1],
-                );
-            }
-        );
+                ) {
+                    Err(e) => Err(e),
+                    Ok(factor) => {
+                        *factor_ptr = factor;
+                        Ok(())
+                    }
+                }
+            })?;
 
         // O(iid_count * sid_count)
         nd::par_azip!((mut row in val.axis_iter_mut(nd::Axis(0)))
