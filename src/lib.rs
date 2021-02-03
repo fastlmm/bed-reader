@@ -1,6 +1,7 @@
 // Inspired by C++ version by Chris Widmer and Carl Kadie
 
 use core::fmt::Debug;
+use nd::Zip;
 use ndarray as nd;
 use ndarray::ShapeBuilder;
 use num_traits::{Float, FromPrimitive, ToPrimitive};
@@ -8,7 +9,7 @@ use rayon::iter::ParallelBridge;
 use rayon::iter::ParallelIterator;
 use statrs::distribution::{Beta, Continuous};
 use std::{
-    convert::TryFrom,
+    convert::{TryFrom, TryInto},
     ops::{Div, Sub},
 };
 use std::{
@@ -37,9 +38,21 @@ const CB_HEADER: u64 = 3;
 //  https://docs.rs/ndarray-npy
 //  https://rust-lang-nursery.github.io/rust-cookbook/science/mathematics/linear_algebra.html
 
-/// BedError enumerates all possible errors returned by this library.
+/// BedErrorPlus enumerates all possible errors returned by this library.
 /// Based on https://nick.groenen.me/posts/rust-error-handling/#the-library-error-type
 #[derive(Error, Debug)]
+pub enum BedErrorPlus {
+    // #[error(transparent)]
+    // ConversionError(#[from] TryFromIntError),
+    /// Represents all other cases of `std::io::Error`.
+    #[error(transparent)]
+    IOError(#[from] std::io::Error),
+
+    #[error(transparent)]
+    JustBedError(#[from] BedError),
+}
+// !!!cmk add variables to the error messages? https://docs.rs/thiserror/1.0.23/thiserror/
+#[derive(Error, Debug, Clone, Copy)]
 pub enum BedError {
     #[error("Ill-formed BED file. BED file header is incorrect.")]
     IllFormed,
@@ -70,13 +83,6 @@ pub enum BedError {
 
     #[error("Output matrix dimensions doesn't match the length of the indexes.")]
     SubsetMismatch,
-
-    #[error(transparent)]
-    ConversionError(#[from] TryFromIntError),
-
-    /// Represents all other cases of `std::io::Error`.
-    #[error(transparent)]
-    IOError(#[from] std::io::Error),
 }
 
 // !!!cmk "no_net_alloc"???
@@ -89,13 +95,13 @@ fn read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
     sid_index: &[usize],
     missing_value: TOut,
     val: &mut nd::ArrayViewMut2<'_, TOut>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
-) -> Result<(), BedError> {
+) -> Result<(), BedErrorPlus> {
     let reader2 = BufReader::new(File::open(filename)?);
     let mut s = reader2.bytes();
     let rd1 = s.next().ok_or(BedError::IllFormed)??; // !!!cmk7good
     let rd2 = s.next().ok_or(BedError::IllFormed)??; // !!!cmk7good
     if (BED_FILE_MAGIC1 != rd1) || (BED_FILE_MAGIC2 != rd2) {
-        return Err(BedError::IllFormed); // !!!cmk7good
+        return Err(BedError::IllFormed.into()); // !!!cmk7good
     }
     let rd3 = s.next().ok_or(BedError::IllFormed)??; // !!!cmk7good
     match rd3 {
@@ -126,7 +132,7 @@ fn read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
             ); // !!!cmk7good
         }
         _ => {
-            return Err(BedError::BadMode); // !!!cmk7good
+            return Err(BedError::BadMode.into()); // !!!cmk7good
         }
     }
 }
@@ -152,7 +158,7 @@ fn try_div_4<T: Max + TryFrom<usize> + Sub<Output = T> + Div<Output = T> + Ord>(
     in_iid_count: usize,
     in_sid_count: usize,
     cb_header: T,
-) -> Result<(usize, T), BedError> {
+) -> Result<(usize, T), BedErrorPlus> {
     // 4 genotypes per byte so round up without overflow
     let in_iid_count_div4 = if in_iid_count > 0 {
         (in_iid_count - 1) / 4 + 1
@@ -161,15 +167,15 @@ fn try_div_4<T: Max + TryFrom<usize> + Sub<Output = T> + Div<Output = T> + Ord>(
     };
     let in_iid_count_div4_t = match T::try_from(in_iid_count_div4) {
         Ok(v) => v,
-        Err(_) => return Err(BedError::IndexesTooBigForFiles),
+        Err(_) => return Err(BedError::IndexesTooBigForFiles.into()),
     };
     let in_sid_count_t = match T::try_from(in_sid_count) {
         Ok(v) => v,
-        Err(_) => return Err(BedError::IndexesTooBigForFiles),
+        Err(_) => return Err(BedError::IndexesTooBigForFiles.into()),
     };
     let m: T = Max::max(); // Don't know how to move this into the next line.
     if (m - cb_header) / in_sid_count_t < in_iid_count_div4_t {
-        return Err(BedError::IndexesTooBigForFiles);
+        return Err(BedError::IndexesTooBigForFiles.into());
     }
 
     return Ok((in_iid_count_div4, in_iid_count_div4_t));
@@ -184,14 +190,14 @@ fn _internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send
     sid_index: &[usize],
     missing_value: TOut,
     out_val: &mut nd::ArrayViewMut2<'_, TOut>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
-) -> Result<(), BedError> {
+) -> Result<(), BedErrorPlus> {
     // !!!cmk7good
 
     // !!!cmk test on length zero *_indexes
     // Find the largest in_iid_i (if any) and check its size.
     if let Some(in_max_iid_i) = iid_index.iter().max() {
         if *in_max_iid_i >= in_iid_count {
-            return Err(BedError::IidIndexTooBig);
+            return Err(BedError::IidIndexTooBig.into());
         }
     }
 
@@ -212,10 +218,10 @@ fn _internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send
         .map(|out_sid_i| {
             let in_sid_i = sid_index[out_sid_i];
             if in_sid_i >= in_sid_count {
-                return Err(BedError::SidIndexTooBig);
+                return Err(BedErrorPlus::JustBedError(BedError::SidIndexTooBig));
             }
             let mut bytes_vector: Vec<u8> = vec![0; in_iid_count_div4];
-            let pos: u64 = (in_sid_i as u64) * in_iid_count_div4_u64 + CB_HEADER; // "as" is safe because of early checks
+            let pos: u64 = (in_sid_i as u64) * in_iid_count_div4_u64 + CB_HEADER; // "as" and math is safe because of early checks
             reader.seek(SeekFrom::Start(pos))?; // !!!cmk construct a test for a short bed file and show that the error is passed up
             reader.read_exact(&mut bytes_vector)?;
             return Ok(bytes_vector);
@@ -276,7 +282,7 @@ pub fn read_with_indexes<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
     output_is_order_f: bool,
     count_a1: bool,
     missing_value: TOut,
-) -> Result<nd::Array2<TOut>, BedError> {
+) -> Result<nd::Array2<TOut>, BedErrorPlus> {
     let path = Path::new(filename);
     let iid_count = count_lines(path.with_extension("fam"))?; // !!!cmk7good
     let sid_count = count_lines(path.with_extension("bim"))?; // !!!cmk7good
@@ -306,7 +312,7 @@ pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
     output_is_order_f: bool,
     count_a1: bool,
     missing_value: TOut,
-) -> Result<nd::Array2<TOut>, BedError> {
+) -> Result<nd::Array2<TOut>, BedErrorPlus> {
     let path = Path::new(filename);
     let iid_count = count_lines(path.with_extension("fam"))?; // !!!cmk7good
     let sid_count = count_lines(path.with_extension("bim"))?; // !!!cmk7good
@@ -337,7 +343,7 @@ pub fn write<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
     val: &nd::ArrayView2<'_, T>,
     count_a1: bool,
     missing: (bool, T), // !!!cmk change to a enum?
-) -> Result<(), BedError> {
+) -> Result<(), BedErrorPlus> {
     let mut writer = BufWriter::new(File::create(filename)?); // !!!cmk7good
     writer.write_all(&[BED_FILE_MAGIC1, BED_FILE_MAGIC2, 0x01])?; // !!!cmk7good
 
@@ -367,7 +373,7 @@ pub fn write<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
             } else if (use_nan && v0 != v0) || (!use_nan && v0 == other_missing_value) {
                 1
             } else {
-                return Err(BedError::BadValue); // !!!cmk7good
+                return Err(BedError::BadValue.into()); // !!!cmk7good
             };
             // Possible optimization: We could pre-compute the conversion, the division, the mod, and the multiply*2
             let i_div_4 = iid_i / 4;
@@ -379,13 +385,12 @@ pub fn write<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
     return Ok(());
 }
 
-fn count_lines(path_buf: PathBuf) -> Result<usize, BedError> {
+fn count_lines(path_buf: PathBuf) -> Result<usize, BedErrorPlus> {
     let reader = BufReader::new(File::open(path_buf)?); // !!!cmk7good
     let count = reader.lines().count();
     return Ok(count);
 }
-// !!!cmk7fix -- should return a BedError
-pub fn counts(filename: &str) -> Result<(usize, usize), BedError> {
+pub fn counts(filename: &str) -> Result<(usize, usize), BedErrorPlus> {
     let path = Path::new(filename);
     let iid_count = count_lines(path.with_extension("fam"))?; // !!!cmk7good
     let sid_count = count_lines(path.with_extension("bim"))?; // !!!cmk7good
@@ -401,14 +406,14 @@ pub fn matrix_subset_no_alloc<
     iid_index: &[usize],
     sid_index: &[usize],
     out_val: &mut nd::ArrayViewMut3<'_, TOut>,
-) -> Result<(), BedError> {
+) -> Result<(), BedErrorPlus> {
     let out_iid_count = iid_index.len();
     let out_sid_count = sid_index.len();
-    if out_iid_count != out_val.dim().0 || out_sid_count != out_val.dim().1 {
-        return Err(BedError::SubsetMismatch);
-    }
-
     let did_count = in_val.dim().2;
+
+    if (out_iid_count, out_sid_count, did_count) != out_val.dim() {
+        return Err(BedError::SubsetMismatch.into());
+    }
 
     // If output is F-order (or in general if iid stride is no more than sid_stride)
     if out_val.stride_of(nd::Axis(0)) <= out_val.stride_of(nd::Axis(1)) {
@@ -442,23 +447,50 @@ pub fn impute_and_zero_mean_snps<
     apply_in_place: bool,
     use_stats: bool,
     stats: &mut nd::ArrayViewMut2<'_, T>,
-) -> Result<(), BedError> {
+) -> Result<(), BedErrorPlus> {
     let two = T::one() + T::one();
 
     // If output is F-order (or in general if iid stride is no more than sid_stride)
     if val.stride_of(nd::Axis(0)) <= val.stride_of(nd::Axis(1)) {
-        nd::par_azip!((mut col in val.axis_iter_mut(nd::Axis(1)),
-                   mut stats_row in stats.axis_iter_mut(nd::Axis(0))){
-        _process_sid(
-            &mut col,
-            apply_in_place,
-            use_stats,
-            &mut stats_row,
-            beta_a,
-            beta_b,
-            beta_not_unit_variance,
-            two).unwrap();
-        });
+        //     Idea: use zip map par_bridge and try_for_each as above
+        //     // let mut result_list: Vec<Result<(), BedError>> = vec![Ok(()); val.dim().1];
+        //     // nd::par_azip!((mut col in val.axis_iter_mut(nd::Axis(1)),
+        //     //            mut stats_row in stats.axis_iter_mut(nd::Axis(0))){
+        //     // _process_sid(
+        //     //     &mut col,
+        //     //     apply_in_place,
+        //     //     use_stats,
+        //     //     &mut stats_row,
+        //     //     beta_a,
+        //     //     beta_b,
+        //     //     beta_not_unit_variance,
+        //     //     two).unwrap(); // !!!cmk7fix
+        //     // });
+
+        let result_list = nd::Zip::from(val.axis_iter_mut(nd::Axis(1)))
+            .and(stats.axis_iter_mut(nd::Axis(0)))
+            .par_apply_collect(|mut col, mut stats_row| {
+                _process_sid(
+                    &mut col,
+                    apply_in_place,
+                    use_stats,
+                    &mut stats_row,
+                    beta_a,
+                    beta_b,
+                    beta_not_unit_variance,
+                    two,
+                )
+            });
+
+        for i in 0..result_list.shape()[0] {
+            let r1: &Result<(), BedError> = &result_list[i];
+            match r1 {
+                Err(e) => {
+                    return Err(BedErrorPlus::JustBedError(*e)); // !!!cmk test this and check the speed
+                }
+                _ => (),
+            };
+        }
         return Ok(());
     } else {
         //If C-order
@@ -483,12 +515,12 @@ fn find_factor<T: Default + Copy + Debug + Sync + Send + Float + ToPrimitive + F
     std: T,
 ) -> T {
     if beta_not_unit_variance {
-        let beta_dist = Beta::new(beta_a, beta_b).unwrap();
-        let mut maf = mean_s.to_f64().unwrap() / 2.0;
+        let beta_dist = Beta::new(beta_a, beta_b).unwrap(); // !!!cmk7fix
+        let mut maf = mean_s.to_f64().unwrap() / 2.0; // !!!cmk7fix
         if maf > 0.5 {
             maf = 1.0 - maf;
         }
-        return T::from_f64(beta_dist.pdf(maf)).unwrap();
+        return T::from_f64(beta_dist.pdf(maf)).unwrap(); // !!!cmk7fix
     } else {
         return T::one() / std;
     }
@@ -506,8 +538,8 @@ fn _process_sid<T: Default + Copy + Debug + Sync + Send + Float + ToPrimitive + 
 ) -> Result<(), BedError> {
     if !use_stats {
         let mut n_observed = T::zero();
-        let mut sum_s = T::zero(); //the sum of a SNP over all observed individuals
-        let mut sum2_s = T::zero(); //the sum of the squares of the SNP over all observed individuals
+        let mut sum_s = T::zero(); // the sum of a SNP over all observed individuals
+        let mut sum2_s = T::zero(); // the sum of the squares of the SNP over all observed individuals
 
         for iid_i in 0..col.len() {
             let v = col[iid_i];
@@ -519,13 +551,13 @@ fn _process_sid<T: Default + Copy + Debug + Sync + Send + Float + ToPrimitive + 
         }
         if n_observed < T::one() {
             //LATER make it work (in some form) for n of 0
-            return Err(BedError::NoIndividuals);
+            return Err(BedError::NoIndividuals.into()); // !!!cmk7good
         }
         let mean_s = sum_s / n_observed; //compute the mean over observed individuals for the current SNP
         let mean2_s: T = sum2_s / n_observed; //compute the mean of the squared SNP
 
         if mean_s.is_nan() || (beta_not_unit_variance && ((mean_s > two) || (mean_s < T::zero()))) {
-            return Err(BedError::IllegalSnpMean);
+            return Err(BedError::IllegalSnpMean.into()); // !!!cmk7good
         }
 
         let variance: T = mean2_s - mean_s * mean_s; //By the Cauchy Schwartz inequality this should always be positive
@@ -546,7 +578,7 @@ fn _process_sid<T: Default + Copy + Debug + Sync + Send + Float + ToPrimitive + 
             let std = stats_row[1];
             let is_snc = std.is_infinite();
 
-            let factor = find_factor(beta_not_unit_variance, beta_a, beta_b, mean_s, std);
+            let factor = find_factor(beta_not_unit_variance, beta_a, beta_b, mean_s, std); // !!!cmk7fix
 
             for iid_i in 0..col.len() {
                 //check for Missing (NAN) or SNC
@@ -572,7 +604,7 @@ fn _process_all_iids<
     beta_a: f64,
     beta_b: f64,
     two: T,
-) -> Result<(), BedError> {
+) -> Result<(), BedErrorPlus> {
     let sid_count = val.dim().1;
 
     if !use_stats {
@@ -606,7 +638,7 @@ fn _process_all_iids<
         {
             if n_observed < T::one() {
                 //LATER make it work (in some form) for n of 0
-                panic!("no individuals");
+                panic!("no individuals");  // !!!cmk7fix
                 // !!! cmk return Err(BedError::NoIndividuals);
             }
             let mean_s = sum_s / n_observed; //compute the mean over observed individuals for the current SNP
@@ -615,7 +647,7 @@ fn _process_all_iids<
             if mean_s.is_nan()
                 || (beta_not_unit_variance && ((mean_s > two) || (mean_s < T::zero())))
             {
-                panic!("IllegalSnpMean")
+                panic!("IllegalSnpMean")  // !!!cmk7fix
                 // !!!cmk return Err(BedError::IllegalSnpMean);
             }
 
@@ -665,7 +697,7 @@ pub fn create_pool(num_threads: usize) -> rayon::ThreadPool {
     return rayon::ThreadPoolBuilder::new()
         .num_threads(num_threads)
         .build()
-        .unwrap();
+        .unwrap(); // !!!cmk7fix
 }
 
 mod python_module;

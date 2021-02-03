@@ -6,7 +6,8 @@ use pyo3::{
 };
 
 use crate::{
-    create_pool, impute_and_zero_mean_snps, matrix_subset_no_alloc, read_no_alloc, write, BedError,
+    create_pool, impute_and_zero_mean_snps, matrix_subset_no_alloc, read_no_alloc, write,
+    BedErrorPlus,
 };
 
 #[pymodule]
