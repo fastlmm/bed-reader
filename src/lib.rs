@@ -4,8 +4,8 @@ use core::fmt::Debug;
 use ndarray as nd;
 use ndarray::ShapeBuilder;
 use num_traits::{Float, FromPrimitive, ToPrimitive};
-use rayon::iter::ParallelBridge;
-use rayon::iter::ParallelIterator;
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use rayon::{iter::ParallelBridge, ThreadPoolBuildError};
 use statrs::distribution::{Beta, Continuous};
 use std::{
     convert::TryFrom,
@@ -43,7 +43,10 @@ pub enum BedErrorPlus {
     IOError(#[from] std::io::Error),
 
     #[error(transparent)]
-    JustBedError(#[from] BedError),
+    BedError(#[from] BedError),
+
+    #[error(transparent)]
+    ThreadPoolError(#[from] ThreadPoolBuildError),
 }
 // !!!cmk add variables to the error messages? https://docs.rs/thiserror/1.0.23/thiserror/
 #[derive(Error, Debug, Clone, Copy)]
@@ -218,7 +221,7 @@ fn _internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send
         .map(|out_sid_i| {
             let in_sid_i = sid_index[out_sid_i];
             if in_sid_i >= in_sid_count {
-                return Err(BedErrorPlus::JustBedError(BedError::SidIndexTooBig));
+                return Err(BedErrorPlus::BedError(BedError::SidIndexTooBig));
             }
             let mut bytes_vector: Vec<u8> = vec![0; in_iid_count_div4];
             let pos: u64 = (in_sid_i as u64) * in_iid_count_div4_u64 + CB_HEADER; // "as" and math is safe because of early checks
@@ -471,7 +474,7 @@ pub fn impute_and_zero_mean_snps<
             let r1: &Result<(), BedError> = &result_list[i];
             match r1 {
                 Err(e) => {
-                    return Err(BedErrorPlus::JustBedError(*e)); // !!!cmk test this and check the speed
+                    return Err(BedErrorPlus::BedError(*e)); // !!!cmk test this and check the speed
                 }
                 _ => (),
             };
@@ -633,15 +636,16 @@ fn _process_all_iids<
         }
 
         // O(sid_count)
+        let mut result_list: Vec<Result<(), BedError>> = vec![Ok(()); sid_count];
         nd::par_azip!((mut stats_row in stats.axis_iter_mut(nd::Axis(0)),
                 &n_observed in &n_observed_array,
                 &sum_s in &sum_s_array,
-                &sum2_s in &sum2_s_array)
+                &sum2_s in &sum2_s_array,
+                result_ptr in &mut result_list)
         {
             if n_observed < T::one() {
-                //LATER make it work (in some form) for n of 0
-                panic!("no individuals");  // !!!cmk7fix
-                // !!! cmk return Err(BedError::NoIndividuals);
+                *result_ptr = Err(BedError::NoIndividuals);
+                return;
             }
             let mean_s = sum_s / n_observed; //compute the mean over observed individuals for the current SNP
             let mean2_s: T = sum2_s / n_observed; //compute the mean of the squared SNP
@@ -649,8 +653,8 @@ fn _process_all_iids<
             if mean_s.is_nan()
                 || (beta_not_unit_variance && ((mean_s > two) || (mean_s < T::zero())))
             {
-                panic!("IllegalSnpMean")  // !!!cmk7fix
-                // !!!cmk return Err(BedError::IllegalSnpMean);
+                *result_ptr = Err(BedError::IllegalSnpMean);
+                return;
             }
 
             let variance: T = mean2_s - mean_s * mean_s; //By the Cauchy Schwartz inequality this should always be positive
@@ -662,6 +666,8 @@ fn _process_all_iids<
             stats_row[0] = mean_s;
             stats_row[1] = std;
         });
+        // Check the result list for errors
+        result_list.par_iter().try_for_each(|x| *x)?;
     }
 
     if apply_in_place {
@@ -704,11 +710,14 @@ fn _process_all_iids<
     return Ok(());
 }
 
-pub fn create_pool(num_threads: usize) -> rayon::ThreadPool {
-    return rayon::ThreadPoolBuilder::new()
+pub fn create_pool(num_threads: usize) -> Result<rayon::ThreadPool, BedErrorPlus> {
+    match rayon::ThreadPoolBuilder::new()
         .num_threads(num_threads)
         .build()
-        .unwrap(); // !!!cmk7fix
+    {
+        Err(e) => Err(e.into()),
+        Ok(pool) => Ok(pool),
+    }
 }
 
 mod python_module;
