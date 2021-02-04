@@ -136,3 +136,4 @@ dmypy.json
 /bed_reader/tests/ignore.bim
 /.vscode
 /doc/source/_build/html
+defaultx.profraw

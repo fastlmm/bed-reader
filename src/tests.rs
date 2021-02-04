@@ -1,5 +1,6 @@
 // !!!cmk https://stackoverflow.com/questions/32900809/how-to-suppress-function-is-never-used-warning-for-a-function-used-by-tests
 
+#[cfg(test)]
 use crate::try_div_4;
 #[cfg(test)]
 use crate::{
@@ -43,6 +44,7 @@ use std::path::Path;
 //         }
 //     }
 // }
+
 #[test]
 fn best_int8() {
     let path = std::env::current_dir().unwrap();
@@ -81,7 +83,7 @@ fn read1() {
     let (iid_count, sid_count) = counts(file).unwrap();
     assert!(iid_count == 10);
     assert!(sid_count == 100);
-    let val = read(file, true, true, -127).unwrap(); // !!!cmk7 why can't we use "?" here?
+    let val = read(file, true, true, -127).unwrap();
     let val_f64 = val.mapv(|elem| elem as f64);
     let mean_ = val_f64.mean().unwrap();
     assert!(mean_ == -13.142); // really shouldn't do mean on data where -127 represents missing
