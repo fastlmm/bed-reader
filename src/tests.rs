@@ -6,7 +6,8 @@ use crate::try_div_4;
 use crate::{
     counts, impute_and_zero_mean_snps, matrix_subset_no_alloc, read, read_with_indexes, write,
 };
-
+#[cfg(test)]
+use crate::{read_no_alloc, BedError, BedErrorPlus};
 #[cfg(test)]
 use ndarray as nd;
 #[cfg(test)]
@@ -341,50 +342,50 @@ fn standardize_unit() {
 fn div_4() {
     match try_div_4(0, 16, 0u8) {
         Ok(tup) => assert_eq!(tup, (0usize, 0u8)),
-        Err(_) => {}
+        Err(_) => panic!("test failure"),
     };
 
     match try_div_4(1, 16, 0u8) {
         Ok(tup) => assert_eq!(tup, (1usize, 1u8)),
-        Err(_) => {}
+        Err(_) => panic!("test failure"),
     };
 
     match try_div_4(4, 16, 0u8) {
         Ok(tup) => assert_eq!(tup, (1usize, 1u8)),
-        Err(_) => {}
+        Err(_) => panic!("test failure"),
     };
 
     match try_div_4(5, 16, 0u8) {
         Ok(tup) => assert_eq!(tup, (2usize, 2u8)),
-        Err(_) => {}
+        Err(_) => panic!("test failure"),
     };
 
     match try_div_4(2000, 0, 0u8) {
-        Err(_) => (), // !!!cmk BedError::IndexesTooBigForFiles
+        Err(BedErrorPlus::BedError(BedError::IndexesTooBigForFiles)) => (),
         _ => panic!("test failure"),
     };
     match try_div_4(0, 256, 0u8) {
-        Err(_) => (), // !!!cmk BedError::IndexesTooBigForFiles
+        Err(BedErrorPlus::BedError(BedError::IndexesTooBigForFiles)) => (),
         _ => panic!("test failure"),
     };
 
     match try_div_4(25 * 4, 10, 5u8) {
         Ok(tup) => assert_eq!(tup, (25usize, 25u8)),
-        Err(_) => {}
+        Err(_) => panic!("test failure"),
     };
 
     match try_div_4(25 * 4 + 1, 10, 5u8) {
-        Err(_) => (), // !!!cmk BedError::IndexesTooBigForFiles
+        Err(BedErrorPlus::BedError(BedError::IndexesTooBigForFiles)) => (),
         _ => panic!("test failure"),
     };
 
     match try_div_4(25 * 4, 11, 5u8) {
-        Err(_) => (), // !!!cmk BedError::IndexesTooBigForFiles
+        Err(BedErrorPlus::BedError(BedError::IndexesTooBigForFiles)) => (),
         _ => panic!("test failure"),
     };
 
     match try_div_4(25 * 4, 10, 6u8) {
-        Err(_) => (), // !!!cmk BedError::IndexesTooBigForFiles
+        Err(BedErrorPlus::BedError(BedError::IndexesTooBigForFiles)) => (),
         _ => panic!("test failure"),
     };
 }
@@ -415,35 +416,62 @@ fn standardize_beta() {
     }
 }
 
-// fn c_doer<T: Default + Copy + Sync + Send + Float + ToPrimitive + FromPrimitive>(
-//     c: &dyn Fn(T) -> T,
-// ) {
-//     let input = T::from_f64(3.0).unwrap();
-//     println!("{:?}", c(input).to_f64().unwrap());
-// }
+#[test]
+fn read_errors() {
+    let iid_count = 100;
+    let sid_count = 200;
+    let iid_index = (0..iid_count).collect::<Vec<usize>>();
+    let sid_index = (0..iid_count).collect::<Vec<usize>>();
+    let output_is_order_f = true;
+    let shape = ShapeBuilder::set_f((iid_index.len(), sid_index.len()), output_is_order_f);
+    let mut val = nd::Array2::<f64>::default(shape);
 
-// #[test]
-// fn pass_closure_to_function() {
-//     pass_closure_to_function_internal::<f64>();
-// }
-// fn pass_closure_to_function_internal<
-//     T: Default + Copy + Sync + Send + Float + ToPrimitive + FromPrimitive,
-// >() {
-//     let b = false;
-//     let a = T::from_f64(2.0).unwrap();
+    match read_no_alloc(
+        &"bed_reader/tests/data/no_such_file.nsf",
+        iid_count,
+        sid_count,
+        true,
+        &iid_index,
+        &sid_index,
+        f64::NAN,
+        &mut val.view_mut(),
+    ) {
+        Err(BedErrorPlus::IOError(_)) => (),
+        _ => panic!("test failure"),
+    };
 
-//     let c0 = |x: T| T::from_f64(21.0).unwrap();
-//     let c1 = move |x: T| a + x;
+    let result = read_no_alloc(
+        &"bed_reader/tests/data/some_missing.fam",
+        iid_count,
+        sid_count,
+        true,
+        &iid_index,
+        &sid_index,
+        f64::NAN,
+        &mut val.view_mut(),
+    );
+    // !!!cmk println!("{:?}", result);
+    match result {
+        Err(BedErrorPlus::BedError(BedError::IllFormed)) => (),
+        _ => panic!("test failure"),
+    };
 
-//     let c: &dyn Fn(T) -> T;
-//     if b {
-//         c = &c0
-//     } else {
-//         c = &c1
-//     }
-
-//     c_doer(&c);
-//}
+    let result = read_no_alloc(
+        &"bed_reader/tests/data/empty.bed",
+        iid_count,
+        sid_count,
+        true,
+        &iid_index,
+        &sid_index,
+        f64::NAN,
+        &mut val.view_mut(),
+    );
+    println!("{:?}", result);
+    match result {
+        Err(BedErrorPlus::IOError(_)) => (),
+        _ => panic!("test failure"),
+    };
+}
 
 // cmk What does  pyo3::Python::with_gil mean?
 // // !!!cmk add more tests from the python/c++ project

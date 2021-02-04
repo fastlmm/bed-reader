@@ -99,15 +99,13 @@ fn read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
     missing_value: TOut,
     val: &mut nd::ArrayViewMut2<'_, TOut>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
 ) -> Result<(), BedErrorPlus> {
-    let reader2 = BufReader::new(File::open(filename)?);
-    let mut s = reader2.bytes();
-    let rd1 = s.next().ok_or(BedError::IllFormed)??;
-    let rd2 = s.next().ok_or(BedError::IllFormed)??;
-    if (BED_FILE_MAGIC1 != rd1) || (BED_FILE_MAGIC2 != rd2) {
+    let mut reader = File::open(filename)?;
+    let mut bytes_vector: Vec<u8> = vec![0; 3];
+    reader.read_exact(&mut bytes_vector)?;
+    if (BED_FILE_MAGIC1 != bytes_vector[0]) || (BED_FILE_MAGIC2 != bytes_vector[1]) {
         return Err(BedError::IllFormed.into());
     }
-    let rd3 = s.next().ok_or(BedError::IllFormed)??;
-    match rd3 {
+    match bytes_vector[2] {
         0 => {
             //This option -- Sample major -- is untested because it is (almost?) never used.
             let mut val_t = val.view_mut().reversed_axes();
