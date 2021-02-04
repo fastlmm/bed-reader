@@ -137,3 +137,4 @@ dmypy.json
 /.vscode
 /doc/source/_build/html
 defaultx.profraw
+default.profraw

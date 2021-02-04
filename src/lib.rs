@@ -107,12 +107,11 @@ fn read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
     }
     match bytes_vector[2] {
         0 => {
-            //This option -- Sample major -- is untested because it is (almost?) never used.
             let mut val_t = val.view_mut().reversed_axes();
             return _internal_read_no_alloc(
                 filename,
-                iid_count,
                 sid_count,
+                iid_count,
                 count_a1,
                 sid_index,
                 iid_index,

@@ -473,6 +473,66 @@ fn read_errors() {
     };
 }
 
+#[test]
+fn read_modes() {
+    let filename = "bed_reader/tests/data/small.bed";
+    let (iid_count_s1, sid_count_s1) = counts(filename).unwrap();
+    let mut val_small_mode_1 = nd::Array2::<i8>::default((iid_count_s1, sid_count_s1));
+    let iid_index_s1 = (0..iid_count_s1).collect::<Vec<usize>>();
+    let sid_index_s1 = (0..sid_count_s1).collect::<Vec<usize>>();
+
+    let result = read_no_alloc(
+        &filename,
+        iid_count_s1,
+        sid_count_s1,
+        true,
+        &iid_index_s1,
+        &sid_index_s1,
+        -127i8,
+        &mut val_small_mode_1.view_mut(),
+    );
+    println!("{:?}", result);
+    match result {
+        Ok(_) => (),
+        _ => panic!("test failure"),
+    };
+
+    let mut val_small_mode_0 = nd::Array2::<i8>::default((sid_count_s1, iid_count_s1));
+    let result = read_no_alloc(
+        &"bed_reader/tests/data/smallmode0.bed",
+        sid_count_s1,
+        iid_count_s1,
+        true,
+        &sid_index_s1,
+        &iid_index_s1,
+        -127i8,
+        &mut val_small_mode_0.view_mut(),
+    );
+    println!("{:?}", result);
+    match result {
+        Ok(_) => (),
+        _ => panic!("test failure"),
+    };
+
+    assert_eq!(val_small_mode_0.t(), val_small_mode_1);
+
+    let result = read_no_alloc(
+        &"bed_reader/tests/data/smallmodebad.bed",
+        iid_count_s1,
+        sid_count_s1,
+        true,
+        &iid_index_s1,
+        &sid_index_s1,
+        -127i8,
+        &mut val_small_mode_1.view_mut(),
+    );
+    println!("{:?}", result);
+    match result {
+        Err(BedErrorPlus::BedError(BedError::BadMode)) => (),
+        _ => panic!("test failure"),
+    };
+}
+
 // cmk What does  pyo3::Python::with_gil mean?
 // // !!!cmk add more tests from the python/c++ project
 // // 2nd half of test_bed_int8
