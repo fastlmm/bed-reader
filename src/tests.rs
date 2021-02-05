@@ -88,6 +88,18 @@ fn read1() {
     let val_f64 = val.mapv(|elem| elem as f64);
     let mean_ = val_f64.mean().unwrap();
     assert!(mean_ == -13.142); // really shouldn't do mean on data where -127 represents missing
+
+    let result = read(
+        "bed_reader/tests/data/small_too_short.bed",
+        true,
+        true,
+        -127,
+    );
+    println!("cmk {:?}", result);
+    match result {
+        Err(BedErrorPlus::BedError(BedError::IllFormed)) => (),
+        _ => panic!("test failure"),
+    };
 }
 
 #[test]
@@ -205,6 +217,34 @@ fn index() {
         _ => panic!("test failure"),
     };
 
+    let result = read_with_indexes(
+        "bed_reader/tests/data/small_no_fam.bed",
+        &[0],
+        &[0],
+        true,
+        true,
+        f32::NAN,
+    );
+    println!("cmk {:?}", result);
+    match result {
+        Err(BedErrorPlus::IOError(_)) => (),
+        _ => panic!("test failure"),
+    };
+
+    let result = read_with_indexes(
+        "bed_reader/tests/data/small_no_bim.bed",
+        &[0],
+        &[0],
+        true,
+        true,
+        f32::NAN,
+    );
+    println!("cmk {:?}", result);
+    match result {
+        Err(BedErrorPlus::IOError(_)) => (),
+        _ => panic!("test failure"),
+    };
+
     let result = read_with_indexes(filename, &[2], &[usize::MAX], true, true, f32::NAN);
     println!("cmk {:?}", result);
     match result {
@@ -260,12 +300,12 @@ fn writer() {
         let to = Path::new(filename2).with_extension(ext);
         std::fs::copy(from, to).unwrap();
     }
-    println!("{}", filename2);
+    println!("cmk {}", filename2);
 
     let val2 = read(filename2, false, true, -127).unwrap();
 
-    println!("{}", val);
-    println!("{}", val2);
+    println!("cmk {}", val);
+    println!("cmk {}", val2);
     assert!(allclose(&val.view(), &val2.view(), 0, true));
 
     let val = read(filename, false, true, f64::NAN).unwrap();
@@ -277,13 +317,23 @@ fn writer() {
         let to = Path::new(filename2).with_extension(ext);
         std::fs::copy(from, to).unwrap();
     }
-    println!("{}", filename2);
+    println!("cmk {}", filename2);
 
     let val2 = read(filename2, false, true, f64::NAN).unwrap();
 
-    println!("{}", val);
-    println!("{}", val2);
+    println!("cmk {}", val);
+    println!("cmk {}", val2);
     assert!(allclose(&val.view(), &val2.view(), 1e-8, true));
+
+    let mut val = read(filename, false, true, f64::NAN).unwrap();
+    val[(0, 0)] = 5.0;
+    let filename = r"m:\deldir\rusttest\rust_bed_reader_writer_testf64_5.bed";
+    let result = write(filename, &val.view(), true, (true, f64::NAN));
+    println!("cmk {:?}", result);
+    match result {
+        Err(BedErrorPlus::BedError(BedError::BadValue)) => (),
+        _ => panic!("test failure"),
+    };
 }
 
 #[test]

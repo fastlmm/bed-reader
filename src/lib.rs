@@ -292,9 +292,7 @@ pub fn read_with_indexes<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
     count_a1: bool,
     missing_value: TOut,
 ) -> Result<nd::Array2<TOut>, BedErrorPlus> {
-    let path = Path::new(filename);
-    let iid_count = count_lines(path.with_extension("fam"))?;
-    let sid_count = count_lines(path.with_extension("bim"))?;
+    let (iid_count, sid_count) = counts(filename)?;
 
     let shape = ShapeBuilder::set_f((iid_index.len(), sid_index.len()), output_is_order_f);
     let mut val = nd::Array2::<TOut>::default(shape);
@@ -322,9 +320,7 @@ pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
     count_a1: bool,
     missing_value: TOut,
 ) -> Result<nd::Array2<TOut>, BedErrorPlus> {
-    let path = Path::new(filename);
-    let iid_count = count_lines(path.with_extension("fam"))?;
-    let sid_count = count_lines(path.with_extension("bim"))?;
+    let (iid_count, sid_count) = counts(filename)?;
 
     let iid_index: Vec<usize> = (0..iid_count).collect();
     let sid_index: Vec<usize> = (0..sid_count).collect();
@@ -346,6 +342,7 @@ pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
     return Ok(val);
 }
 
+// !!!cmk test writing zero length vals
 // !!!cmk add thread control
 pub fn write<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
     filename: &str,
