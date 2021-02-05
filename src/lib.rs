@@ -243,13 +243,13 @@ pub fn internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + S
             match bytes_vector_result {
                 Err(e) => Err(e),
                 Ok(bytes_vector) => {
-                    for iid_out_i in 0..out_iid_count {
+                    for out_iid_i in 0..out_iid_count {
                         // Possible optimization: We could pre-compute the conversion, the division, the mod, and the multiply*2
-                        let iid_in_i = iid_index[iid_out_i];
-                        let i_div_4 = iid_in_i / 4;
-                        let i_mod_4 = iid_in_i % 4;
+                        let in_iid_i = iid_index[out_iid_i];
+                        let i_div_4 = in_iid_i / 4;
+                        let i_mod_4 = in_iid_i % 4;
                         let genotype_byte: u8 = (bytes_vector[i_div_4] >> (i_mod_4 * 2)) & 0x03;
-                        col[iid_out_i] = from_two_bits_to_value[genotype_byte as usize];
+                        col[out_iid_i] = from_two_bits_to_value[genotype_byte as usize];
                     }
                     Ok(())
                 }
@@ -392,7 +392,7 @@ pub fn write<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
 }
 
 fn count_lines(path_buf: PathBuf) -> Result<usize, BedErrorPlus> {
-    let reader = BufReader::new(File::open(path_buf)?);
+    let reader = BufReader::new(File::open(path_buf)?); // !!!cmk would be nice if error message mentioned fam/bim
     let count = reader.lines().count();
     return Ok(count);
 }
@@ -422,24 +422,24 @@ pub fn matrix_subset_no_alloc<
 
     // If output is F-order (or in general if iid stride is no more than sid_stride)
     if out_val.stride_of(nd::Axis(0)) <= out_val.stride_of(nd::Axis(1)) {
+        // (No error are possible in the par_azip, so don't have to collect and check them)
         nd::par_azip!((mut out_col in out_val.axis_iter_mut(nd::Axis(1)),
-                    sid_i_in_ptr in sid_index) {
-            let in_col = in_val.index_axis(nd::Axis(1), *sid_i_in_ptr);
+                    in_sid_i_pr in sid_index) {
+            let in_col = in_val.index_axis(nd::Axis(1), *in_sid_i_pr);
             for did_i in 0..did_count
             {
-                for (iid_i_out, iid_i_in_ptr) in iid_index.iter().enumerate() {
-                    out_col[(iid_i_out,did_i)] = in_col[(*iid_i_in_ptr,did_i)].into();
+                for (out_iid_i, in_iid_i_ptr) in iid_index.iter().enumerate() {
+                    out_col[(out_iid_i,did_i)] = in_col[(*in_iid_i_ptr,did_i)].into();
                 }
             }
         });
+        return Ok(());
     } else {
         //If output is C-order, transpose input and output and recurse
-        let val_in_t = in_val.view().permuted_axes([1, 0, 2]);
-        let mut val_out_t = out_val.view_mut().permuted_axes([1, 0, 2]); // !!!cmk out_val or val_out -- be consistent
-        return matrix_subset_no_alloc(&val_in_t, &sid_index, &iid_index, &mut val_out_t);
+        let in_val_t = in_val.view().permuted_axes([1, 0, 2]);
+        let mut out_val_t = out_val.view_mut().permuted_axes([1, 0, 2]);
+        return matrix_subset_no_alloc(&in_val_t, &sid_index, &iid_index, &mut out_val_t);
     }
-
-    return Ok(());
 }
 
 pub fn impute_and_zero_mean_snps<
@@ -472,15 +472,9 @@ pub fn impute_and_zero_mean_snps<
                 )
             });
 
-        for i in 0..result_list.shape()[0] {
-            let r1: &Result<(), BedError> = &result_list[i];
-            match r1 {
-                Err(e) => {
-                    return Err(BedErrorPlus::BedError(*e)); // !!!cmk test this and check the speed
-                }
-                _ => (),
-            };
-        }
+        // Check the result list for errors
+        result_list.iter().par_bridge().try_for_each(|x| *x)?;
+
         return Ok(());
     } else {
         //If C-order
@@ -497,7 +491,9 @@ pub fn impute_and_zero_mean_snps<
     }
 }
 
-fn find_factor<T: Default + Copy + Debug + Sync + Send + Float + ToPrimitive + FromPrimitive>(
+pub fn find_factor<
+    T: Default + Copy + Debug + Sync + Send + Float + ToPrimitive + FromPrimitive,
+>(
     beta_not_unit_variance: bool,
     beta_a: f64,
     beta_b: f64,
@@ -667,7 +663,7 @@ fn _process_all_iids<
             stats_row[1] = std;
         });
         // Check the result list for errors
-        result_list.par_iter().try_for_each(|x| *x)?;
+        result_list.par_iter().try_for_each(|x| *x)?; // !!!cmk tip
     }
 
     if apply_in_place {

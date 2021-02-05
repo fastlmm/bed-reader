@@ -347,7 +347,7 @@ fn subset1() {
     let sid_index = [2usize, 2, 1, 0];
     let mut out_val1 = nd::Array3::<f32>::zeros((iid_index.len(), sid_index.len(), 1));
 
-    let _ = matrix_subset_no_alloc(
+    matrix_subset_no_alloc(
         &in_val1.view(),
         &iid_index,
         &sid_index,
@@ -369,7 +369,7 @@ fn subset1() {
     let shape_out = ShapeBuilder::set_f((3, 4, 1), true);
     let mut out_val2 = nd::Array3::<f64>::zeros(shape_out);
 
-    let _ = matrix_subset_no_alloc(
+    matrix_subset_no_alloc(
         &in_val2.view(),
         &iid_index,
         &sid_index,
@@ -384,6 +384,13 @@ fn subset1() {
     ];
 
     assert_eq!(out_val2, answer32);
+
+    let result = matrix_subset_no_alloc(&in_val2.view(), &[0], &[], &mut out_val2.view_mut());
+    println!("cmk {:?}", result);
+    match result {
+        Err(BedErrorPlus::BedError(BedError::SubsetMismatch)) => (),
+        _ => panic!("test failure"),
+    }
 }
 
 #[test]
@@ -404,8 +411,67 @@ fn fill_in() {
             &mut stats.view_mut(),
         )
         .unwrap();
-
         assert!((val[(0, 0)] - 0.16783627165933704).abs() < 1e-8);
+
+        nd::Array2::fill(&mut val, f64::NAN);
+        let result = impute_and_zero_mean_snps(
+            &mut val.view_mut(),
+            false,
+            0.0,
+            0.0,
+            true,
+            false,
+            &mut stats.view_mut(),
+        );
+        println!("cmk {:?}", result);
+        match result {
+            Err(BedErrorPlus::BedError(BedError::NoIndividuals)) => (),
+            _ => panic!("test failure"),
+        }
+
+        let mut val = read(filename, *output_is_order_f_ptr, true, f64::NAN).unwrap();
+        let result = impute_and_zero_mean_snps(
+            &mut val.view_mut(),
+            true,
+            -10.0,
+            0.0,
+            true,
+            false,
+            &mut stats.view_mut(),
+        );
+        println!("cmk {:?}", result);
+        match result {
+            Err(BedErrorPlus::BedError(BedError::CannotCreateBetaDist)) => (),
+            _ => panic!("test failure"),
+        }
+
+        nd::Array2::fill(&mut val, 3.0);
+        let result = impute_and_zero_mean_snps(
+            &mut val.view_mut(),
+            true,
+            0.5,
+            0.5,
+            true,
+            false,
+            &mut stats.view_mut(),
+        );
+        println!("cmk {:?}", result);
+        match result {
+            Err(BedErrorPlus::BedError(BedError::IllegalSnpMean)) => (),
+            _ => panic!("test failure"),
+        }
+
+        nd::Array2::fill(&mut val, 1.0);
+        impute_and_zero_mean_snps(
+            &mut val.view_mut(),
+            true,
+            0.5,
+            0.5,
+            true,
+            false,
+            &mut stats.view_mut(),
+        )
+        .unwrap();
     }
 }
 
