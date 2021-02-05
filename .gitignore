@@ -138,3 +138,4 @@ dmypy.json
 /doc/source/_build/html
 defaultx.profraw
 default.profraw
+bed_reader/tests/data/tooshort.bed.bak

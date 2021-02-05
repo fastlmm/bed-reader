@@ -7,7 +7,7 @@ use crate::{
     counts, impute_and_zero_mean_snps, matrix_subset_no_alloc, read, read_with_indexes, write,
 };
 #[cfg(test)]
-use crate::{read_no_alloc, BedError, BedErrorPlus};
+use crate::{internal_read_no_alloc, read_no_alloc, BedError, BedErrorPlus};
 #[cfg(test)]
 use ndarray as nd;
 #[cfg(test)]
@@ -198,8 +198,55 @@ fn index() {
     assert!(allclose(&col1, &val.slice(nd::s![.., 0..1]), 1e-08, true));
     assert!(allclose(&col2, &val.slice(nd::s![.., 1..2]), 1e-08, true));
 
-    // Python has more tests, but they aren't needed in Rust until it gets fancy indexing
+    let result = read_with_indexes(filename, &[usize::MAX], &[2], true, true, f32::NAN);
+    println!("cmk {:?}", result);
+    match result {
+        Err(BedErrorPlus::BedError(BedError::IidIndexTooBig)) => (),
+        _ => panic!("test failure"),
+    };
+
+    let result = read_with_indexes(filename, &[2], &[usize::MAX], true, true, f32::NAN);
+    println!("cmk {:?}", result);
+    match result {
+        Err(BedErrorPlus::BedError(BedError::SidIndexTooBig)) => (),
+        _ => panic!("test failure"),
+    };
+
+    let mut ignore_val = nd::Array2::zeros((1, 1));
+    let result = internal_read_no_alloc(
+        &"ignore",
+        usize::MAX,
+        usize::MAX,
+        true,
+        &[usize::MAX - 1],
+        &[usize::MAX - 1],
+        f64::NAN,
+        &mut ignore_val.view_mut(),
+    );
+    println!("cmk {:?}", result);
+    match result {
+        Err(BedErrorPlus::BedError(BedError::IndexesTooBigForFiles)) => (),
+        _ => panic!("test failure"),
+    };
+
+    let result = internal_read_no_alloc(
+        &"bed_reader/tests/data/no_such_file.nsf",
+        1,
+        1,
+        true,
+        &[0],
+        &[0],
+        f64::NAN,
+        &mut ignore_val.view_mut(),
+    );
+    println!("cmk {:?}", result);
+    match result {
+        Err(BedErrorPlus::IOError(_)) => (),
+        _ => panic!("test failure"),
+    };
 }
+
+// Python has more tests, but they aren't needed in Rust until it gets fancy indexing
 
 #[test]
 fn writer() {
@@ -450,7 +497,7 @@ fn read_errors() {
         f64::NAN,
         &mut val.view_mut(),
     );
-    // !!!cmk println!("{:?}", result);
+    // !!!cmk println!("cmk {:?}", result);
     match result {
         Err(BedErrorPlus::BedError(BedError::IllFormed)) => (),
         _ => panic!("test failure"),
@@ -466,7 +513,7 @@ fn read_errors() {
         f64::NAN,
         &mut val.view_mut(),
     );
-    println!("{:?}", result);
+    println!("cmk {:?}", result);
     match result {
         Err(BedErrorPlus::IOError(_)) => (),
         _ => panic!("test failure"),
@@ -491,9 +538,25 @@ fn read_modes() {
         -127i8,
         &mut val_small_mode_1.view_mut(),
     );
-    println!("{:?}", result);
+    println!("cmk {:?}", result);
     match result {
         Ok(_) => (),
+        _ => panic!("test failure"),
+    };
+
+    let result = read_no_alloc(
+        &"bed_reader/tests/data/small_too_short.bed",
+        iid_count_s1,
+        sid_count_s1,
+        true,
+        &iid_index_s1,
+        &sid_index_s1,
+        -127i8,
+        &mut val_small_mode_1.view_mut(),
+    );
+    println!("cmk {:?}", result);
+    match result {
+        Err(BedErrorPlus::BedError(BedError::IllFormed)) => (),
         _ => panic!("test failure"),
     };
 
@@ -508,7 +571,7 @@ fn read_modes() {
         -127i8,
         &mut val_small_mode_0.view_mut(),
     );
-    println!("{:?}", result);
+    println!("cmk {:?}", result);
     match result {
         Ok(_) => (),
         _ => panic!("test failure"),
@@ -526,7 +589,7 @@ fn read_modes() {
         -127i8,
         &mut val_small_mode_1.view_mut(),
     );
-    println!("{:?}", result);
+    println!("cmk {:?}", result);
     match result {
         Err(BedErrorPlus::BedError(BedError::BadMode)) => (),
         _ => panic!("test failure"),

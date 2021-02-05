@@ -24,7 +24,8 @@ use thiserror::Error;
 
 const BED_FILE_MAGIC1: u8 = 0x6C; // 0b01101100 or 'l' (lowercase 'L')
 const BED_FILE_MAGIC2: u8 = 0x1B; // 0b00011011 or <esc>
-const CB_HEADER: u64 = 3;
+const CB_HEADER_U64: u64 = 3;
+const CB_HEADER_USIZE: usize = 3;
 
 // About ndarray
 //  https://docs.rs/ndarray/0.14.0/ndarray/parallel/index.html
@@ -100,7 +101,7 @@ fn read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
     val: &mut nd::ArrayViewMut2<'_, TOut>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
 ) -> Result<(), BedErrorPlus> {
     let mut reader = File::open(filename)?;
-    let mut bytes_vector: Vec<u8> = vec![0; 3];
+    let mut bytes_vector: Vec<u8> = vec![0; CB_HEADER_USIZE];
     reader.read_exact(&mut bytes_vector)?;
     if (BED_FILE_MAGIC1 != bytes_vector[0]) || (BED_FILE_MAGIC2 != bytes_vector[1]) {
         return Err(BedError::IllFormed.into());
@@ -108,7 +109,7 @@ fn read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
     match bytes_vector[2] {
         0 => {
             let mut val_t = val.view_mut().reversed_axes();
-            return _internal_read_no_alloc(
+            return internal_read_no_alloc(
                 filename,
                 sid_count,
                 iid_count,
@@ -120,7 +121,7 @@ fn read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
             );
         }
         1 => {
-            return _internal_read_no_alloc(
+            return internal_read_no_alloc(
                 filename,
                 iid_count,
                 sid_count,
@@ -181,7 +182,10 @@ fn try_div_4<T: Max + TryFrom<usize> + Sub<Output = T> + Div<Output = T> + Ord>(
     return Ok((in_iid_count_div4, in_iid_count_div4_t));
 }
 
-fn _internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
+// !!!cmk should we add a check that the file is exactly the expected size?
+// !!!cmk wouldn't it be better to only open the file once instead of twice so that it couldn't change or disappear?
+// !!!cmk this is pub only for testing
+pub fn internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
     filename: &str,
     in_iid_count: usize,
     in_sid_count: usize,
@@ -203,10 +207,17 @@ fn _internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send
     let out_sid_count = sid_index.len();
 
     let (in_iid_count_div4, in_iid_count_div4_u64) =
-        try_div_4(in_iid_count, in_sid_count, CB_HEADER)?;
+        try_div_4(in_iid_count, in_sid_count, CB_HEADER_U64)?;
 
     let from_two_bits_to_value = set_up_two_bits_to_value(count_a1, missing_value);
     let mut reader = BufReader::new(File::open(filename)?);
+
+    // "as" and math is safe because of early checks
+    if reader.seek(SeekFrom::End(0))?
+        != in_iid_count_div4_u64 * (in_sid_count as u64) + CB_HEADER_U64
+    {
+        return Err(BedErrorPlus::BedError(BedError::IllFormed));
+    }
 
     // See https://morestina.net/blog/1432/parallel-stream-processing-with-rayon
     // Possible optimization: We could try to read only the iid info needed
@@ -219,8 +230,8 @@ fn _internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send
                 return Err(BedErrorPlus::BedError(BedError::SidIndexTooBig));
             }
             let mut bytes_vector: Vec<u8> = vec![0; in_iid_count_div4];
-            let pos: u64 = (in_sid_i as u64) * in_iid_count_div4_u64 + CB_HEADER; // "as" and math is safe because of early checks
-            reader.seek(SeekFrom::Start(pos))?; // !!!cmk construct a test for a short bed file and show that the error is passed up
+            let pos: u64 = (in_sid_i as u64) * in_iid_count_div4_u64 + CB_HEADER_U64; // "as" and math is safe because of early checks
+            reader.seek(SeekFrom::Start(pos))?;
             reader.read_exact(&mut bytes_vector)?;
             return Ok(bytes_vector);
         })
@@ -355,7 +366,7 @@ pub fn write<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
     let (iid_count, sid_count) = val.dim();
 
     // 4 genotypes per byte so round up
-    let (iid_count_div4, _) = try_div_4(iid_count, sid_count, CB_HEADER)?;
+    let (iid_count_div4, _) = try_div_4(iid_count, sid_count, CB_HEADER_U64)?;
 
     let (use_nan, other_missing_value) = missing;
 
