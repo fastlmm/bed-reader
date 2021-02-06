@@ -13,11 +13,14 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+    # move these down cmk
+    - name: maturin
+      run: |
+        pip install maturin
+        maturin build --release
+    - name: See Results
+      run: find . -print
     - name: Build
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
-    - name: maturin
-      run: maturin build --release
-    - name: See Results
-      run: find . -print
