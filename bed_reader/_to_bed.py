@@ -28,10 +28,11 @@ def to_bed(
         .bed file to write to.
     val: array-like:
         A two-dimension array (or array-like object) of values. The values should
-        be (or be convertible to) all floats or all integers. The values should be 0, 1, 2, or missing.
+        be (or be convertible to) all floats or all integers.
+        The values should be 0, 1, 2, or missing.
         If floats, missing is ``np.nan``. If integers, missing is -127.
     properties: dict, optional
-        A dictionary of property names and values to write to the .fam and .bim files. 
+        A dictionary of property names and values to write to the .fam and .bim files.
         Any properties not mentioned will be filled in with default values.
 
         The possible property names are:
@@ -40,10 +41,11 @@ def to_bed(
              "mother" (mother id), "sex", "pheno" (phenotype), "chromosome", "sid"
              (SNP or variant id), "cm_position" (centimorgan position), "bp_position"
              (base-pair position), "allele_1", "allele_2".
-            
+
          The values are lists or arrays. See example, below.
     count_A1: bool, optional
-        True (default) to count the number of A1 alleles (the PLINK standard). False to count the number of A2 alleles.
+        True (default) to count the number of A1 alleles (the PLINK standard).
+        False to count the number of A2 alleles.
     fam_filepath: pathlib.Path or str, optional
         Path to the file containing information about each individual (sample).
         Defaults to replacing the .bed file’s suffix with .fam.
@@ -51,7 +53,8 @@ def to_bed(
         Path to the file containing information about each SNP (variant).
         Defaults to replacing the .bed file’s suffix with .bim.
     force_python_only
-        If False (default), uses the faster C++ code; otherwise it uses the slower pure Python code.
+        If False (default), uses the faster C++ code; otherwise it uses the slower
+        pure Python code.
 
     Examples
     --------
@@ -95,7 +98,7 @@ def to_bed(
         >>> with open_bed(output_file2) as bed2:
         ...     print(bed2.chromosome)
         ['0' '0' '0' '0']
-        
+
     """
     filepath = Path(filepath)
 

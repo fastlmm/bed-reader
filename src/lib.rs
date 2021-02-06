@@ -52,7 +52,7 @@ pub enum BedErrorPlus {
 // !!!cmk add variables to the error messages? https://docs.rs/thiserror/1.0.23/thiserror/
 #[derive(Error, Debug, Clone, Copy)]
 pub enum BedError {
-    #[error("Ill-formed BED file. BED file header is incorrect.")]
+    #[error("Ill-formed BED file. BED file header is incorrect or length is wrong.")]
     IllFormed,
 
     #[error("Ill-formed BED file. BED file header is incorrect. Expected mode to be 0 or 1.")]
@@ -174,8 +174,9 @@ fn try_div_4<T: Max + TryFrom<usize> + Sub<Output = T> + Div<Output = T> + Ord>(
         Ok(v) => v,
         Err(_) => return Err(BedError::IndexesTooBigForFiles.into()),
     };
+
     let m: T = Max::max(); // Don't know how to move this into the next line.
-    if (m - cb_header) / in_sid_count_t < in_iid_count_div4_t {
+    if in_sid_count > 0 && (m - cb_header) / in_sid_count_t < in_iid_count_div4_t {
         return Err(BedError::IndexesTooBigForFiles.into());
     }
 

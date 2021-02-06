@@ -406,7 +406,7 @@ def test_write12(tmp_path):
     output_template = str(tmp_path / "writes.{0}.bed")
     i = 0
     for row_count in [0, 5, 2, 1]:
-        for col_count in [4, 2, 1, 0]:
+        for col_count in [0, 4, 2, 1]:
             val = np.random.randint(0, 4, size=(row_count, col_count)) * 1.0
             val[val == 3] = np.NaN
             row0 = ["0", "1", "2", "3", "4"][:row_count]
@@ -425,9 +425,11 @@ def test_write12(tmp_path):
                 filename = output_template.format(i)
                 logging.info(filename)
                 i += 1
+                print("cmk0", row_count, col_count, is_none)
                 to_bed(filename, val, properties=properties)
                 for subsetter in [None, np.s_[::2, ::3]]:
                     with open_bed(filename) as bed:
+                        print("cmk", row_count, col_count, is_none, subsetter)
                         val2 = bed.read(index=subsetter, order="C", dtype="float32")
                         if subsetter is None:
                             expected = val
@@ -539,7 +541,7 @@ def test_shape(shared_datadir):
 def test_zero_files(tmp_path):
     for force_python_only in [False, True]:
         for iid_count in [3, 0]:
-            for sid_count in [5, 0]:
+            for sid_count in [0, 5]:
                 for dtype in [np.int8, np.float32, np.float64]:
                     val = np.zeros((iid_count, sid_count), dtype=dtype)
                     if iid_count * sid_count > 0:
@@ -548,6 +550,7 @@ def test_zero_files(tmp_path):
                     filename = str(tmp_path / "zero_files.bed")
 
                     # Write
+                    print("cmk", force_python_only, iid_count, sid_count, dtype)
                     to_bed(filename, val, force_python_only=force_python_only)
 
                     # Read
@@ -752,7 +755,7 @@ if __name__ == "__main__":
 
     shared_datadir = Path(r"D:\OneDrive\programs\bed-reader\bed_reader\tests\data")
     tmp_path = Path(r"m:/deldir/tests")
-    test_write1(tmp_path, shared_datadir)
+    test_zero_files(tmp_path)
     # test_index(shared_datadir)
     # test_c_reader_bed(shared_datadir)
     # test_read1(shared_datadir)

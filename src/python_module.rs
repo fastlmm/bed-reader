@@ -1,12 +1,14 @@
 use numpy::{PyArray1, PyArray2, PyArray3};
 use pyo3::{
-    exceptions::{PyOSError, PyValueError}, // !!!cmk make sure give right Python error for each bed error
+    exceptions::PyIOError,
+    exceptions::PyIndexError,
+    exceptions::PyValueError,
     prelude::{pymodule, PyModule, PyResult, Python},
     PyErr,
 };
 
 use crate::{
-    create_pool, impute_and_zero_mean_snps, matrix_subset_no_alloc, read_no_alloc, write,
+    create_pool, impute_and_zero_mean_snps, matrix_subset_no_alloc, read_no_alloc, write, BedError,
     BedErrorPlus,
 };
 
@@ -22,7 +24,18 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     impl std::convert::From<BedErrorPlus> for PyErr {
         fn from(err: BedErrorPlus) -> PyErr {
-            PyOSError::new_err(err.to_string())
+            match err {
+                BedErrorPlus::IOError(_) => PyIOError::new_err(err.to_string()),
+                BedErrorPlus::ThreadPoolError(_) => PyValueError::new_err(err.to_string()),
+                BedErrorPlus::BedError(BedError::IidIndexTooBig)
+                | BedErrorPlus::BedError(BedError::SidIndexTooBig)
+                | BedErrorPlus::BedError(BedError::IndexMismatch)
+                | BedErrorPlus::BedError(BedError::IndexesTooBigForFiles)
+                | BedErrorPlus::BedError(BedError::SubsetMismatch) => {
+                    PyIndexError::new_err(err.to_string())
+                }
+                _ => PyValueError::new_err(err.to_string()),
+            }
         }
     }
 
@@ -45,8 +58,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let ii = &iid_index.as_slice()?; // !!!cmk can these fail (non contiguous)? If so, how will it look on the Python side?
         let si = &sid_index.as_slice()?;
 
-        // !!!cmk tip
-        let result = create_pool(num_threads)?.install(|| {
+        // !!!cmk tip create_pool and install
+        create_pool(num_threads)?.install(|| {
             read_no_alloc(
                 filename,
                 iid_count,
@@ -57,12 +70,9 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
                 f64::NAN,
                 &mut val,
             )
-        });
+        })?;
 
-        match result {
-            Err(result) => Err(PyOSError::new_err(result.to_string())),
-            _ => Ok(()),
-        }
+        Ok(())
     }
 
     #[pyfn(m, "read_f32")]
@@ -84,7 +94,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let ii = &iid_index.as_slice()?;
         let si = &sid_index.as_slice()?;
 
-        let result = create_pool(num_threads)?.install(|| {
+        create_pool(num_threads)?.install(|| {
             read_no_alloc(
                 filename,
                 iid_count,
@@ -95,12 +105,9 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
                 f32::NAN,
                 &mut val,
             )
-        });
+        })?;
 
-        match result {
-            Err(result) => Err(PyValueError::new_err(result.to_string())), // !!!cmk make all ValueError not Os error?
-            _ => Ok(()),
-        }
+        Ok(())
     }
 
     #[pyfn(m, "read_i8")]
@@ -122,16 +129,13 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let ii = &iid_index.as_slice()?;
         let si = &sid_index.as_slice()?;
 
-        let result = create_pool(num_threads)?.install(|| {
+        create_pool(num_threads)?.install(|| {
             read_no_alloc(
                 filename, iid_count, sid_count, count_a1, ii, si, -127i8, &mut val,
             )
-        });
+        })?;
 
-        match result {
-            Err(result) => Err(PyValueError::new_err(result.to_string())),
-            _ => Ok(()),
-        }
+        Ok(())
     }
 
     #[pyfn(m, "write_f64")]
@@ -143,13 +147,10 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         num_threads: usize,
     ) -> Result<(), PyErr> {
         let val = unsafe { val.as_array() };
-        let result =
-            create_pool(num_threads)?.install(|| write(filename, &val, count_a1, (true, f64::NAN)));
 
-        match result {
-            Err(result) => Err(PyValueError::new_err(result.to_string())),
-            _ => Ok(()),
-        }
+        create_pool(num_threads)?.install(|| write(filename, &val, count_a1, (true, f64::NAN)))?;
+
+        Ok(())
     }
 
     #[pyfn(m, "write_f32")]
@@ -161,13 +162,10 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         num_threads: usize,
     ) -> Result<(), PyErr> {
         let val = unsafe { val.as_array() };
-        let result =
-            create_pool(num_threads)?.install(|| write(filename, &val, count_a1, (true, f32::NAN)));
 
-        match result {
-            Err(result) => Err(PyValueError::new_err(result.to_string())),
-            _ => Ok(()),
-        }
+        create_pool(num_threads)?.install(|| write(filename, &val, count_a1, (true, f32::NAN)))?;
+
+        Ok(())
     }
 
     #[pyfn(m, "write_i8")]
@@ -179,13 +177,10 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         num_threads: usize,
     ) -> Result<(), PyErr> {
         let val = unsafe { val.as_array() };
-        let result =
-            create_pool(num_threads)?.install(|| write(filename, &val, count_a1, (false, -127)));
 
-        match result {
-            Err(result) => Err(PyValueError::new_err(result.to_string())),
-            _ => Ok(()),
-        }
+        create_pool(num_threads)?.install(|| write(filename, &val, count_a1, (false, -127)))?;
+
+        Ok(())
     }
 
     #[pyfn(m, "subset_f64_f64")]
@@ -207,13 +202,10 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let ii = &iid_index.as_slice()?;
         let si = &sid_index.as_slice()?;
 
-        let result = create_pool(num_threads)?
-            .install(|| matrix_subset_no_alloc(&val_in, ii, si, &mut val_out));
+        create_pool(num_threads)?
+            .install(|| matrix_subset_no_alloc(&val_in, ii, si, &mut val_out))?;
 
-        match result {
-            Err(result) => Err(PyOSError::new_err(result.to_string())),
-            _ => Ok(()),
-        }
+        Ok(())
     }
 
     #[pyfn(m, "subset_f32_f64")]
@@ -234,13 +226,10 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let ii = &iid_index.as_slice()?;
         let si = &sid_index.as_slice()?;
 
-        let result = create_pool(num_threads)?
-            .install(|| matrix_subset_no_alloc(&val_in, ii, si, &mut val_out));
+        create_pool(num_threads)?
+            .install(|| matrix_subset_no_alloc(&val_in, ii, si, &mut val_out))?;
 
-        match result {
-            Err(result) => Err(PyOSError::new_err(result.to_string())),
-            _ => Ok(()),
-        }
+        Ok(())
     }
 
     #[pyfn(m, "subset_f32_f32")]
@@ -261,13 +250,10 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let ii = &iid_index.as_slice()?;
         let si = &sid_index.as_slice()?;
 
-        let result = create_pool(num_threads)?
-            .install(|| matrix_subset_no_alloc(&val_in, ii, si, &mut val_out));
+        create_pool(num_threads)?
+            .install(|| matrix_subset_no_alloc(&val_in, ii, si, &mut val_out))?;
 
-        match result {
-            Err(result) => Err(PyOSError::new_err(result.to_string())),
-            _ => Ok(()),
-        }
+        Ok(())
     }
 
     #[pyfn(m, "standardize_f32")]
@@ -284,7 +270,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     ) -> Result<(), PyErr> {
         let mut val = unsafe { val.as_array_mut() };
         let mut stats = unsafe { stats.as_array_mut() };
-        let result = create_pool(num_threads)?.install(|| {
+        create_pool(num_threads)?.install(|| {
             impute_and_zero_mean_snps(
                 &mut val.view_mut(),
                 beta_not_unit_variance,
@@ -294,11 +280,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
                 use_stats,
                 &mut stats.view_mut(),
             )
-        });
-        match result {
-            Err(result) => Err(PyOSError::new_err(result.to_string())),
-            _ => Ok(()),
-        }
+        })?;
+        Ok(())
     }
 
     #[pyfn(m, "standardize_f64")]
@@ -318,7 +301,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let mut val = unsafe { val.as_array_mut() };
         let mut stats = unsafe { stats.as_array_mut() };
         // println!("cmk a");
-        let result = create_pool(num_threads)?.install(|| {
+        create_pool(num_threads)?.install(|| {
             impute_and_zero_mean_snps(
                 &mut val.view_mut(),
                 beta_not_unit_variance,
@@ -328,11 +311,9 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
                 use_stats,
                 &mut stats.view_mut(),
             )
-        });
-        match result {
-            Err(result) => Err(PyOSError::new_err(result.to_string())),
-            _ => Ok(()),
-        }
+        })?;
+        Ok(())
     }
+
     Ok(())
 }

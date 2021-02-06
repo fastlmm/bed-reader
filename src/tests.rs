@@ -334,6 +334,15 @@ fn writer() {
         Err(BedErrorPlus::BedError(BedError::BadValue)) => (),
         _ => panic!("test failure"),
     };
+
+    let val = nd::Array2::zeros((0, 0));
+    let filename = r"m:\deldir\rusttest\rust_bed_reader_writer_testf64_0s.bed";
+    write(filename, &val.view(), true, (true, f64::NAN)).unwrap();
+    // !!!cmk should missing and beta use an enum or struct instead of tuples/multiple args
+
+    let val: nd::Array2<i8> = nd::Array2::zeros((3, 0));
+    let filename = r"m:\deldir\rusttest\rust_bed_reader_writer_testf64_3_0.bed";
+    write(filename, &val.view(), true, (true, -127)).unwrap();
 }
 
 #[test]

@@ -139,3 +139,4 @@ dmypy.json
 defaultx.profraw
 default.profraw
 bed_reader/tests/data/tooshort.bed.bak
+/temp/
