@@ -17,7 +17,9 @@ jobs:
     - name: maturin
       run: |
         pip install maturin
-        maturin build --release
+        which python
+        find . -print
+        python -m maturin build --release
     - name: See Results
       run: find . -print
     - name: Build
