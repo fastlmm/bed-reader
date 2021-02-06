@@ -488,7 +488,7 @@ fn fill_in() {
 fn standardize_unit() {
     for output_is_order_f_ptr in [true, false].iter() {
         let mut val = read(
-            r"D:\OneDrive\programs\fastlmm\fastlmm\feature_selection\examples\toydata.5chrom.bed",
+            r"bed_reader/tests/data/toydata.5chrom.bed",
             *output_is_order_f_ptr,
             false,
             f64::NAN,
@@ -566,7 +566,7 @@ fn div_4() {
 fn standardize_beta() {
     for output_is_order_f_ptr in [true, false].iter() {
         let mut val = read(
-            r"D:\OneDrive\programs\fastlmm\fastlmm\feature_selection\examples\toydata.5chrom.bed",
+            r"bed_reader/tests/data/toydata.5chrom.bed",
             *output_is_order_f_ptr,
             false,
             f64::NAN,
