@@ -36,11 +36,11 @@ jobs:
     - name: Test Rust
       run: cargo test --verbose
     - name: Build wheel with Maturin (and list)
+      shell: bash
       run: |
         maturin list-python
         maturin build --release -i $(which python)
         ls -las target/wheels
-      shell: bash
   - name: Test Python
       run: |
         pip install virtualenv
