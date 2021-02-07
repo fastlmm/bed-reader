@@ -18,7 +18,7 @@ jobs:
       run: |
         pip install maturin
         which python
-        find /usr/bin -print | fgrep -i maturin
+        find /usr -print | fgrep -i maturin
         python -m maturin build --release
     - name: See Results
       run: find . -print
