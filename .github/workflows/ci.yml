@@ -39,12 +39,8 @@ jobs:
     #   run: maturin build --release -i python3.8
     # - name: See Results
     #   run: ls -las target/wheels
-    - name: Install pip and pipenv
-      run: |
-        pip install pipenv
-        export PATH=/home/runner/.local/bin:$PATH
-        which pipenv
-        echo "::set-env name=PATH::$PATH"
+    - name: Install pipenv
+      run: pip install pipenv
     - name: Run Python Tests
       working-directory: ./platforms/python
       run: |
