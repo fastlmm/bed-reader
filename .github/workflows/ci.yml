@@ -45,6 +45,7 @@ jobs:
         virtualenv testing --system-site-packages
         source testing/bin/activate
         maturin develop
+        pip install -r requirements.txt
         pip install -r requirements-dev.txt
         pytest bed_reader
 
