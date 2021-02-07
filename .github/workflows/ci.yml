@@ -11,10 +11,6 @@ env:
 #    https://github.com/polkascan/py-ed25519-bindings/blob/96638152c1902d917b8ec29adabe9cc8c3519086/.github/workflows/test.yml
 #    https://github.com/OpenMined/syft_experimental/blob/6630fec206d153fb5a94ad8c5365636ee462ecd9/.github/workflows/python.yml
 
-defaults:
-  run:
-    shell: bash
-
 jobs:
   ci:
     strategy:
@@ -26,8 +22,6 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2
-    - name: Cmktest
-      run: ls -las
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
@@ -44,9 +38,10 @@ jobs:
     - name: Build wheel with Maturin (and list)
       run: |
         maturin list-python
-        maturin build --release -i python
+        maturin build --release -i $(which python)
         ls -las target/wheels
-    - name: Test Python
+      shell: bash
+  - name: Test Python
       run: |
         pip install virtualenv
         virtualenv testing --system-site-packages
