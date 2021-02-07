@@ -5,7 +5,7 @@ env:
   CARGO_TERM_COLOR: always
 
 # Good docs:
-#    https://docs.github.com/en/actions/guides/building-and-testing-python
+#    https://docs.github.com/en/actions/guides/building-and-testing-python (including how to run flake8)
 # Good examples:
 #    https://github.com/Intsights/fastzy/blob/152aecbb05302b0f8db7f23b0242b448ec5e6435/.github/workflows/deploy.yml
 #    https://github.com/polkascan/py-ed25519-bindings/blob/96638152c1902d917b8ec29adabe9cc8c3519086/.github/workflows/test.yml
@@ -14,6 +14,7 @@ env:
 jobs:
   ci:
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]
         python-version: [3.6, 3.7, 3.8 ,3.9]
