@@ -12,17 +12,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-    # move these down cmk
-    - name: maturin
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.8
+    - name: Install latest rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+    - name: Install dependencies
       run: |
-        python3 --version
-        which python3
-        pip3 install setuptools
-        pip3 install toml
-        pip3 install maturin
-        #find /usr -print | fgrep -i maturin
-        maturin build --release
+        python -m pip install --upgrade pip maturin
+    # Later to maturin build after testing cmk        
+    - name: Build with Maturin
+      run: maturin build --release
     - name: See Results
       run: find . -print
     - name: Build
