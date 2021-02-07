@@ -19,6 +19,7 @@ jobs:
         python3 --version
         which python3
         pip3 install setuptools
+        pip3 install toml
         pip3 install maturin
         #find /usr -print | fgrep -i maturin
         maturin build --release
