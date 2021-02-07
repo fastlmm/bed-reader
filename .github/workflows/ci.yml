@@ -23,23 +23,21 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: 3.8
-    - name: Install latest rust
+    - name: Set up Rust
       uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
         override: true
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip maturin
-    # cmk        
-    # - name: Rust tests
-    #   run: cargo test --verbose
+    - name: Install Maturin
+      run: python -m pip install --upgrade pip maturin
+    - name: Test Rust
+      run: cargo test --verbose
     # make 3.8 a variable.
     - name: Build wheel with Maturin (and list)
       run: |
         maturin build --release -i python3.8
         ls -las target/wheels
-    - name: Run tests in virtualenv
+    - name: Test Python
       run: |
         pip install virtualenv
         virtualenv testing --system-site-packages
@@ -49,3 +47,9 @@ jobs:
         maturin develop
         pip install -r requirements-dev.txt
         pytest bed_reader
+    # cmk could add formatting, etc tests see bgen projects for examples
+    - name: Test Python
+      uses: actions/upload-artifact@v2
+      with:
+        name: wheels
+        path: target/wheels/*.whl
