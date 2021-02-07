@@ -18,6 +18,10 @@ use ndarray_npy::read_npy;
 use num_traits::{abs, Signed};
 #[cfg(test)]
 use std::path::Path;
+#[cfg(test)]
+use std::path::PathBuf;
+#[cfg(test)]
+use temp_testdir::TempDir;
 
 // fn big1() {
 //     let bigfile = r"M:\deldir\genbgen\2\merged_487400x220000.1.bed"; // !!!cmk not in datafolder
@@ -293,7 +297,10 @@ fn writer() {
     let filename = "bed_reader/tests/data/some_missing.bed";
     let val = read(filename, false, true, -127).unwrap();
 
-    let filename2 = r"m:\deldir\rusttest\rust_bed_reader_writer_test.bed";
+    let temp = TempDir::default();
+    let path2 = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_test.bed");
+    let filename2 = path2.as_os_str().to_str().unwrap();
+
     write(filename2, &val.view(), true, (false, -127)).unwrap();
     for ext in ["fam", "bim"].iter() {
         let from = Path::new(filename).with_extension(ext);
@@ -310,7 +317,9 @@ fn writer() {
 
     let val = read(filename, false, true, f64::NAN).unwrap();
 
-    let filename2 = r"m:\deldir\rusttest\rust_bed_reader_writer_testf64.bed";
+    let path2 = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64.bed");
+    let filename2 = path2.as_os_str().to_str().unwrap();
+
     write(filename2, &val.view(), true, (true, f64::NAN)).unwrap();
     for ext in ["fam", "bim"].iter() {
         let from = Path::new(filename).with_extension(ext);
@@ -327,7 +336,8 @@ fn writer() {
 
     let mut val = read(filename, false, true, f64::NAN).unwrap();
     val[(0, 0)] = 5.0;
-    let filename = r"m:\deldir\rusttest\rust_bed_reader_writer_testf64_5.bed";
+    let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_5.bed"); // !!!cmk use Path instead of Pathbuf?
+    let filename = path.as_os_str().to_str().unwrap();
     let result = write(filename, &val.view(), true, (true, f64::NAN));
     println!("cmk {:?}", result);
     match result {
@@ -336,12 +346,14 @@ fn writer() {
     };
 
     let val = nd::Array2::zeros((0, 0));
-    let filename = r"m:\deldir\rusttest\rust_bed_reader_writer_testf64_0s.bed";
+    let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_0s.bed"); // !!!cmk use Path instead of Pathbuf?
+    let filename = path.as_os_str().to_str().unwrap();
     write(filename, &val.view(), true, (true, f64::NAN)).unwrap();
     // !!!cmk should missing and beta use an enum or struct instead of tuples/multiple args
 
     let val: nd::Array2<i8> = nd::Array2::zeros((3, 0));
-    let filename = r"m:\deldir\rusttest\rust_bed_reader_writer_testf64_3_0.bed";
+    let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_3_0.bed"); // !!!cmk use Path instead of Pathbuf?
+    let filename = path.as_os_str().to_str().unwrap();
     write(filename, &val.view(), true, (true, -127)).unwrap();
 }
 
