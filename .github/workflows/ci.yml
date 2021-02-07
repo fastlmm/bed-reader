@@ -39,15 +39,15 @@ jobs:
     #   run: maturin build --release -i python3.8
     # - name: See Results
     #   run: ls -las target/wheels
-    - name: Install pipenv
-      run: pip install pipenv
     - name: Run Python Tests
-      working-directory: ./platforms/python
       run: |
-        pipenv --python=3.8
-        pipenv run pipenv install --skip-lock
-        pipenv run maturin develop
-        pipenv run pytest bed_reader
+        pip install virtualenv
+        virtualenv testing --use-site-package
+        cd testing/
+        source bin/activate
+        maturin develop
+        pip install -r requirements-dev.txt
+        run pytest bed_reader
 
     # - name: Python tests
     #   run: |
