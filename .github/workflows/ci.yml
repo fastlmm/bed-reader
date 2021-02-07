@@ -42,7 +42,7 @@ jobs:
     - name: Run Python Tests
       run: |
         pip install virtualenv
-        virtualenv testing --use-site-packages
+        virtualenv testing --system-site-packages
         cd testing/
         source bin/activate
         maturin develop
