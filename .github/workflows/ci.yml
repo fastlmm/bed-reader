@@ -42,9 +42,10 @@ jobs:
         maturin build --release -i $(which python)
         ls -las target/wheels
       shell: bash
-    - name: Set 'source' variable
+    - name: Set 'source' variable Windows
       if: matrix.os == 'windows_latest'
       env: SOURCE: ""
+    - name: Set 'source' variable NOT Windows
       if: matrix.os != 'windows_latest'
       env: SOURCE: "source"
     - name: Test Python
