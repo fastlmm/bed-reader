@@ -23,7 +23,7 @@ classifier=[
         "Programming Language :: Python :: 3",
         "Programming Language :: Python",
     ]
-requires-dist = ["numpy~=1.11.3", "pandas~=0.25.1", "pooch~=1.1.1"]
+requires-dist = ["numpy>=1.13.3", "pandas>=0.25.1", "pooch>=1.1.1"]
 
 # cmk add badges
 # cmk what are dev-dependencies?
