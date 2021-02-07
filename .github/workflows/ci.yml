@@ -14,7 +14,11 @@ env:
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: ${{matrix.os}}
+    strategy:
+      matrix:
+        os: [ubutnu-latest, windows-latest, macOS-latest]
+        python-version: [3.6,3.7,3.8,3.9]
 
     steps:
     - name: Checkout
@@ -22,7 +26,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: 3.8
+        python-version: ${{matrix.python-version}}
     - name: Set up Rust
       uses: actions-rs/toolchain@v1
       with:
@@ -35,7 +39,7 @@ jobs:
     # make 3.8 a variable.
     - name: Build wheel with Maturin (and list)
       run: |
-        maturin build --release -i python3.8
+        maturin build --release -i python${{matrix.python-version}}
         ls -las target/wheels
     - name: Test Python
       run: |
@@ -48,7 +52,7 @@ jobs:
         pip install -r requirements-dev.txt
         pytest bed_reader
     # cmk could add formatting, etc tests see bgen projects for examples
-    - name: Test Python
+    - name: Save Wheels
       uses: actions/upload-artifact@v2
       with:
         name: wheels
