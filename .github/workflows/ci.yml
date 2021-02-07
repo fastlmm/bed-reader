@@ -15,7 +15,7 @@ jobs:
   ci:
     strategy:
       matrix:
-        os: [ubutnu-latest, windows-latest, macOS-latest]
+        os: [ubuntu-latest, windows-latest, macOS-latest]
         python-version: [3.6, 3.7, 3.8 ,3.9]
     runs-on: ${{ matrix.os }}
     steps:
