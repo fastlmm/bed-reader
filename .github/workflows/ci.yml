@@ -38,7 +38,7 @@ jobs:
     - name: Build wheel with Maturin (and list)
       run: |
         maturin list-python
-        maturin build --release -i ${{ matrix.python-version }}
+        maturin build --release -i python
     # cmk ls -las target/wheels
     - name: Test Python
       run: |
