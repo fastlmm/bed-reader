@@ -39,18 +39,13 @@ jobs:
       run: |
         maturin build --release -i python3.8
         ls -las target/wheels
-    - name: Install virtualenv for testing
+    - name: Run tests in virtualenv
       run: |
         pip install virtualenv
         virtualenv testing --system-site-packages
         source testing/bin/activate
-    - name: Install dependencies from wheel
-      run: |
         pip install target/wheels/*.whl
         pip uninstall bed-reader --yes
-    - name: Install package in dev mode
-      run: maturin develop
-    - name: Install test dependencies
-      run: pip install -r requirements-dev.txt
-    - name: Python tests
-      run: pytest bed_reader
+        maturin develop
+        pip install -r requirements-dev.txt
+        pytest bed_reader
