@@ -6,6 +6,7 @@ env:
 
 # Good docs:
 #    https://docs.github.com/en/actions/guides/building-and-testing-python (including how to run flake8)
+#    https://github.community/t/how-to-run-steps-involving-environment-variables-on-both-linux-and-windows/17355
 # Good examples:
 #    https://github.com/Intsights/fastzy/blob/152aecbb05302b0f8db7f23b0242b448ec5e6435/.github/workflows/deploy.yml
 #    https://github.com/polkascan/py-ed25519-bindings/blob/96638152c1902d917b8ec29adabe9cc8c3519086/.github/workflows/test.yml
@@ -41,11 +42,16 @@ jobs:
         maturin build --release -i $(which python)
         ls -las target/wheels
       shell: bash
+    - name: Set 'source' variable
+      if: matrix.os == 'windows_latest'
+      env: SOURCE: ""
+      if: matrix.os != 'windows_latest'
+      env: SOURCE: "source"
     - name: Test Python
       run: |
         pip install virtualenv
         virtualenv testing --system-site-packages
-        source testing/bin/activate
+        ${env:SOURCE} testing/bin/activate
         pip install target/wheels/*.whl
         pip uninstall bed-reader --yes
         maturin develop
