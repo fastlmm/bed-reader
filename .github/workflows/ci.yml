@@ -44,10 +44,12 @@ jobs:
       shell: bash
     - name: Set 'source' variable Windows
       if: matrix.os == 'windows_latest'
-      env: SOURCE: ""
+      env:
+        SOURCE: ""
     - name: Set 'source' variable NOT Windows
       if: matrix.os != 'windows_latest'
-      env: SOURCE: "source"
+      env:
+        SOURCE: "source"
     - name: Test Python
       run: |
         pip install virtualenv
