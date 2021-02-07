@@ -34,19 +34,23 @@ jobs:
     # cmk        
     # - name: Rust tests
     #   run: cargo test --verbose
-    # make 3.8 a variable. use strip?
+    # make 3.8 a variable.
     - name: Build with Maturin
       run: maturin build --release -i python3.8
     - name: See Results
       run: ls -las target/wheels
-    - name: Run Python Tests
+    - name: Install VirtEnv for testing
       run: |
         pip install virtualenv
         virtualenv testing --system-site-packages
         source testing/bin/activate
-      # Install dependencies from wheel
+    - name: Install dependencies from wheel
+      run: |
         pip install target/wheels/*.whl
         pip uninstall bed_reader
-        maturin develop
-        pip install -r requirements-dev.txt
-        pytest bed_reader
+    - name: Install package in dev mode
+      run: maturin develop
+    - name: Install test dependencies
+      run: pip install -r requirements-dev.txt
+    - name: Python tests
+      run: pytest bed_reader
