@@ -42,19 +42,11 @@ jobs:
         maturin build --release -i $(which python)
         ls -las target/wheels
       shell: bash
-    - name: Set 'source' variable Windows
-      if: matrix.os == 'windows_latest'
-      env:
-        SOURCE: ""
-    - name: Set 'source' variable NOT Windows
-      if: matrix.os != 'windows_latest'
-      env:
-        SOURCE: "source"
     - name: Test Python
       run: |
         pip install virtualenv
         virtualenv testing --system-site-packages
-        ${env:SOURCE} testing/bin/activate
+        if [${{matrix.os == 'windows_latest'}}]; testing/bin/activate; then source testing/bin/activate; fi
         pip install target/wheels/*.whl
         pip uninstall bed-reader --yes
         maturin develop
