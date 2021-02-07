@@ -37,7 +37,8 @@ jobs:
       run: cargo test --verbose
     - name: Build wheel with Maturin (and list)
       run: |
-        maturin build --release -i python${{ matrix.python-version }}
+        maturin list-python
+        maturin build --release -i ${{ matrix.python-version }}
     # cmk ls -las target/wheels
     - name: Test Python
       run: |
@@ -50,6 +51,7 @@ jobs:
         pip install -r requirements-dev.txt
         pytest bed_reader
     # cmk could add formatting, etc tests see bgen projects for examples
+    # cmk need to save on copy of sdist, too. e.g. bed_reader-0.1.7.tar.gz
     - name: Save Wheels
       uses: actions/upload-artifact@v2
       with:
