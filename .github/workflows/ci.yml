@@ -46,7 +46,7 @@ jobs:
         source testing/bin/activate
         maturin develop
         pip install -r requirements-dev.txt
-        run pytest bed_reader
+        pytest bed_reader
 
     # - name: Python tests
     #   run: |
