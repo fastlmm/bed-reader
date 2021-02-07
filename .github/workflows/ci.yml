@@ -1,0 +1,64 @@
+name: Rust
+
+on:
+  push:
+    
+env:
+  CARGO_TERM_COLOR: always
+
+# Good examples:
+#    https://github.com/Intsights/fastzy/blob/152aecbb05302b0f8db7f23b0242b448ec5e6435/.github/workflows/deploy.yml
+#    https://github.com/polkascan/py-ed25519-bindings/blob/96638152c1902d917b8ec29adabe9cc8c3519086/.github/workflows/test.yml
+#    https://github.com/OpenMined/syft_experimental/blob/6630fec206d153fb5a94ad8c5365636ee462ecd9/.github/workflows/python.yml
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.8
+    - name: Install latest rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip maturin
+    # cmk        
+    # - name: Rust tests
+    #   run: cargo test --verbose
+    # make 3.8 a variable. use strip?
+    # - name: Build with Maturin
+    #   run: maturin build --release -i python3.8
+    # - name: See Results
+    #   run: ls -las target/wheels
+    - name: Install pip and pipenv
+      run: |
+        pip install pipenv
+        export PATH=/home/runner/.local/bin:$PATH
+        which pipenv
+        echo "::set-env name=PATH::$PATH"
+    - name: Run Python Tests
+      working-directory: ./platforms/python
+      run: |
+        pipenv --python=3.8
+        pipenv run pipenv install --skip-lock
+        pipenv run maturin develop
+        pipenv run pytest bed_reader
+
+    # - name: Python tests
+    #   run: |
+    #     # python -m pip install --user virtualenv
+    #     # maturin develop --release
+    #     pip install target/wheels/*.whl
+    #     pip install -r requirements-dev.txt
+    #     cd bed_reader
+    #     pytest .
+    #     cd ..
