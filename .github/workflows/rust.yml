@@ -29,9 +29,17 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip maturin
-    - name: Run tests
+    - name: Rust tests
       run: cargo test --verbose
+    - name: Python tests
+      run: |
+        maturin develop --release
+        cd bed_reader
+        pytest .
+        cd ..
     - name: Build with Maturin
       run: maturin build --release
     - name: See Results
       run: ls -las target/wheels
+    - name: Develop with Maturin
+      run: maturin develop --release
