@@ -27,6 +27,12 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{matrix.python-version}}
+    - name: Test Python cmk
+      run: |
+        pip install virtualenv
+        virtualenv testing --system-site-packages
+        if ${{matrix.os == 'windows_latest'}}; testing/bin/activate.bat; then source testing/bin/activate; fi
+        ls -las
     - name: Set up Rust
       uses: actions-rs/toolchain@v1
       with:
@@ -46,7 +52,7 @@ jobs:
       run: |
         pip install virtualenv
         virtualenv testing --system-site-packages
-        if [${{matrix.os == 'windows_latest'}}]; testing/bin/activate; then source testing/bin/activate; fi
+        if ${{matrix.os == 'windows_latest'}}; testing/bin/activate.bat; then source testing/bin/activate; fi
         pip install target/wheels/*.whl
         pip uninstall bed-reader --yes
         maturin develop
