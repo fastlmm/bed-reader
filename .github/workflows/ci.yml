@@ -1,29 +1,27 @@
-name: Rust
-
-on:
-  push:
+name: CI
+on: push
     
 env:
   CARGO_TERM_COLOR: always
 
+# Good docs:
+#    https://docs.github.com/en/actions/guides/building-and-testing-python
 # Good examples:
 #    https://github.com/Intsights/fastzy/blob/152aecbb05302b0f8db7f23b0242b448ec5e6435/.github/workflows/deploy.yml
 #    https://github.com/polkascan/py-ed25519-bindings/blob/96638152c1902d917b8ec29adabe9cc8c3519086/.github/workflows/test.yml
 #    https://github.com/OpenMined/syft_experimental/blob/6630fec206d153fb5a94ad8c5365636ee462ecd9/.github/workflows/python.yml
 
 jobs:
-  build:
-
-    runs-on: ${{matrix.os}}
+  ci:
     strategy:
       matrix:
         os: [ubutnu-latest, windows-latest, macOS-latest]
-        python-version: ['3.6', '3.7', '3.8' ,'3.9']
-
+        python-version: [3.6, 3.7, 3.8 ,3.9]
+    runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout
       uses: actions/checkout@v2
-    - name: Set up Python
+    - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
         python-version: ${{matrix.python-version}}
@@ -39,7 +37,7 @@ jobs:
     # make 3.8 a variable.
     - name: Build wheel with Maturin (and list)
       run: |
-        maturin build --release -i python${{matrix.python-version}}
+        maturin build --release -i python${{ matrix.python-version }}
         ls -las target/wheels
     - name: Test Python
       run: |
