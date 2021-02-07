@@ -43,7 +43,7 @@ jobs:
         # python -m pip install --user virtualenv
         # maturin develop --release
         pip install target/wheels/*.whl
-        cd bed_reader
         pip install -r requirements-dev.txt
+        cd bed_reader
         pytest .
         cd ..
