@@ -35,11 +35,11 @@ jobs:
     # - name: Rust tests
     #   run: cargo test --verbose
     # make 3.8 a variable.
-    - name: Build with Maturin
-      run: maturin build --release -i python3.8
-    - name: See Results
-      run: ls -las target/wheels
-    - name: Install VirtEnv for testing
+    - name: Build wheel with Maturin (and list)
+      run: |
+        maturin build --release -i python3.8
+        ls -las target/wheels
+    - name: Install virtualenv for testing
       run: |
         pip install virtualenv
         virtualenv testing --system-site-packages
@@ -47,7 +47,7 @@ jobs:
     - name: Install dependencies from wheel
       run: |
         pip install target/wheels/*.whl
-        pip uninstall bed_reader
+        pip uninstall bed-reader --yes
     - name: Install package in dev mode
       run: maturin develop
     - name: Install test dependencies
