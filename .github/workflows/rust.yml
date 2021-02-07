@@ -16,10 +16,10 @@ jobs:
     # move these down cmk
     - name: maturin
       run: |
-        python --version
         python3 --version
-        pip3 install maturin
         which python3
+        pip3 install setuptools
+        pip3 install maturin
         #find /usr -print | fgrep -i maturin
         maturin build --release
     - name: See Results
