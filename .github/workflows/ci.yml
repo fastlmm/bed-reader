@@ -31,7 +31,6 @@ jobs:
       run: |
         echo ${{matrix.os}}
         echo ${{matrix.os == 'windows_latest'}}
-        echo ${{matrix.os = 'windows_latest'}}
         if ${{matrix.os == 'windows_latest'}}; then echo 'windows!'; else echo 'linux!'; fi
         pip install virtualenv
         virtualenv testing --system-site-packages
