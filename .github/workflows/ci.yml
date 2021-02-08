@@ -41,12 +41,6 @@ jobs:
     #     pytest bed_reader
     #   shell: bash        
 
-    - name: Test Python cmk
-      run: |
-        pip install virtualenv
-        virtualenv testing --system-site-packages
-        if ${{matrix.os == 'windows_latest'}}; testing/bin/activate.bat; then source testing/bin/activate; fi
-        ls -las
      shell: bash
     - name: Set up Rust
       uses: actions-rs/toolchain@v1
