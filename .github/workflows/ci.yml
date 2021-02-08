@@ -30,6 +30,7 @@ jobs:
     - name: Test Python cmk2
       run: |
         echo ${{matrix.os}}
+        echo if '${{matrix.os}}' == 'windows_latest'; then echo 'windows!'; else echo 'linux!'; fi
         if '${{matrix.os}}' == 'windows_latest'; then echo 'windows!'; else echo 'linux!'; fi
         pip install virtualenv
         virtualenv testing --system-site-packages
