@@ -40,8 +40,6 @@ jobs:
     #     pip install -r requirements-dev.txt
     #     pytest bed_reader
     #   shell: bash        
-
-     shell: bash
     - name: Set up Rust
       uses: actions-rs/toolchain@v1
       with:
