@@ -84,10 +84,9 @@ jobs:
       run: |
         pip install virtualenv
         virtualenv vEnv --system-site-packages; venv\Scripts\activate.bat
-        pip install target/wheels/*.whl
+        pip install target\wheels\*.whl
         pip uninstall bed-reader --yes
         maturin develop
-        pip install -r requirements.txt
         pip install -r requirements-dev.txt
         pytest bed_reader
 
