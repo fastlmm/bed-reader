@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest] # [ubuntu-latest, windows-latest, macOS-latest]
+        os: [windows-latest] # [ubuntu-latest, windows-latest, macOS-latest]
         python-version: [3.8] # [3.7, 3.8 ,3.9]
     runs-on: ${{ matrix.os }}
     steps:
@@ -87,6 +87,7 @@ jobs:
         pip install target/wheels/*.whl
         pip uninstall bed-reader --yes
         maturin develop
+        pip install -r requirements.txt
         pip install -r requirements-dev.txt
         pytest bed_reader
 
