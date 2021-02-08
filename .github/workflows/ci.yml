@@ -29,11 +29,11 @@ jobs:
         python-version: ${{matrix.python-version}}
     - name: Test Python cmk2
       run: |
-        if ${{matrix.os == 'windows_latest'}}; echo 'windows!'; then echo 'linux!'; fi
+        if ${{matrix.os == 'windows_latest'}}; then echo 'windows!'; else echo 'linux!'; fi
         pip install virtualenv
         virtualenv testing --system-site-packages
         ls -las testing
-        if ${{matrix.os == 'windows_latest'}}; testing/bin/activate.bat; then source testing/bin/activate; fi
+        if ${{matrix.os == 'windows_latest'}}; then testing/bin/activate.bat; else source testing/bin/activate; fi
         maturin develop
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
