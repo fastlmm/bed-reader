@@ -27,57 +27,57 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{matrix.python-version}}
-    - name: Test Python cmk2
-      run: |
-        echo ${{matrix.os}}
-        if [ "${{matrix.os}}" = "windows-latest" ]; then echo "windows!"; else echo "linux!"; fi
-        pip install virtualenv
-        virtualenv testing --system-site-packages
-        ls -las testing
-        if [ "${{matrix.os}}" = "windows-latest" ]; then testing/Scripts/activate.bat; else source testing/bin/activate; fi
-        maturin develop
-        pip install -r requirements.txt
-        pip install -r requirements-dev.txt
-        pytest bed_reader
-      shell: bash        
-
-    # - name: Test Python cmk
+    # - name: Test Python cmk2
     #   run: |
+    #     echo ${{matrix.os}}
+    #     if [ "${{matrix.os}}" = "windows-latest" ]; then echo "windows!"; else echo "linux!"; fi
     #     pip install virtualenv
     #     virtualenv testing --system-site-packages
-    #     if ${{matrix.os == 'windows_latest'}}; testing/bin/activate.bat; then source testing/bin/activate; fi
-    #     ls -las
-    #  shell: bash
-    # - name: Set up Rust
-    #   uses: actions-rs/toolchain@v1
-    #   with:
-    #     toolchain: stable
-    #     override: true
-    # - name: Install Maturin
-    #   run: python -m pip install --upgrade pip maturin
-    # - name: Test Rust
-    #   run: cargo test --verbose
-    # - name: Build wheel with Maturin (and list)
-    #   run: |
-    #     maturin list-python
-    #     maturin build --release -i $(which python)
-    #     ls -las target/wheels
-    #   shell: bash
-    # - name: Test Python
-    #   run: |
-    #     pip install virtualenv
-    #     virtualenv testing --system-site-packages
-    #     if ${{matrix.os == 'windows_latest'}}; testing/bin/activate.bat; then source testing/bin/activate; fi
-    #     pip install target/wheels/*.whl
-    #     pip uninstall bed-reader --yes
+    #     ls -las testing
+    #     if [ "${{matrix.os}}" = "windows-latest" ]; then testing/Scripts/activate.bat; else source testing/bin/activate; fi
     #     maturin develop
+    #     pip install -r requirements.txt
     #     pip install -r requirements-dev.txt
     #     pytest bed_reader
     #   shell: bash        
-    # # cmk could add formatting, etc tests see bgen projects for examples
-    # # cmk need to save on copy of sdist, too. e.g. bed_reader-0.1.7.tar.gz
-    # - name: Save Wheels
-    #   uses: actions/upload-artifact@v2
-    #   with:
-    #     name: wheels
-    #     path: target/wheels/*.whl
+
+    - name: Test Python cmk
+      run: |
+        pip install virtualenv
+        virtualenv testing --system-site-packages
+        if ${{matrix.os == 'windows_latest'}}; testing/bin/activate.bat; then source testing/bin/activate; fi
+        ls -las
+     shell: bash
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+    - name: Install Maturin
+      run: python -m pip install --upgrade pip maturin
+    - name: Test Rust
+      run: cargo test --verbose
+    - name: Build wheel with Maturin (and list)
+      run: |
+        maturin list-python
+        maturin build --release -i $(which python)
+        ls -las target/wheels
+      shell: bash
+    - name: Test Python
+      run: |
+        pip install virtualenv
+        virtualenv testing --system-site-packages
+        if [ "${{matrix.os}}" = "windows-latest" ]; then testing/Scripts/activate.bat; else source testing/bin/activate; fi
+        pip install target/wheels/*.whl
+        pip uninstall bed-reader --yes
+        maturin develop
+        pip install -r requirements-dev.txt
+        pytest bed_reader
+      shell: bash        
+    # cmk could add formatting, etc tests see bgen projects for examples
+    # cmk need to save on copy of sdist, too. e.g. bed_reader-0.1.7.tar.gz
+    - name: Save Wheels
+      uses: actions/upload-artifact@v2
+      with:
+        name: wheels
+        path: target/wheels/*.whl
