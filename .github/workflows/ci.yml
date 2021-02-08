@@ -34,7 +34,7 @@ jobs:
         pip install virtualenv
         virtualenv testing --system-site-packages
         ls -las testing
-        if [ "${{matrix.os}}" = "windows-latest" ]; then testing/bin/activate.bat; else source testing/bin/activate; fi
+        if [ "${{matrix.os}}" = "windows-latest" ]; then testing/Scripts/activate.bat; else source testing/bin/activate; fi
         maturin develop
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
