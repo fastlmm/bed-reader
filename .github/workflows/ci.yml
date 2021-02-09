@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest] # [ubuntu-latest, windows-latest, macOS-latest]
+        os: [ubuntu-latest, windows-latest] # [ubuntu-latest, windows-latest, macOS-latest]
         python-version: [3.8] # [3.7, 3.8 ,3.9]
     runs-on: ${{ matrix.os }}
     steps:
@@ -29,12 +29,12 @@ jobs:
         python-version: ${{matrix.python-version}}
 
 
-    - name: Test Python on Windows (early)
-      if: runner.os == 'windows'
+    - name: Test Python (early)
       run: |
         pip install virtualenv
-        virtualenv vEnv --system-site-packages
-        .\vEnv\Scripts\activate.ps1
+        virtualenv vEnv --system-site-packages;vEnv\Scripts\activate.ps1
+        pwd
+      shell: pwsh
     - name: Set up Rust
       uses: actions-rs/toolchain@v1
       with:
@@ -51,8 +51,7 @@ jobs:
         ls -las target/wheels
       shell: bash
 
-    - name: Test Python on not Windows
-      if: runner.os != 'windows'
+    - name: Test Python
       run: |
         pip install virtualenv
         virtualenv vEnv --system-site-package; source vEnv/bin/activate
@@ -65,9 +64,9 @@ jobs:
       if: runner.os == 'windows'
       run: |
         pip install virtualenv
-        virtualenv vEnv --system-site-packages
-        .\vEnv\Scripts\activate.ps1
-        pip install target/wheels/*.whl
+        virtualenv vEnv --system-site-packages; vEnv\Scripts\activate.ps1
+        pwd
+        pip install target\wheels\*.whl
         pip uninstall bed-reader --yes
         maturin develop
         pip install -r requirements-dev.txt
