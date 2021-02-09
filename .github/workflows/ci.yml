@@ -29,12 +29,12 @@ jobs:
         python-version: ${{matrix.python-version}}
 
 
-    - name: Test Python (early)
-      run: |
-        pip install virtualenv
-        virtualenv vEnv --system-site-packages;vEnv\Scripts\activate.ps1
-        pwd
-      shell: pwsh
+    # - name: Test Python (early)
+    #   run: |
+    #     pip install virtualenv
+    #     virtualenv vEnv --system-site-packages;vEnv\Scripts\activate.ps1
+    #     pwd
+    #   shell: pwsh
     - name: Set up Rust
       uses: actions-rs/toolchain@v1
       with:
@@ -52,6 +52,7 @@ jobs:
       shell: bash
 
     - name: Test Python
+      if: runner.os != 'windows'
       run: |
         pip install virtualenv
         virtualenv vEnv --system-site-package; source vEnv/bin/activate
