@@ -83,7 +83,8 @@ jobs:
       if: runner.os == 'windows'
       run: |
         pip install virtualenv
-        virtualenv vEnv --system-site-packages; venv\Scripts\activate.bat
+        virtualenv vEnv --system-site-packages
+        venv\Scripts\activate.bat
         pip install target\wheels\*.whl
         pip uninstall bed-reader --yes
         maturin develop
