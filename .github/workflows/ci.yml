@@ -30,7 +30,7 @@ jobs:
 
 
     - name: Fix MacOS for Rust https://github.com/pyenv/pyenv/issues/1245
-      if: runner.os != 'macOS'
+      if: runner.os == 'macOS'
       run: brew uninstall binutils
       
     - name: Set up Rust
