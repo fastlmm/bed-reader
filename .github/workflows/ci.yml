@@ -37,10 +37,6 @@ jobs:
     - name: Install Maturin
       run: python -m pip install --upgrade pip maturin
 
-    - name: Fix MacOS for Rust https://github.com/pyenv/pyenv/issues/1245
-      if: runner.os == 'macOS'
-      run: brew uninstall binutils
-
     - name: Test Rust
       run: cargo test --verbose
     - name: Build wheel with Maturin (and list)
