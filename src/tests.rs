@@ -3,6 +3,8 @@
 #[cfg(test)]
 use crate::try_div_4;
 #[cfg(test)]
+use crate::Dist;
+#[cfg(test)]
 use crate::{
     counts, impute_and_zero_mean_snps, matrix_subset_no_alloc, read, read_with_indexes, write,
 };
@@ -377,9 +379,7 @@ fn fill_in() {
 
         impute_and_zero_mean_snps(
             &mut val.view_mut(),
-            false,
-            0.0,
-            0.0,
+            Dist::Unit,
             true,
             false,
             &mut stats.view_mut(),
@@ -390,9 +390,7 @@ fn fill_in() {
         nd::Array2::fill(&mut val, f64::NAN);
         let result = impute_and_zero_mean_snps(
             &mut val.view_mut(),
-            false,
-            0.0,
-            0.0,
+            Dist::Unit,
             true,
             false,
             &mut stats.view_mut(),
@@ -405,9 +403,7 @@ fn fill_in() {
         let mut val = read(filename, *output_is_order_f_ptr, true, f64::NAN).unwrap();
         let result = impute_and_zero_mean_snps(
             &mut val.view_mut(),
-            true,
-            -10.0,
-            0.0,
+            Dist::Beta { a: -10.0, b: 0.0 },
             true,
             false,
             &mut stats.view_mut(),
@@ -420,9 +416,7 @@ fn fill_in() {
         nd::Array2::fill(&mut val, 3.0);
         let result = impute_and_zero_mean_snps(
             &mut val.view_mut(),
-            true,
-            0.5,
-            0.5,
+            Dist::Beta { a: 0.5, b: 0.5 },
             true,
             false,
             &mut stats.view_mut(),
@@ -435,9 +429,7 @@ fn fill_in() {
         nd::Array2::fill(&mut val, 1.0);
         impute_and_zero_mean_snps(
             &mut val.view_mut(),
-            true,
-            0.5,
-            0.5,
+            Dist::Beta { a: 0.5, b: 0.5 },
             true,
             false,
             &mut stats.view_mut(),
@@ -459,9 +451,7 @@ fn standardize_unit() {
         let mut stats = nd::Array2::<f64>::zeros((val.dim().1, 2));
         impute_and_zero_mean_snps(
             &mut val.view_mut(),
-            false,
-            0.0,
-            0.0,
+            Dist::Unit,
             true,
             false,
             &mut stats.view_mut(),
@@ -537,9 +527,7 @@ fn standardize_beta() {
         let mut stats = nd::Array2::<f64>::zeros((val.dim().1, 2));
         impute_and_zero_mean_snps(
             &mut val.view_mut(),
-            true,
-            1.0,
-            25.0,
+            Dist::Beta { a: 1.0, b: 25.0 },
             true,
             false,
             &mut stats.view_mut(),

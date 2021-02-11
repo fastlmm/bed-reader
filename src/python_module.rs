@@ -9,7 +9,7 @@ use pyo3::{
 
 use crate::{
     create_pool, impute_and_zero_mean_snps, matrix_subset_no_alloc, read_no_alloc, write, BedError,
-    BedErrorPlus,
+    BedErrorPlus, Dist,
 };
 
 #[pymodule]
@@ -266,18 +266,25 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     ) -> Result<(), PyErr> {
         let mut val = unsafe { val.as_array_mut() };
         let mut stats = unsafe { stats.as_array_mut() };
+        let dist = create_dist(beta_not_unit_variance, beta_a, beta_b);
         create_pool(num_threads)?.install(|| {
             impute_and_zero_mean_snps(
                 &mut val.view_mut(),
-                beta_not_unit_variance,
-                beta_a,
-                beta_b,
+                dist,
                 apply_in_place,
                 use_stats,
                 &mut stats.view_mut(),
             )
         })?;
         Ok(())
+    }
+
+    fn create_dist(beta_not_unit_variance: bool, a: f64, b: f64) -> Dist {
+        if beta_not_unit_variance {
+            return Dist::Beta { a: a, b: b };
+        } else {
+            return Dist::Unit;
+        };
     }
 
     #[pyfn(m, "standardize_f64")]
@@ -294,13 +301,12 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     ) -> Result<(), PyErr> {
         let mut val = unsafe { val.as_array_mut() };
         let mut stats = unsafe { stats.as_array_mut() };
+        let dist = create_dist(beta_not_unit_variance, beta_a, beta_b);
 
         create_pool(num_threads)?.install(|| {
             impute_and_zero_mean_snps(
                 &mut val.view_mut(),
-                beta_not_unit_variance,
-                beta_a,
-                beta_b,
+                dist,
                 apply_in_place,
                 use_stats,
                 &mut stats.view_mut(),

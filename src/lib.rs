@@ -447,13 +447,16 @@ pub fn matrix_subset_no_alloc<
     }
 }
 
+pub enum Dist {
+    Unit,
+    Beta { a: f64, b: f64 },
+}
+
 pub fn impute_and_zero_mean_snps<
     T: Default + Copy + Debug + Sync + Send + Float + ToPrimitive + FromPrimitive,
 >(
     val: &mut nd::ArrayViewMut2<'_, T>,
-    beta_not_unit_variance: bool,
-    beta_a: f64,
-    beta_b: f64,
+    dist: Dist,
     apply_in_place: bool,
     use_stats: bool,
     stats: &mut nd::ArrayViewMut2<'_, T>,
@@ -470,9 +473,7 @@ pub fn impute_and_zero_mean_snps<
                     apply_in_place,
                     use_stats,
                     &mut stats_row,
-                    beta_a,
-                    beta_b,
-                    beta_not_unit_variance,
+                    &dist,
                     two,
                 )
             });
@@ -486,32 +487,21 @@ pub fn impute_and_zero_mean_snps<
         return Ok(());
     } else {
         //If C-order
-        return _process_all_iids(
-            val,
-            apply_in_place,
-            use_stats,
-            stats,
-            beta_not_unit_variance,
-            beta_a,
-            beta_b,
-            two,
-        );
+        return _process_all_iids(val, apply_in_place, use_stats, stats, dist, two);
     }
 }
 
 fn find_factor<T: Default + Copy + Debug + Sync + Send + Float + ToPrimitive + FromPrimitive>(
-    beta_not_unit_variance: bool,
-    beta_a: f64,
-    beta_b: f64,
+    dist: &Dist,
     mean_s: T,
     std: T,
 ) -> Result<T, BedError> {
-    if beta_not_unit_variance {
+    if let Dist::Beta { a, b } = dist {
         // Try to create a beta dist
-        let beta_dist = if let Ok(beta_dist) = Beta::new(beta_a, beta_b) {
+        let beta_dist = if let Ok(beta_dist) = Beta::new(*a, *b) {
             beta_dist
         } else {
-            return Err(BedError::CannotCreateBetaDist(beta_a, beta_b));
+            return Err(BedError::CannotCreateBetaDist(*a, *b));
         };
 
         // Try to an f64 maf
@@ -540,9 +530,7 @@ fn _process_sid<T: Default + Copy + Debug + Sync + Send + Float + ToPrimitive + 
     apply_in_place: bool,
     use_stats: bool,
     stats_row: &mut nd::ArrayViewMut1<'_, T>,
-    beta_a: f64,
-    beta_b: f64,
-    beta_not_unit_variance: bool,
+    dist: &Dist,
     two: T,
 ) -> Result<(), BedError> {
     if !use_stats {
@@ -565,7 +553,9 @@ fn _process_sid<T: Default + Copy + Debug + Sync + Send + Float + ToPrimitive + 
         let mean_s = sum_s / n_observed; //compute the mean over observed individuals for the current SNP
         let mean2_s: T = sum2_s / n_observed; //compute the mean of the squared SNP
 
-        if mean_s.is_nan() || (beta_not_unit_variance && ((mean_s > two) || (mean_s < T::zero()))) {
+        if mean_s.is_nan()
+            || (matches!(dist, Dist::Beta { a:_,b:_}) && ((mean_s > two) || (mean_s < T::zero())))
+        {
             return Err(BedError::IllegalSnpMean.into());
         }
 
@@ -587,7 +577,7 @@ fn _process_sid<T: Default + Copy + Debug + Sync + Send + Float + ToPrimitive + 
             let std = stats_row[1];
             let is_snc = std.is_infinite();
 
-            let factor = find_factor(beta_not_unit_variance, beta_a, beta_b, mean_s, std)?;
+            let factor = find_factor(&dist, mean_s, std)?;
 
             for iid_i in 0..col.len() {
                 //check for Missing (NAN) or SNC
@@ -609,9 +599,7 @@ fn _process_all_iids<
     apply_in_place: bool,
     use_stats: bool,
     stats: &mut nd::ArrayViewMut2<'_, T>,
-    beta_not_unit_variance: bool,
-    beta_a: f64,
-    beta_b: f64,
+    dist: Dist,
     two: T,
 ) -> Result<(), BedErrorPlus> {
     let sid_count = val.dim().1;
@@ -653,7 +641,7 @@ fn _process_all_iids<
             let mean2_s: T = sum2_s / n_observed; //compute the mean of the squared SNP
 
             if mean_s.is_nan()
-                || (beta_not_unit_variance && ((mean_s > two) || (mean_s < T::zero())))
+                || (matches!(dist, Dist::Beta { a:_, b:_ }) && ((mean_s > two) || (mean_s < T::zero())))
             {
                 *result_ptr = Err(BedError::IllegalSnpMean);
                 return;
@@ -681,13 +669,7 @@ fn _process_all_iids<
             .zip(&mut factor_array)
             .par_bridge()
             .try_for_each(|(stats_row, factor_ptr)| {
-                match find_factor(
-                    beta_not_unit_variance,
-                    beta_a,
-                    beta_b,
-                    stats_row[0],
-                    stats_row[1],
-                ) {
+                match find_factor(&dist, stats_row[0], stats_row[1]) {
                     Err(e) => Err(e),
                     Ok(factor) => {
                         *factor_ptr = factor;
