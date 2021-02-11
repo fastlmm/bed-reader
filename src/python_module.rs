@@ -192,7 +192,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         val_out: &PyArray3<f64>,
         num_threads: usize,
     ) -> Result<(), PyErr> {
-        println!("cmk subset6464 {:?}", num_threads);
 
         let iid_index = iid_index.readonly();
         let sid_index = sid_index.readonly();
@@ -217,7 +216,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         val_out: &PyArray3<f64>,
         num_threads: usize,
     ) -> Result<(), PyErr> {
-        println!("cmk subset3264 {:?}", num_threads);
+
         let iid_index = iid_index.readonly();
         let sid_index = sid_index.readonly();
         let val_in = unsafe { val_in.as_array() };
@@ -241,7 +240,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         val_out: &PyArray3<f32>,
         num_threads: usize,
     ) -> Result<(), PyErr> {
-        println!("cmk subset3232 {:?}", num_threads);
+
         let iid_index = iid_index.readonly();
         let sid_index = sid_index.readonly();
         let val_in = unsafe { val_in.as_array() };
@@ -296,7 +295,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         stats: &PyArray2<f64>,
         num_threads: usize,
     ) -> Result<(), PyErr> {
-        println!("cmk std64 {:?}", num_threads);
 
         let mut val = unsafe { val.as_array_mut() };
         let mut stats = unsafe { stats.as_array_mut() };
