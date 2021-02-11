@@ -49,17 +49,19 @@ pub enum BedErrorPlus {
     #[error(transparent)]
     ThreadPoolError(#[from] ThreadPoolBuildError),
 }
-// !!!cmk add variables to the error messages? https://docs.rs/thiserror/1.0.23/thiserror/
-#[derive(Error, Debug, Clone, Copy)]
+// !!!cmk0 add variables to the error messages? https://docs.rs/thiserror/1.0.23/thiserror/
+#[derive(Error, Debug, Clone)]
 pub enum BedError {
-    #[error("Ill-formed BED file. BED file header is incorrect or length is wrong.")]
-    IllFormed,
+    #[error("Ill-formed BED file. BED file header is incorrect or length is wrong. '{0}'")]
+    IllFormed(String),
 
-    #[error("Ill-formed BED file. BED file header is incorrect. Expected mode to be 0 or 1.")]
-    BadMode,
+    #[error(
+        "Ill-formed BED file. BED file header is incorrect. Expected mode to be 0 or 1. '{0}'"
+    )]
+    BadMode(String),
 
-    #[error("Attempt to write illegal value to BED file. Only 0,1,2,missing allowed.")]
-    BadValue,
+    #[error("Attempt to write illegal value to BED file. Only 0,1,2,missing allowed. '{0}'")]
+    BadValue(String),
 
     #[error("No individual observed for the SNP.")]
     NoIndividuals,
@@ -67,29 +69,28 @@ pub enum BedError {
     #[error("Illegal SNP mean.")]
     IllegalSnpMean,
 
-    #[error("Index to individual too large.")]
-    IidIndexTooBig,
+    #[error("Index to individual larger than the number of individuals. (Index value {0})")]
+    IidIndexTooBig(usize),
 
-    #[error("Index to SNP too large.")]
-    SidIndexTooBig,
+    #[error("Index to SNP larger than the number of SNPs. (Index value {0})")]
+    SidIndexTooBig(usize),
 
-    #[error("Length of iid_index and sid_index must match dimensions of output array.")]
-    IndexMismatch,
+    #[error("Length of iid_index ({0}) and sid_index ({1}) must match dimensions of output array ({2},{3}).")]
+    IndexMismatch(usize, usize, usize, usize),
 
-    #[error("Length of iid_index and sid_index must match dimensions of output array.")]
-    IndexesTooBigForFiles,
+    #[error("Indexes ({0},{1}) too big for files")]
+    IndexesTooBigForFiles(usize, usize),
 
-    #[error("Output matrix dimensions doesn't match the length of the indexes.")]
-    SubsetMismatch,
+    #[error("Subset: length of iid_index ({0}) and sid_index ({1}) must match dimensions of output array ({2},{3}).")]
+    SubsetMismatch(usize, usize, usize, usize),
 
     #[error("Cannot convert beta values to/from float 64")]
-    CannotConvertToFromF64,
+    CannotConvertBetaToFromF64,
 
-    #[error("Cannot create Beta Dist with given parameters")]
-    CannotCreateBetaDist,
+    #[error("Cannot create Beta Dist with given parameters ({0},{1})")]
+    CannotCreateBetaDist(f64, f64),
 }
 
-// !!!cmk "no_net_alloc"???
 fn read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
     filename: &str,
     iid_count: usize,
@@ -104,7 +105,7 @@ fn read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
     let mut bytes_vector: Vec<u8> = vec![0; CB_HEADER_USIZE];
     reader.read_exact(&mut bytes_vector)?;
     if (BED_FILE_MAGIC1 != bytes_vector[0]) || (BED_FILE_MAGIC2 != bytes_vector[1]) {
-        return Err(BedError::IllFormed.into());
+        return Err(BedError::IllFormed(filename.to_string()).into());
     }
     match bytes_vector[2] {
         0 => {
@@ -133,7 +134,7 @@ fn read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
             );
         }
         _ => {
-            return Err(BedError::BadMode.into());
+            return Err(BedError::BadMode(filename.to_string()).into());
         }
     }
 }
@@ -168,24 +169,23 @@ fn try_div_4<T: Max + TryFrom<usize> + Sub<Output = T> + Div<Output = T> + Ord>(
     };
     let in_iid_count_div4_t = match T::try_from(in_iid_count_div4) {
         Ok(v) => v,
-        Err(_) => return Err(BedError::IndexesTooBigForFiles.into()),
+        Err(_) => return Err(BedError::IndexesTooBigForFiles(in_iid_count, in_sid_count).into()),
     };
     let in_sid_count_t = match T::try_from(in_sid_count) {
         Ok(v) => v,
-        Err(_) => return Err(BedError::IndexesTooBigForFiles.into()),
+        Err(_) => return Err(BedError::IndexesTooBigForFiles(in_iid_count, in_sid_count).into()),
     };
 
     let m: T = Max::max(); // Don't know how to move this into the next line.
     if in_sid_count > 0 && (m - cb_header) / in_sid_count_t < in_iid_count_div4_t {
-        return Err(BedError::IndexesTooBigForFiles.into());
+        return Err(BedError::IndexesTooBigForFiles(in_iid_count, in_sid_count).into());
     }
 
     return Ok((in_iid_count_div4, in_iid_count_div4_t));
 }
 
-// !!!cmk should we add a check that the file is exactly the expected size?
-// !!!cmk wouldn't it be better to only open the file once instead of twice so that it couldn't change or disappear?
-// !!!cmk this is pub only for testing
+// !!!cmk0 wouldn't it be better to only open the file once instead of twice so that it couldn't change or disappear?
+// !!!cmk0 this is pub only for testing
 pub fn internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
     filename: &str,
     in_iid_count: usize,
@@ -196,11 +196,11 @@ pub fn internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + S
     missing_value: TOut,
     out_val: &mut nd::ArrayViewMut2<'_, TOut>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
 ) -> Result<(), BedErrorPlus> {
-    // !!!cmk test on length zero *_indexes
+    // !!!cmk0 test on length zero *_indexes
     // Find the largest in_iid_i (if any) and check its size.
     if let Some(in_max_iid_i) = iid_index.iter().max() {
         if *in_max_iid_i >= in_iid_count {
-            return Err(BedError::IidIndexTooBig.into());
+            return Err(BedError::IidIndexTooBig(*in_max_iid_i).into());
         }
     }
 
@@ -217,7 +217,9 @@ pub fn internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + S
     if reader.seek(SeekFrom::End(0))?
         != in_iid_count_div4_u64 * (in_sid_count as u64) + CB_HEADER_U64
     {
-        return Err(BedErrorPlus::BedError(BedError::IllFormed));
+        return Err(BedErrorPlus::BedError(BedError::IllFormed(
+            filename.to_string(),
+        )));
     }
 
     // See https://morestina.net/blog/1432/parallel-stream-processing-with-rayon
@@ -228,7 +230,7 @@ pub fn internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + S
         .map(|out_sid_i| {
             let in_sid_i = sid_index[out_sid_i];
             if in_sid_i >= in_sid_count {
-                return Err(BedErrorPlus::BedError(BedError::SidIndexTooBig));
+                return Err(BedErrorPlus::BedError(BedError::SidIndexTooBig(in_sid_i)));
             }
             let mut bytes_vector: Vec<u8> = vec![0; in_iid_count_div4];
             let pos: u64 = (in_sid_i as u64) * in_iid_count_div4_u64 + CB_HEADER_U64; // "as" and math is safe because of early checks
@@ -312,9 +314,7 @@ pub fn read_with_indexes<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
     return Ok(val);
 }
 
-// !!!cmk put in [No ignore] thing to force results to be used
-// !!!cmk return good error messages from threads
-
+// !!!cmk0 put in [No ignore] thing to force results to be used
 pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
     filename: &str,
     output_is_order_f: bool,
@@ -343,13 +343,13 @@ pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
     return Ok(val);
 }
 
-// !!!cmk test writing zero length vals
-// !!!cmk add thread control
+// !!!cmk0 test writing zero length vals
+// !!!cmk0 add thread control
 pub fn write<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
     filename: &str,
     val: &nd::ArrayView2<'_, T>,
     count_a1: bool,
-    missing: (bool, T), // !!!cmk change to a enum?
+    missing: (bool, T), // !!!cmk0 change to a enum?
 ) -> Result<(), BedErrorPlus> {
     let mut writer = BufWriter::new(File::create(filename)?);
     writer.write_all(&[BED_FILE_MAGIC1, BED_FILE_MAGIC2, 0x01])?;
@@ -380,7 +380,7 @@ pub fn write<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
             } else if (use_nan && v0 != v0) || (!use_nan && v0 == other_missing_value) {
                 1
             } else {
-                return Err(BedError::BadValue.into());
+                return Err(BedError::BadValue(filename.to_string()).into());
             };
             // Possible optimization: We could pre-compute the conversion, the division, the mod, and the multiply*2
             let i_div_4 = iid_i / 4;
@@ -393,7 +393,7 @@ pub fn write<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
 }
 
 fn count_lines(path_buf: PathBuf) -> Result<usize, BedErrorPlus> {
-    let reader = BufReader::new(File::open(path_buf)?); // !!!cmk would be nice if error message mentioned fam/bim
+    let reader = BufReader::new(File::open(path_buf)?); // !!!cmk0 would be nice if error message mentioned fam/bim
     let count = reader.lines().count();
     return Ok(count);
 }
@@ -418,7 +418,13 @@ pub fn matrix_subset_no_alloc<
     let did_count = in_val.dim().2;
 
     if (out_iid_count, out_sid_count, did_count) != out_val.dim() {
-        return Err(BedError::SubsetMismatch.into());
+        return Err(BedError::SubsetMismatch(
+            out_iid_count,
+            out_sid_count,
+            out_val.dim().0,
+            out_val.dim().1,
+        )
+        .into());
     }
 
     // If output is F-order (or in general if iid stride is no more than sid_stride)
@@ -474,7 +480,10 @@ pub fn impute_and_zero_mean_snps<
             });
 
         // Check the result list for errors
-        result_list.iter().par_bridge().try_for_each(|x| *x)?;
+        result_list
+            .iter()
+            .par_bridge()
+            .try_for_each(|x| (*x).clone())?;
 
         return Ok(());
     } else {
@@ -506,14 +515,14 @@ pub fn find_factor<
         let beta_dist = if let Ok(beta_dist) = Beta::new(beta_a, beta_b) {
             beta_dist
         } else {
-            return Err(BedError::CannotCreateBetaDist);
+            return Err(BedError::CannotCreateBetaDist(beta_a, beta_b));
         };
 
         // Try to an f64 maf
         let mut maf = if let Some(mean_u64) = mean_s.to_f64() {
             mean_u64 / 2.0
         } else {
-            return Err(BedError::CannotConvertToFromF64);
+            return Err(BedError::CannotConvertBetaToFromF64);
         };
         if maf > 0.5 {
             maf = 1.0 - maf;
@@ -523,7 +532,7 @@ pub fn find_factor<
         return if let Some(b) = T::from_f64(beta_dist.pdf(maf)) {
             Ok(b)
         } else {
-            Err(BedError::CannotConvertToFromF64)
+            Err(BedError::CannotConvertBetaToFromF64)
         };
     } else {
         return Ok(T::one() / std);
@@ -664,7 +673,7 @@ fn _process_all_iids<
             stats_row[1] = std;
         });
         // Check the result list for errors
-        result_list.par_iter().try_for_each(|x| *x)?; // !!!cmk tip
+        result_list.par_iter().try_for_each(|x| (*x).clone())?; // !!!cmk tip
     }
 
     if apply_in_place {
@@ -719,5 +728,3 @@ pub fn create_pool(num_threads: usize) -> Result<rayon::ThreadPool, BedErrorPlus
 
 mod python_module;
 mod tests;
-
-// !!!cmk add default values

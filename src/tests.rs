@@ -23,37 +23,8 @@ use std::path::PathBuf;
 #[cfg(test)]
 use temp_testdir::TempDir;
 
-// fn big1() {
-//     let bigfile = r"M:\deldir\genbgen\2\merged_487400x220000.1.bed"; // !!!cmk not in datafolder
-//                                                                      //slicer = np.s_[4000:6000,:20000]
-//                                                                      //with open_bed(bigfile,num_threads=None) as bed:
-//     for fortran_order in [false, true].iter() {
-//         for dtype in ["f64"].iter() {
-//             let start = Instant::now();
-//             let iid_index = (4000..6000).collect::<Vec<usize>>();
-//             let sid_index = (0..20_000).collect::<Vec<usize>>();
-//             let _val1 = read_with_indexes(
-//                 bigfile,
-//                 &iid_index,
-//                 &sid_index,
-//                 *fortran_order,
-//                 true,
-//                 f64::NAN,
-//             );
-//             println!(
-//                 "{},{},{}",
-//                 fortran_order,
-//                 dtype,
-//                 start.elapsed().as_secs_f32()
-//             );
-//         }
-//     }
-// }
-
 #[test]
 fn best_int8() {
-    let path = std::env::current_dir().unwrap();
-    println!("cmk{}", path.display());
     let filename = "bed_reader/tests/data/some_missing.bed";
 
     for output_order_is_f in [true, false].iter() {
@@ -71,7 +42,6 @@ fn reference_val_i8(count_a1: bool) -> nd::Array2<i8> {
     let mut ref_val_i8 = nd::Array2::<i8>::zeros((row_count, col_count));
     for i in 0..row_count {
         for j in 0..col_count {
-            // !!!cmk use map?
             if ref_val[[i, j]].is_nan() {
                 ref_val_i8[[i, j]] = -127i8;
             } else {
@@ -99,9 +69,8 @@ fn read1() {
         true,
         -127,
     );
-    println!("cmk {:?}", result);
     match result {
-        Err(BedErrorPlus::BedError(BedError::IllFormed)) => (),
+        Err(BedErrorPlus::BedError(BedError::IllFormed(_))) => (),
         _ => panic!("test failure"),
     };
 }
@@ -147,7 +116,7 @@ fn allclose<
     equal_nan: bool,
 ) -> bool {
     assert!(val1.dim() == val2.dim());
-    // !!!cmk could be run in parallel
+    // Could be run in parallel
     let result = nd::Zip::from(val1)
         .and(val2)
         .fold(true, |acc, ptr_a, ptr_b| -> bool {
@@ -208,16 +177,15 @@ fn index() {
     )
     .unwrap();
 
-    // !!!cmk look for nd::ndarray macro/function to stack columns
+    // !!!cmk0 look for nd::ndarray macro/function to stack columns
     let col1 = ref_val_float.slice(nd::s![.., 2..3]);
     let col2 = ref_val_float.slice(nd::s![.., -2..-1]);
     assert!(allclose(&col1, &val.slice(nd::s![.., 0..1]), 1e-08, true));
     assert!(allclose(&col2, &val.slice(nd::s![.., 1..2]), 1e-08, true));
 
     let result = read_with_indexes(filename, &[usize::MAX], &[2], true, true, f32::NAN);
-    println!("cmk {:?}", result);
     match result {
-        Err(BedErrorPlus::BedError(BedError::IidIndexTooBig)) => (),
+        Err(BedErrorPlus::BedError(BedError::IidIndexTooBig(_))) => (),
         _ => panic!("test failure"),
     };
 
@@ -229,7 +197,6 @@ fn index() {
         true,
         f32::NAN,
     );
-    println!("cmk {:?}", result);
     match result {
         Err(BedErrorPlus::IOError(_)) => (),
         _ => panic!("test failure"),
@@ -243,16 +210,14 @@ fn index() {
         true,
         f32::NAN,
     );
-    println!("cmk {:?}", result);
     match result {
         Err(BedErrorPlus::IOError(_)) => (),
         _ => panic!("test failure"),
     };
 
     let result = read_with_indexes(filename, &[2], &[usize::MAX], true, true, f32::NAN);
-    println!("cmk {:?}", result);
     match result {
-        Err(BedErrorPlus::BedError(BedError::SidIndexTooBig)) => (),
+        Err(BedErrorPlus::BedError(BedError::SidIndexTooBig(_))) => (),
         _ => panic!("test failure"),
     };
 
@@ -267,9 +232,8 @@ fn index() {
         f64::NAN,
         &mut ignore_val.view_mut(),
     );
-    println!("cmk {:?}", result);
     match result {
-        Err(BedErrorPlus::BedError(BedError::IndexesTooBigForFiles)) => (),
+        Err(BedErrorPlus::BedError(BedError::IndexesTooBigForFiles(_, _))) => (),
         _ => panic!("test failure"),
     };
 
@@ -283,7 +247,6 @@ fn index() {
         f64::NAN,
         &mut ignore_val.view_mut(),
     );
-    println!("cmk {:?}", result);
     match result {
         Err(BedErrorPlus::IOError(_)) => (),
         _ => panic!("test failure"),
@@ -307,12 +270,8 @@ fn writer() {
         let to = Path::new(filename2).with_extension(ext);
         std::fs::copy(from, to).unwrap();
     }
-    println!("cmk {}", filename2);
 
     let val2 = read(filename2, false, true, -127).unwrap();
-
-    println!("cmk {}", val);
-    println!("cmk {}", val2);
     assert!(allclose(&val.view(), &val2.view(), 0, true));
 
     let val = read(filename, false, true, f64::NAN).unwrap();
@@ -326,33 +285,29 @@ fn writer() {
         let to = Path::new(filename2).with_extension(ext);
         std::fs::copy(from, to).unwrap();
     }
-    println!("cmk {}", filename2);
 
     let val2 = read(filename2, false, true, f64::NAN).unwrap();
 
-    println!("cmk {}", val);
-    println!("cmk {}", val2);
     assert!(allclose(&val.view(), &val2.view(), 1e-8, true));
 
     let mut val = read(filename, false, true, f64::NAN).unwrap();
     val[(0, 0)] = 5.0;
-    let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_5.bed"); // !!!cmk use Path instead of Pathbuf?
+    let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_5.bed"); // !!!cmk0 use Path instead of Pathbuf?
     let filename = path.as_os_str().to_str().unwrap();
     let result = write(filename, &val.view(), true, (true, f64::NAN));
-    println!("cmk {:?}", result);
     match result {
-        Err(BedErrorPlus::BedError(BedError::BadValue)) => (),
+        Err(BedErrorPlus::BedError(BedError::BadValue(_))) => (),
         _ => panic!("test failure"),
     };
 
     let val = nd::Array2::zeros((0, 0));
-    let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_0s.bed"); // !!!cmk use Path instead of Pathbuf?
+    let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_0s.bed"); // !!!cmk0 use Path instead of Pathbuf?
     let filename = path.as_os_str().to_str().unwrap();
     write(filename, &val.view(), true, (true, f64::NAN)).unwrap();
-    // !!!cmk should missing and beta use an enum or struct instead of tuples/multiple args
+    // !!!cmk0 should missing and beta use an enum or struct instead of tuples/multiple args
 
     let val: nd::Array2<i8> = nd::Array2::zeros((3, 0));
-    let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_3_0.bed"); // !!!cmk use Path instead of Pathbuf?
+    let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_3_0.bed"); // !!!cmk0 use Path instead of Pathbuf?
     let filename = path.as_os_str().to_str().unwrap();
     write(filename, &val.view(), true, (true, -127)).unwrap();
 }
@@ -407,9 +362,8 @@ fn subset1() {
     assert_eq!(out_val2, answer32);
 
     let result = matrix_subset_no_alloc(&in_val2.view(), &[0], &[], &mut out_val2.view_mut());
-    println!("cmk {:?}", result);
     match result {
-        Err(BedErrorPlus::BedError(BedError::SubsetMismatch)) => (),
+        Err(BedErrorPlus::BedError(BedError::SubsetMismatch(_, _, _, _))) => (),
         _ => panic!("test failure"),
     }
 }
@@ -444,7 +398,6 @@ fn fill_in() {
             false,
             &mut stats.view_mut(),
         );
-        println!("cmk {:?}", result);
         match result {
             Err(BedErrorPlus::BedError(BedError::NoIndividuals)) => (),
             _ => panic!("test failure"),
@@ -460,9 +413,8 @@ fn fill_in() {
             false,
             &mut stats.view_mut(),
         );
-        println!("cmk {:?}", result);
         match result {
-            Err(BedErrorPlus::BedError(BedError::CannotCreateBetaDist)) => (),
+            Err(BedErrorPlus::BedError(BedError::CannotCreateBetaDist(_, _))) => (),
             _ => panic!("test failure"),
         }
 
@@ -476,7 +428,6 @@ fn fill_in() {
             false,
             &mut stats.view_mut(),
         );
-        println!("cmk {:?}", result);
         match result {
             Err(BedErrorPlus::BedError(BedError::IllegalSnpMean)) => (),
             _ => panic!("test failure"),
@@ -545,11 +496,11 @@ fn div_4() {
     };
 
     match try_div_4(2000, 0, 0u8) {
-        Err(BedErrorPlus::BedError(BedError::IndexesTooBigForFiles)) => (),
+        Err(BedErrorPlus::BedError(BedError::IndexesTooBigForFiles(_, _))) => (),
         _ => panic!("test failure"),
     };
     match try_div_4(0, 256, 0u8) {
-        Err(BedErrorPlus::BedError(BedError::IndexesTooBigForFiles)) => (),
+        Err(BedErrorPlus::BedError(BedError::IndexesTooBigForFiles(_, _))) => (),
         _ => panic!("test failure"),
     };
 
@@ -559,17 +510,17 @@ fn div_4() {
     };
 
     match try_div_4(25 * 4 + 1, 10, 5u8) {
-        Err(BedErrorPlus::BedError(BedError::IndexesTooBigForFiles)) => (),
+        Err(BedErrorPlus::BedError(BedError::IndexesTooBigForFiles(_, _))) => (),
         _ => panic!("test failure"),
     };
 
     match try_div_4(25 * 4, 11, 5u8) {
-        Err(BedErrorPlus::BedError(BedError::IndexesTooBigForFiles)) => (),
+        Err(BedErrorPlus::BedError(BedError::IndexesTooBigForFiles(_, _))) => (),
         _ => panic!("test failure"),
     };
 
     match try_div_4(25 * 4, 10, 6u8) {
-        Err(BedErrorPlus::BedError(BedError::IndexesTooBigForFiles)) => (),
+        Err(BedErrorPlus::BedError(BedError::IndexesTooBigForFiles(_, _))) => (),
         _ => panic!("test failure"),
     };
 }
@@ -634,9 +585,8 @@ fn read_errors() {
         f64::NAN,
         &mut val.view_mut(),
     );
-    // !!!cmk println!("cmk {:?}", result);
     match result {
-        Err(BedErrorPlus::BedError(BedError::IllFormed)) => (),
+        Err(BedErrorPlus::BedError(BedError::IllFormed(_))) => (),
         _ => panic!("test failure"),
     };
 
@@ -650,7 +600,6 @@ fn read_errors() {
         f64::NAN,
         &mut val.view_mut(),
     );
-    println!("cmk {:?}", result);
     match result {
         Err(BedErrorPlus::IOError(_)) => (),
         _ => panic!("test failure"),
@@ -675,7 +624,6 @@ fn read_modes() {
         -127i8,
         &mut val_small_mode_1.view_mut(),
     );
-    println!("cmk {:?}", result);
     match result {
         Ok(_) => (),
         _ => panic!("test failure"),
@@ -691,9 +639,8 @@ fn read_modes() {
         -127i8,
         &mut val_small_mode_1.view_mut(),
     );
-    println!("cmk {:?}", result);
     match result {
-        Err(BedErrorPlus::BedError(BedError::IllFormed)) => (),
+        Err(BedErrorPlus::BedError(BedError::IllFormed(_))) => (),
         _ => panic!("test failure"),
     };
 
@@ -708,7 +655,6 @@ fn read_modes() {
         -127i8,
         &mut val_small_mode_0.view_mut(),
     );
-    println!("cmk {:?}", result);
     match result {
         Ok(_) => (),
         _ => panic!("test failure"),
@@ -726,16 +672,11 @@ fn read_modes() {
         -127i8,
         &mut val_small_mode_1.view_mut(),
     );
-    println!("cmk {:?}", result);
     match result {
-        Err(BedErrorPlus::BedError(BedError::BadMode)) => (),
+        Err(BedErrorPlus::BedError(BedError::BadMode(_))) => (),
         _ => panic!("test failure"),
     };
 }
 
 // cmk What does  pyo3::Python::with_gil mean?
-// // !!!cmk add more tests from the python/c++ project
-// // 2nd half of test_bed_int8
-// // test_respect_read_inputs
-// // What happens if index is out of range (too big? too small?)
-// // Coverage
+// cmk Coverage

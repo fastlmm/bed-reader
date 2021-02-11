@@ -67,7 +67,9 @@ def to_bed(
         >>> from bed_reader import to_bed, tmp_path
         >>>
         >>> output_file = tmp_path() / "small.bed"
-        >>> val = [[1.0, 0.0, np.nan, 0.0], [2.0, 0.0, np.nan, 2.0], [0.0, 1.0, 2.0, 0.0]]
+        >>> val = [[1.0, 0.0, np.nan, 0.0],
+        ...        [2.0, 0.0, np.nan, 2.0],
+        ...        [0.0, 1.0, 2.0, 0.0]]
         >>> properties = {
         ...    "fid": ["fid1", "fid1", "fid2"],
         ...    "iid": ["iid1", "iid2", "iid3"],
@@ -85,8 +87,8 @@ def to_bed(
         >>> to_bed(output_file, val, properties=properties)
 
     Here, no properties are given, so default values are assigned.
-    If we then read the new file and list the chromosome property, it is an array of '0's,
-    the default chromosome value.
+    If we then read the new file and list the chromosome property,
+    it is an array of '0's, the default chromosome value.
 
     .. doctest::
 
@@ -136,7 +138,8 @@ def to_bed(
                 )
             else:
                 raise ValueError(
-                    f"dtype '{val.dtype}' not known, only 'int8', 'float32', and 'float64' are allowed."
+                    f"dtype '{val.dtype}' not known, only "
+                    + "'int8', 'float32', and 'float64' are allowed."
                 )
         except SystemError as system_error:
             try:
@@ -182,7 +185,8 @@ def to_bed(
                             code = 0b01  # backwards on purpose
                         else:
                             raise ValueError(
-                                "Attempt to write illegal value to .bed file. Only 0,1,2,missing allowed."
+                                "Attempt to write illegal value to .bed file. "
+                                + "Only 0,1,2,missing allowed."
                             )
                         byte |= code << (val_index * 2)
                     bed_filepointer.write(bytes(bytearray([byte])))

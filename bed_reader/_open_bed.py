@@ -100,32 +100,35 @@ class open_bed:
              "fid" (family id), "iid" (individual or sample id), "father" (father id),
              "mother" (mother id), "sex", "pheno" (phenotype), "chromosome", "sid"
              (SNP or variant id), "cm_position" (centimorgan position), "bp_position"
-             (base-pair position), "allele_1", "allele_2".            
+             (base-pair position), "allele_1", "allele_2".
 
           The values are replacement lists or arrays. A value can also be `None`,
           meaning do not read or offer this property. See examples, below.
 
           The list or array will be converted to a :class:`numpy.ndarray`
-          of the appropriate dtype, if necessary. Any :class:`numpy.nan` values will converted to
-          the appropriate missing value. The PLINK `.fam specification <https://www.cog-genomics.org/plink2/formats#fam>`_
-          and `.bim specification <https://www.cog-genomics.org/plink2/formats#bim>`_ lists
-          the dtypes and missing values for each property.
+          of the appropriate dtype, if necessary. Any :class:`numpy.nan` values
+          will converted to the appropriate missing value. The PLINK `.fam specification
+          <https://www.cog-genomics.org/plink2/formats#fam>`_
+          and `.bim specification <https://www.cog-genomics.org/plink2/formats#bim>`_
+          lists the dtypes and missing values for each property.
 
     count_A1: bool, optional
-        True (default) to count the number of A1 alleles (the PLINK standard). False to count the number of A2 alleles.
+        True (default) to count the number of A1 alleles (the PLINK standard).
+        False to count the number of A2 alleles.
     num_threads: None or int, optional
-        The number of threads with which to read data. Defaults to all available processors.
+        The number of threads with which to read data. Defaults to all available
+        processors.
         Can also be set with the 'MKL_NUM_THREADS' environment variable. #!!!cmk
     skip_format_check: bool, optional
-        False (default) to immediately check for expected starting bytes in the .bed file.
-        True to delay the check until (and if) data is read.
+        False (default) to immediately check for expected starting bytes in
+        the .bed file. True to delay the check until (and if) data is read.
     fam_filepath: pathlib.Path or str, optional
         Path to the file containing information about each individual (sample).
         Defaults to replacing the .bed file’s suffix with .fam.
     bim_filepath: pathlib.Path or str, optional
         Path to the file containing information about each SNP (variant).
         Defaults to replacing the .bed file’s suffix with .bim.
-        
+
     Returns
     -------
     open_bed
@@ -134,7 +137,8 @@ class open_bed:
     Examples
     --------
 
-    List individual (sample) :attr:`iid` and SNP (variant) :attr:`sid`, then :meth:`read` the whole file.
+    List individual (sample) :attr:`iid` and SNP (variant) :attr:`sid`, then :meth:`read`
+    the whole file.
 
     .. doctest::
 
@@ -172,7 +176,8 @@ class open_bed:
         >>> print(bed.sid) # same as before
         ['sid1' 'sid2' 'sid3' 'sid4']
 
-    Give the number of individuals (samples) and SNPs (variants) so that the .fam and .bim files need never be opened.
+    Give the number of individuals (samples) and SNPs (variants) so that the .fam and
+    .bim files need never be opened.
 
         >>> with open_bed(file_name, iid_count=3, sid_count=4) as bed:
         ...     print(bed.read())
@@ -245,11 +250,12 @@ class open_bed:
         Parameters
         ----------
         index:
-            An optional expression specifying the individuals (samples) and SNPs (variants)
-            to read. (See examples, below).
+            An optional expression specifying the individuals (samples) and SNPs
+            (variants) to read. (See examples, below).
             Defaults to ``None``, meaning read all.
 
-            (If index is a tuple, the first component indexes the individuals and the second indexes
+            (If index is a tuple, the first component indexes the individuals and the
+            second indexes
             the SNPs. If it is not a tuple and not None, it indexes SNPs.)
 
         dtype: {'float32' (default), 'float64', 'int8'}, optional
@@ -258,7 +264,8 @@ class open_bed:
             The desired memory layout for the returned array.
             Defaults to ``F`` (Fortran order, which is SNP-major).
         force_python_only: bool, optional
-            If False (default), uses the faster C++ code; otherwise it uses the slower pure Python code.
+            If False (default), uses the faster C++ code; otherwise it uses the slower
+            pure Python code.
 
         Returns
         -------
@@ -266,8 +273,8 @@ class open_bed:
             2-D array containing values of 0, 1, 2, or missing
 
 
-        Rows represent individuals (samples). Columns represent SNPs (variants). 
-        
+        Rows represent individuals (samples). Columns represent SNPs (variants).
+
         For ``dtype`` 'float32' and 'float64', NaN indicates missing values.
         For 'int8', -127 indicates missing values.
 
@@ -287,7 +294,9 @@ class open_bed:
              [ 2.  0. nan  2.]
              [ 0.  1.  2.  0.]]
 
-        To read selected individuals (samples) and/or SNPs (variants), set each part of a :class:`numpy.s_` to an `int`, a list of `int`, a slice expression, or a list of `bool`.
+        To read selected individuals (samples) and/or SNPs (variants), set each part of
+        a :class:`numpy.s_` to an `int`, a list of `int`, a slice expression, or
+        a list of `bool`.
         Negative integers count from the end of the list.
 
 
@@ -303,7 +312,8 @@ class open_bed:
             [[nan  0.  1.]
              [nan  2.  2.]
              [ 2.  0.  0.]]
-            >>> print(bed.read(np.s_[:,1:4])) #read SNPs from 1 (inclusive) to 4 (exclusive)
+            >>> # read SNPs from 1 (inclusive) to 4 (exclusive)
+            >>> print(bed.read(np.s_[:,1:4]))
             [[ 0. nan  0.]
              [ 0. nan  2.]
              [ 1.  2.  0.]]
@@ -342,7 +352,8 @@ class open_bed:
         if order not in {"F", "C"}:
             raise ValueError(f"order '{order}' not known, only 'F', 'C'")
 
-        # Later happy with _iid_range and _sid_range or could it be done with allocation them?
+        # Later happy with _iid_range and _sid_range or could it be done with
+        # allocation them?
         if self._iid_range is None:
             self._iid_range = np.arange(self.iid_count, dtype="uintp")
         if self._sid_range is None:
@@ -371,7 +382,8 @@ class open_bed:
                     reader = read_f32
                 else:
                     raise ValueError(
-                        f"dtype '{val.dtype}' not known, only 'int8', 'float32', and 'float64' are allowed."
+                        f"dtype '{val.dtype}' not known, only "
+                        + "'int8', 'float32', and 'float64' are allowed."
                     )
 
                 reader(
@@ -396,9 +408,11 @@ class open_bed:
                 missing = -127
             else:
                 missing = np.nan
-            # An earlier version of this code had a way to read consecutive SNPs of code in one read. May want
+            # An earlier version of this code had a way to read consecutive SNPs of code
+            # in one read. May want
             # to add that ability back to the code.
-            # Also, note that reading with python will often result in non-contiguous memory
+            # Also, note that reading with python will often result in
+            # non-contiguous memory
             # logging.warn("using pure python plink parser (might be much slower!!)")
             val = np.zeros(
                 ((int(np.ceil(0.25 * self.iid_count)) * 4), len(sid_index)),
@@ -406,14 +420,12 @@ class open_bed:
                 dtype=dtype,
             )  # allocate it a little big
 
+            nbyte = int(np.ceil(0.25 * self.iid_count))
             with open(self.filepath, "rb") as filepointer:
                 for SNPsIndex, bimIndex in enumerate(sid_index):
 
                     startbit = int(np.ceil(0.25 * self.iid_count) * bimIndex + 3)
                     filepointer.seek(startbit)
-                    nbyte = int(
-                        np.ceil(0.25 * self.iid_count)
-                    )  # !!!cmk move out of loop
                     bytes = np.array(bytearray(filepointer.read(nbyte))).reshape(
                         (int(np.ceil(0.25 * self.iid_count)), 1), order="F"
                     )
@@ -451,7 +463,7 @@ class open_bed:
     def fid(self) -> np.ndarray:
         """
         Family id of each individual (sample).
-       
+
         Returns
         -------
         numpy.ndarray
@@ -459,7 +471,7 @@ class open_bed:
 
 
         '0' represents a missing value.
-        
+
         If needed, will cause a one-time read of the .fam file.
 
         Example
@@ -482,7 +494,7 @@ class open_bed:
     def iid(self) -> np.ndarray:
         """
         Individual id of each individual (sample).
-       
+
         Returns
         -------
         numpy.ndarray
@@ -510,7 +522,7 @@ class open_bed:
     def father(self) -> np.ndarray:
         """
         Father id of each individual (sample).
-       
+
         Returns
         -------
         numpy.ndarray
@@ -518,7 +530,7 @@ class open_bed:
 
 
         '0' represents a missing value.
-        
+
         If needed, will cause a one-time read of the .fam file.
 
         Example
@@ -540,7 +552,7 @@ class open_bed:
     def mother(self) -> np.ndarray:
         """
         Mother id of each individual (sample).
-       
+
         Returns
         -------
         numpy.ndarray
@@ -548,7 +560,7 @@ class open_bed:
 
 
         '0' represents a missing value.
-        
+
         If needed, will cause a one-time read of the .fam file.
 
         Example
@@ -570,7 +582,7 @@ class open_bed:
     def sex(self) -> np.ndarray:
         """
         Sex of each individual (sample).
-       
+
         Returns
         -------
         numpy.ndarray
@@ -600,7 +612,7 @@ class open_bed:
         """
         A phenotype for each individual (sample)
         (seldom used).
-       
+
         Returns
         -------
         numpy.ndarray
@@ -608,7 +620,7 @@ class open_bed:
 
 
         '0' may represent a missing value.
-        
+
         If needed, will cause a one-time read of the .fam file.
 
         Example
@@ -630,7 +642,7 @@ class open_bed:
     def properties(self) -> Mapping[str, np.array]:
         """
         All the properties returned as a dictionary.
-       
+
         Returns
         -------
         dict
@@ -643,7 +655,7 @@ class open_bed:
              "mother" (mother id), "sex", "pheno" (phenotype), "chromosome", "sid"
              (SNP or variant id), "cm_position" (centimorgan position), "bp_position"
              (base-pair position), "allele_1", "allele_2".
-            
+
         The values are :class:`numpy.ndarray`.
 
         If needed, will cause a one-time read of the .fam and .bim file.
@@ -668,7 +680,7 @@ class open_bed:
     def property_item(self, name: str) -> np.ndarray:
         """
         Retrieve one property by name.
-      
+
         Returns
         -------
         numpy.ndarray
@@ -681,7 +693,7 @@ class open_bed:
              "mother" (mother id), "sex", "pheno" (phenotype), "chromosome", "sid"
              (SNP or variant id), "cm_position" (centimorgan position), "bp_position"
              (base-pair position), "allele_1", "allele_2".
-            
+
         If needed, will cause a one-time read of the .fam or .bim file.
 
         Example
@@ -706,7 +718,7 @@ class open_bed:
     def chromosome(self) -> np.ndarray:
         """
         Chromosome of each SNP (variant)
-       
+
         Returns
         -------
         numpy.ndarray
@@ -714,7 +726,7 @@ class open_bed:
 
 
         '0' represents a missing value.
-        
+
         If needed, will cause a one-time read of the .bim file.
 
         Example
@@ -736,7 +748,7 @@ class open_bed:
     def sid(self) -> np.ndarray:
         """
         SNP id of each SNP (variant).
-       
+
         Returns
         -------
         numpy.ndarray
@@ -764,7 +776,7 @@ class open_bed:
     def cm_position(self) -> np.ndarray:
         """
         Centimorgan position of each SNP (variant).
-       
+
         Returns
         -------
         numpy.ndarray
@@ -772,7 +784,7 @@ class open_bed:
 
 
         0.0 represents a missing value.
-        
+
         If needed, will cause a one-time read of the .bim file.
 
         Example
@@ -794,7 +806,7 @@ class open_bed:
     def bp_position(self) -> np.ndarray:
         """
         Base-pair position of each SNP (variant).
-       
+
         Returns
         -------
         numpy.ndarray
@@ -802,7 +814,7 @@ class open_bed:
 
 
         0 represents a missing value.
-        
+
         If needed, will cause a one-time read of the .bim file.
 
         Example
@@ -824,7 +836,7 @@ class open_bed:
     def allele_1(self) -> np.ndarray:
         """
         First allele of each SNP (variant).
-       
+
         Returns
         -------
         numpy.ndarray
@@ -852,7 +864,7 @@ class open_bed:
     def allele_2(self) -> np.ndarray:
         """
         Second allele of each SNP (variant),
-       
+
         Returns
         -------
         numpy.ndarray
@@ -880,7 +892,7 @@ class open_bed:
     def iid_count(self) -> np.ndarray:
         """
         Number of individuals (samples).
-       
+
         Returns
         -------
         int
@@ -908,7 +920,7 @@ class open_bed:
     def sid_count(self) -> np.ndarray:
         """
         Number of SNPs (variants).
-       
+
         Returns
         -------
         int
@@ -977,7 +989,7 @@ class open_bed:
     def shape(self):
         """
         Number of individuals (samples) and SNPs (variants).
-       
+
         Returns
         -------
         (int, int)
@@ -1098,7 +1110,9 @@ class open_bed:
                 else:
                     if count != len(output):
                         raise ValueError(
-                            f"The length of override {key}, {len(output)}, should not be different from the current {_count_name[mm.suffix]}, {count}"
+                            f"The length of override {key}, {len(output)}, should not "
+                            + "be different from the current "
+                            + f"{_count_name[mm.suffix]}, {count}"
                         )
             properties_dict[key] = output
         return properties_dict, count_dict
@@ -1145,7 +1159,9 @@ class open_bed:
         else:
             if count != len(fields):
                 raise ValueError(
-                    f"The number of lines in the *.{suffix} file, {len(fields)}, should not be different from the current {_count_name[suffix]}, {count}"
+                    f"The number of lines in the *.{suffix} file, {len(fields)}, "
+                    + "should not be different from the current "
+                    + "f{_count_name[suffix]}, {count}"
                 )
         for key in usecolsdict.keys():
             mm = _meta_meta[key]
@@ -1158,105 +1174,108 @@ class open_bed:
             self.properties_dict[key] = output
 
 
-# !!!cmk
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
-    if True:
-        from bed_reader import sample_file
+    # if True:
+    #     from bed_reader import sample_file
 
-        file_name = sample_file("small.bed")
-        with open_bed(file_name) as bed:
-            print(bed.iid)
-            print(bed.sid)
-            print(bed.read())
+    #     file_name = sample_file("small.bed")
+    #     with open_bed(file_name) as bed:
+    #         print(bed.iid)
+    #         print(bed.sid)
+    #         print(bed.read())
 
-# if False:
-#     import numpy as np
-#     from bed_reader._open_bed import open_bed
+    # if False:
+    #     import numpy as np
+    #     from bed_reader._open_bed import open_bed
 
-#     # Can get file from https://www.dropbox.com/sh/xluk9opjiaobteg/AABgEggLk0ZoO0KQq0I4CaTJa?dl=0
-#     bigfile = r"M:\deldir\genbgen\2\merged_487400x220000.1.bed"
-#     # bigfile = '/mnt/m/deldir/genbgen/2/merged_487400x220000.1.bed'
-#     with open_bed(bigfile, num_threads=20) as bed:
-#         sid_batch = 22 * 1000
-#         for sid_start in range(0, 10 * sid_batch, sid_batch):
-#             slicer = np.s_[:10000, sid_start : sid_start + sid_batch]
-#             print(slicer)
-#             val = bed.read(slicer)
-#         print(val.shape)
+    #     # Can get file from
+    #  https://www.dropbox.com/sh/xluk9opjiaobteg/AABgEggLk0ZoO0KQq0I4CaTJa?dl=0
+    #     bigfile = r"M:\deldir\genbgen\2\merged_487400x220000.1.bed"
+    #     # bigfile = '/mnt/m/deldir/genbgen/2/merged_487400x220000.1.bed'
+    #     with open_bed(bigfile, num_threads=20) as bed:
+    #         sid_batch = 22 * 1000
+    #         for sid_start in range(0, 10 * sid_batch, sid_batch):
+    #             slicer = np.s_[:10000, sid_start : sid_start + sid_batch]
+    #             print(slicer)
+    #             val = bed.read(slicer)
+    #         print(val.shape)
 
-# if False:
-#     file = r"D:\OneDrive\programs\sgkit-plink\bed_reader\tests\data/plink_sim_10s_100v_10pmiss.bed"
-#     with open_bed(file) as bed:
-#         print(bed.iid)
-#         print(bed.shape)
-#         val = bed.read()
-#         print(val)
+    # if False:
+    #     file = r"D:\OneDrive\programs\sgkit-plink\bed_reader\tests\data
+    #          /plink_sim_10s_100v_10pmiss.bed"
+    #     with open_bed(file) as bed:
+    #         print(bed.iid)
+    #         print(bed.shape)
+    #         val = bed.read()
+    #         print(val)
 
-# if False:
+    # if False:
 
-#     # bed_file = example_file('doc/ipynb/all.*','*.bed')
-#     bed_file = r"F:\backup\carlk4d\data\carlk\cachebio\genetics\onemil\id1000000.sid_1000000.seed0.byiid\iid990000to1000000.bed"
-#     bed = Bed(bed_file, count_A1=False)
-#     snpdata1 = bed[:, :1000].read()
-#     snpdata2 = bed[:, :1000].read(dtype="int8", _require_float32_64=False)
-#     print(snpdata2)
-#     snpdata3 = bed[:, :1000].read(
-#         dtype="int8", order="C", _require_float32_64=False
-#     )
-#     print(snpdata3)
-#     snpdata3.val = snpdata3.val.astype("float32")
-#     snpdata3.val.dtype
+    #     # bed_file = example_file('doc/ipynb/all.*','*.bed')
+    #     bed_file = r"F:\backup\carlk4d\data\carlk\cachebio\genetics\onemil\
+    #          id1000000.sid_1000000.seed0.byiid\iid990000to1000000.bed"
+    #     bed = Bed(bed_file, count_A1=False)
+    #     snpdata1 = bed[:, :1000].read()
+    #     snpdata2 = bed[:, :1000].read(dtype="int8", _require_float32_64=False)
+    #     print(snpdata2)
+    #     snpdata3 = bed[:, :1000].read(
+    #         dtype="int8", order="C", _require_float32_64=False
+    #     )
+    #     print(snpdata3)
+    #     snpdata3.val = snpdata3.val.astype("float32")
+    #     snpdata3.val.dtype
 
-# if False:
-#     from bed_reader import Bed, SnpGen
+    # if False:
+    #     from bed_reader import Bed, SnpGen
 
-#     iid_count = 487409
-#     sid_count = 5000
-#     sid_count_max = 5765294
-#     sid_batch_size = 50
+    #     iid_count = 487409
+    #     sid_count = 5000
+    #     sid_count_max = 5765294
+    #     sid_batch_size = 50
 
-#     sid_batch_count = -(sid_count // -sid_batch_size)
-#     sid_batch_count_max = -(sid_count_max // -sid_batch_size)
-#     snpgen = SnpGen(seed=234, iid_count=iid_count, sid_count=sid_count_max)
+    #     sid_batch_count = -(sid_count // -sid_batch_size)
+    #     sid_batch_count_max = -(sid_count_max // -sid_batch_size)
+    #     snpgen = SnpGen(seed=234, iid_count=iid_count, sid_count=sid_count_max)
 
-#     for batch_index in range(sid_batch_count):
-#         sid_index_start = batch_index * sid_batch_size
-#         sid_index_end = (batch_index + 1) * sid_batch_size  # what about rounding
-#         filename = r"d:\deldir\rand\fakeukC{0}x{1}-{2}.bed".format(
-#             iid_count, sid_index_start, sid_index_end
-#         )
-#         if not os.path.exists(filename):
-#             Bed.write(
-#                 filename + ".temp", snpgen[:, sid_index_start:sid_index_end].read()
-#             )
-#             os.rename(filename + ".temp", filename)
+    #     for batch_index in range(sid_batch_count):
+    #         sid_index_start = batch_index * sid_batch_size
+    #         sid_index_end = (batch_index + 1) * sid_batch_size  # what about rounding
+    #         filename = r"d:\deldir\rand\fakeukC{0}x{1}-{2}.bed".format(
+    #             iid_count, sid_index_start, sid_index_end
+    #         )
+    #         if not os.path.exists(filename):
+    #             Bed.write(
+    #                 filename + ".temp", snpgen[:, sid_index_start:sid_index_end].read()
+    #             )
+    #             os.rename(filename + ".temp", filename)
 
-# if False:
-#     from bed_reader import Pheno, Bed
+    # if False:
+    #     from bed_reader import Pheno, Bed
 
-#     filename = r"m:\deldir\New folder (4)\all_chr.maf0.001.N300.bed"
-#     iid_count = 300
-#     iid = [["0", "iid_{0}".format(iid_index)] for iid_index in range(iid_count)]
-#     bed = Bed(filename, iid=iid, count_A1=False)
-#     print(bed.iid_count)
+    #     filename = r"m:\deldir\New folder (4)\all_chr.maf0.001.N300.bed"
+    #     iid_count = 300
+    #     iid = [["0", "iid_{0}".format(iid_index)] for iid_index in range(iid_count)]
+    #     bed = Bed(filename, iid=iid, count_A1=False)
+    #     print(bed.iid_count)
 
-# if False:
-#     from pysnptools.util import example_file
+    # if False:
+    #     from pysnptools.util import example_file
 
-#     pheno_fn = example_file("pysnptools/examples/toydata.phe")
+    #     pheno_fn = example_file("pysnptools/examples/toydata.phe")
 
-# if False:
-#     from bed_reader import Pheno, Bed
+    # if False:
+    #     from bed_reader import Pheno, Bed
 
-#     print(os.getcwd())
-#     snpdata = Pheno("../examples/toydata.phe").read()  # Read data from Pheno format
-#     # pstutil.create_directory_if_necessary("tempdir/toydata.5chrom.bed")
-#     Bed.write(
-#         "tempdir/toydata.5chrom.bed", snpdata, count_A1=False
-#     )  # Write data in Bed format
+    #     print(os.getcwd())
+    #     # Read data from Pheno format
+    #     snpdata = Pheno("../examples/toydata.phe").read()
+    #     # pstutil.create_directory_if_necessary("tempdir/toydata.5chrom.bed")
+    #     Bed.write(
+    #         "tempdir/toydata.5chrom.bed", snpdata, count_A1=False
+    #     )  # Write data in Bed format
 
-# import pytest
+    import pytest
 
-# pytest.main(["--doctest-modules", __file__])
+    pytest.main(["--doctest-modules", __file__])

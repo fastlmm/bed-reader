@@ -1,8 +1,6 @@
-import logging
-import os
 import tempfile
 from pathlib import Path
-from typing import Any, List, Optional, Tuple, Union
+from typing import Union
 
 import pooch
 
@@ -14,7 +12,8 @@ POOCH = pooch.create(
     # Use the default cache folder for the OS
     path=pooch.os_cache("bed_reader"),
     # The remote data is on Github
-    base_url="https://raw.githubusercontent.com/fastlmm/bed-reader/master/bed_reader/tests/data/",
+    base_url="https://raw.githubusercontent.com/"
+    + "fastlmm/bed-reader/master/bed_reader/tests/data/",
     # If this is a development version, get the data from the master branch
     version_dev="master",
     # The registry specifies the files that can be fetched
@@ -42,7 +41,8 @@ def sample_file(filepath: Union[str, Path]) -> str:
         Local name of sample .bed file.
 
 
-    By default this function puts files under the user's cache directory. Override this by setting
+    By default this function puts files under the user's cache directory.
+    Override this by setting
     the `BED_READER_DATA_DIR` environment variable.
 
     Example

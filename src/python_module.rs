@@ -27,11 +27,11 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
             match err {
                 BedErrorPlus::IOError(_) => PyIOError::new_err(err.to_string()),
                 BedErrorPlus::ThreadPoolError(_) => PyValueError::new_err(err.to_string()),
-                BedErrorPlus::BedError(BedError::IidIndexTooBig)
-                | BedErrorPlus::BedError(BedError::SidIndexTooBig)
-                | BedErrorPlus::BedError(BedError::IndexMismatch)
-                | BedErrorPlus::BedError(BedError::IndexesTooBigForFiles)
-                | BedErrorPlus::BedError(BedError::SubsetMismatch) => {
+                BedErrorPlus::BedError(BedError::IidIndexTooBig(_))
+                | BedErrorPlus::BedError(BedError::SidIndexTooBig(_))
+                | BedErrorPlus::BedError(BedError::IndexMismatch(_, _, _, _))
+                | BedErrorPlus::BedError(BedError::IndexesTooBigForFiles(_, _))
+                | BedErrorPlus::BedError(BedError::SubsetMismatch(_, _, _, _)) => {
                     PyIndexError::new_err(err.to_string())
                 }
                 _ => PyValueError::new_err(err.to_string()),
@@ -55,10 +55,10 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let sid_index = sid_index.readonly();
         let mut val = unsafe { val.as_array_mut() };
 
-        let ii = &iid_index.as_slice()?; // !!!cmk can these fail (non contiguous)? If so, how will it look on the Python side?
+        let ii = &iid_index.as_slice()?; // !!!cmk0 can these fail (non contiguous)? If so, how will it look on the Python side?
         let si = &sid_index.as_slice()?;
 
-        // !!!cmk tip create_pool and install
+        // !!!cmktip create_pool and install
         create_pool(num_threads)?.install(|| {
             read_no_alloc(
                 filename,
@@ -192,7 +192,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         val_out: &PyArray3<f64>,
         num_threads: usize,
     ) -> Result<(), PyErr> {
-
         let iid_index = iid_index.readonly();
         let sid_index = sid_index.readonly();
         let val_in = unsafe { val_in.as_array() };
@@ -216,7 +215,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         val_out: &PyArray3<f64>,
         num_threads: usize,
     ) -> Result<(), PyErr> {
-
         let iid_index = iid_index.readonly();
         let sid_index = sid_index.readonly();
         let val_in = unsafe { val_in.as_array() };
@@ -240,7 +238,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         val_out: &PyArray3<f32>,
         num_threads: usize,
     ) -> Result<(), PyErr> {
-
         let iid_index = iid_index.readonly();
         let sid_index = sid_index.readonly();
         let val_in = unsafe { val_in.as_array() };
@@ -295,10 +292,9 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         stats: &PyArray2<f64>,
         num_threads: usize,
     ) -> Result<(), PyErr> {
-
         let mut val = unsafe { val.as_array_mut() };
         let mut stats = unsafe { stats.as_array_mut() };
-        // println!("cmk a");
+
         create_pool(num_threads)?.install(|| {
             impute_and_zero_mean_snps(
                 &mut val.view_mut(),

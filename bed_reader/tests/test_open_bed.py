@@ -425,11 +425,9 @@ def test_write12(tmp_path):
                 filename = output_template.format(i)
                 logging.info(filename)
                 i += 1
-                print("cmk0", row_count, col_count, is_none)
                 to_bed(filename, val, properties=properties)
                 for subsetter in [None, np.s_[::2, ::3]]:
                     with open_bed(filename) as bed:
-                        print("cmk", row_count, col_count, is_none, subsetter)
                         val2 = bed.read(index=subsetter, order="C", dtype="float32")
                         if subsetter is None:
                             expected = val
@@ -550,7 +548,6 @@ def test_zero_files(tmp_path):
                     filename = str(tmp_path / "zero_files.bed")
 
                     # Write
-                    print("cmk", force_python_only, iid_count, sid_count, dtype)
                     to_bed(filename, val, force_python_only=force_python_only)
 
                     # Read
