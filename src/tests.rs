@@ -177,11 +177,10 @@ fn index() {
     )
     .unwrap();
 
-    // !!!cmk0 look for nd::ndarray macro/function to stack columns
-    let col1 = ref_val_float.slice(nd::s![.., 2..3]);
-    let col2 = ref_val_float.slice(nd::s![.., -2..-1]);
-    assert!(allclose(&col1, &val.slice(nd::s![.., 0..1]), 1e-08, true));
-    assert!(allclose(&col2, &val.slice(nd::s![.., 1..2]), 1e-08, true));
+    let col0 = ref_val_float.slice(nd::s![.., 2]);
+    let col1 = ref_val_float.slice(nd::s![.., -2]);
+    let expected = nd::stack![nd::Axis(1), col0, col1];
+    assert!(allclose(&expected.view(), &val.view(), 1e-08, true));
 
     let result = read_with_indexes(filename, &[usize::MAX], &[2], true, true, f32::NAN);
     match result {
@@ -264,7 +263,7 @@ fn writer() {
     let path2 = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_test.bed");
     let filename2 = path2.as_os_str().to_str().unwrap();
 
-    write(filename2, &val.view(), true, (false, -127)).unwrap();
+    write(filename2, &val.view(), true, -127).unwrap();
     for ext in ["fam", "bim"].iter() {
         let from = Path::new(filename).with_extension(ext);
         let to = Path::new(filename2).with_extension(ext);
@@ -279,7 +278,7 @@ fn writer() {
     let path2 = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64.bed");
     let filename2 = path2.as_os_str().to_str().unwrap();
 
-    write(filename2, &val.view(), true, (true, f64::NAN)).unwrap();
+    write(filename2, &val.view(), true, f64::NAN).unwrap();
     for ext in ["fam", "bim"].iter() {
         let from = Path::new(filename).with_extension(ext);
         let to = Path::new(filename2).with_extension(ext);
@@ -292,24 +291,24 @@ fn writer() {
 
     let mut val = read(filename, false, true, f64::NAN).unwrap();
     val[(0, 0)] = 5.0;
-    let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_5.bed"); // !!!cmk0 use Path instead of Pathbuf?
+    let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_5.bed");
     let filename = path.as_os_str().to_str().unwrap();
-    let result = write(filename, &val.view(), true, (true, f64::NAN));
+    let result = write(filename, &val.view(), true, f64::NAN);
     match result {
         Err(BedErrorPlus::BedError(BedError::BadValue(_))) => (),
         _ => panic!("test failure"),
     };
 
     let val = nd::Array2::zeros((0, 0));
-    let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_0s.bed"); // !!!cmk0 use Path instead of Pathbuf?
+    let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_0s.bed");
     let filename = path.as_os_str().to_str().unwrap();
-    write(filename, &val.view(), true, (true, f64::NAN)).unwrap();
+    write(filename, &val.view(), true, f64::NAN).unwrap();
     // !!!cmk0 should missing and beta use an enum or struct instead of tuples/multiple args
 
     let val: nd::Array2<i8> = nd::Array2::zeros((3, 0));
-    let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_3_0.bed"); // !!!cmk0 use Path instead of Pathbuf?
+    let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_3_0.bed");
     let filename = path.as_os_str().to_str().unwrap();
-    write(filename, &val.view(), true, (true, -127)).unwrap();
+    write(filename, &val.view(), true, -127).unwrap();
 }
 
 #[test]

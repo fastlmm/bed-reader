@@ -148,7 +148,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     ) -> Result<(), PyErr> {
         let val = unsafe { val.as_array() };
 
-        create_pool(num_threads)?.install(|| write(filename, &val, count_a1, (true, f64::NAN)))?;
+        create_pool(num_threads)?.install(|| write(filename, &val, count_a1, f64::NAN))?;
 
         Ok(())
     }
@@ -163,7 +163,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     ) -> Result<(), PyErr> {
         let val = unsafe { val.as_array() };
 
-        create_pool(num_threads)?.install(|| write(filename, &val, count_a1, (true, f32::NAN)))?;
+        create_pool(num_threads)?.install(|| write(filename, &val, count_a1, f32::NAN))?;
 
         Ok(())
     }
@@ -178,7 +178,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     ) -> Result<(), PyErr> {
         let val = unsafe { val.as_array() };
 
-        create_pool(num_threads)?.install(|| write(filename, &val, count_a1, (false, -127)))?;
+        create_pool(num_threads)?.install(|| write(filename, &val, count_a1, -127))?;
 
         Ok(())
     }

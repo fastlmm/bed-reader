@@ -49,7 +49,7 @@ pub enum BedErrorPlus {
     #[error(transparent)]
     ThreadPoolError(#[from] ThreadPoolBuildError),
 }
-// !!!cmk0 add variables to the error messages? https://docs.rs/thiserror/1.0.23/thiserror/
+// https://docs.rs/thiserror/1.0.23/thiserror/
 #[derive(Error, Debug, Clone)]
 pub enum BedError {
     #[error("Ill-formed BED file. BED file header is incorrect or length is wrong. '{0}'")]
@@ -185,8 +185,7 @@ fn try_div_4<T: Max + TryFrom<usize> + Sub<Output = T> + Div<Output = T> + Ord>(
 }
 
 // !!!cmk0 wouldn't it be better to only open the file once instead of twice so that it couldn't change or disappear?
-// !!!cmk0 this is pub only for testing
-pub fn internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
+fn internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
     filename: &str,
     in_iid_count: usize,
     in_sid_count: usize,
@@ -349,7 +348,7 @@ pub fn write<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
     filename: &str,
     val: &nd::ArrayView2<'_, T>,
     count_a1: bool,
-    missing: (bool, T), // !!!cmk0 change to a enum?
+    missing: T,
 ) -> Result<(), BedErrorPlus> {
     let mut writer = BufWriter::new(File::create(filename)?);
     writer.write_all(&[BED_FILE_MAGIC1, BED_FILE_MAGIC2, 0x01])?;
@@ -366,8 +365,7 @@ pub fn write<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
     // 4 genotypes per byte so round up
     let (iid_count_div4, _) = try_div_4(iid_count, sid_count, CB_HEADER_U64)?;
 
-    let (use_nan, other_missing_value) = missing;
-
+    let use_nan = missing != missing;
     for column in val.axis_iter(nd::Axis(1)) {
         let mut bytes_vector: Vec<u8> = vec![0; iid_count_div4]; // inits to 0
         for (iid_i, &v0) in column.iter().enumerate() {
@@ -377,7 +375,7 @@ pub fn write<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
                 2
             } else if v0 == homozygous_secondary_allele {
                 two_code
-            } else if (use_nan && v0 != v0) || (!use_nan && v0 == other_missing_value) {
+            } else if (use_nan && v0 != v0) || (!use_nan && v0 == missing) {
                 1
             } else {
                 return Err(BedError::BadValue(filename.to_string()).into());
@@ -501,9 +499,7 @@ pub fn impute_and_zero_mean_snps<
     }
 }
 
-pub fn find_factor<
-    T: Default + Copy + Debug + Sync + Send + Float + ToPrimitive + FromPrimitive,
->(
+fn find_factor<T: Default + Copy + Debug + Sync + Send + Float + ToPrimitive + FromPrimitive>(
     beta_not_unit_variance: bool,
     beta_a: f64,
     beta_b: f64,
