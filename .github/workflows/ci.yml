@@ -17,8 +17,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macOS-latest]
-        python-version: [3.7, 3.8 ,3.9]
+        os: [ubuntu-latest] #, windows-latest, macOS-latest]
+        python-version: [3.9] #, 3.8 ,3.9]
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout
@@ -69,12 +69,16 @@ jobs:
         pip install -r requirements-dev.txt
         pytest bed_reader
 
-
-
     # cmk could add formatting, etc tests see bgen projects for examples
-    # cmk need to save on copy of sdist, too. e.g. bed_reader-0.1.7.tar.gz
     - name: Save Wheels
       uses: actions/upload-artifact@v2
       with:
         name: wheels
         path: target/wheels/*.whl
+        
+    - name: Save SDist
+      if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.9'
+      uses: actions/upload-artifact@v2
+      with:
+        name: wheels
+        path: target/wheels/*.tar.gz
