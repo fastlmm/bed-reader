@@ -89,6 +89,9 @@ pub enum BedError {
 
     #[error("Cannot create Beta Dist with given parameters ({0},{1})")]
     CannotCreateBetaDist(f64, f64),
+
+    #[error("Cannot open metadata file. '{0}'")]
+    CannotOpenFamOrBim(String),
 }
 
 fn read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
@@ -101,9 +104,9 @@ fn read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
     missing_value: TOut,
     val: &mut nd::ArrayViewMut2<'_, TOut>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
 ) -> Result<(), BedErrorPlus> {
-    let mut reader = File::open(filename)?;
+    let mut buf_reader = BufReader::new(File::open(filename)?);
     let mut bytes_vector: Vec<u8> = vec![0; CB_HEADER_USIZE];
-    reader.read_exact(&mut bytes_vector)?;
+    buf_reader.read_exact(&mut bytes_vector)?;
     if (BED_FILE_MAGIC1 != bytes_vector[0]) || (BED_FILE_MAGIC2 != bytes_vector[1]) {
         return Err(BedError::IllFormed(filename.to_string()).into());
     }
@@ -111,6 +114,7 @@ fn read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
         0 => {
             let mut val_t = val.view_mut().reversed_axes();
             return internal_read_no_alloc(
+                buf_reader,
                 filename,
                 sid_count,
                 iid_count,
@@ -123,6 +127,7 @@ fn read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
         }
         1 => {
             return internal_read_no_alloc(
+                buf_reader,
                 filename,
                 iid_count,
                 sid_count,
@@ -186,6 +191,7 @@ fn try_div_4<T: Max + TryFrom<usize> + Sub<Output = T> + Div<Output = T> + Ord>(
 
 // !!!cmk0 wouldn't it be better to only open the file once instead of twice so that it couldn't change or disappear?
 fn internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
+    mut buf_reader: BufReader<File>,
     filename: &str,
     in_iid_count: usize,
     in_sid_count: usize,
@@ -210,10 +216,10 @@ fn internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>
         try_div_4(in_iid_count, in_sid_count, CB_HEADER_U64)?;
 
     let from_two_bits_to_value = set_up_two_bits_to_value(count_a1, missing_value);
-    let mut reader = BufReader::new(File::open(filename)?);
+    // !!! cmk0 let mut buf_reader = BufReader::new(File::open(filename)?);
 
     // "as" and math is safe because of early checks
-    if reader.seek(SeekFrom::End(0))?
+    if buf_reader.seek(SeekFrom::End(0))?
         != in_iid_count_div4_u64 * (in_sid_count as u64) + CB_HEADER_U64
     {
         return Err(BedErrorPlus::BedError(BedError::IllFormed(
@@ -233,8 +239,8 @@ fn internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>
             }
             let mut bytes_vector: Vec<u8> = vec![0; in_iid_count_div4];
             let pos: u64 = (in_sid_i as u64) * in_iid_count_div4_u64 + CB_HEADER_U64; // "as" and math is safe because of early checks
-            reader.seek(SeekFrom::Start(pos))?;
-            reader.read_exact(&mut bytes_vector)?;
+            buf_reader.seek(SeekFrom::Start(pos))?;
+            buf_reader.read_exact(&mut bytes_vector)?;
             return Ok(bytes_vector);
         })
         // Zip in the column of the output array
@@ -343,7 +349,6 @@ pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
 }
 
 // !!!cmk0 test writing zero length vals
-// !!!cmk0 add thread control
 pub fn write<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
     filename: &str,
     val: &nd::ArrayView2<'_, T>,
@@ -391,7 +396,16 @@ pub fn write<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
 }
 
 fn count_lines(path_buf: PathBuf) -> Result<usize, BedErrorPlus> {
-    let reader = BufReader::new(File::open(path_buf)?); // !!!cmk0 would be nice if error message mentioned fam/bim
+    let file = match File::open(&path_buf) {
+        Err(_) => {
+            let string_path = path_buf.to_string_lossy().to_string();
+            return Err(BedErrorPlus::BedError(BedError::CannotOpenFamOrBim(
+                string_path,
+            )));
+        }
+        Ok(file) => file,
+    };
+    let reader = BufReader::new(file);
     let count = reader.lines().count();
     return Ok(count);
 }
