@@ -18,6 +18,7 @@ use ndarray::ShapeBuilder;
 use ndarray_npy::read_npy;
 #[cfg(test)]
 use num_traits::{abs, Signed};
+use std::io::{LineWriter, Write};
 #[cfg(test)]
 use std::path::Path;
 #[cfg(test)]
@@ -663,6 +664,92 @@ fn read_modes() {
         Err(BedErrorPlus::BedError(BedError::BadMode(_))) => (),
         _ => panic!("test failure"),
     };
+}
+
+fn write_fake_metadata(filename: &str, iid_count: usize, sid_count: usize) {
+    for (ext, count) in ["fam", "bim"].iter().zip([iid_count, sid_count].iter()) {
+        let meta_name = std::path::Path::new(filename).with_extension(ext);
+        let mut file = std::fs::File::create(meta_name).unwrap();
+        let mut file = LineWriter::new(file);
+        for index in 0..*count {
+            file.write_all(b"\n");
+        }
+    }
+}
+
+#[test]
+fn zeros() {
+    let filename = "bed_reader/tests/data/some_missing.bed";
+    let (iid_count, sid_count) = counts(filename).unwrap();
+    let iid_index_full = (0..iid_count).collect::<Vec<usize>>();
+    let sid_index_full = (0..sid_count).collect::<Vec<usize>>();
+    let ref_val_float = reference_val(true);
+
+    // Test read on zero length indexes
+    let val = read(filename, true, true, f32::NAN).unwrap();
+    assert!(allclose(&ref_val_float.view(), &val.view(), 1e-08, true));
+
+    let out_val10 =
+        read_with_indexes(filename, &iid_index_full, &[], true, true, f64::NAN).unwrap();
+    assert!(out_val10.shape() == [iid_count, 0]);
+
+    let out_val01 =
+        read_with_indexes(filename, &[], &sid_index_full, true, true, f64::NAN).unwrap();
+    assert!(out_val01.shape() == [0, sid_count]);
+
+    let out_val00 = read_with_indexes(filename, &[], &[], true, true, f64::NAN).unwrap();
+    assert!(out_val00.shape() == [0, 0]);
+
+    // Test subset on zero length indexes
+
+    let shape = (ref_val_float.shape()[0], ref_val_float.shape()[1], 1usize);
+    let in_val = ref_val_float.into_shape(shape).unwrap();
+
+    let mut out_val = nd::Array3::<f64>::zeros((iid_count, 0, 1));
+    matrix_subset_no_alloc(
+        &(in_val.view()),
+        &iid_index_full,
+        &[],
+        &mut out_val.view_mut(),
+    )
+    .unwrap();
+
+    let mut out_val = nd::Array3::<f64>::zeros((0, sid_count, 1));
+    matrix_subset_no_alloc(
+        &(in_val.view()),
+        &[],
+        &sid_index_full,
+        &mut out_val.view_mut(),
+    )
+    .unwrap();
+
+    let mut out_val = nd::Array3::<f64>::zeros((0, 0, 1));
+    matrix_subset_no_alloc(&(in_val.view()), &[], &[], &mut out_val.view_mut()).unwrap();
+
+    // Writing zero length vals
+    let temp = TempDir::default();
+    let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_zeros.bed");
+    let filename = path.as_os_str().to_str().unwrap();
+
+    write(filename, &out_val01.view(), true, f64::NAN).unwrap();
+    write_fake_metadata(filename, 0, sid_count);
+    let result = read(filename, true, true, f64::NAN);
+    println!("cmk {:?}", result);
+    let in_val01 = result.unwrap();
+    assert!(in_val01.shape() == [0, sid_count]);
+    assert!(allclose(&in_val01.view(), &out_val01.view(), 1e-08, true));
+
+    write(filename, &out_val10.view(), true, f64::NAN).unwrap();
+    write_fake_metadata(filename, iid_count, 0);
+    let in_val10 = read(filename, true, true, f64::NAN).unwrap();
+    assert!(in_val10.shape() == [iid_count, 0]);
+    assert!(allclose(&in_val10.view(), &out_val10.view(), 1e-08, true));
+
+    write(filename, &out_val00.view(), true, f64::NAN).unwrap();
+    write_fake_metadata(filename, 0, 0);
+    let in_val00 = read(filename, true, true, f64::NAN).unwrap();
+    assert!(in_val00.shape() == [0, 0]);
+    assert!(allclose(&in_val00.view(), &out_val00.view(), 1e-08, true));
 }
 
 // cmk What does  pyo3::Python::with_gil mean?
