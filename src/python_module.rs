@@ -55,7 +55,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let sid_index = sid_index.readonly();
         let mut val = unsafe { val.as_array_mut() };
 
-        let ii = &iid_index.as_slice()?; // !!!cmk0 can these fail (non contiguous)? If so, how will it look on the Python side?
+        let ii = &iid_index.as_slice()?;
         let si = &sid_index.as_slice()?;
 
         // !!!cmktip create_pool and install

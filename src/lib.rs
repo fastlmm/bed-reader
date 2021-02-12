@@ -189,7 +189,6 @@ fn try_div_4<T: Max + TryFrom<usize> + Sub<Output = T> + Div<Output = T> + Ord>(
     return Ok((in_iid_count_div4, in_iid_count_div4_t));
 }
 
-// !!!cmk0 wouldn't it be better to only open the file once instead of twice so that it couldn't change or disappear?
 fn internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
     mut buf_reader: BufReader<File>,
     filename: &str,
@@ -201,7 +200,6 @@ fn internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>
     missing_value: TOut,
     out_val: &mut nd::ArrayViewMut2<'_, TOut>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
 ) -> Result<(), BedErrorPlus> {
-    // !!!cmk0 test on length zero *_indexes
     // Find the largest in_iid_i (if any) and check its size.
     if let Some(in_max_iid_i) = iid_index.iter().max() {
         if *in_max_iid_i >= in_iid_count {
@@ -216,7 +214,6 @@ fn internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>
         try_div_4(in_iid_count, in_sid_count, CB_HEADER_U64)?;
 
     let from_two_bits_to_value = set_up_two_bits_to_value(count_a1, missing_value);
-    // !!! cmk0 let mut buf_reader = BufReader::new(File::open(filename)?);
 
     // "as" and math is safe because of early checks
     if buf_reader.seek(SeekFrom::End(0))?
@@ -319,7 +316,6 @@ pub fn read_with_indexes<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
     return Ok(val);
 }
 
-// !!!cmk0 put in [No ignore] thing to force results to be used
 pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
     filename: &str,
     output_is_order_f: bool,
@@ -348,7 +344,6 @@ pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
     return Ok(val);
 }
 
-// !!!cmk0 test writing zero length vals
 pub fn write<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
     filename: &str,
     val: &nd::ArrayView2<'_, T>,

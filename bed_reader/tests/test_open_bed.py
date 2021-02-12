@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 from bed_reader import open_bed, to_bed
+from bed_reader import subset_f64_f64
 
 
 def test_read1(shared_datadir):
@@ -745,6 +746,26 @@ def test_env(shared_datadir):
                 del os.environ[key]
         else:
             os.environ[key] = original_val
+
+
+def test_noncontig_indexes(shared_datadir):
+
+    with open_bed(shared_datadir / "some_missing.bed") as bed:
+        whole_iid_index = np.arange(bed.iid_count)
+        assert whole_iid_index.flags["C_CONTIGUOUS"]
+        every_other = whole_iid_index[::2]
+        assert not every_other.flags["C_CONTIGUOUS"]
+        val = bed.read((every_other, -2))
+
+        whole_iid_index = np.arange(val.shape[0])
+        assert whole_iid_index.flags["C_CONTIGUOUS"]
+        every_other = whole_iid_index[::2]
+        assert not every_other.flags["C_CONTIGUOUS"]
+        val_out = np.zeros((len(every_other), 0))
+        with pytest.raises(ValueError):
+            subset_f64_f64(
+                val.reshape(-1, bed.sid_count, 1), every_other, [], val_out, 1
+            )
 
 
 if __name__ == "__main__":

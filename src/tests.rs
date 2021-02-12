@@ -18,6 +18,7 @@ use ndarray::ShapeBuilder;
 use ndarray_npy::read_npy;
 #[cfg(test)]
 use num_traits::{abs, Signed};
+#[cfg(test)]
 use std::io::{LineWriter, Write};
 #[cfg(test)]
 use std::path::Path;
@@ -306,7 +307,6 @@ fn writer() {
     let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_0s.bed");
     let filename = path.as_os_str().to_str().unwrap();
     write(filename, &val.view(), true, f64::NAN).unwrap();
-    // !!!cmk0 should missing and beta use an enum or struct instead of tuples/multiple args
 
     let val: nd::Array2<i8> = nd::Array2::zeros((3, 0));
     let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_3_0.bed");
@@ -666,13 +666,14 @@ fn read_modes() {
     };
 }
 
+#[cfg(test)]
 fn write_fake_metadata(filename: &str, iid_count: usize, sid_count: usize) {
     for (ext, count) in ["fam", "bim"].iter().zip([iid_count, sid_count].iter()) {
         let meta_name = std::path::Path::new(filename).with_extension(ext);
-        let mut file = std::fs::File::create(meta_name).unwrap();
+        let file = std::fs::File::create(meta_name).unwrap();
         let mut file = LineWriter::new(file);
-        for index in 0..*count {
-            file.write_all(b"\n");
+        for _ in 0..*count {
+            file.write_all(b"\n").unwrap();
         }
     }
 }
@@ -734,7 +735,6 @@ fn zeros() {
     write(filename, &out_val01.view(), true, f64::NAN).unwrap();
     write_fake_metadata(filename, 0, sid_count);
     let result = read(filename, true, true, f64::NAN);
-    println!("cmk {:?}", result);
     let in_val01 = result.unwrap();
     assert!(in_val01.shape() == [0, sid_count]);
     assert!(allclose(&in_val01.view(), &out_val01.view(), 1e-08, true));
