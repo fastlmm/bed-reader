@@ -22,6 +22,8 @@ use num_traits::{abs, Signed};
 use std::path::Path;
 #[cfg(test)]
 use std::path::PathBuf;
+#[cfg(test)] // !!!cmktip
+use std::{fs::File, io::BufReader};
 #[cfg(test)]
 use temp_testdir::TempDir;
 
@@ -199,7 +201,7 @@ fn index() {
         f32::NAN,
     );
     match result {
-        Err(BedErrorPlus::IOError(_)) => (),
+        Err(BedErrorPlus::BedError(BedError::CannotOpenFamOrBim(_))) => (),
         _ => panic!("test failure"),
     };
 
@@ -212,7 +214,7 @@ fn index() {
         f32::NAN,
     );
     match result {
-        Err(BedErrorPlus::IOError(_)) => (),
+        Err(BedErrorPlus::BedError(BedError::CannotOpenFamOrBim(_))) => (),
         _ => panic!("test failure"),
     };
 
@@ -223,7 +225,9 @@ fn index() {
     };
 
     let mut ignore_val = nd::Array2::zeros((1, 1));
+    let buf_reader = BufReader::new(File::open("bed_reader/tests/data/small_no_bim.bed").unwrap());
     let result = internal_read_no_alloc(
+        buf_reader,
         &"ignore",
         usize::MAX,
         usize::MAX,
@@ -238,18 +242,14 @@ fn index() {
         _ => panic!("test failure"),
     };
 
-    let result = internal_read_no_alloc(
+    let result = read(
         &"bed_reader/tests/data/no_such_file.nsf",
-        1,
-        1,
         true,
-        &[0],
-        &[0],
+        true,
         f64::NAN,
-        &mut ignore_val.view_mut(),
     );
     match result {
-        Err(BedErrorPlus::IOError(_)) => (),
+        Err(BedErrorPlus::BedError(BedError::CannotOpenFamOrBim(_))) => (),
         _ => panic!("test failure"),
     };
 }
