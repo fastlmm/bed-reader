@@ -83,6 +83,8 @@ jobs:
         pip install -r requirements-dev.txt
         echo "maturin"
         maturin develop
+        echo "numpy"
+        pip install numpy
         echo "pytest"
         pytest bed_reader
 
