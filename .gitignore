@@ -140,3 +140,5 @@ defaultx.profraw
 default.profraw
 bed_reader/tests/data/tooshort.bed.bak
 /temp/
+doc/source/conf.py
+ignoredefault.profraw

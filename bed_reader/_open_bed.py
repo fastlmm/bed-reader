@@ -68,7 +68,7 @@ def get_num_threads(num_threads):
     if num_threads is not None:
         return num_threads
     if "PST_NUM_THREADS" in os.environ:
-        return int(os.environ["PST_NUM_THREADS"])  # !!!cmk document
+        return int(os.environ["PST_NUM_THREADS"])
     if "NUM_THREADS" in os.environ:
         return int(os.environ["NUM_THREADS"])
     if "MKL_NUM_THREADS" in os.environ:
@@ -118,7 +118,8 @@ class open_bed:
     num_threads: None or int, optional
         The number of threads with which to read data. Defaults to all available
         processors.
-        Can also be set with the 'MKL_NUM_THREADS' environment variable. #!!!cmk
+        Can also be set with these environment variables (listed in priority order):
+        'PST_NUM_THREADS', 'NUM_THREADS', 'MKL_NUM_THREADS'.
     skip_format_check: bool, optional
         False (default) to immediately check for expected starting bytes in
         the .bed file. True to delay the check until (and if) data is read.
@@ -242,7 +243,7 @@ class open_bed:
         dtype: Optional[Union[type, str]] = "float32",
         order: Optional[str] = "F",
         force_python_only: Optional[bool] = False,
-        num_threads=None,  # !!!cmk doc
+        num_threads=None,
     ) -> np.ndarray:
         """
         Read genotype information.
@@ -266,6 +267,14 @@ class open_bed:
         force_python_only: bool, optional
             If False (default), uses the faster C++ code; otherwise it uses the slower
             pure Python code.
+
+        num_threads: None or int, optional
+            The number of threads with which to read data. Defaults to all available
+            processors.
+            Can also be set with :class:`open_bed` or these
+            environment variables (listed in priority order):
+            'PST_NUM_THREADS', 'NUM_THREADS', 'MKL_NUM_THREADS'.
+
 
         Returns
         -------
@@ -369,7 +378,7 @@ class open_bed:
         if not force_python_only:
             num_threads = get_num_threads(
                 self._num_threads if num_threads is None else num_threads
-            )  # !!!cmk doc
+            )
 
             val = np.zeros((len(iid_index), len(sid_index)), order=order, dtype=dtype)
 

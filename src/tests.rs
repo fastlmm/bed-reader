@@ -1,4 +1,4 @@
-// !!!cmk https://stackoverflow.com/questions/32900809/how-to-suppress-function-is-never-used-warning-for-a-function-used-by-tests
+// https://stackoverflow.com/questions/32900809/how-to-suppress-function-is-never-used-warning-for-a-function-used-by-tests
 
 #[cfg(test)]
 use crate::try_div_4;

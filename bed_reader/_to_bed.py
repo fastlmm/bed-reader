@@ -17,7 +17,7 @@ def to_bed(
     fam_filepath: Union[str, Path] = None,
     bim_filepath: Union[str, Path] = None,
     force_python_only: bool = False,
-    num_threads=None,  # !!!cmk document including that not used
+    num_threads=None,
 ):
     """
     Write values to a file in PLINK .bed format.
@@ -55,6 +55,16 @@ def to_bed(
     force_python_only
         If False (default), uses the faster C++ code; otherwise it uses the slower
         pure Python code.
+
+    num_threads: None or int, optional
+        The number of threads with which to write data.
+        (Writing is currently always single-threaded, but multithreading
+        may be enabled in the future.)
+        Defaults to all available processors.
+        Can also be set with these
+        environment variables (listed in priority order):
+        'PST_NUM_THREADS', 'NUM_THREADS', 'MKL_NUM_THREADS'.
+
 
     Examples
     --------

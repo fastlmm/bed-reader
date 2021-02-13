@@ -3,7 +3,7 @@
 [package]
 authors = ["FaST-LMM Team <fastlmm-dev@python.org>"]
 name = "bed-reader"
-version = "0.1.10"
+version = "0.1.11"
 repository = "https://github.com/fastlmm/bed-reader"
 description = "Read and write the PLINK BED format, simply and efficiently."
 exclude = ["tests/*", "doc/*", "docs/*"]
@@ -26,14 +26,11 @@ classifier=[
 requires-dist = ["numpy>=1.13.3", "pandas>=0.25.1", "pooch>=1.1.1"]
 
 # cmk add badges
-# cmk what are dev-dependencies?
-# cmk what are features
 
 [lib]
 name = "bed_reader"
 crate-type = ["cdylib", "rlib"]
 
-# !!!cmk how can we specify dependencies that only tests need to have?
 [dependencies]
 thiserror = "1.0.23"
 num-traits = "0.2"
@@ -43,11 +40,11 @@ numpy = "0.13"
 ndarray = {version = "0.14", features = ["approx", "rayon"] }
 approx = "0.4"
 statrs = "0.13"
+
+[dev-dependencies]
 temp_testdir = "0.2"
 
 [dependencies.pyo3]
 version = "0.13.0"
 features = ["extension-module"]
-
-# What is [dev-dependencies]?
 
