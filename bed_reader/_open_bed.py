@@ -1,15 +1,15 @@
 import logging
+import multiprocessing
 import os
 from dataclasses import dataclass
 from itertools import repeat, takewhile
 from pathlib import Path
 from typing import Any, List, Mapping, Optional, Union
-import multiprocessing
-
 
 import numpy as np
 import pandas as pd
-from .bed_reader import read_i8, read_f64, read_f32
+
+from .bed_reader import read_f32, read_f64, read_i8
 
 
 # https://stackoverflow.com/questions/845058/how-to-get-line-count-of-a-large-file-cheaply-in-python

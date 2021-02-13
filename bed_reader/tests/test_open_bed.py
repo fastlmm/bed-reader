@@ -6,8 +6,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from bed_reader import open_bed, to_bed
-from bed_reader import subset_f64_f64
+from bed_reader import open_bed, subset_f64_f64, to_bed
 
 
 def test_read1(shared_datadir):
@@ -167,6 +166,7 @@ def test_bad_dtype_or_order(shared_datadir):
 
 def setting_generator(seq_dict, seed=9392):
     import itertools
+
     from numpy.random import RandomState
 
     longest = max((len(value_list) for value_list in seq_dict.values()))

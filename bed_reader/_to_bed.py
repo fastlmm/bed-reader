@@ -5,8 +5,9 @@ from typing import Any, List, Mapping, Union
 
 import numpy as np
 
-from bed_reader import open_bed, get_num_threads
-from .bed_reader import write_i8, write_f64, write_f32
+from bed_reader import get_num_threads, open_bed
+
+from .bed_reader import write_f32, write_f64, write_i8
 
 
 def to_bed(

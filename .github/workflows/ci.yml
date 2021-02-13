@@ -34,8 +34,11 @@ jobs:
         pip install flake8 pytest black isort --upgrade
     - name: Lint with flake8, etc
       run: |
+        echo "flake8"
         flake8 .
+        echo "black"
         black --check .
+        echo "isort"
         isort --check-only .
 
     - name: Set up Rust
