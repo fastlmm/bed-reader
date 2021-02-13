@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest] #[ubuntu-latest, windows-latest, macOS-latest]
+        os: [ubuntu-latest, windows-latest] #[ubuntu-latest, windows-latest, macOS-latest]
         python-version: [3.8] # [3.7, 3.8 ,3.9]
     runs-on: ${{ matrix.os }}
     steps:
@@ -27,19 +27,6 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{matrix.python-version}}
-
-    # - name: Install flake8, etc
-    #   run: |
-    #     python -m pip install --upgrade pip
-    #     pip install flake8 pytest black isort --upgrade
-    # - name: Lint with flake8, etc
-    #   run: |
-    #     echo "flake8"
-    #     flake8 .
-    #     echo "black"
-    #     black --check .
-    #     echo "isort"
-    #     isort --check-only .
 
     - name: Set up Rust
       uses: actions-rs/toolchain@v1
@@ -101,3 +88,17 @@ jobs:
       with:
         name: wheels
         path: target/wheels/*.tar.gz
+
+    - name: Install flake8, etc
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 pytest black isort --upgrade
+    - name: Lint with flake8, etc
+      run: |
+        echo "flake8"
+        flake8 .
+        echo "black"
+        black --check .
+        echo "isort"
+        isort --check-only .
+
