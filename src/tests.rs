@@ -751,6 +751,3 @@ fn zeros() {
     assert!(in_val00.shape() == [0, 0]);
     assert!(allclose(&in_val00.view(), &out_val00.view(), 1e-08, true));
 }
-
-// cmk What does  pyo3::Python::with_gil mean?
-// cmk Coverage
