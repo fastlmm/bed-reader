@@ -73,12 +73,17 @@ jobs:
       run: |
         pip install virtualenv
         virtualenv vEnv --system-site-packages; vEnv\Scripts\activate.ps1
+        echo "pwd"
         pwd
         # pip install target\wheels\*.whl
         # pip uninstall bed-reader --yes
-        maturin develop
+        echo "requirements"
         pip install -r requirements.txt
+        echo "requirements-dev"
         pip install -r requirements-dev.txt
+        echo "maturin"
+        maturin develop
+        echo "pytest"
         pytest bed_reader
 
     # cmk could add formatting, etc tests see bgen projects for examples
