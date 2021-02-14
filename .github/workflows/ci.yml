@@ -28,7 +28,22 @@ jobs:
       with:
         python-version: ${{matrix.python-version}}
 
-    - name: Set up Rust
+    - name: Install flake8, etc
+      run: |
+        cd bed_reader
+        pwd
+        python -m pip install --upgrade pip
+        pip install flake8 pytest black isort --upgrade
+    - name: Lint with flake8, etc
+      run: |
+        echo "flake8"
+        flake8 .
+        echo "black"
+        black --check .
+        echo "isort"
+        isort --check-only .
+
+        - name: Set up Rust
       uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
@@ -49,7 +64,8 @@ jobs:
       if: runner.os != 'windows'
       run: |
         pip install virtualenv
-        virtualenv vEnv --system-site-package; source vEnv/bin/activate
+        virtualenv vEnv; source vEnv/bin/activate
+        python -m pip install --upgrade pip maturin
         pip install target/wheels/*.whl
         pip uninstall bed-reader --yes
         maturin develop
@@ -59,9 +75,10 @@ jobs:
       if: runner.os == 'windows'
       run: |
         pip install virtualenv
-        virtualenv vEnv --system-site-packages; vEnv\Scripts\activate.ps1
+        virtualenv vEnv; vEnv\Scripts\activate.ps1
         echo "pwd"
         pwd
+        python -m pip install --upgrade pip maturin
         # pip install target\wheels\*.whl
         # pip uninstall bed-reader --yes
         echo "requirements"
@@ -89,18 +106,4 @@ jobs:
         name: wheels
         path: target/wheels/*.tar.gz
 
-    - name: Install flake8, etc
-      run: |
-        cd bed_reader
-        pwd
-        python -m pip install --upgrade pip
-        pip install flake8 pytest black isort --upgrade
-    - name: Lint with flake8, etc
-      run: |
-        echo "flake8"
-        flake8 .
-        echo "black"
-        black --check .
-        echo "isort"
-        isort --check-only .
-
+    
