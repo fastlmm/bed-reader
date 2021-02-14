@@ -2,5 +2,9 @@
 requires = ["maturin==0.9.0"]
 build-backend = "maturin"
 
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+
 [tool.black]
 line-length = 88
