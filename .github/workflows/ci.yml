@@ -39,6 +39,7 @@ jobs:
         echo "flake8"
         flake8 .
         echo "black"
+        black --version
         black --verbose --check .
         echo "isort"
         isort --check-only .
