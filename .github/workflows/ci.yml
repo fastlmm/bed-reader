@@ -43,7 +43,7 @@ jobs:
         echo "isort"
         isort --check-only .
 
-        - name: Set up Rust
+    - name: Set up Rust
       uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
