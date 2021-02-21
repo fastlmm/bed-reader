@@ -265,7 +265,7 @@ class open_bed:
             The desired memory layout for the returned array.
             Defaults to ``F`` (Fortran order, which is SNP-major).
         force_python_only: bool, optional
-            If False (default), uses the faster C++ code; otherwise it uses the slower
+            If False (default), uses the faster Rust code; otherwise it uses the slower
             pure Python code.
 
         num_threads: None or int, optional

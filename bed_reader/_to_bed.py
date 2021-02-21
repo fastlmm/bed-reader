@@ -54,7 +54,7 @@ def to_bed(
         Path to the file containing information about each SNP (variant).
         Defaults to replacing the .bed file’s suffix with .bim.
     force_python_only
-        If False (default), uses the faster C++ code; otherwise it uses the slower
+        If False (default), uses the faster Rust code; otherwise it uses the slower
         pure Python code.
 
     num_threads: None or int, optional
