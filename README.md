@@ -1,5 +1,5 @@
 [![PyPI version](https://badge.fury.io/py/bed-reader.svg)](https://badge.fury.io/py/bed-reader)
-[![Build Status](https://travis-ci.com/fastlmm/bed-reader.svg?branch=master)](https://travis-ci.com/fastlmm/bed-reader)
+[![Build Status](https://github.com/fastlmm/bed-reader/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/fastlmm/bed-reader/actions/workflows/ci.yml)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/bed-reader)
 
 

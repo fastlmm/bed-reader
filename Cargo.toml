@@ -3,12 +3,12 @@
 [package]
 authors = ["FaST-LMM Team <fastlmm-dev@python.org>"]
 name = "bed-reader"
-version = "0.1.11"
+version = "0.2.0"
 repository = "https://github.com/fastlmm/bed-reader"
 description = "Read and write the PLINK BED format, simply and efficiently."
 exclude = ["tests/*", "doc/*", "docs/*"]
 readme = "README.md"
-# !!!cmk why not used? url="https://fastlmm.github.io/"
+# url="https://fastlmm.github.io/"
 license="Apache 2.0"
 keywords=["bioinformatics", "plink", "genomics", "genetics", "file-format", "reader", "genotype", "bed-format", "writer", "python", "snps"]
 edition = "2018"
@@ -24,8 +24,6 @@ classifier=[
         "Programming Language :: Python",
     ]
 requires-dist = ["numpy>=1.13.3", "pandas>=0.25.1", "pooch>=1.1.1"]
-
-# cmk add badges
 
 [lib]
 name = "bed_reader"
