@@ -24,7 +24,7 @@ use std::io::{LineWriter, Write};
 use std::path::Path;
 #[cfg(test)]
 use std::path::PathBuf;
-#[cfg(test)] // !!!cmktip
+#[cfg(test)]
 use std::{fs::File, io::BufReader};
 #[cfg(test)]
 use temp_testdir::TempDir;

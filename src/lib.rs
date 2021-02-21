@@ -666,7 +666,7 @@ fn _process_all_iids<
             stats_row[1] = std;
         });
         // Check the result list for errors
-        result_list.par_iter().try_for_each(|x| (*x).clone())?; // !!!cmktip
+        result_list.par_iter().try_for_each(|x| (*x).clone())?;
     }
 
     if apply_in_place {

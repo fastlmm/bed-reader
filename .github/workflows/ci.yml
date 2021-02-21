@@ -62,7 +62,7 @@ jobs:
       shell: bash
 
     - name: Test Python
-      if: runner.os != 'windows'
+      if: runner.os != 'Windows'
       run: |
         pip install virtualenv
         virtualenv vEnv; source vEnv/bin/activate
@@ -73,7 +73,7 @@ jobs:
         pip install -r requirements-dev.txt
         pytest bed_reader
     - name: Test Python on Windows
-      if: runner.os == 'windows'
+      if: runner.os == 'Windows'
       run: |
         pip install virtualenv
         virtualenv vEnv; vEnv\Scripts\activate.ps1
@@ -93,7 +93,6 @@ jobs:
         echo "pytest"
         pytest bed_reader
 
-    # cmk could add formatting, etc tests see bgen projects for examples
     - name: Save Wheels
       uses: actions/upload-artifact@v2
       with:

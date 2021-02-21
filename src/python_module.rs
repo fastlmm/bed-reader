@@ -58,7 +58,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let ii = &iid_index.as_slice()?;
         let si = &sid_index.as_slice()?;
 
-        // !!!cmktip create_pool and install
         create_pool(num_threads)?.install(|| {
             read_no_alloc(
                 filename,
