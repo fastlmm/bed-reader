@@ -13,4 +13,7 @@ from .bed_reader import (  # noqa
     write_f32,
     write_f64,
     write_i8,
+    read_f32,
+    read_f64,
+    read_i8,
 )
