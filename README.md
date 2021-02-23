@@ -1,5 +1,5 @@
 [![PyPI version](https://badge.fury.io/py/bed-reader.svg)](https://badge.fury.io/py/bed-reader)
-[![Build Status](https://travis-ci.com/fastlmm/bed-reader.svg?branch=master)](https://travis-ci.com/fastlmm/bed-reader)
+[![Build Status](https://github.com/fastlmm/bed-reader/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/fastlmm/bed-reader/actions/workflows/ci.yml)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/bed-reader)
 
 
@@ -7,7 +7,7 @@ Read and write the PLINK BED format, simply and efficiently.
 
 Features:
 
-* Fast multi-threaded C++ engine.
+* Fast multi-threaded Rust engine.
 * Supports all Python indexing methods. Slice data by individuals (samples) and/or SNPs (variants).
 * Used by [PySnpTools](https://github.com/fastlmm/PySnpTools), [FaST-LMM](https://github.com/fastlmm/FaST-LMM), and [PyStatGen](https://github.com/pystatgen).
 * Supports [PLINK 1.9](https://www.cog-genomics.org/plink2/formats).
@@ -79,4 +79,3 @@ Project Links
 - [**Bug reports**](https://github.com/fastlmm/bed-reader/issues)
 - [**Mailing list**](https://mail.python.org/mailman3/lists/fastlmm-user.python.org)
 - [**Project Website**](https://fastlmm.github.io/)
-

@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from bed_reader import open_bed, to_bed
+from bed_reader import open_bed, subset_f64_f64, to_bed
 
 
 def test_read1(shared_datadir):
@@ -16,6 +16,7 @@ def test_read1(shared_datadir):
         assert bed.fid[-1] == "0"
         assert bed.iid[-1] == "9"
         assert bed.shape == (10, 100)
+
         val = bed.read(dtype="int8")
         assert (
             val.mean() == -13.142
@@ -43,7 +44,7 @@ def test_write1(tmp_path, shared_datadir):
             assert np.array_equal(bed.fid, properties0["fid"])
             assert np.array_equal(bed.iid, properties0["iid"])
             assert np.array_equal(bed.sid, properties0["sid"])
-            assert np.issubdtype(bed.sid.dtype,np.str_)
+            assert np.issubdtype(bed.sid.dtype, np.str_)
             assert np.array_equal(bed.chromosome, properties0["chromosome"])
             assert np.allclose(bed.cm_position, properties0["cm_position"])
             assert np.allclose(bed.bp_position, properties0["bp_position"])
@@ -85,7 +86,11 @@ def test_overrides(shared_datadir):
         bp_position = bed.bp_position
         allele_1 = bed.allele_1
         allele_2 = bed.allele_2
-    # lock in the expected results: np.savez(shared_datadir / "some_missing.properties.npz",fid=fid,iid=iid,father=father,mother=mother,sex=sex,pheno=pheno,chromosome=chromosome,sid=sid,cm_position=cm_position,bp_position=bp_position,allele_1=allele_1,allele_2=allele_2)
+    # lock in the expected results:
+    # np.savez(shared_datadir / "some_missing.properties.npz",fid=fid,iid=iid,
+    # father=father,mother=mother,sex=sex,pheno=pheno,chromosome=chromosome,
+    # sid=sid,cm_position=cm_position,bp_position=bp_position,
+    # allele_1=allele_1,allele_2=allele_2)
     property_dict = np.load(shared_datadir / "some_missing.properties.npz")
     assert np.array_equal(property_dict["fid"], fid)
     assert np.array_equal(property_dict["iid"], iid)
@@ -161,6 +166,7 @@ def test_bad_dtype_or_order(shared_datadir):
 
 def setting_generator(seq_dict, seed=9392):
     import itertools
+
     from numpy.random import RandomState
 
     longest = max((len(value_list) for value_list in seq_dict.values()))
@@ -169,7 +175,7 @@ def setting_generator(seq_dict, seed=9392):
         setting = {}
         for offset, (key, value_list) in enumerate(seq_dict.items()):
             val = value_list[(test_index + offset) % len(value_list)]
-            if not (isinstance(val,str) and "leave_out" == val):
+            if not (isinstance(val, str) and "leave_out" == val):
                 setting[key] = val
         yield setting
 
@@ -180,8 +186,8 @@ def setting_generator(seq_dict, seed=9392):
     for combo in all_combo:
         setting = {
             key: value_list
-                for key, value_list in itertools.zip_longest(seq_dict, combo)
-                if not (isinstance(value_list,str) and "leave_out" == value_list)
+            for key, value_list in itertools.zip_longest(seq_dict, combo)
+            if not (isinstance(value_list, str) and "leave_out" == value_list)
         }
         yield setting
 
@@ -204,7 +210,7 @@ def test_properties(shared_datadir):
         "sid_count": [None, len(sid_list)],
         "sid_before_read": [False, True],
         "sid_after_read": [False, True],
-        "chromosome": ["leave_out", None, chromosome_list, np.array(chromosome_list),],
+        "chromosome": ["leave_out", None, chromosome_list, np.array(chromosome_list)],
         "chromosome_before_read": [False, True],
         "chromosome_after_read": [False, True],
     }
@@ -240,7 +246,10 @@ def test_properties(shared_datadir):
                 else:
                     assert bed.chromosome is None
             val = bed.read()
-            assert val.shape == (len(iid_list), len(sid_list),)
+            assert val.shape == (
+                len(iid_list),
+                len(sid_list),
+            )
             if settings["iid_after_read"]:
                 if _not_set_to_none(settings, "iid"):
                     assert np.array_equal(bed.iid, iid_list)
@@ -272,7 +281,6 @@ def test_c_reader_bed(shared_datadir):
         val = bed.read(order="F", dtype="int8", force_python_only=False)
         assert val.dtype == np.int8
         ref_val[ref_val != ref_val] = -127
-        ref_val = ref_val.astype("int8")
         ref_val = ref_val.astype("int8")
         assert np.all(ref_val == val)
 
@@ -402,7 +410,7 @@ def test_write12(tmp_path):
     output_template = str(tmp_path / "writes.{0}.bed")
     i = 0
     for row_count in [0, 5, 2, 1]:
-        for col_count in [4, 2, 1, 0]:
+        for col_count in [0, 4, 2, 1]:
             val = np.random.randint(0, 4, size=(row_count, col_count)) * 1.0
             val[val == 3] = np.NaN
             row0 = ["0", "1", "2", "3", "4"][:row_count]
@@ -445,7 +453,7 @@ def test_write12(tmp_path):
                             )
                 try:
                     os.remove(filename)
-                except:
+                except Exception:
                     pass
     logging.info("done with 'test_writes'")
 
@@ -535,7 +543,7 @@ def test_shape(shared_datadir):
 def test_zero_files(tmp_path):
     for force_python_only in [False, True]:
         for iid_count in [3, 0]:
-            for sid_count in [5, 0]:
+            for sid_count in [0, 5]:
                 for dtype in [np.int8, np.float32, np.float64]:
                     val = np.zeros((iid_count, sid_count), dtype=dtype)
                     if iid_count * sid_count > 0:
@@ -743,11 +751,33 @@ def test_env(shared_datadir):
             os.environ[key] = original_val
 
 
+def test_noncontig_indexes(shared_datadir):
+
+    with open_bed(shared_datadir / "some_missing.bed") as bed:
+        whole_iid_index = np.arange(bed.iid_count)
+        assert whole_iid_index.flags["C_CONTIGUOUS"]
+        every_other = whole_iid_index[::2]
+        assert not every_other.flags["C_CONTIGUOUS"]
+        val = bed.read((every_other, -2))
+
+        whole_iid_index = np.arange(val.shape[0])
+        assert whole_iid_index.flags["C_CONTIGUOUS"]
+        every_other = whole_iid_index[::2]
+        assert not every_other.flags["C_CONTIGUOUS"]
+        val_out = np.zeros((len(every_other), 0))
+        with pytest.raises(ValueError):
+            subset_f64_f64(
+                val.reshape(-1, bed.sid_count, 1), every_other, [], val_out, 1
+            )
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
     shared_datadir = Path(r"D:\OneDrive\programs\bed-reader\bed_reader\tests\data")
     tmp_path = Path(r"m:/deldir/tests")
-    test_read1(shared_datadir)
-    test_write1(tmp_path, shared_datadir)
+    test_zero_files(tmp_path)
+    # test_index(shared_datadir)
+    # test_c_reader_bed(shared_datadir)
+    # test_read1(shared_datadir)
     pytest.main([__file__])

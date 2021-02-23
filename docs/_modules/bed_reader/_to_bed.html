@@ -3,11 +3,11 @@
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
   
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <title>bed_reader._to_bed &mdash; Bed Reader 0.1.1 documentation</title>
+  <title>bed_reader._to_bed &mdash; Bed Reader 0.2.0 documentation</title>
   
 
   
@@ -16,7 +16,10 @@
 
   
   
+
   
+  
+
   
 
   
@@ -49,7 +52,7 @@
           
 
           
-            <a href="../../index.html" class="icon icon-home" alt="Documentation Home"> Bed Reader
+            <a href="../../index.html" class="icon icon-home"> Bed Reader
           
 
           
@@ -59,7 +62,7 @@
             
             
               <div class="version">
-                0.1.1
+                0.2.0
               </div>
             
           
@@ -124,6 +127,8 @@
 
 
 
+
+
 <div role="navigation" aria-label="breadcrumbs navigation">
 
   <ul class="wy-breadcrumbs">
@@ -150,12 +155,14 @@
   <h1>Source code for bed_reader._to_bed</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">import</span> <span class="nn">os</span>
-<span class="kn">from</span> <span class="nn">pathlib</span> <span class="k">import</span> <span class="n">Path</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">Union</span>
 
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 
-<span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">open_bed</span>
+<span class="kn">from</span> <span class="nn">bed_reader</span> <span class="kn">import</span> <span class="n">get_num_threads</span><span class="p">,</span> <span class="n">open_bed</span>
+
+<span class="kn">from</span> <span class="nn">.bed_reader</span> <span class="kn">import</span> <span class="n">write_f32</span><span class="p">,</span> <span class="n">write_f64</span><span class="p">,</span> <span class="n">write_i8</span>
 
 
 <div class="viewcode-block" id="to_bed"><a class="viewcode-back" href="../../index.html#bed_reader.to_bed">[docs]</a><span class="k">def</span> <span class="nf">to_bed</span><span class="p">(</span>
@@ -166,6 +173,7 @@
     <span class="n">fam_filepath</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">bim_filepath</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">force_python_only</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">num_threads</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
 <span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Write values to a file in PLINK .bed format.</span>
@@ -176,10 +184,11 @@
 <span class="sd">        .bed file to write to.</span>
 <span class="sd">    val: array-like:</span>
 <span class="sd">        A two-dimension array (or array-like object) of values. The values should</span>
-<span class="sd">        be (or be convertible to) all floats or all integers. The values should be 0, 1, 2, or missing.</span>
+<span class="sd">        be (or be convertible to) all floats or all integers.</span>
+<span class="sd">        The values should be 0, 1, 2, or missing.</span>
 <span class="sd">        If floats, missing is ``np.nan``. If integers, missing is -127.</span>
 <span class="sd">    properties: dict, optional</span>
-<span class="sd">        A dictionary of property names and values to write to the .fam and .bim files. </span>
+<span class="sd">        A dictionary of property names and values to write to the .fam and .bim files.</span>
 <span class="sd">        Any properties not mentioned will be filled in with default values.</span>
 
 <span class="sd">        The possible property names are:</span>
@@ -188,10 +197,11 @@
 <span class="sd">             &quot;mother&quot; (mother id), &quot;sex&quot;, &quot;pheno&quot; (phenotype), &quot;chromosome&quot;, &quot;sid&quot;</span>
 <span class="sd">             (SNP or variant id), &quot;cm_position&quot; (centimorgan position), &quot;bp_position&quot;</span>
 <span class="sd">             (base-pair position), &quot;allele_1&quot;, &quot;allele_2&quot;.</span>
-<span class="sd">            </span>
+
 <span class="sd">         The values are lists or arrays. See example, below.</span>
 <span class="sd">    count_A1: bool, optional</span>
-<span class="sd">        True (default) to count the number of A1 alleles (the PLINK standard). False to count the number of A2 alleles.</span>
+<span class="sd">        True (default) to count the number of A1 alleles (the PLINK standard).</span>
+<span class="sd">        False to count the number of A2 alleles.</span>
 <span class="sd">    fam_filepath: pathlib.Path or str, optional</span>
 <span class="sd">        Path to the file containing information about each individual (sample).</span>
 <span class="sd">        Defaults to replacing the .bed file’s suffix with .fam.</span>
@@ -199,7 +209,18 @@
 <span class="sd">        Path to the file containing information about each SNP (variant).</span>
 <span class="sd">        Defaults to replacing the .bed file’s suffix with .bim.</span>
 <span class="sd">    force_python_only</span>
-<span class="sd">        If False (default), uses the faster C++ code; otherwise it uses the slower pure Python code.</span>
+<span class="sd">        If False (default), uses the faster Rust code; otherwise it uses the slower</span>
+<span class="sd">        pure Python code.</span>
+
+<span class="sd">    num_threads: None or int, optional</span>
+<span class="sd">        The number of threads with which to write data.</span>
+<span class="sd">        (Writing is currently always single-threaded, but multithreading</span>
+<span class="sd">        may be enabled in the future.)</span>
+<span class="sd">        Defaults to all available processors.</span>
+<span class="sd">        Can also be set with these</span>
+<span class="sd">        environment variables (listed in priority order):</span>
+<span class="sd">        &#39;PST_NUM_THREADS&#39;, &#39;NUM_THREADS&#39;, &#39;MKL_NUM_THREADS&#39;.</span>
+
 
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
@@ -212,7 +233,9 @@
 <span class="sd">        &gt;&gt;&gt; from bed_reader import to_bed, tmp_path</span>
 <span class="sd">        &gt;&gt;&gt;</span>
 <span class="sd">        &gt;&gt;&gt; output_file = tmp_path() / &quot;small.bed&quot;</span>
-<span class="sd">        &gt;&gt;&gt; val = [[1.0, 0.0, np.nan, 0.0], [2.0, 0.0, np.nan, 2.0], [0.0, 1.0, 2.0, 0.0]]</span>
+<span class="sd">        &gt;&gt;&gt; val = [[1.0, 0.0, np.nan, 0.0],</span>
+<span class="sd">        ...        [2.0, 0.0, np.nan, 2.0],</span>
+<span class="sd">        ...        [0.0, 1.0, 2.0, 0.0]]</span>
 <span class="sd">        &gt;&gt;&gt; properties = {</span>
 <span class="sd">        ...    &quot;fid&quot;: [&quot;fid1&quot;, &quot;fid1&quot;, &quot;fid2&quot;],</span>
 <span class="sd">        ...    &quot;iid&quot;: [&quot;iid1&quot;, &quot;iid2&quot;, &quot;iid3&quot;],</span>
@@ -230,8 +253,8 @@
 <span class="sd">        &gt;&gt;&gt; to_bed(output_file, val, properties=properties)</span>
 
 <span class="sd">    Here, no properties are given, so default values are assigned.</span>
-<span class="sd">    If we then read the new file and list the chromosome property, it is an array of &#39;0&#39;s,</span>
-<span class="sd">    the default chromosome value.</span>
+<span class="sd">    If we then read the new file and list the chromosome property,</span>
+<span class="sd">    it is an array of &#39;0&#39;s, the default chromosome value.</span>
 
 <span class="sd">    .. doctest::</span>
 
@@ -243,7 +266,7 @@
 <span class="sd">        &gt;&gt;&gt; with open_bed(output_file2) as bed2:</span>
 <span class="sd">        ...     print(bed2.chromosome)</span>
 <span class="sd">        [&#39;0&#39; &#39;0&#39; &#39;0&#39; &#39;0&#39;]</span>
-<span class="sd">        </span>
+
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">filepath</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
 
@@ -258,54 +281,35 @@
     <span class="n">open_bed</span><span class="o">.</span><span class="n">_write_fam_or_bim</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="n">properties</span><span class="p">,</span> <span class="s2">&quot;fam&quot;</span><span class="p">,</span> <span class="n">fam_filepath</span><span class="p">)</span>
     <span class="n">open_bed</span><span class="o">.</span><span class="n">_write_fam_or_bim</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="n">properties</span><span class="p">,</span> <span class="s2">&quot;bim&quot;</span><span class="p">,</span> <span class="n">bim_filepath</span><span class="p">)</span>
 
-    <span class="n">bedfile</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;ascii&quot;</span><span class="p">)</span>
-
     <span class="k">if</span> <span class="ow">not</span> <span class="n">force_python_only</span><span class="p">:</span>
-        <span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">wrap_plink_parser_onep</span>
 
-        <span class="k">if</span> <span class="n">val</span><span class="o">.</span><span class="n">flags</span><span class="p">[</span><span class="s2">&quot;C_CONTIGUOUS&quot;</span><span class="p">]:</span>
-            <span class="n">order</span> <span class="o">=</span> <span class="s2">&quot;C&quot;</span>
-        <span class="k">elif</span> <span class="n">val</span><span class="o">.</span><span class="n">flags</span><span class="p">[</span><span class="s2">&quot;F_CONTIGUOUS&quot;</span><span class="p">]:</span>
-            <span class="n">order</span> <span class="o">=</span> <span class="s2">&quot;F&quot;</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;val must be contiguous.&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">val</span><span class="o">.</span><span class="n">flags</span><span class="p">[</span><span class="s2">&quot;C_CONTIGUOUS&quot;</span><span class="p">]</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">val</span><span class="o">.</span><span class="n">flags</span><span class="p">[</span><span class="s2">&quot;F_CONTIGUOUS&quot;</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;val must be contiguous.&quot;</span><span class="p">)</span>
+
+        <span class="n">num_threads</span> <span class="o">=</span> <span class="n">get_num_threads</span><span class="p">(</span><span class="n">num_threads</span><span class="p">)</span>
 
         <span class="n">iid_count</span><span class="p">,</span> <span class="n">sid_count</span> <span class="o">=</span> <span class="n">val</span><span class="o">.</span><span class="n">shape</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">val</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">order</span> <span class="o">==</span> <span class="s2">&quot;F&quot;</span><span class="p">:</span>
-                    <span class="n">wrap_plink_parser_onep</span><span class="o">.</span><span class="n">writePlinkBedFile2doubleFAAA</span><span class="p">(</span>
-                        <span class="n">bedfile</span><span class="p">,</span> <span class="n">iid_count</span><span class="p">,</span> <span class="n">sid_count</span><span class="p">,</span> <span class="n">count_A1</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span>
-                    <span class="p">)</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">wrap_plink_parser_onep</span><span class="o">.</span><span class="n">writePlinkBedFile2doubleCAAA</span><span class="p">(</span>
-                        <span class="n">bedfile</span><span class="p">,</span> <span class="n">iid_count</span><span class="p">,</span> <span class="n">sid_count</span><span class="p">,</span> <span class="n">count_A1</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span>
-                    <span class="p">)</span>
+                <span class="n">write_f64</span><span class="p">(</span>
+                    <span class="nb">str</span><span class="p">(</span><span class="n">filepath</span><span class="p">),</span> <span class="n">count_a1</span><span class="o">=</span><span class="n">count_A1</span><span class="p">,</span> <span class="n">val</span><span class="o">=</span><span class="n">val</span><span class="p">,</span> <span class="n">num_threads</span><span class="o">=</span><span class="n">num_threads</span>
+                <span class="p">)</span>
             <span class="k">elif</span> <span class="n">val</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">order</span> <span class="o">==</span> <span class="s2">&quot;F&quot;</span><span class="p">:</span>
-                    <span class="n">wrap_plink_parser_onep</span><span class="o">.</span><span class="n">writePlinkBedFile2floatFAAA</span><span class="p">(</span>
-                        <span class="n">bedfile</span><span class="p">,</span> <span class="n">iid_count</span><span class="p">,</span> <span class="n">sid_count</span><span class="p">,</span> <span class="n">count_A1</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span>
-                    <span class="p">)</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">wrap_plink_parser_onep</span><span class="o">.</span><span class="n">writePlinkBedFile2floatCAAA</span><span class="p">(</span>
-                        <span class="n">bedfile</span><span class="p">,</span> <span class="n">iid_count</span><span class="p">,</span> <span class="n">sid_count</span><span class="p">,</span> <span class="n">count_A1</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span>
-                    <span class="p">)</span>
+                <span class="n">write_f32</span><span class="p">(</span>
+                    <span class="nb">str</span><span class="p">(</span><span class="n">filepath</span><span class="p">),</span> <span class="n">count_a1</span><span class="o">=</span><span class="n">count_A1</span><span class="p">,</span> <span class="n">val</span><span class="o">=</span><span class="n">val</span><span class="p">,</span> <span class="n">num_threads</span><span class="o">=</span><span class="n">num_threads</span>
+                <span class="p">)</span>
             <span class="k">elif</span> <span class="n">val</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">order</span> <span class="o">==</span> <span class="s2">&quot;F&quot;</span><span class="p">:</span>
-                    <span class="n">wrap_plink_parser_onep</span><span class="o">.</span><span class="n">writePlinkBedFile2int8FAAA</span><span class="p">(</span>
-                        <span class="n">bedfile</span><span class="p">,</span> <span class="n">iid_count</span><span class="p">,</span> <span class="n">sid_count</span><span class="p">,</span> <span class="n">count_A1</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span>
-                    <span class="p">)</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">wrap_plink_parser_onep</span><span class="o">.</span><span class="n">writePlinkBedFile2int8CAAA</span><span class="p">(</span>
-                        <span class="n">bedfile</span><span class="p">,</span> <span class="n">iid_count</span><span class="p">,</span> <span class="n">sid_count</span><span class="p">,</span> <span class="n">count_A1</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span>
-                    <span class="p">)</span>
+                <span class="n">write_i8</span><span class="p">(</span>
+                    <span class="nb">str</span><span class="p">(</span><span class="n">filepath</span><span class="p">),</span> <span class="n">count_a1</span><span class="o">=</span><span class="n">count_A1</span><span class="p">,</span> <span class="n">val</span><span class="o">=</span><span class="n">val</span><span class="p">,</span> <span class="n">num_threads</span><span class="o">=</span><span class="n">num_threads</span>
+                <span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                    <span class="n">f</span><span class="s2">&quot;dtype &#39;</span><span class="si">{val.dtype}</span><span class="s2">&#39; not known, only &#39;int8&#39;, &#39;float32&#39;, and &#39;float64&#39; are allowed.&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;dtype &#39;</span><span class="si">{</span><span class="n">val</span><span class="o">.</span><span class="n">dtype</span><span class="si">}</span><span class="s2">&#39; not known, only &quot;</span>
+                    <span class="o">+</span> <span class="s2">&quot;&#39;int8&#39;, &#39;float32&#39;, and &#39;float64&#39; are allowed.&quot;</span>
                 <span class="p">)</span>
         <span class="k">except</span> <span class="ne">SystemError</span> <span class="k">as</span> <span class="n">system_error</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
-                <span class="n">os</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span><span class="n">bedfile</span><span class="p">)</span>
+                <span class="n">os</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
             <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
                 <span class="k">pass</span>
             <span class="k">raise</span> <span class="n">system_error</span><span class="o">.</span><span class="n">__cause__</span>
@@ -317,7 +321,7 @@
             <span class="n">zero_code</span> <span class="o">=</span> <span class="mb">0b11</span>
             <span class="n">two_code</span> <span class="o">=</span> <span class="mb">0b00</span>
 
-        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">bedfile</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">bed_filepointer</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">bed_filepointer</span><span class="p">:</span>
             <span class="c1"># see http://zzz.bwh.harvard.edu/plink/binary.shtml</span>
             <span class="n">bed_filepointer</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">bytes</span><span class="p">(</span><span class="nb">bytearray</span><span class="p">([</span><span class="mb">0b01101100</span><span class="p">])))</span>  <span class="c1"># magic numbers</span>
             <span class="n">bed_filepointer</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">bytes</span><span class="p">(</span><span class="nb">bytearray</span><span class="p">([</span><span class="mb">0b00011011</span><span class="p">])))</span>  <span class="c1"># magic numbers</span>
@@ -347,11 +351,12 @@
                             <span class="n">code</span> <span class="o">=</span> <span class="mb">0b01</span>  <span class="c1"># backwards on purpose</span>
                         <span class="k">else</span><span class="p">:</span>
                             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                                <span class="s2">&quot;Attempt to write illegal value to .bed file. Only 0,1,2,missing allowed.&quot;</span>
+                                <span class="s2">&quot;Attempt to write illegal value to .bed file. &quot;</span>
+                                <span class="o">+</span> <span class="s2">&quot;Only 0,1,2,missing allowed.&quot;</span>
                             <span class="p">)</span>
                         <span class="n">byte</span> <span class="o">|=</span> <span class="n">code</span> <span class="o">&lt;&lt;</span> <span class="p">(</span><span class="n">val_index</span> <span class="o">*</span> <span class="mi">2</span><span class="p">)</span>
                     <span class="n">bed_filepointer</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">bytes</span><span class="p">(</span><span class="nb">bytearray</span><span class="p">([</span><span class="n">byte</span><span class="p">])))</span>
-    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;Done writing </span><span class="si">{filepath}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Done writing </span><span class="si">{</span><span class="n">filepath</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
 
 
 <span class="k">def</span> <span class="nf">_fix_up_val</span><span class="p">(</span><span class="nb">input</span><span class="p">):</span>
@@ -373,7 +378,7 @@
     <span class="k">return</span> <span class="nb">input</span>
 
 
-<span class="c1">#if __name__ == &quot;__main__&quot;:</span>
+<span class="c1"># if __name__ == &quot;__main__&quot;:</span>
 <span class="c1">#    logging.basicConfig(level=logging.INFO)</span>
 
 <span class="c1">#    import pytest</span>
@@ -385,28 +390,25 @@
            
           </div>
           <footer>
-  
 
   <hr/>
 
   <div role="contentinfo">
     <p>
-        
-        &copy; Copyright 2020, Carl Kadie
+        &#169; Copyright 2020, Carl Kadie.
 
     </p>
   </div>
     
     
     
-    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     
-    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     
     provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
-
         </div>
       </div>
 

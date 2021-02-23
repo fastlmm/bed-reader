@@ -1,7 +1,7 @@
 .. image:: https://badge.fury.io/py/bed-reader.svg
     :target: https://badge.fury.io/py/bed-reader
-.. image:: https://travis-ci.com/fastlmm/bed-reader.svg?branch=master
-    :target: https://travis-ci.com/fastlmm/bed-reader
+.. image:: https://github.com/fastlmm/bed-reader/actions/workflows/ci.yml/badge.svg?branch=master
+    :target: https://github.com/fastlmm/bed-reader/actions/workflows/ci.yml
 .. image:: https://img.shields.io/pypi/pyversions/bed-reader
 
 ################################
@@ -17,7 +17,7 @@ Read and write the PLINK BED format, simply and efficiently.
 
 Features:
 
-* Fast multi-threaded C++ engine.
+* Fast multi-threaded Rust engine.
 * Supports all Python indexing methods. Slice data by individuals (samples) and/or SNPs (variants).
 * Used by `PySnpTools <https://github.com/fastlmm/PySnpTools>`_, `FaST-LMM <https://github.com/fastlmm/FaST-LMM>`_, and `PyStatGen <https://github.com/pystatgen>`_.
 * Supports `PLINK 1.9 <https://www.cog-genomics.org/plink2/formats>`_.
@@ -168,7 +168,8 @@ By default :meth:`sample_file` puts files under the user's cache directory. Over
 the `BED_READER_DATA_DIR` environment variable.
 
 By default, :class:`open_bed` uses all available processors. Override this with the `num_threads`
-parameter or by setting the `MKL_NUM_THREADS` environment variable.
+parameter or by setting environment variable (listed in priority order):
+'PST_NUM_THREADS', 'NUM_THREADS', 'MKL_NUM_THREADS'.
 
 
 Indices and Tables

@@ -3,11 +3,11 @@
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
   
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <title>bed_reader._open_bed &mdash; Bed Reader 0.1.1 documentation</title>
+  <title>bed_reader._open_bed &mdash; Bed Reader 0.2.0 documentation</title>
   
 
   
@@ -16,7 +16,10 @@
 
   
   
+
   
+  
+
   
 
   
@@ -49,7 +52,7 @@
           
 
           
-            <a href="../../index.html" class="icon icon-home" alt="Documentation Home"> Bed Reader
+            <a href="../../index.html" class="icon icon-home"> Bed Reader
           
 
           
@@ -59,7 +62,7 @@
             
             
               <div class="version">
-                0.1.1
+                0.2.0
               </div>
             
           
@@ -124,6 +127,8 @@
 
 
 
+
+
 <div role="navigation" aria-label="breadcrumbs navigation">
 
   <ul class="wy-breadcrumbs">
@@ -148,21 +153,18 @@
            <div itemprop="articleBody">
             
   <h1>Source code for bed_reader._open_bed</h1><div class="highlight"><pre>
-<span></span><span class="c1"># LATER: Offer to ignore some or all fam bim fields</span>
-<span class="kn">import</span> <span class="nn">logging</span>
-<span class="kn">import</span> <span class="nn">math</span>
+<span></span><span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">import</span> <span class="nn">multiprocessing</span>
-<span class="kn">import</span> <span class="nn">numbers</span>
 <span class="kn">import</span> <span class="nn">os</span>
-<span class="kn">import</span> <span class="nn">platform</span>
-<span class="kn">import</span> <span class="nn">sys</span>
-<span class="kn">from</span> <span class="nn">dataclasses</span> <span class="k">import</span> <span class="n">dataclass</span>
-<span class="kn">from</span> <span class="nn">itertools</span> <span class="k">import</span> <span class="n">repeat</span><span class="p">,</span> <span class="n">takewhile</span>
-<span class="kn">from</span> <span class="nn">pathlib</span> <span class="k">import</span> <span class="n">Path</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">from</span> <span class="nn">dataclasses</span> <span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">repeat</span><span class="p">,</span> <span class="n">takewhile</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
 
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+
+<span class="kn">from</span> <span class="nn">.bed_reader</span> <span class="kn">import</span> <span class="n">read_f32</span><span class="p">,</span> <span class="n">read_f64</span><span class="p">,</span> <span class="n">read_i8</span>
 
 
 <span class="c1"># https://stackoverflow.com/questions/845058/how-to-get-line-count-of-a-large-file-cheaply-in-python</span>
@@ -183,16 +185,16 @@
 
 <span class="k">def</span> <span class="nf">_all_same</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">length</span><span class="p">,</span> <span class="n">missing</span><span class="p">,</span> <span class="n">dtype</span><span class="p">):</span>
     <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">str_</span><span class="p">):</span>
-        <span class="n">dtype</span> <span class="o">=</span> <span class="n">f</span><span class="s2">&quot;&lt;U{len(missing)}&quot;</span>
+        <span class="n">dtype</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;&lt;U</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">missing</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
     <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">length</span><span class="p">,</span> <span class="n">missing</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
 
 
 <span class="k">def</span> <span class="nf">_sequence</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">length</span><span class="p">,</span> <span class="n">missing</span><span class="p">,</span> <span class="n">dtype</span><span class="p">):</span>
     <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">str_</span><span class="p">):</span>
-        <span class="n">longest</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;</span><span class="si">{key}{length}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="n">dtype</span> <span class="o">=</span> <span class="n">f</span><span class="s2">&quot;&lt;U</span><span class="si">{longest}</span><span class="s2">&quot;</span>
+        <span class="n">longest</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">key</span><span class="si">}{</span><span class="n">length</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">dtype</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;&lt;U</span><span class="si">{</span><span class="n">longest</span><span class="si">}</span><span class="s2">&quot;</span>
     <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">fromiter</span><span class="p">(</span>
-        <span class="p">(</span><span class="n">f</span><span class="s2">&quot;</span><span class="si">{key}</span><span class="s2">{i+1}&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">length</span><span class="p">)),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">count</span><span class="o">=</span><span class="n">length</span>
+        <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">key</span><span class="si">}{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">length</span><span class="p">)),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">count</span><span class="o">=</span><span class="n">length</span>
     <span class="p">)</span>
 
 
@@ -215,6 +217,18 @@
     <span class="s2">&quot;allele_1&quot;</span><span class="p">:</span> <span class="n">_MetaMeta</span><span class="p">(</span><span class="s2">&quot;bim&quot;</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">str_</span><span class="p">,</span> <span class="s2">&quot;A1&quot;</span><span class="p">,</span> <span class="n">_all_same</span><span class="p">),</span>
     <span class="s2">&quot;allele_2&quot;</span><span class="p">:</span> <span class="n">_MetaMeta</span><span class="p">(</span><span class="s2">&quot;bim&quot;</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">str_</span><span class="p">,</span> <span class="s2">&quot;A2&quot;</span><span class="p">,</span> <span class="n">_all_same</span><span class="p">),</span>
 <span class="p">}</span>
+
+
+<span class="k">def</span> <span class="nf">get_num_threads</span><span class="p">(</span><span class="n">num_threads</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">num_threads</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">num_threads</span>
+    <span class="k">if</span> <span class="s2">&quot;PST_NUM_THREADS&quot;</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;PST_NUM_THREADS&quot;</span><span class="p">])</span>
+    <span class="k">if</span> <span class="s2">&quot;NUM_THREADS&quot;</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;NUM_THREADS&quot;</span><span class="p">])</span>
+    <span class="k">if</span> <span class="s2">&quot;MKL_NUM_THREADS&quot;</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;MKL_NUM_THREADS&quot;</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">multiprocessing</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">()</span>
 
 
 <div class="viewcode-block" id="open_bed"><a class="viewcode-back" href="../../index.html#bed_reader.open_bed">[docs]</a><span class="k">class</span> <span class="nc">open_bed</span><span class="p">:</span>
@@ -241,34 +255,36 @@
 <span class="sd">             &quot;fid&quot; (family id), &quot;iid&quot; (individual or sample id), &quot;father&quot; (father id),</span>
 <span class="sd">             &quot;mother&quot; (mother id), &quot;sex&quot;, &quot;pheno&quot; (phenotype), &quot;chromosome&quot;, &quot;sid&quot;</span>
 <span class="sd">             (SNP or variant id), &quot;cm_position&quot; (centimorgan position), &quot;bp_position&quot;</span>
-<span class="sd">             (base-pair position), &quot;allele_1&quot;, &quot;allele_2&quot;.            </span>
+<span class="sd">             (base-pair position), &quot;allele_1&quot;, &quot;allele_2&quot;.</span>
 
 <span class="sd">          The values are replacement lists or arrays. A value can also be `None`,</span>
 <span class="sd">          meaning do not read or offer this property. See examples, below.</span>
 
 <span class="sd">          The list or array will be converted to a :class:`numpy.ndarray`</span>
-<span class="sd">          of the appropriate dtype, if necessary. Any :class:`numpy.nan` values will converted to</span>
-<span class="sd">          the appropriate missing value. The PLINK `.fam specification &lt;https://www.cog-genomics.org/plink2/formats#fam&gt;`_</span>
-<span class="sd">          and `.bim specification &lt;https://www.cog-genomics.org/plink2/formats#bim&gt;`_ lists</span>
-<span class="sd">          the dtypes and missing values for each property.</span>
+<span class="sd">          of the appropriate dtype, if necessary. Any :class:`numpy.nan` values</span>
+<span class="sd">          will converted to the appropriate missing value. The PLINK `.fam specification</span>
+<span class="sd">          &lt;https://www.cog-genomics.org/plink2/formats#fam&gt;`_</span>
+<span class="sd">          and `.bim specification &lt;https://www.cog-genomics.org/plink2/formats#bim&gt;`_</span>
+<span class="sd">          lists the dtypes and missing values for each property.</span>
 
 <span class="sd">    count_A1: bool, optional</span>
-<span class="sd">        True (default) to count the number of A1 alleles (the PLINK standard). False to count the number of A2 alleles.</span>
+<span class="sd">        True (default) to count the number of A1 alleles (the PLINK standard).</span>
+<span class="sd">        False to count the number of A2 alleles.</span>
 <span class="sd">    num_threads: None or int, optional</span>
-<span class="sd">        The number of threads with which to read data. Defaults to all available processors.</span>
-<span class="sd">        Can also be set with the &#39;MKL_NUM_THREADS&#39; environment variable.</span>
-<span class="sd">        </span>
-<span class="sd">        On MacOS, this parameter is ignored and all reads are singled threaded.</span>
+<span class="sd">        The number of threads with which to read data. Defaults to all available</span>
+<span class="sd">        processors.</span>
+<span class="sd">        Can also be set with these environment variables (listed in priority order):</span>
+<span class="sd">        &#39;PST_NUM_THREADS&#39;, &#39;NUM_THREADS&#39;, &#39;MKL_NUM_THREADS&#39;.</span>
 <span class="sd">    skip_format_check: bool, optional</span>
-<span class="sd">        False (default) to immediately check for expected starting bytes in the .bed file.</span>
-<span class="sd">        True to delay the check until (and if) data is read.</span>
+<span class="sd">        False (default) to immediately check for expected starting bytes in</span>
+<span class="sd">        the .bed file. True to delay the check until (and if) data is read.</span>
 <span class="sd">    fam_filepath: pathlib.Path or str, optional</span>
 <span class="sd">        Path to the file containing information about each individual (sample).</span>
 <span class="sd">        Defaults to replacing the .bed file’s suffix with .fam.</span>
 <span class="sd">    bim_filepath: pathlib.Path or str, optional</span>
 <span class="sd">        Path to the file containing information about each SNP (variant).</span>
 <span class="sd">        Defaults to replacing the .bed file’s suffix with .bim.</span>
-<span class="sd">        </span>
+
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    open_bed</span>
@@ -277,7 +293,8 @@
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
 
-<span class="sd">    List individual (sample) :attr:`iid` and SNP (variant) :attr:`sid`, then :meth:`read` the whole file.</span>
+<span class="sd">    List individual (sample) :attr:`iid` and SNP (variant) :attr:`sid`, then :meth:`read`</span>
+<span class="sd">    the whole file.</span>
 
 <span class="sd">    .. doctest::</span>
 
@@ -315,7 +332,8 @@
 <span class="sd">        &gt;&gt;&gt; print(bed.sid) # same as before</span>
 <span class="sd">        [&#39;sid1&#39; &#39;sid2&#39; &#39;sid3&#39; &#39;sid4&#39;]</span>
 
-<span class="sd">    Give the number of individuals (samples) and SNPs (variants) so that the .fam and .bim files need never be opened.</span>
+<span class="sd">    Give the number of individuals (samples) and SNPs (variants) so that the .fam and</span>
+<span class="sd">    .bim files need never be opened.</span>
 
 <span class="sd">        &gt;&gt;&gt; with open_bed(file_name, iid_count=3, sid_count=4) as bed:</span>
 <span class="sd">        ...     print(bed.read())</span>
@@ -337,7 +355,7 @@
 
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">filepath</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">],</span>
         <span class="n">iid_count</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -348,7 +366,7 @@
         <span class="n">skip_format_check</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">fam_filepath</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">bim_filepath</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="p">):</span>  <span class="c1">#!!!document these new optionals. they are here</span>
+    <span class="p">):</span>  <span class="c1"># !!!document these new optionals. they are here</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">filepath</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">count_A1</span> <span class="o">=</span> <span class="n">count_A1</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_num_threads</span> <span class="o">=</span> <span class="n">num_threads</span>
@@ -377,9 +395,10 @@
 <div class="viewcode-block" id="open_bed.read"><a class="viewcode-back" href="../../index.html#bed_reader.open_bed.read">[docs]</a>    <span class="k">def</span> <span class="nf">read</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">index</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">dtype</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">type</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="s1">&#39;float32&#39;</span><span class="p">,</span>
+        <span class="n">dtype</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">type</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="s2">&quot;float32&quot;</span><span class="p">,</span>
         <span class="n">order</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;F&quot;</span><span class="p">,</span>
         <span class="n">force_python_only</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">num_threads</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Read genotype information.</span>
@@ -387,11 +406,12 @@
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        index:</span>
-<span class="sd">            An optional expression specifying the individuals (samples) and SNPs (variants)</span>
-<span class="sd">            to read. (See examples, below).</span>
+<span class="sd">            An optional expression specifying the individuals (samples) and SNPs</span>
+<span class="sd">            (variants) to read. (See examples, below).</span>
 <span class="sd">            Defaults to ``None``, meaning read all.</span>
 
-<span class="sd">            (If index is a tuple, the first component indexes the individuals and the second indexes</span>
+<span class="sd">            (If index is a tuple, the first component indexes the individuals and the</span>
+<span class="sd">            second indexes</span>
 <span class="sd">            the SNPs. If it is not a tuple and not None, it indexes SNPs.)</span>
 
 <span class="sd">        dtype: {&#39;float32&#39; (default), &#39;float64&#39;, &#39;int8&#39;}, optional</span>
@@ -400,7 +420,16 @@
 <span class="sd">            The desired memory layout for the returned array.</span>
 <span class="sd">            Defaults to ``F`` (Fortran order, which is SNP-major).</span>
 <span class="sd">        force_python_only: bool, optional</span>
-<span class="sd">            If False (default), uses the faster C++ code; otherwise it uses the slower pure Python code.</span>
+<span class="sd">            If False (default), uses the faster Rust code; otherwise it uses the slower</span>
+<span class="sd">            pure Python code.</span>
+
+<span class="sd">        num_threads: None or int, optional</span>
+<span class="sd">            The number of threads with which to read data. Defaults to all available</span>
+<span class="sd">            processors.</span>
+<span class="sd">            Can also be set with :class:`open_bed` or these</span>
+<span class="sd">            environment variables (listed in priority order):</span>
+<span class="sd">            &#39;PST_NUM_THREADS&#39;, &#39;NUM_THREADS&#39;, &#39;MKL_NUM_THREADS&#39;.</span>
+
 
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
@@ -408,8 +437,8 @@
 <span class="sd">            2-D array containing values of 0, 1, 2, or missing</span>
 
 
-<span class="sd">        Rows represent individuals (samples). Columns represent SNPs (variants). </span>
-<span class="sd">        </span>
+<span class="sd">        Rows represent individuals (samples). Columns represent SNPs (variants).</span>
+
 <span class="sd">        For ``dtype`` &#39;float32&#39; and &#39;float64&#39;, NaN indicates missing values.</span>
 <span class="sd">        For &#39;int8&#39;, -127 indicates missing values.</span>
 
@@ -429,7 +458,9 @@
 <span class="sd">             [ 2.  0. nan  2.]</span>
 <span class="sd">             [ 0.  1.  2.  0.]]</span>
 
-<span class="sd">        To read selected individuals (samples) and/or SNPs (variants), set each part of a :class:`numpy.s_` to an `int`, a list of `int`, a slice expression, or a list of `bool`.</span>
+<span class="sd">        To read selected individuals (samples) and/or SNPs (variants), set each part of</span>
+<span class="sd">        a :class:`numpy.s_` to an `int`, a list of `int`, a slice expression, or</span>
+<span class="sd">        a list of `bool`.</span>
 <span class="sd">        Negative integers count from the end of the list.</span>
 
 
@@ -445,7 +476,8 @@
 <span class="sd">            [[nan  0.  1.]</span>
 <span class="sd">             [nan  2.  2.]</span>
 <span class="sd">             [ 2.  0.  0.]]</span>
-<span class="sd">            &gt;&gt;&gt; print(bed.read(np.s_[:,1:4])) #read SNPs from 1 (inclusive) to 4 (exclusive)</span>
+<span class="sd">            &gt;&gt;&gt; # read SNPs from 1 (inclusive) to 4 (exclusive)</span>
+<span class="sd">            &gt;&gt;&gt; print(bed.read(np.s_[:,1:4]))</span>
 <span class="sd">            [[ 0. nan  0.]</span>
 <span class="sd">             [ 0. nan  2.]</span>
 <span class="sd">             [ 1.  2.  0.]]</span>
@@ -482,104 +514,53 @@
 
         <span class="n">dtype</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="n">dtype</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">order</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;F&quot;</span><span class="p">,</span> <span class="s2">&quot;C&quot;</span><span class="p">}:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;order &#39;</span><span class="si">{order}</span><span class="s2">&#39; not known, only &#39;F&#39;, &#39;C&#39;&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;order &#39;</span><span class="si">{</span><span class="n">order</span><span class="si">}</span><span class="s2">&#39; not known, only &#39;F&#39;, &#39;C&#39;&quot;</span><span class="p">)</span>
 
-        <span class="c1"># Later happy with _iid_range and _sid_range or could it be done with allocation them?</span>
+        <span class="c1"># Later happy with _iid_range and _sid_range or could it be done with</span>
+        <span class="c1"># allocation them?</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_iid_range</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_iid_range</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">iid_count</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_iid_range</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">iid_count</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;uintp&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sid_range</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_sid_range</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sid_count</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_sid_range</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sid_count</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;uintp&quot;</span><span class="p">)</span>
 
-        <span class="n">iid_index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_iid_range</span><span class="p">[</span><span class="n">iid_index_or_slice_etc</span><span class="p">]</span>
-        <span class="n">sid_index</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sid_range</span><span class="p">[</span><span class="n">sid_index_or_slice_etc</span><span class="p">]</span>
+        <span class="n">iid_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_iid_range</span><span class="p">[</span><span class="n">iid_index_or_slice_etc</span><span class="p">],</span>
+            <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;uintp&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">sid_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_sid_range</span><span class="p">[</span><span class="n">sid_index_or_slice_etc</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;uintp&quot;</span>
+        <span class="p">)</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="n">force_python_only</span><span class="p">:</span>
-            <span class="n">num_threads</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_num_threads</span><span class="p">()</span>
-            <span class="k">if</span> <span class="n">num_threads</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
-                <span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">wrap_plink_parser_openmp</span> <span class="k">as</span> <span class="n">wrap_plink_parser</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="kn">from</span> <span class="nn">bed_reader</span> <span class="k">import</span> <span class="n">wrap_plink_parser_onep</span> <span class="k">as</span> <span class="n">wrap_plink_parser</span>
+            <span class="n">num_threads</span> <span class="o">=</span> <span class="n">get_num_threads</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_num_threads</span> <span class="k">if</span> <span class="n">num_threads</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">num_threads</span>
+            <span class="p">)</span>
 
             <span class="n">val</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">iid_index</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">sid_index</span><span class="p">)),</span> <span class="n">order</span><span class="o">=</span><span class="n">order</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
-            <span class="n">bed_file_ascii</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;ascii&quot;</span><span class="p">)</span>
 
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">iid_count</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">sid_count</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="k">if</span> <span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">:</span>
-                    <span class="k">if</span> <span class="n">order</span> <span class="o">==</span> <span class="s2">&quot;F&quot;</span><span class="p">:</span>
-                        <span class="n">wrap_plink_parser</span><span class="o">.</span><span class="n">readPlinkBedFile2int8FAAA</span><span class="p">(</span>
-                            <span class="n">bed_file_ascii</span><span class="p">,</span>
-                            <span class="bp">self</span><span class="o">.</span><span class="n">iid_count</span><span class="p">,</span>
-                            <span class="bp">self</span><span class="o">.</span><span class="n">sid_count</span><span class="p">,</span>
-                            <span class="bp">self</span><span class="o">.</span><span class="n">count_A1</span><span class="p">,</span>
-                            <span class="n">iid_index</span><span class="p">,</span>
-                            <span class="n">sid_index</span><span class="p">,</span>
-                            <span class="n">val</span><span class="p">,</span>
-                            <span class="n">num_threads</span><span class="p">,</span>
-                        <span class="p">)</span>
-                    <span class="k">else</span><span class="p">:</span>
-                        <span class="k">assert</span> <span class="n">order</span> <span class="o">==</span> <span class="s2">&quot;C&quot;</span> <span class="c1"># real assert</span>
-                        <span class="n">wrap_plink_parser</span><span class="o">.</span><span class="n">readPlinkBedFile2int8CAAA</span><span class="p">(</span>
-                            <span class="n">bed_file_ascii</span><span class="p">,</span>
-                            <span class="bp">self</span><span class="o">.</span><span class="n">iid_count</span><span class="p">,</span>
-                            <span class="bp">self</span><span class="o">.</span><span class="n">sid_count</span><span class="p">,</span>
-                            <span class="bp">self</span><span class="o">.</span><span class="n">count_A1</span><span class="p">,</span>
-                            <span class="n">iid_index</span><span class="p">,</span>
-                            <span class="n">sid_index</span><span class="p">,</span>
-                            <span class="n">val</span><span class="p">,</span>
-                            <span class="n">num_threads</span><span class="p">,</span>
-                        <span class="p">)</span>
+                    <span class="n">reader</span> <span class="o">=</span> <span class="n">read_i8</span>
                 <span class="k">elif</span> <span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">:</span>
-                    <span class="k">if</span> <span class="n">order</span> <span class="o">==</span> <span class="s2">&quot;F&quot;</span><span class="p">:</span>
-                        <span class="n">wrap_plink_parser</span><span class="o">.</span><span class="n">readPlinkBedFile2doubleFAAA</span><span class="p">(</span>
-                            <span class="n">bed_file_ascii</span><span class="p">,</span>
-                            <span class="bp">self</span><span class="o">.</span><span class="n">iid_count</span><span class="p">,</span>
-                            <span class="bp">self</span><span class="o">.</span><span class="n">sid_count</span><span class="p">,</span>
-                            <span class="bp">self</span><span class="o">.</span><span class="n">count_A1</span><span class="p">,</span>
-                            <span class="n">iid_index</span><span class="p">,</span>
-                            <span class="n">sid_index</span><span class="p">,</span>
-                            <span class="n">val</span><span class="p">,</span>
-                            <span class="n">num_threads</span><span class="p">,</span>
-                        <span class="p">)</span>
-                    <span class="k">else</span><span class="p">:</span> 
-                        <span class="k">assert</span> <span class="n">order</span> <span class="o">==</span> <span class="s2">&quot;C&quot;</span> <span class="c1">#real assert</span>
-                        <span class="n">wrap_plink_parser</span><span class="o">.</span><span class="n">readPlinkBedFile2doubleCAAA</span><span class="p">(</span>
-                            <span class="n">bed_file_ascii</span><span class="p">,</span>
-                            <span class="bp">self</span><span class="o">.</span><span class="n">iid_count</span><span class="p">,</span>
-                            <span class="bp">self</span><span class="o">.</span><span class="n">sid_count</span><span class="p">,</span>
-                            <span class="bp">self</span><span class="o">.</span><span class="n">count_A1</span><span class="p">,</span>
-                            <span class="n">iid_index</span><span class="p">,</span>
-                            <span class="n">sid_index</span><span class="p">,</span>
-                            <span class="n">val</span><span class="p">,</span>
-                            <span class="n">num_threads</span><span class="p">,</span>
-                        <span class="p">)</span>
+                    <span class="n">reader</span> <span class="o">=</span> <span class="n">read_f64</span>
                 <span class="k">elif</span> <span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">:</span>
-                    <span class="k">if</span> <span class="n">order</span> <span class="o">==</span> <span class="s2">&quot;F&quot;</span><span class="p">:</span>
-                        <span class="n">wrap_plink_parser</span><span class="o">.</span><span class="n">readPlinkBedFile2floatFAAA</span><span class="p">(</span>
-                            <span class="n">bed_file_ascii</span><span class="p">,</span>
-                            <span class="bp">self</span><span class="o">.</span><span class="n">iid_count</span><span class="p">,</span>
-                            <span class="bp">self</span><span class="o">.</span><span class="n">sid_count</span><span class="p">,</span>
-                            <span class="bp">self</span><span class="o">.</span><span class="n">count_A1</span><span class="p">,</span>
-                            <span class="n">iid_index</span><span class="p">,</span>
-                            <span class="n">sid_index</span><span class="p">,</span>
-                            <span class="n">val</span><span class="p">,</span>
-                            <span class="n">num_threads</span><span class="p">,</span>
-                        <span class="p">)</span>
-                    <span class="k">else</span><span class="p">:</span>
-                        <span class="k">assert</span> <span class="n">order</span> <span class="o">==</span> <span class="s2">&quot;C&quot;</span> <span class="c1"># real assert</span>
-                        <span class="n">wrap_plink_parser</span><span class="o">.</span><span class="n">readPlinkBedFile2floatCAAA</span><span class="p">(</span>
-                            <span class="n">bed_file_ascii</span><span class="p">,</span>
-                            <span class="bp">self</span><span class="o">.</span><span class="n">iid_count</span><span class="p">,</span>
-                            <span class="bp">self</span><span class="o">.</span><span class="n">sid_count</span><span class="p">,</span>
-                            <span class="bp">self</span><span class="o">.</span><span class="n">count_A1</span><span class="p">,</span>
-                            <span class="n">iid_index</span><span class="p">,</span>
-                            <span class="n">sid_index</span><span class="p">,</span>
-                            <span class="n">val</span><span class="p">,</span>
-                            <span class="n">num_threads</span><span class="p">,</span>
-                        <span class="p">)</span>
+                    <span class="n">reader</span> <span class="o">=</span> <span class="n">read_f32</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                        <span class="n">f</span><span class="s2">&quot;dtype &#39;</span><span class="si">{val.dtype}</span><span class="s2">&#39; not known, only &#39;int8&#39;, &#39;float32&#39;, and &#39;float64&#39; are allowed.&quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;dtype &#39;</span><span class="si">{</span><span class="n">val</span><span class="o">.</span><span class="n">dtype</span><span class="si">}</span><span class="s2">&#39; not known, only &quot;</span>
+                        <span class="o">+</span> <span class="s2">&quot;&#39;int8&#39;, &#39;float32&#39;, and &#39;float64&#39; are allowed.&quot;</span>
                     <span class="p">)</span>
+
+                <span class="n">reader</span><span class="p">(</span>
+                    <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">),</span>
+                    <span class="n">iid_count</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">iid_count</span><span class="p">,</span>
+                    <span class="n">sid_count</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sid_count</span><span class="p">,</span>
+                    <span class="n">count_a1</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">count_A1</span><span class="p">,</span>
+                    <span class="n">iid_index</span><span class="o">=</span><span class="n">iid_index</span><span class="p">,</span>
+                    <span class="n">sid_index</span><span class="o">=</span><span class="n">sid_index</span><span class="p">,</span>
+                    <span class="n">val</span><span class="o">=</span><span class="n">val</span><span class="p">,</span>
+                    <span class="n">num_threads</span><span class="o">=</span><span class="n">num_threads</span><span class="p">,</span>
+                <span class="p">)</span>
 
         <span class="k">else</span><span class="p">:</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">count_A1</span><span class="p">:</span>
@@ -592,9 +573,11 @@
                 <span class="n">missing</span> <span class="o">=</span> <span class="o">-</span><span class="mi">127</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">missing</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
-            <span class="c1"># An earlier version of this code had a way to read consecutive SNPs of code in one read. May want</span>
+            <span class="c1"># An earlier version of this code had a way to read consecutive SNPs of code</span>
+            <span class="c1"># in one read. May want</span>
             <span class="c1"># to add that ability back to the code.</span>
-            <span class="c1"># Also, note that reading with python will often result in non-contiguous memory</span>
+            <span class="c1"># Also, note that reading with python will often result in</span>
+            <span class="c1"># non-contiguous memory</span>
             <span class="c1"># logging.warn(&quot;using pure python plink parser (might be much slower!!)&quot;)</span>
             <span class="n">val</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
                 <span class="p">((</span><span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="mf">0.25</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">iid_count</span><span class="p">))</span> <span class="o">*</span> <span class="mi">4</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">sid_index</span><span class="p">)),</span>
@@ -602,12 +585,12 @@
                 <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span>
             <span class="p">)</span>  <span class="c1"># allocate it a little big</span>
 
+            <span class="n">nbyte</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="mf">0.25</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">iid_count</span><span class="p">))</span>
             <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">filepointer</span><span class="p">:</span>
                 <span class="k">for</span> <span class="n">SNPsIndex</span><span class="p">,</span> <span class="n">bimIndex</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sid_index</span><span class="p">):</span>
 
                     <span class="n">startbit</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="mf">0.25</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">iid_count</span><span class="p">)</span> <span class="o">*</span> <span class="n">bimIndex</span> <span class="o">+</span> <span class="mi">3</span><span class="p">)</span>
                     <span class="n">filepointer</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="n">startbit</span><span class="p">)</span>
-                    <span class="n">nbyte</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="mf">0.25</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">iid_count</span><span class="p">))</span>
                     <span class="nb">bytes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">bytearray</span><span class="p">(</span><span class="n">filepointer</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">nbyte</span><span class="p">)))</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
                         <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="mf">0.25</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">iid_count</span><span class="p">)),</span> <span class="mi">1</span><span class="p">),</span> <span class="n">order</span><span class="o">=</span><span class="s2">&quot;F&quot;</span>
                     <span class="p">)</span>
@@ -638,14 +621,14 @@
 
         <span class="k">return</span> <span class="n">val</span></div>
 
-    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">f</span><span class="s2">&quot;</span><span class="si">{self.__class__.__name__}</span><span class="s2">(&#39;</span><span class="si">{self.filepath}</span><span class="s2">&#39;,...)&quot;</span>
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">(&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="si">}</span><span class="s2">&#39;,...)&quot;</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">fid</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Family id of each individual (sample).</span>
-<span class="sd">       </span>
+
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
@@ -653,7 +636,7 @@
 
 
 <span class="sd">        &#39;0&#39; represents a missing value.</span>
-<span class="sd">        </span>
+
 <span class="sd">        If needed, will cause a one-time read of the .fam file.</span>
 
 <span class="sd">        Example</span>
@@ -676,7 +659,7 @@
     <span class="k">def</span> <span class="nf">iid</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Individual id of each individual (sample).</span>
-<span class="sd">       </span>
+
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
@@ -704,7 +687,7 @@
     <span class="k">def</span> <span class="nf">father</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Father id of each individual (sample).</span>
-<span class="sd">       </span>
+
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
@@ -712,7 +695,7 @@
 
 
 <span class="sd">        &#39;0&#39; represents a missing value.</span>
-<span class="sd">        </span>
+
 <span class="sd">        If needed, will cause a one-time read of the .fam file.</span>
 
 <span class="sd">        Example</span>
@@ -734,7 +717,7 @@
     <span class="k">def</span> <span class="nf">mother</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Mother id of each individual (sample).</span>
-<span class="sd">       </span>
+
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
@@ -742,7 +725,7 @@
 
 
 <span class="sd">        &#39;0&#39; represents a missing value.</span>
-<span class="sd">        </span>
+
 <span class="sd">        If needed, will cause a one-time read of the .fam file.</span>
 
 <span class="sd">        Example</span>
@@ -764,7 +747,7 @@
     <span class="k">def</span> <span class="nf">sex</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Sex of each individual (sample).</span>
-<span class="sd">       </span>
+
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
@@ -794,7 +777,7 @@
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        A phenotype for each individual (sample)</span>
 <span class="sd">        (seldom used).</span>
-<span class="sd">       </span>
+
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
@@ -802,7 +785,7 @@
 
 
 <span class="sd">        &#39;0&#39; may represent a missing value.</span>
-<span class="sd">        </span>
+
 <span class="sd">        If needed, will cause a one-time read of the .fam file.</span>
 
 <span class="sd">        Example</span>
@@ -824,7 +807,7 @@
     <span class="k">def</span> <span class="nf">properties</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">]:</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        All the properties returned as a dictionary.</span>
-<span class="sd">       </span>
+
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        dict</span>
@@ -837,7 +820,7 @@
 <span class="sd">             &quot;mother&quot; (mother id), &quot;sex&quot;, &quot;pheno&quot; (phenotype), &quot;chromosome&quot;, &quot;sid&quot;</span>
 <span class="sd">             (SNP or variant id), &quot;cm_position&quot; (centimorgan position), &quot;bp_position&quot;</span>
 <span class="sd">             (base-pair position), &quot;allele_1&quot;, &quot;allele_2&quot;.</span>
-<span class="sd">            </span>
+
 <span class="sd">        The values are :class:`numpy.ndarray`.</span>
 
 <span class="sd">        If needed, will cause a one-time read of the .fam and .bim file.</span>
@@ -862,7 +845,7 @@
 <div class="viewcode-block" id="open_bed.property_item"><a class="viewcode-back" href="../../index.html#bed_reader.open_bed.property_item">[docs]</a>    <span class="k">def</span> <span class="nf">property_item</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Retrieve one property by name.</span>
-<span class="sd">       </span>
+
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
@@ -875,7 +858,7 @@
 <span class="sd">             &quot;mother&quot; (mother id), &quot;sex&quot;, &quot;pheno&quot; (phenotype), &quot;chromosome&quot;, &quot;sid&quot;</span>
 <span class="sd">             (SNP or variant id), &quot;cm_position&quot; (centimorgan position), &quot;bp_position&quot;</span>
 <span class="sd">             (base-pair position), &quot;allele_1&quot;, &quot;allele_2&quot;.</span>
-<span class="sd">            </span>
+
 <span class="sd">        If needed, will cause a one-time read of the .fam or .bim file.</span>
 
 <span class="sd">        Example</span>
@@ -900,7 +883,7 @@
     <span class="k">def</span> <span class="nf">chromosome</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Chromosome of each SNP (variant)</span>
-<span class="sd">       </span>
+
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
@@ -908,7 +891,7 @@
 
 
 <span class="sd">        &#39;0&#39; represents a missing value.</span>
-<span class="sd">        </span>
+
 <span class="sd">        If needed, will cause a one-time read of the .bim file.</span>
 
 <span class="sd">        Example</span>
@@ -930,7 +913,7 @@
     <span class="k">def</span> <span class="nf">sid</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        SNP id of each SNP (variant).</span>
-<span class="sd">       </span>
+
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
@@ -958,7 +941,7 @@
     <span class="k">def</span> <span class="nf">cm_position</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Centimorgan position of each SNP (variant).</span>
-<span class="sd">       </span>
+
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
@@ -966,7 +949,7 @@
 
 
 <span class="sd">        0.0 represents a missing value.</span>
-<span class="sd">        </span>
+
 <span class="sd">        If needed, will cause a one-time read of the .bim file.</span>
 
 <span class="sd">        Example</span>
@@ -988,7 +971,7 @@
     <span class="k">def</span> <span class="nf">bp_position</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Base-pair position of each SNP (variant).</span>
-<span class="sd">       </span>
+
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
@@ -996,7 +979,7 @@
 
 
 <span class="sd">        0 represents a missing value.</span>
-<span class="sd">        </span>
+
 <span class="sd">        If needed, will cause a one-time read of the .bim file.</span>
 
 <span class="sd">        Example</span>
@@ -1018,7 +1001,7 @@
     <span class="k">def</span> <span class="nf">allele_1</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        First allele of each SNP (variant).</span>
-<span class="sd">       </span>
+
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
@@ -1046,7 +1029,7 @@
     <span class="k">def</span> <span class="nf">allele_2</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Second allele of each SNP (variant),</span>
-<span class="sd">       </span>
+
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
@@ -1074,7 +1057,7 @@
     <span class="k">def</span> <span class="nf">iid_count</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Number of individuals (samples).</span>
-<span class="sd">       </span>
+
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        int</span>
@@ -1102,7 +1085,7 @@
     <span class="k">def</span> <span class="nf">sid_count</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Number of SNPs (variants).</span>
-<span class="sd">       </span>
+
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        int</span>
@@ -1149,23 +1132,14 @@
         <span class="k">if</span> <span class="n">mode</span> <span class="o">!=</span> <span class="sa">b</span><span class="s2">&quot;</span><span class="se">\x01</span><span class="s2">&quot;</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;only SNP-major is implemented&quot;</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">__del__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__del__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="fm">__exit__</span><span class="p">()</span>
 
-    <span class="k">def</span> <span class="nf">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span>
 
-    <span class="k">def</span> <span class="nf">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">_</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">_</span><span class="p">):</span>
         <span class="k">pass</span>
-
-    <span class="k">def</span> <span class="nf">_get_num_threads</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">platform</span><span class="o">.</span><span class="n">system</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;Darwin&quot;</span><span class="p">:</span>
-            <span class="k">return</span> <span class="mi">1</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_threads</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_threads</span>
-        <span class="k">if</span> <span class="s2">&quot;MKL_NUM_THREADS&quot;</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">:</span>
-            <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;MKL_NUM_THREADS&quot;</span><span class="p">])</span>
-        <span class="k">return</span> <span class="n">multiprocessing</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">()</span>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">_array_properties_are_ok</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">order</span><span class="p">):</span>
@@ -1180,7 +1154,7 @@
     <span class="k">def</span> <span class="nf">shape</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Number of individuals (samples) and SNPs (variants).</span>
-<span class="sd">       </span>
+
 <span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        (int, int)</span>
@@ -1261,7 +1235,7 @@
             <span class="p">)</span>
 
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">input</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;</span><span class="si">{key}</span><span class="s2"> should be one dimensional&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2"> should be one dimensional&quot;</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="nb">input</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">dtype</span><span class="p">):</span>
             <span class="n">output</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
@@ -1278,7 +1252,7 @@
     <span class="k">def</span> <span class="nf">_fix_up_properties</span><span class="p">(</span><span class="n">properties</span><span class="p">,</span> <span class="n">iid_count</span><span class="p">,</span> <span class="n">sid_count</span><span class="p">,</span> <span class="n">use_fill_sequence</span><span class="p">):</span>
         <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">properties</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_meta_meta</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;properties key &#39;</span><span class="si">{key}</span><span class="s2">&#39; not known&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;properties key &#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39; not known&quot;</span><span class="p">)</span>
 
         <span class="n">count_dict</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;fam&quot;</span><span class="p">:</span> <span class="n">iid_count</span><span class="p">,</span> <span class="s2">&quot;bim&quot;</span><span class="p">:</span> <span class="n">sid_count</span><span class="p">}</span>
         <span class="n">properties_dict</span> <span class="o">=</span> <span class="p">{}</span>
@@ -1301,7 +1275,9 @@
                 <span class="k">else</span><span class="p">:</span>
                     <span class="k">if</span> <span class="n">count</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">output</span><span class="p">):</span>
                         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                            <span class="n">f</span><span class="s2">&quot;The length of override </span><span class="si">{key}</span><span class="s2">, {len(output)}, should not be different from the current </span><span class="si">{_count_name[mm.suffix]}</span><span class="s2">, </span><span class="si">{count}</span><span class="s2">&quot;</span>
+                            <span class="sa">f</span><span class="s2">&quot;The length of override </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">output</span><span class="p">)</span><span class="si">}</span><span class="s2">, should not &quot;</span>
+                            <span class="o">+</span> <span class="s2">&quot;be different from the current &quot;</span>
+                            <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">_count_name</span><span class="p">[</span><span class="n">mm</span><span class="o">.</span><span class="n">suffix</span><span class="p">]</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">count</span><span class="si">}</span><span class="s2">&quot;</span>
                         <span class="p">)</span>
             <span class="n">properties_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">output</span>
         <span class="k">return</span> <span class="n">properties_dict</span><span class="p">,</span> <span class="n">count_dict</span>
@@ -1348,7 +1324,9 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">count</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">fields</span><span class="p">):</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                    <span class="n">f</span><span class="s2">&quot;The number of lines in the *.</span><span class="si">{suffix}</span><span class="s2"> file, {len(fields)}, should not be different from the current </span><span class="si">{_count_name[suffix]}</span><span class="s2">, </span><span class="si">{count}</span><span class="s2">&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;The number of lines in the *.</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2"> file, </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">fields</span><span class="p">)</span><span class="si">}</span><span class="s2">, &quot;</span>
+                    <span class="o">+</span> <span class="s2">&quot;should not be different from the current &quot;</span>
+                    <span class="o">+</span> <span class="s2">&quot;f</span><span class="si">{_count_name[suffix]}</span><span class="s2">, </span><span class="si">{count}</span><span class="s2">&quot;</span>
                 <span class="p">)</span>
         <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">usecolsdict</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
             <span class="n">mm</span> <span class="o">=</span> <span class="n">_meta_meta</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
@@ -1356,27 +1334,29 @@
                 <span class="n">output</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">mm</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">output</span> <span class="o">=</span> <span class="n">fields</span><span class="p">[</span><span class="n">mm</span><span class="o">.</span><span class="n">column</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">output</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">mm</span><span class="o">.</span><span class="n">dtype</span><span class="p">):</span>
+                    <span class="n">output</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">mm</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">properties_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">output</span></div>
 
 
-<span class="c1">#if __name__ == &quot;__main__&quot;:</span>
-    <span class="c1">#logging.basicConfig(level=logging.INFO)</span>
-    <span class="c1">#import os</span>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
 
-    <span class="c1">#if False:</span>
-    <span class="c1">#    from bed_reader import open_bed, sample_file</span>
+    <span class="c1"># if True:</span>
+    <span class="c1">#     from bed_reader import sample_file</span>
 
-    <span class="c1">#    file_name = sample_file(&quot;small.bed&quot;)</span>
-    <span class="c1">#    with open_bed(file_name) as bed:</span>
-    <span class="c1">#        print(bed.iid)</span>
-    <span class="c1">#        print(bed.sid)</span>
-    <span class="c1">#        print(bed.read())</span>
+    <span class="c1">#     file_name = sample_file(&quot;small.bed&quot;)</span>
+    <span class="c1">#     with open_bed(file_name) as bed:</span>
+    <span class="c1">#         print(bed.iid)</span>
+    <span class="c1">#         print(bed.sid)</span>
+    <span class="c1">#         print(bed.read())</span>
 
     <span class="c1"># if False:</span>
     <span class="c1">#     import numpy as np</span>
     <span class="c1">#     from bed_reader._open_bed import open_bed</span>
 
-    <span class="c1">#     # Can get file from https://www.dropbox.com/sh/xluk9opjiaobteg/AABgEggLk0ZoO0KQq0I4CaTJa?dl=0</span>
+    <span class="c1">#     # Can get file from</span>
+    <span class="c1">#  https://www.dropbox.com/sh/xluk9opjiaobteg/AABgEggLk0ZoO0KQq0I4CaTJa?dl=0</span>
     <span class="c1">#     bigfile = r&quot;M:\deldir\genbgen\2\merged_487400x220000.1.bed&quot;</span>
     <span class="c1">#     # bigfile = &#39;/mnt/m/deldir/genbgen/2/merged_487400x220000.1.bed&#39;</span>
     <span class="c1">#     with open_bed(bigfile, num_threads=20) as bed:</span>
@@ -1388,7 +1368,8 @@
     <span class="c1">#         print(val.shape)</span>
 
     <span class="c1"># if False:</span>
-    <span class="c1">#     file = r&quot;D:\OneDrive\programs\sgkit-plink\bed_reader\tests\data/plink_sim_10s_100v_10pmiss.bed&quot;</span>
+    <span class="c1">#     file = r&quot;D:\OneDrive\programs\sgkit-plink\bed_reader\tests\data</span>
+    <span class="c1">#          /plink_sim_10s_100v_10pmiss.bed&quot;</span>
     <span class="c1">#     with open_bed(file) as bed:</span>
     <span class="c1">#         print(bed.iid)</span>
     <span class="c1">#         print(bed.shape)</span>
@@ -1398,7 +1379,8 @@
     <span class="c1"># if False:</span>
 
     <span class="c1">#     # bed_file = example_file(&#39;doc/ipynb/all.*&#39;,&#39;*.bed&#39;)</span>
-    <span class="c1">#     bed_file = r&quot;F:\backup\carlk4d\data\carlk\cachebio\genetics\onemil\id1000000.sid_1000000.seed0.byiid\iid990000to1000000.bed&quot;</span>
+    <span class="c1">#     bed_file = r&quot;F:\backup\carlk4d\data\carlk\cachebio\genetics\onemil\</span>
+    <span class="c1">#          id1000000.sid_1000000.seed0.byiid\iid990000to1000000.bed&quot;</span>
     <span class="c1">#     bed = Bed(bed_file, count_A1=False)</span>
     <span class="c1">#     snpdata1 = bed[:, :1000].read()</span>
     <span class="c1">#     snpdata2 = bed[:, :1000].read(dtype=&quot;int8&quot;, _require_float32_64=False)</span>
@@ -1452,43 +1434,41 @@
     <span class="c1">#     from bed_reader import Pheno, Bed</span>
 
     <span class="c1">#     print(os.getcwd())</span>
-    <span class="c1">#     snpdata = Pheno(&quot;../examples/toydata.phe&quot;).read()  # Read data from Pheno format</span>
+    <span class="c1">#     # Read data from Pheno format</span>
+    <span class="c1">#     snpdata = Pheno(&quot;../examples/toydata.phe&quot;).read()</span>
     <span class="c1">#     # pstutil.create_directory_if_necessary(&quot;tempdir/toydata.5chrom.bed&quot;)</span>
     <span class="c1">#     Bed.write(</span>
     <span class="c1">#         &quot;tempdir/toydata.5chrom.bed&quot;, snpdata, count_A1=False</span>
     <span class="c1">#     )  # Write data in Bed format</span>
 
-    <span class="c1">#import pytest</span>
+    <span class="kn">import</span> <span class="nn">pytest</span>
 
-    <span class="c1">#pytest.main([&quot;--doctest-modules&quot;, __file__])</span>
+    <span class="n">pytest</span><span class="o">.</span><span class="n">main</span><span class="p">([</span><span class="s2">&quot;--doctest-modules&quot;</span><span class="p">,</span> <span class="vm">__file__</span><span class="p">])</span>
 </pre></div>
 
            </div>
            
           </div>
           <footer>
-  
 
   <hr/>
 
   <div role="contentinfo">
     <p>
-        
-        &copy; Copyright 2020, Carl Kadie
+        &#169; Copyright 2020, Carl Kadie.
 
     </p>
   </div>
     
     
     
-    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     
-    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     
     provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
-
         </div>
       </div>
 

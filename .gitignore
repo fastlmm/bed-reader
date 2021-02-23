@@ -71,6 +71,7 @@ docs/_build/
 
 # PyBuilder
 target/
+baddangertarget/
 
 # Jupyter Notebook
 .ipynb_checkpoints
@@ -135,6 +136,9 @@ dmypy.json
 /bed_reader/tests/ignore.bim
 /.vscode
 /doc/source/_build/html
+defaultx.profraw
 default.profraw
+bed_reader/tests/data/tooshort.bed.bak
+/temp/
+doc/source/conf.py
 ignoredefault.profraw
-/temp

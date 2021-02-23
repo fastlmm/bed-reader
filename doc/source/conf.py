@@ -13,7 +13,7 @@ def find_version(filepath):
     import re
 
     version_file = read(filepath)
-    version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]", version_file, re.M)
+    version_match = re.search(r"^version = ['\"]([^'\"]*)['\"]", version_file, re.M)
     if version_match:
         return version_match.group(1)
     raise RuntimeError("Unable to find version string.")
@@ -23,7 +23,7 @@ project = "Bed Reader"
 copyright = "2020, Carl Kadie"
 author = "Carl Kadie"
 
-version = find_version(Path(__file__).parents[0] / Path("../../bed_reader/__init__.py"))
+version = find_version(Path(__file__).parents[0] / Path("../../Cargo.toml"))
 release = version
 today = time.strftime("%B %d, %Y")
 

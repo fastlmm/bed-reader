@@ -1,0 +1,109 @@
+name: CI
+on: push
+    
+env:
+  CARGO_TERM_COLOR: always
+
+# Good docs:
+#    https://docs.github.com/en/actions/guides/building-and-testing-python (including how to run flake8)
+#    https://github.community/t/how-to-run-steps-involving-environment-variables-on-both-linux-and-windows/17355
+# Good examples:
+#    https://github.com/Intsights/fastzy/blob/152aecbb05302b0f8db7f23b0242b448ec5e6435/.github/workflows/deploy.yml
+#    https://github.com/polkascan/py-ed25519-bindings/blob/96638152c1902d917b8ec29adabe9cc8c3519086/.github/workflows/test.yml
+#    https://github.com/OpenMined/syft_experimental/blob/6630fec206d153fb5a94ad8c5365636ee462ecd9/.github/workflows/python.yml
+
+jobs:
+  ci:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+        python-version: [3.7, 3.8 ,3.9]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{matrix.python-version}}
+
+    - name: Install flake8, etc
+      run: |
+        cd bed_reader
+        pwd
+        python -m pip install --upgrade pip
+        pip install flake8 pytest black isort --upgrade
+    - name: Lint with flake8, etc
+      run: |
+        echo "flake8"
+        flake8 .
+        echo "black"
+        black --version
+        black --verbose --check .
+        echo "isort"
+        isort --check-only .
+
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+    - name: Install Maturin
+      run: python -m pip install --upgrade pip maturin
+
+    - name: Test Rust
+      run: cargo test --verbose
+    - name: Build wheel with Maturin (and list)
+      run: |
+        maturin list-python
+        maturin build --release -i $(which python)
+        ls -las target/wheels
+      shell: bash
+
+    - name: Test Python
+      if: runner.os != 'Windows'
+      run: |
+        pip install virtualenv
+        virtualenv vEnv; source vEnv/bin/activate
+        python -m pip install --upgrade pip maturin
+        pip install target/wheels/*.whl
+        pip uninstall bed-reader --yes
+        maturin develop
+        pip install -r requirements-dev.txt
+        pytest bed_reader
+    - name: Test Python on Windows
+      if: runner.os == 'Windows'
+      run: |
+        pip install virtualenv
+        virtualenv vEnv; vEnv\Scripts\activate.ps1
+        echo "pwd"
+        pwd
+        python -m pip install --upgrade pip maturin
+        # pip install target\wheels\*.whl
+        # pip uninstall bed-reader --yes
+        echo "requirements"
+        pip install -r requirements.txt
+        echo "requirements-dev"
+        pip install -r requirements-dev.txt
+        echo "maturin"
+        maturin develop
+        echo "numpy"
+        pip install numpy
+        echo "pytest"
+        pytest bed_reader
+
+    - name: Save Wheels
+      uses: actions/upload-artifact@v2
+      with:
+        name: wheels
+        path: target/wheels/*.whl
+        
+    - name: Save SDist
+      if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.9'
+      uses: actions/upload-artifact@v2
+      with:
+        name: wheels
+        path: target/wheels/*.tar.gz
+
+    

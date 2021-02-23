@@ -1,0 +1,47 @@
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[package]
+authors = ["FaST-LMM Team <fastlmm-dev@python.org>"]
+name = "bed-reader"
+version = "0.2.3"
+repository = "https://github.com/fastlmm/bed-reader"
+description = "Read and write the PLINK BED format, simply and efficiently."
+exclude = ["tests/*", "doc/*", "docs/*"]
+readme = "README.md"
+license="Apache 2.0"
+keywords=["bioinformatics", "plink", "genomics", "genetics", "file-format", "reader", "genotype", "bed-format", "writer", "python", "snps"]
+edition = "2018"
+
+[package.metadata.maturin]
+requires-python = ">=3.7"
+classifiers=[
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python",
+    ]
+requires-dist = ["numpy>=1.13.3", "pandas>=0.25.1", "pooch>=1.1.1"]
+project-url = { "Homepage"= "https://fastlmm.github.io", "Bug Tracker"= "https://github.com/fastlmm/bed-reader/issues", "Documentation"= "http://fastlmm.github.io/bed-reader", "Source Code"= "https://github.com/fastlmm/bed-reader"}
+
+[lib]
+name = "bed_reader"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+thiserror = "1.0.23"
+num-traits = "0.2"
+ndarray-npy = { version = "0.7", default-features = false }
+rayon = "1.5"
+numpy = "0.13"
+ndarray = {version = "0.14", features = ["approx", "rayon"] }
+approx = "0.4"
+statrs = "0.13"
+
+[dev-dependencies]
+temp_testdir = "0.2"
+
+[dependencies.pyo3]
+version = "0.13.0"
+features = ["extension-module"]
+

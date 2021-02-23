@@ -1,4 +1,0 @@
-recursive-include bed_reader *.c *.cpp *.h *.pyx *.pxd
-include LICENSE.md
-include AUTHORS.txt
-include README.md
