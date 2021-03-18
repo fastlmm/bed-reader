@@ -767,6 +767,16 @@ fn small_file_dot() {
 #[test]
 fn medium_file_dot() {
     // !!! cmk generate this file
+    let filename = r"M:\deldir\New folder (13)\100x1000_o640_array.memmap";
+    let mut out_val = nd::Array2::<f64>::zeros((1000, 1000));
+    file_dot(filename, 640, 100, 1000, &mut out_val.view_mut()).unwrap();
+    println!("{:?}", out_val[(50, 500)]);
+    assert!(abs(out_val[(50, 500)] - 33.10816215993239) < 1e-8);
+}
+
+#[test]
+fn large_file_dot() {
+    // !!! cmk generate this file
     let filename = r"M:\deldir\New folder (13)\1000x10000_o640_array.memmap";
     let mut out_val = nd::Array2::<f64>::zeros((10_000, 10_000));
     file_dot(filename, 640, 1000, 10_000, &mut out_val.view_mut()).unwrap();
