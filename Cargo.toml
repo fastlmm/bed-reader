@@ -37,6 +37,7 @@ numpy = "0.13"
 ndarray = {version = "0.14", features = ["approx", "rayon"] }
 approx = "0.4"
 statrs = "0.13"
+byteorder = { version = "1", default-features = false }
 
 [dev-dependencies]
 temp_testdir = "0.2"

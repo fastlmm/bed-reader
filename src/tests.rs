@@ -6,7 +6,8 @@ use crate::try_div_4;
 use crate::Dist;
 #[cfg(test)]
 use crate::{
-    counts, impute_and_zero_mean_snps, matrix_subset_no_alloc, read, read_with_indexes, write,
+    counts, file_dot, impute_and_zero_mean_snps, matrix_subset_no_alloc, read, read_with_indexes,
+    write,
 };
 #[cfg(test)]
 use crate::{internal_read_no_alloc, read_no_alloc, BedError, BedErrorPlus};
@@ -751,3 +752,13 @@ fn zeros() {
     assert!(in_val00.shape() == [0, 0]);
     assert!(allclose(&in_val00.view(), &out_val00.view(), 1e-08, true));
 }
+#[test]
+fn small_file_dot() {
+    let filename = "bed_reader/tests/data/small_array.memmap";
+    file_dot(filename, 0, 2, 3).unwrap();
+}
+
+// let reference = nd::array![[1.,2.,3.], [4.,5.,6.]];
+
+// let val2 = read(filename2, false, true, -127).unwrap();
+// assert!(allclose(&val.view(), &val2.view(), 0, true));
