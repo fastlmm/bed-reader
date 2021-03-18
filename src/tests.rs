@@ -755,7 +755,22 @@ fn zeros() {
 #[test]
 fn small_file_dot() {
     let filename = "bed_reader/tests/data/small_array.memmap";
-    file_dot(filename, 0, 2, 3).unwrap();
+    let mut out_val = nd::Array2::<f64>::zeros((3, 3));
+    file_dot(filename, 0, 2, 3, &mut out_val.view_mut()).unwrap();
+    println!("{:?}", out_val);
+
+    let expected = nd::arr2(&[[17., 22., 27.], [22., 29., 36.], [27., 36., 45.]]);
+    println!("{:?}", expected);
+    assert!(allclose(&expected.view(), &out_val.view(), 1e-08, true));
+}
+
+#[test]
+fn medium_file_dot() {
+    // !!! cmk generate this file
+    let filename = r"M:\deldir\New folder (13)\1000x10000_o640_array.memmap";
+    let mut out_val = nd::Array2::<f64>::zeros((10_000, 10_000));
+    file_dot(filename, 640, 1000, 10_000, &mut out_val.view_mut()).unwrap();
+    assert_eq!(out_val[(500, 5000)], 150.0);
 }
 
 // let reference = nd::array![[1.,2.,3.], [4.,5.,6.]];

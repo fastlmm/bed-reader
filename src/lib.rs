@@ -837,6 +837,7 @@ fn file_dot(
     offset: u64,
     iid_count: usize,
     sid_count: usize,
+    val: &mut nd::ArrayViewMut2<'_, f64>,
 ) -> Result<(), BedErrorPlus> {
     let mut buf_reader = BufReader::new(File::open(filename)?);
 
@@ -849,7 +850,9 @@ fn file_dot(
             for iid_index in 0..iid_count {
                 product += sid_i[iid_index] * sid_j[iid_index];
             }
-            println!("sid_{}*sid_{}={}", i, j, product);
+            val[(i, j)] = product;
+            val[(j, i)] = product;
+            //println!("sid_{}*sid_{}={}", i, j, product);
         }
     }
     return Ok(());
