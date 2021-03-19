@@ -914,12 +914,20 @@ fn file_dot_piece(
         let sid = read_sid(&mut buf_reader, sid_index, offset, iid_count)?;
         let mut ata_column = ata_piece.column_mut(sid_index - sid_range.start);
 
-        ata_column
-            .axis_iter_mut(nd::Axis(0))
-            .zip(&sid_range_list)
-            .for_each(|(mut ata_val, sid_in_range)| {
-                ata_val[()] = sid_product(&sid_in_range, &sid);
-            });
+        nd::par_azip!((
+            mut ata_val in ata_column.axis_iter_mut(nd::Axis(0)),
+            sid_in_range in &sid_range_list
+        )
+        {
+            ata_val[()] = sid_product(&sid_in_range, &sid);
+        });
+
+        // ata_column
+        //     .axis_iter_mut(nd::Axis(0))
+        //     .zip(&sid_range_list)
+        //     .for_each(|(mut ata_val, sid_in_range)| {
+        //         ata_val[()] = sid_product(&sid_in_range, &sid);
+        //     });
 
         // for range_index in sid_range.clone() {
         //     ata_column[range_index - sid_range.start] =
