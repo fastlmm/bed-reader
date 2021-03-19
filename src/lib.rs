@@ -2,6 +2,7 @@
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use core::fmt::Debug;
+use nd::ArrayView2;
 use ndarray as nd;
 use ndarray::ShapeBuilder;
 use num_traits::{Float, FromPrimitive, ToPrimitive};
@@ -10,7 +11,7 @@ use rayon::{iter::ParallelBridge, ThreadPoolBuildError};
 use statrs::distribution::{Beta, Continuous};
 use std::{
     convert::TryFrom,
-    ops::{Div, Sub},
+    ops::{Div, Range, Sub},
 };
 use std::{
     fs::File,
@@ -832,7 +833,7 @@ fn read_sid(
     return Ok(sid);
 }
 
-fn file_dot(
+fn cmkfile_dot(
     filename: &str,
     offset: u64,
     iid_count: usize,
@@ -846,16 +847,81 @@ fn file_dot(
         for j in i..sid_count {
             // !!!cmk could skip read if i==j
             let sid_j = read_sid(&mut buf_reader, j, offset, iid_count)?;
-            let mut product = 0.0;
-            for iid_index in 0..iid_count {
-                product += sid_i[iid_index] * sid_j[iid_index];
-            }
-            val[(i, j)] = product;
-            val[(j, i)] = product;
-            //println!("sid_{}*sid_{}={}", i, j, product);
+            val[(i, j)] = sid_product(&sid_i, &sid_j);
+            val[(j, i)] = val[(i, j)];
         }
     }
     return Ok(());
+}
+
+fn file_dot(
+    filename: &str,
+    offset: u64,
+    iid_count: usize,
+    sid_count: usize,
+    val: &mut nd::ArrayViewMut2<'_, f64>,
+) -> Result<(), BedErrorPlus> {
+    // let mut buf_reader = BufReader::new(File::open(filename)?);
+
+    for i in 0..sid_count {
+        let piece = file_dot_piece(filename, offset, iid_count, sid_count, i..i + 1)?;
+        for j in i..sid_count {
+            val[(i, j)] = piece[(0, j - i)];
+            val[(j, i)] = val[(i, j)];
+        }
+    }
+    return Ok(());
+}
+
+// Given A, a matrix in Fortran order in a file
+// with iid_count rows and sid_count columns,
+// Returns part of A.T x A for the columns in sid_range x all greater-than-or-equal columns.
+// Makes only one pass through the file.
+// Uses no more than 3x the memory needed for columns in sid_range.
+// If sid_range is 2..4 and sid_count is 1000. Fills in ata[2,2:1000] and ata[3,3:1000] but
+// does not fill in ata[3,2]
+fn file_dot_piece(
+    filename: &str,
+    offset: u64,
+    iid_count: usize,
+    sid_count: usize,
+    sid_range: Range<usize>,
+) -> Result<nd::Array2<f64>, BedErrorPlus> {
+    let mut buf_reader = BufReader::new(File::open(filename)?);
+    // !!! cmk fortran order?
+    let mut ata_piece = nd::Array2::<f64>::zeros((sid_range.len(), sid_count - sid_range.start));
+
+    let mut sid_range_list: Vec<Vec<f64>> = vec![];
+    for sid_index in sid_range.clone() {
+        let sid = read_sid(&mut buf_reader, sid_index, offset, iid_count)?;
+        sid_range_list.push(sid);
+        let sid = &sid_range_list[sid_range_list.len() - 1];
+
+        for range_index in sid_range.start..sid_index + 1 {
+            ata_piece[(range_index - sid_range.start, sid_index - sid_range.start)] =
+                sid_product(&sid_range_list[range_index - sid_range.start], &sid);
+        }
+    }
+
+    for sid_index in sid_range.end..sid_count {
+        let sid = read_sid(&mut buf_reader, sid_index, offset, iid_count)?;
+        for range_index in sid_range.clone() {
+            ata_piece[(range_index - sid_range.start, sid_index - sid_range.start)] =
+                sid_product(&sid_range_list[range_index - sid_range.start], &sid);
+        }
+    }
+
+    return Ok(ata_piece);
+}
+
+fn sid_product(sid_i: &[f64], sid_j: &[f64]) -> f64 {
+    assert!(sid_i.len() == sid_j.len()); // !!!cmk
+    let mut product = 0.0;
+    for iid_index in 0..sid_i.len() {
+        product += sid_i[iid_index] * sid_j[iid_index];
+    }
+    //println!("sid_{}*sid_{}={}", i, j, product);
+    product
 }
 
 mod python_module;
