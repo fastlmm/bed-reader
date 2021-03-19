@@ -2,7 +2,6 @@
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use core::fmt::Debug;
-use nd::ArrayView2;
 use ndarray as nd;
 use ndarray::ShapeBuilder;
 use num_traits::{Float, FromPrimitive, ToPrimitive};
@@ -862,12 +861,16 @@ fn file_dot(
     val: &mut nd::ArrayViewMut2<'_, f64>,
 ) -> Result<(), BedErrorPlus> {
     // let mut buf_reader = BufReader::new(File::open(filename)?);
+    let step = 3usize;
 
-    for i in 0..sid_count {
-        let piece = file_dot_piece(filename, offset, iid_count, sid_count, i..i + 1)?;
-        for j in i..sid_count {
-            val[(i, j)] = piece[(0, j - i)];
-            val[(j, i)] = val[(i, j)];
+    for i in (0..sid_count).step_by(step) {
+        let i_end = sid_count.min(i + step);
+        let piece = file_dot_piece(filename, offset, iid_count, sid_count, i..i_end)?;
+        for range_index in i..i_end {
+            for j in range_index..sid_count {
+                val[(range_index, j)] = piece[(range_index - i, j - i)];
+                val[(j, range_index)] = val[(range_index, j)];
+            }
         }
     }
     return Ok(());
