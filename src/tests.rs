@@ -753,10 +753,10 @@ fn zeros() {
     assert!(allclose(&in_val00.view(), &out_val00.view(), 1e-08, true));
 }
 #[test]
-fn small_file_dot() {
+fn file_dot_small() {
     let filename = "bed_reader/tests/data/small_array.memmap";
     let mut out_val = nd::Array2::<f64>::zeros((3, 3));
-    file_dot(filename, 0, 2, 3, &mut out_val.view_mut()).unwrap();
+    file_dot(filename, 0, 2, 3, 2, &mut out_val.view_mut()).unwrap();
     println!("{:?}", out_val);
 
     let expected = nd::arr2(&[[17., 22., 27.], [22., 29., 36.], [27., 36., 45.]]);
@@ -765,21 +765,21 @@ fn small_file_dot() {
 }
 
 #[test]
-fn medium_file_dot() {
+fn file_dot_medium() {
     // !!! cmk generate this file
     let filename = r"M:\deldir\New folder (13)\100x1000_o640_array.memmap";
     let mut out_val = nd::Array2::<f64>::zeros((1000, 1000));
-    file_dot(filename, 640, 100, 1000, &mut out_val.view_mut()).unwrap();
+    file_dot(filename, 640, 100, 1000, 33, &mut out_val.view_mut()).unwrap();
     println!("{:?}", out_val[(50, 500)]);
     assert!(abs(out_val[(50, 500)] - 33.10816215993239) < 1e-8);
 }
 
 #[test]
-fn large_file_dot() {
+fn file_dot_large() {
     // !!! cmk generate this file
     let filename = r"M:\deldir\New folder (13)\1000x10000_o640_array.memmap";
     let mut out_val = nd::Array2::<f64>::zeros((10_000, 10_000));
-    file_dot(filename, 640, 1000, 10_000, &mut out_val.view_mut()).unwrap();
+    file_dot(filename, 640, 1000, 10_000, 100, &mut out_val.view_mut()).unwrap();
     assert_eq!(out_val[(500, 5000)], 150.0);
 }
 
