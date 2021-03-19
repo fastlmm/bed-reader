@@ -864,16 +864,21 @@ fn file_dot(
     let step = 3usize;
 
     for i in (0..sid_count).step_by(step) {
-        let i_end = sid_count.min(i + step);
-        let piece = file_dot_piece(filename, offset, iid_count, sid_count, i..i_end)?;
-        for range_index in i..i_end {
-            for j in range_index..sid_count {
-                val[(range_index, j)] = piece[(range_index - i, j - i)];
-                val[(j, range_index)] = val[(range_index, j)];
-            }
-        }
+        let sid_range = i..sid_count.min(i + step);
+        let piece = file_dot_piece(filename, offset, iid_count, sid_count, sid_range.clone())?;
+        insert_piece(sid_range.clone(), piece, val);
     }
     return Ok(());
+}
+
+fn insert_piece(sid_range: Range<usize>, piece: nd::Array2<f64>, val: &mut nd::ArrayViewMut2<f64>) {
+    for range_index in sid_range.clone() {
+        for j in range_index - sid_range.start..piece.shape()[1] {
+            // !!!cmk this is the inner loop, so precompute indexes as possible
+            val[(range_index, j + sid_range.start)] = piece[(range_index - sid_range.start, j)];
+            val[(j + sid_range.start, range_index)] = val[(range_index, j + sid_range.start)];
+        }
+    }
 }
 
 // Given A, a matrix in Fortran order in a file
