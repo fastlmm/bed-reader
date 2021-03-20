@@ -892,9 +892,9 @@ fn file_dot_piece(
     let mut sid_reuse = vec![0.0; iid_count];
 
     // !!!cmk test when sid_range has length 0
-    // for mut ata_column in ata_piece.gencolumns_mut() {
-    for sid_rel_index in 0..ata_piece.nrows() {
-        let sid_rel_end = ata_piece.ncols().min(sid_rel_index + 1);
+    for mut ata_column in ata_piece.genrows_mut() {
+        // for sid_rel_index in 0..ata_piece.nrows() {
+        // let sid_rel_end = ata_piece.ncols().min(sid_rel_index + 1);
         // if sid_rel_index % ata_piece.ncols() == 0 {
         //     println!("   cmk reading {}", sid_start + sid_rel_index);
         // }
@@ -910,8 +910,8 @@ fn file_dot_piece(
             &sid_reuse
         };
 
-        //let mut ata_column_cmk = ata_column.slice_mut(nd::s![..sid_save_list.len()]);
-        let mut ata_column_cmk = ata_piece.slice_mut(nd::s![sid_rel_index, ..sid_rel_end]);
+        let mut ata_column_cmk = ata_column.slice_mut(nd::s![..sid_save_list.len()]);
+        // let mut ata_column_cmk = ata_piece.slice_mut(nd::s![sid_rel_index, ..sid_rel_end]);
 
         nd::par_azip!((
             sid_in_range in &sid_save_list,
