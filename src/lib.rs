@@ -847,8 +847,9 @@ fn file_dot(
     // let mut buf_reader = BufReader::new(File::open(filename)?);
     for i in (0..sid_count).step_by(sid_step) {
         let sid_range = i..sid_count.min(i + sid_step);
-        let piece = file_dot_piece(filename, offset, iid_count, sid_count, sid_range.clone())?;
-        insert_piece(sid_range.clone(), piece, val);
+        let mut ata_piece = nd::Array2::<f64>::zeros((sid_count - i, sid_range.len()));
+        file_dot_piece(filename, offset, iid_count, i, &mut ata_piece.view_mut())?;
+        insert_piece(sid_range.clone(), ata_piece, val);
     }
     return Ok(());
 }
@@ -856,9 +857,9 @@ fn file_dot(
 // !!!cmk understand all allocations
 fn insert_piece(sid_range: Range<usize>, piece: nd::Array2<f64>, val: &mut nd::ArrayViewMut2<f64>) {
     for range_index in sid_range.clone() {
-        for j in range_index - sid_range.start..piece.shape()[1] {
+        for j in range_index - sid_range.start..piece.shape()[0] {
             // !!!cmk this is the inner loop, so precompute indexes as possible
-            val[(range_index, j + sid_range.start)] = piece[(range_index - sid_range.start, j)];
+            val[(range_index, j + sid_range.start)] = piece[(j, range_index - sid_range.start)];
             val[(j + sid_range.start, range_index)] = val[(range_index, j + sid_range.start)];
         }
     }
@@ -875,13 +876,18 @@ fn file_dot_piece(
     filename: &str,
     offset: u64,
     iid_count: usize,
-    sid_count: usize,
-    sid_range: Range<usize>,
-) -> Result<nd::Array2<f64>, BedErrorPlus> {
-    println!("cmk {:?} of {}", sid_range, sid_count);
+    sid_start: usize,
+    // ata_piece = np.zeros((a.sid_count-start,stop-start),order='C')
+    ata_piece: &mut nd::ArrayViewMut2<'_, f64>,
+) -> Result<(), BedErrorPlus> {
     let mut buf_reader = BufReader::new(File::open(filename)?);
-    // !!! cmk fortran order?
-    let mut ata_piece = nd::Array2::<f64>::zeros((sid_range.len(), sid_count - sid_range.start));
+
+    let sid_range = Range {
+        start: sid_start,
+        end: sid_start + ata_piece.shape()[1],
+    };
+    let sid_count = ata_piece.shape()[0] + sid_start;
+    println!("cmk {:?} of {}", sid_range, sid_count);
 
     let mut sid_save_list: Vec<Vec<f64>> = vec![];
     let mut sid_reuse = vec![0.0; iid_count];
@@ -910,7 +916,7 @@ fn file_dot_piece(
             &sid_reuse
         };
 
-        let mut ata_column = ata_piece.slice_mut(nd::s![..sid_rel_end, sid_rel_index]);
+        let mut ata_column = ata_piece.slice_mut(nd::s![sid_rel_index, ..sid_rel_end]);
         nd::par_azip!((
             sid_in_range in &sid_save_list[..sid_rel_end],
             mut ata_val in ata_column.axis_iter_mut(nd::Axis(0))
@@ -920,7 +926,7 @@ fn file_dot_piece(
         });
     }
 
-    return Ok(ata_piece);
+    return Ok(());
 }
 
 fn cmkread_sid(
