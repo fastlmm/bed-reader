@@ -881,33 +881,27 @@ fn file_dot_piece(
     ata_piece: &mut nd::ArrayViewMut2<'_, f64>,
 ) -> Result<(), BedErrorPlus> {
     let mut buf_reader = BufReader::new(File::open(filename)?);
+    buf_reader.seek(SeekFrom::Start(
+        offset + sid_start as u64 * iid_count as u64 * std::mem::size_of::<f64>() as u64,
+    ))?;
 
-    let sid_range = Range {
-        start: sid_start,
-        end: sid_start + ata_piece.shape()[1],
-    };
-    let sid_count = ata_piece.shape()[0] + sid_start;
-    println!("cmk {:?} of {}", sid_range, sid_count);
+    let ncols = ata_piece.ncols();
+    println!("cmk {}, {:?}", sid_start, ata_piece.dim());
 
     let mut sid_save_list: Vec<Vec<f64>> = vec![];
     let mut sid_reuse = vec![0.0; iid_count];
 
-    buf_reader.seek(SeekFrom::Start(
-        offset + sid_range.start as u64 * iid_count as u64 * std::mem::size_of::<f64>() as u64,
-    ))?;
-
     // !!!cmk test when sid_range has length 0
-    for sid_index in sid_range.start..sid_count {
-        let sid_rel_index = sid_index - sid_range.start;
-        let sid_rel_end = sid_range.len().min(sid_rel_index + 1);
-
-        if sid_rel_index % sid_range.len() == 0 {
-            println!("   cmk reading {}", sid_index);
-        }
+    // for mut ata_column in ata_piece.gencolumns_mut() {
+    for sid_rel_index in 0..ata_piece.nrows() {
+        let sid_rel_end = ata_piece.ncols().min(sid_rel_index + 1);
+        // if sid_rel_index % ata_piece.ncols() == 0 {
+        //     println!("   cmk reading {}", sid_start + sid_rel_index);
+        // }
 
         // Save if in range
-        let sid = if sid_range.contains(&sid_index) {
-            let mut sid_save = vec![0.0; iid_count];
+        let sid = if sid_save_list.len() < ncols {
+            let mut sid_save = vec![0.0; iid_count]; // !!!cmk nan instead? here and everywhere
             buf_reader.read_f64_into::<LittleEndian>(&mut sid_save)?;
             sid_save_list.push(sid_save);
             &sid_save_list.last().unwrap()
@@ -916,10 +910,12 @@ fn file_dot_piece(
             &sid_reuse
         };
 
-        let mut ata_column = ata_piece.slice_mut(nd::s![sid_rel_index, ..sid_rel_end]);
+        //let mut ata_column_cmk = ata_column.slice_mut(nd::s![..sid_save_list.len()]);
+        let mut ata_column_cmk = ata_piece.slice_mut(nd::s![sid_rel_index, ..sid_rel_end]);
+
         nd::par_azip!((
-            sid_in_range in &sid_save_list[..sid_rel_end],
-            mut ata_val in ata_column.axis_iter_mut(nd::Axis(0))
+            sid_in_range in &sid_save_list,
+            mut ata_val in ata_column_cmk.axis_iter_mut(nd::Axis(0))
         )
         {
             ata_val[()] = sid_product(&sid_in_range, &sid);
