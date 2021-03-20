@@ -902,23 +902,26 @@ fn file_dot_piece(
     let mut ata_piece = nd::Array2::<f64>::zeros((sid_range.len(), sid_count - sid_range.start));
 
     let mut sid_range_list: Vec<Vec<f64>> = vec![];
-    println!("   cmk reading range");
-    for sid_index in sid_range.clone() {
-        let rel_index = sid_index - sid_range.start;
-        let sid = read_sid(&mut buf_reader, sid_index, offset, iid_count)?;
-        sid_range_list.push(sid);
-        let sid = &sid_range_list[sid_range_list.len() - 1];
-        let mut ata_columnx = ata_piece.column_mut(sid_index - sid_range.start);
-        let mut ata_column = ata_columnx.slice_mut(nd::s![..rel_index + 1]);
-        // // !!!cmk parallelize
-        // for range_index in sid_range.start..sid_index + 1 {
-        //     ata_piece[(range_index - sid_range.start, sid_index - sid_range.start)] =
-        //         sid_product(&sid_range_list[range_index - sid_range.start], &sid);
-        // }
 
-        // !!!cmk nd::par_azip
+    // !!!cmk test when sid_range has length 0
+    for sid_index in sid_range.start..sid_count {
+        let rel_index = sid_index - sid_range.start;
+        if rel_index % sid_range.len() == 0 {
+            println!("   cmk reading {}", sid_index);
+        }
+        let sidcmk = read_sid(&mut buf_reader, sid_index, offset, iid_count)?;
+        let sid = if sid_range.contains(&sid_index) {
+            sid_range_list.push(sidcmk);
+            &sid_range_list[sid_range_list.len() - 1]
+        } else {
+            &sidcmk
+        };
+
+        let mut ata_columnx = ata_piece.column_mut(sid_index - sid_range.start);
+        let sid_rel_end = sid_range.len().min(rel_index + 1);
+        let mut ata_column = ata_columnx.slice_mut(nd::s![..sid_rel_end]);
         nd::par_azip!((
-            sid_in_range in &sid_range_list[0..rel_index+1],
+            sid_in_range in &sid_range_list[0..sid_rel_end],
             mut ata_val in ata_column.axis_iter_mut(nd::Axis(0))
         )
         {
@@ -926,22 +929,39 @@ fn file_dot_piece(
         });
     }
 
-    println!("   cmk reading rest");
-    for sid_index in sid_range.end..sid_count {
-        if sid_index % sid_range_list.len() == 0 {
-            println!("   cmk reading rest {}", sid_index);
-        }
-        let sid = read_sid(&mut buf_reader, sid_index, offset, iid_count)?;
-        let mut ata_column = ata_piece.column_mut(sid_index - sid_range.start);
+    // println!("   cmk reading range");
+    // for sid_index in sid_range.clone() {
+    //     let rel_index = sid_index - sid_range.start;
+    //     let sid = read_sid(&mut buf_reader, sid_index, offset, iid_count)?;
+    //     sid_range_list.push(sid);
+    //     let sid = &sid_range_list[sid_range_list.len() - 1];
+    //     let mut ata_columnx = ata_piece.column_mut(sid_index - sid_range.start);
+    //     let mut ata_column = ata_columnx.slice_mut(nd::s![..rel_index + 1]);
+    //     nd::par_azip!((
+    //         sid_in_range in &sid_range_list[0..rel_index+1],
+    //         mut ata_val in ata_column.axis_iter_mut(nd::Axis(0))
+    //     )
+    //     {
+    //         ata_val[()] = sid_product(&sid_in_range, &sid);
+    //     });
+    // }
 
-        nd::par_azip!((
-            mut ata_val in ata_column.axis_iter_mut(nd::Axis(0)),
-            sid_in_range in &sid_range_list
-        )
-        {
-            ata_val[()] = sid_product(&sid_in_range, &sid);
-        });
-    }
+    // println!("   cmk reading rest");
+    // for sid_index in sid_range.end..sid_count {
+    //     if sid_index % sid_range_list.len() == 0 {
+    //         println!("   cmk reading rest {}", sid_index);
+    //     }
+    //     let sid = read_sid(&mut buf_reader, sid_index, offset, iid_count)?;
+    //     let mut ata_column = ata_piece.column_mut(sid_index - sid_range.start);
+
+    //     nd::par_azip!((
+    //         mut ata_val in ata_column.axis_iter_mut(nd::Axis(0)),
+    //         sid_in_range in &sid_range_list
+    //     )
+    //     {
+    //         ata_val[()] = sid_product(&sid_in_range, &sid);
+    //     });
+    //}
 
     return Ok(ata_piece);
 }
