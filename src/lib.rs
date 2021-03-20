@@ -867,39 +867,34 @@ fn insert_piece(sid_range: Range<usize>, piece: nd::Array2<f64>, val: &mut nd::A
 
 // Given A, a matrix in Fortran order in a file
 // with iid_count rows and sid_count columns,
-// Returns part of A.T x A for the columns in sid_range x all greater-than-or-equal columns.
+// Returns part of A.T x A for the columns in sid_start-and-beyond to sid_start-and-in-range.
 // Makes only one pass through the file.
-// Uses no more than 3x the memory needed for columns in sid_range.
-// If sid_range is 2..4 and sid_count is 1000. Fills in ata[2,2:1000] and ata[3,3:1000] but
-// does not fill in ata[3,2]
+// Uses no more than memory needed for columns of in-range sids plus 1.
 fn file_dot_piece(
     filename: &str,
     offset: u64,
     iid_count: usize,
     sid_start: usize,
-    // ata_piece = np.zeros((a.sid_count-start,stop-start),order='C')
     ata_piece: &mut nd::ArrayViewMut2<'_, f64>,
 ) -> Result<(), BedErrorPlus> {
+    let (nrows, ncols) = ata_piece.dim();
+    println!("cmk sid_start={}, {}x{} output", sid_start, nrows, ncols);
+
+    // Open the file and move to the starting sid
     let mut buf_reader = BufReader::new(File::open(filename)?);
     buf_reader.seek(SeekFrom::Start(
         offset + sid_start as u64 * iid_count as u64 * std::mem::size_of::<f64>() as u64,
     ))?;
 
-    let ncols = ata_piece.ncols();
-    println!("cmk {}, {:?}", sid_start, ata_piece.dim());
-
     let mut sid_save_list: Vec<Vec<f64>> = vec![];
     let mut sid_reuse = vec![0.0; iid_count];
 
-    // !!!cmk test when sid_range has length 0
-    for mut ata_column in ata_piece.genrows_mut() {
-        // for sid_rel_index in 0..ata_piece.nrows() {
-        // let sid_rel_end = ata_piece.ncols().min(sid_rel_index + 1);
-        // if sid_rel_index % ata_piece.ncols() == 0 {
-        //     println!("   cmk reading {}", sid_start + sid_rel_index);
-        // }
+    for (sid_rel_index, mut ata_row) in ata_piece.axis_iter_mut(nd::Axis(0)).enumerate() {
+        if sid_rel_index % ncols == 0 {
+            println!("   cmk working on {} of {}", sid_rel_index, nrows);
+        }
 
-        // Save if in range
+        // Read next sid and save if in range
         let sid = if sid_save_list.len() < ncols {
             let mut sid_save = vec![0.0; iid_count]; // !!!cmk nan instead? here and everywhere
             buf_reader.read_f64_into::<LittleEndian>(&mut sid_save)?;
@@ -910,12 +905,11 @@ fn file_dot_piece(
             &sid_reuse
         };
 
-        let mut ata_column_cmk = ata_column.slice_mut(nd::s![..sid_save_list.len()]);
-        // let mut ata_column_cmk = ata_piece.slice_mut(nd::s![sid_rel_index, ..sid_rel_end]);
-
+        // Multiple saved sids with new sid
+        let mut ata_row_trimmed = ata_row.slice_mut(nd::s![..sid_save_list.len()]);
         nd::par_azip!((
             sid_in_range in &sid_save_list,
-            mut ata_val in ata_column_cmk.axis_iter_mut(nd::Axis(0))
+            mut ata_val in ata_row_trimmed.axis_iter_mut(nd::Axis(0))
         )
         {
             ata_val[()] = sid_product(&sid_in_range, &sid);
@@ -925,30 +919,12 @@ fn file_dot_piece(
     return Ok(());
 }
 
-fn cmkread_sid(
-    buf_reader: &mut BufReader<File>,
-    sid_index: usize,
-    offset: u64,
-    iid_count: usize,
-) -> Result<Vec<f64>, BedErrorPlus> {
-    let mut sid = vec![0.0; iid_count];
-    buf_reader.seek(SeekFrom::Start(
-        offset + sid_index as u64 * iid_count as u64 * std::mem::size_of::<f64>() as u64,
-    ))?;
-
-    // !!!cmk f64's to read: iid_count * (stop - start)
-    buf_reader.read_f64_into::<LittleEndian>(&mut sid)?; // !!!cmk check BigEndian
-
-    return Ok(sid);
-}
-
 fn sid_product(sid_i: &[f64], sid_j: &[f64]) -> f64 {
     assert!(sid_i.len() == sid_j.len()); // !!!cmk
     let mut product = 0.0;
     for iid_index in 0..sid_i.len() {
         product += sid_i[iid_index] * sid_j[iid_index];
     }
-    //println!("sid_{}*sid_{}={}", i, j, product);
     product
 }
 
