@@ -815,43 +815,26 @@ pub fn create_pool(num_threads: usize) -> Result<rayon::ThreadPool, BedErrorPlus
 //     return Ok(());
 // }
 
-fn read_sid(
-    buf_reader: &mut BufReader<File>,
-    sid_index: usize,
-    offset: u64,
-    iid_count: usize,
-) -> Result<Vec<f64>, BedErrorPlus> {
-    let mut sid = vec![0.0; iid_count];
-    buf_reader.seek(SeekFrom::Start(
-        offset + sid_index as u64 * iid_count as u64 * std::mem::size_of::<f64>() as u64,
-    ))?;
+// fn cmkfile_dot(
+//     filename: &str,
+//     offset: u64,
+//     iid_count: usize,
+//     sid_count: usize,
+//     val: &mut nd::ArrayViewMut2<'_, f64>,
+// ) -> Result<(), BedErrorPlus> {
+//     let mut buf_reader = BufReader::new(File::open(filename)?);
 
-    // !!!cmk f64's to read: iid_count * (stop - start)
-    buf_reader.read_f64_into::<LittleEndian>(&mut sid)?; // !!!cmk check BigEndian
-
-    return Ok(sid);
-}
-
-fn cmkfile_dot(
-    filename: &str,
-    offset: u64,
-    iid_count: usize,
-    sid_count: usize,
-    val: &mut nd::ArrayViewMut2<'_, f64>,
-) -> Result<(), BedErrorPlus> {
-    let mut buf_reader = BufReader::new(File::open(filename)?);
-
-    for i in 0..sid_count {
-        let sid_i = read_sid(&mut buf_reader, i, offset, iid_count)?;
-        for j in i..sid_count {
-            // !!!cmk could skip read if i==j
-            let sid_j = read_sid(&mut buf_reader, j, offset, iid_count)?;
-            val[(i, j)] = sid_product(&sid_i, &sid_j);
-            val[(j, i)] = val[(i, j)];
-        }
-    }
-    return Ok(());
-}
+//     for i in 0..sid_count {
+//         let sid_i = read_sid(&mut buf_reader, i, offset, iid_count)?;
+//         for j in i..sid_count {
+//             // !!!cmk could skip read if i==j
+//             let sid_j = read_sid(&mut buf_reader, j, offset, iid_count)?;
+//             val[(i, j)] = sid_product(&sid_i, &sid_j);
+//             val[(j, i)] = val[(i, j)];
+//         }
+//     }
+//     return Ok(());
+// }
 
 fn file_dot(
     filename: &str,
@@ -862,8 +845,7 @@ fn file_dot(
     val: &mut nd::ArrayViewMut2<'_, f64>,
 ) -> Result<(), BedErrorPlus> {
     // let mut buf_reader = BufReader::new(File::open(filename)?);
-    for i_cmk in (0..sid_count).step_by(sid_step) {
-        let i = i_cmk; // sid_count - i_cmk - 1;
+    for i in (0..sid_count).step_by(sid_step) {
         let sid_range = i..sid_count.min(i + sid_step);
         let piece = file_dot_piece(filename, offset, iid_count, sid_count, sid_range.clone())?;
         insert_piece(sid_range.clone(), piece, val);
@@ -901,27 +883,30 @@ fn file_dot_piece(
     // !!! cmk fortran order?
     let mut ata_piece = nd::Array2::<f64>::zeros((sid_range.len(), sid_count - sid_range.start));
 
-    let mut sid_range_list: Vec<Vec<f64>> = vec![];
+    let mut sid_save_list: Vec<Vec<f64>> = vec![];
 
     // !!!cmk test when sid_range has length 0
     for sid_index in sid_range.start..sid_count {
-        let rel_index = sid_index - sid_range.start;
-        if rel_index % sid_range.len() == 0 {
+        let sid_rel_index = sid_index - sid_range.start;
+        let sid_rel_end = sid_range.len().min(sid_rel_index + 1);
+
+        if sid_rel_index % sid_range.len() == 0 {
             println!("   cmk reading {}", sid_index);
         }
-        let sidcmk = read_sid(&mut buf_reader, sid_index, offset, iid_count)?;
+
+        let sid_original = read_sid(&mut buf_reader, sid_index, offset, iid_count)?;
+
+        // Save if in range
         let sid = if sid_range.contains(&sid_index) {
-            sid_range_list.push(sidcmk);
-            &sid_range_list[sid_range_list.len() - 1]
+            sid_save_list.push(sid_original);
+            &sid_save_list[sid_save_list.len() - 1]
         } else {
-            &sidcmk
+            &sid_original
         };
 
-        let mut ata_columnx = ata_piece.column_mut(sid_index - sid_range.start);
-        let sid_rel_end = sid_range.len().min(rel_index + 1);
-        let mut ata_column = ata_columnx.slice_mut(nd::s![..sid_rel_end]);
+        let mut ata_column = ata_piece.slice_mut(nd::s![..sid_rel_end, sid_rel_index]);
         nd::par_azip!((
-            sid_in_range in &sid_range_list[0..sid_rel_end],
+            sid_in_range in &sid_save_list[..sid_rel_end],
             mut ata_val in ata_column.axis_iter_mut(nd::Axis(0))
         )
         {
@@ -929,41 +914,24 @@ fn file_dot_piece(
         });
     }
 
-    // println!("   cmk reading range");
-    // for sid_index in sid_range.clone() {
-    //     let rel_index = sid_index - sid_range.start;
-    //     let sid = read_sid(&mut buf_reader, sid_index, offset, iid_count)?;
-    //     sid_range_list.push(sid);
-    //     let sid = &sid_range_list[sid_range_list.len() - 1];
-    //     let mut ata_columnx = ata_piece.column_mut(sid_index - sid_range.start);
-    //     let mut ata_column = ata_columnx.slice_mut(nd::s![..rel_index + 1]);
-    //     nd::par_azip!((
-    //         sid_in_range in &sid_range_list[0..rel_index+1],
-    //         mut ata_val in ata_column.axis_iter_mut(nd::Axis(0))
-    //     )
-    //     {
-    //         ata_val[()] = sid_product(&sid_in_range, &sid);
-    //     });
-    // }
-
-    // println!("   cmk reading rest");
-    // for sid_index in sid_range.end..sid_count {
-    //     if sid_index % sid_range_list.len() == 0 {
-    //         println!("   cmk reading rest {}", sid_index);
-    //     }
-    //     let sid = read_sid(&mut buf_reader, sid_index, offset, iid_count)?;
-    //     let mut ata_column = ata_piece.column_mut(sid_index - sid_range.start);
-
-    //     nd::par_azip!((
-    //         mut ata_val in ata_column.axis_iter_mut(nd::Axis(0)),
-    //         sid_in_range in &sid_range_list
-    //     )
-    //     {
-    //         ata_val[()] = sid_product(&sid_in_range, &sid);
-    //     });
-    //}
-
     return Ok(ata_piece);
+}
+
+fn read_sid(
+    buf_reader: &mut BufReader<File>,
+    sid_index: usize,
+    offset: u64,
+    iid_count: usize,
+) -> Result<Vec<f64>, BedErrorPlus> {
+    let mut sid = vec![0.0; iid_count];
+    buf_reader.seek(SeekFrom::Start(
+        offset + sid_index as u64 * iid_count as u64 * std::mem::size_of::<f64>() as u64,
+    ))?;
+
+    // !!!cmk f64's to read: iid_count * (stop - start)
+    buf_reader.read_f64_into::<LittleEndian>(&mut sid)?; // !!!cmk check BigEndian
+
+    return Ok(sid);
 }
 
 fn sid_product(sid_i: &[f64], sid_j: &[f64]) -> f64 {

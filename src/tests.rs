@@ -790,7 +790,7 @@ fn file_dot_large() {
 fn file_dot_giant() {
     println!("file_dot_giant");
     // !!! cmk generate this file
-    let filename = r"M:\deldir\New folder (13)\100_000x10_000_o640_array.memmap";
+    let filename = r"I:\100_000x10_000_o640_array.memmap";
     let mut out_val = nd::Array2::<f64>::zeros((10_000, 10_000));
     println!("  cmk finished alloc");
     file_dot(
@@ -803,5 +803,5 @@ fn file_dot_giant() {
     )
     .unwrap();
     println!("{}", out_val[(500, 5_000)]);
-    assert!(abs(out_val[(500, 5_000)] - 333.10831662165975) < 1e-8); // !!!cmk not right
+    assert!(abs(out_val[(500, 5_000)] - 33333.10839916621) < 1e-8); // !!!cmk not right
 }
