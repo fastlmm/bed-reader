@@ -884,6 +884,11 @@ fn file_dot_piece(
     let mut ata_piece = nd::Array2::<f64>::zeros((sid_range.len(), sid_count - sid_range.start));
 
     let mut sid_save_list: Vec<Vec<f64>> = vec![];
+    let mut sid_reuse = vec![0.0; iid_count];
+
+    buf_reader.seek(SeekFrom::Start(
+        offset + sid_range.start as u64 * iid_count as u64 * std::mem::size_of::<f64>() as u64,
+    ))?;
 
     // !!!cmk test when sid_range has length 0
     for sid_index in sid_range.start..sid_count {
@@ -894,14 +899,15 @@ fn file_dot_piece(
             println!("   cmk reading {}", sid_index);
         }
 
-        let sid_original = read_sid(&mut buf_reader, sid_index, offset, iid_count)?;
-
         // Save if in range
         let sid = if sid_range.contains(&sid_index) {
-            sid_save_list.push(sid_original);
-            &sid_save_list[sid_save_list.len() - 1]
+            let mut sid_save = vec![0.0; iid_count];
+            buf_reader.read_f64_into::<LittleEndian>(&mut sid_save)?;
+            sid_save_list.push(sid_save);
+            &sid_save_list.last().unwrap()
         } else {
-            &sid_original
+            buf_reader.read_f64_into::<LittleEndian>(&mut sid_reuse)?;
+            &sid_reuse
         };
 
         let mut ata_column = ata_piece.slice_mut(nd::s![..sid_rel_end, sid_rel_index]);
@@ -917,7 +923,7 @@ fn file_dot_piece(
     return Ok(ata_piece);
 }
 
-fn read_sid(
+fn cmkread_sid(
     buf_reader: &mut BufReader<File>,
     sid_index: usize,
     offset: u64,
