@@ -27,7 +27,7 @@ if __name__ == "__main__":
         print(mm.offset)
         mm.flush()
 
-    if True:
+    if False:
         mm = np.memmap(
             tmp_path / "100x1000_o640_array.memmap",
             dtype="float64",
@@ -50,6 +50,38 @@ if __name__ == "__main__":
             mode="w+",
             offset=640,
             shape=(1000, 10_000),
+            order="F",
+        )
+        total = mm.shape[0] * mm.shape[1]
+        lin = np.linspace(0, 1, total).reshape(mm.shape)
+
+        mm[:] = lin[:]
+        print(mm.offset)
+        mm.flush()
+
+    if False:
+        mm = np.memmap(
+            tmp_path / "10_000x100_000_o6400_array.memmap",
+            dtype="float64",
+            mode="w+",
+            offset=640,
+            shape=(10_000, 100_000),
+            order="F",
+        )
+        total = mm.shape[0] * mm.shape[1]
+        lin = np.linspace(0, 1, total).reshape(mm.shape)
+
+        mm[:] = lin[:]
+        print(mm.offset)
+        mm.flush()
+
+    if True:
+        mm = np.memmap(
+            tmp_path / "100_000x10_000_o6400_array.memmap",
+            dtype="float64",
+            mode="w+",
+            offset=640,
+            shape=(100_000, 10_000),
             order="F",
         )
         total = mm.shape[0] * mm.shape[1]

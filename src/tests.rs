@@ -766,6 +766,7 @@ fn file_dot_small() {
 
 #[test]
 fn file_dot_medium() {
+    println!("file_dot_medium");
     // !!! cmk generate this file
     let filename = r"M:\deldir\New folder (13)\100x1000_o640_array.memmap";
     let mut out_val = nd::Array2::<f64>::zeros((1000, 1000));
@@ -780,10 +781,27 @@ fn file_dot_large() {
     let filename = r"M:\deldir\New folder (13)\1000x10000_o640_array.memmap";
     let mut out_val = nd::Array2::<f64>::zeros((10_000, 10_000));
     file_dot(filename, 640, 1000, 10_000, 100, &mut out_val.view_mut()).unwrap();
-    assert_eq!(out_val[(500, 5000)], 150.0);
+    println!("{}", out_val[(500, 5000)]);
+    assert!(abs(out_val[(500, 5000)] - 333.10831662165975) < 1e-8);
 }
 
-// let reference = nd::array![[1.,2.,3.], [4.,5.,6.]];
-
-// let val2 = read(filename2, false, true, -127).unwrap();
-// assert!(allclose(&val.view(), &val2.view(), 0, true));
+// !!! cmk test on a slow drive
+#[test]
+fn file_dot_giant() {
+    println!("file_dot_giant");
+    // !!! cmk generate this file
+    let filename = r"M:\deldir\New folder (13)\100_000x10_000_o640_array.memmap";
+    let mut out_val = nd::Array2::<f64>::zeros((10_000, 10_000));
+    println!("  cmk finished alloc");
+    file_dot(
+        filename,
+        640,
+        100_000,
+        10_000,
+        1000,
+        &mut out_val.view_mut(),
+    )
+    .unwrap();
+    println!("{}", out_val[(500, 5_000)]);
+    assert!(abs(out_val[(500, 5_000)] - 333.10831662165975) < 1e-8); // !!!cmk not right
+}

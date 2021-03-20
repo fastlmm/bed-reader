@@ -862,7 +862,8 @@ fn file_dot(
     val: &mut nd::ArrayViewMut2<'_, f64>,
 ) -> Result<(), BedErrorPlus> {
     // let mut buf_reader = BufReader::new(File::open(filename)?);
-    for i in (0..sid_count).step_by(sid_step) {
+    for i_cmk in (0..sid_count).step_by(sid_step) {
+        let i = i_cmk; // sid_count - i_cmk - 1;
         let sid_range = i..sid_count.min(i + sid_step);
         let piece = file_dot_piece(filename, offset, iid_count, sid_count, sid_range.clone())?;
         insert_piece(sid_range.clone(), piece, val);
@@ -870,6 +871,7 @@ fn file_dot(
     return Ok(());
 }
 
+// !!!cmk understand all allocations
 fn insert_piece(sid_range: Range<usize>, piece: nd::Array2<f64>, val: &mut nd::ArrayViewMut2<f64>) {
     for range_index in sid_range.clone() {
         for j in range_index - sid_range.start..piece.shape()[1] {
@@ -894,23 +896,41 @@ fn file_dot_piece(
     sid_count: usize,
     sid_range: Range<usize>,
 ) -> Result<nd::Array2<f64>, BedErrorPlus> {
+    println!("cmk {:?} of {}", sid_range, sid_count);
     let mut buf_reader = BufReader::new(File::open(filename)?);
     // !!! cmk fortran order?
     let mut ata_piece = nd::Array2::<f64>::zeros((sid_range.len(), sid_count - sid_range.start));
 
     let mut sid_range_list: Vec<Vec<f64>> = vec![];
+    println!("   cmk reading range");
     for sid_index in sid_range.clone() {
+        let rel_index = sid_index - sid_range.start;
         let sid = read_sid(&mut buf_reader, sid_index, offset, iid_count)?;
         sid_range_list.push(sid);
         let sid = &sid_range_list[sid_range_list.len() - 1];
+        let mut ata_columnx = ata_piece.column_mut(sid_index - sid_range.start);
+        let mut ata_column = ata_columnx.slice_mut(nd::s![..rel_index + 1]);
+        // // !!!cmk parallelize
+        // for range_index in sid_range.start..sid_index + 1 {
+        //     ata_piece[(range_index - sid_range.start, sid_index - sid_range.start)] =
+        //         sid_product(&sid_range_list[range_index - sid_range.start], &sid);
+        // }
 
-        for range_index in sid_range.start..sid_index + 1 {
-            ata_piece[(range_index - sid_range.start, sid_index - sid_range.start)] =
-                sid_product(&sid_range_list[range_index - sid_range.start], &sid);
-        }
+        // !!!cmk nd::par_azip
+        nd::par_azip!((
+            sid_in_range in &sid_range_list[0..rel_index+1],
+            mut ata_val in ata_column.axis_iter_mut(nd::Axis(0))
+        )
+        {
+            ata_val[()] = sid_product(&sid_in_range, &sid);
+        });
     }
 
+    println!("   cmk reading rest");
     for sid_index in sid_range.end..sid_count {
+        if sid_index % sid_range_list.len() == 0 {
+            println!("   cmk reading rest {}", sid_index);
+        }
         let sid = read_sid(&mut buf_reader, sid_index, offset, iid_count)?;
         let mut ata_column = ata_piece.column_mut(sid_index - sid_range.start);
 
@@ -921,51 +941,6 @@ fn file_dot_piece(
         {
             ata_val[()] = sid_product(&sid_in_range, &sid);
         });
-
-        // ata_column
-        //     .axis_iter_mut(nd::Axis(0))
-        //     .zip(&sid_range_list)
-        //     .for_each(|(mut ata_val, sid_in_range)| {
-        //         ata_val[()] = sid_product(&sid_in_range, &sid);
-        //     });
-
-        // for range_index in sid_range.clone() {
-        //     ata_column[range_index - sid_range.start] =
-        //         sid_product(&sid_range_list[range_index - sid_range.start], &sid);
-        // }
-
-        //ata_column.axis_iter_mut(nd::Axis(0)).enumerate()
-
-        // nd::par_azip!((//mut out_val in  ata_column.axis_iter_mut(nd::Axis(0)),
-        // range_index in (sid_range.start..sid_range.end).into_par_iter()
-        //                 )
-        // {
-        //     *out_val = sid_product(&sid_range_list[range_index - sid_range.start], &sid);
-        // });
-
-        // Zip::from(ata_column.axis_iter_mut(nd::Axis(0)).enumerate().par_apply
-        // (
-        //     |range_index,  mut out_val|
-        //     {
-        //     *out_val = sid_product(&sid_range_list[range_index - sid_range.start], &sid);
-        //     }
-        // );
-
-        // nd::par_azip!(((range_index, mut out_val) in  ata_column.axis_iter_mut(nd::Axis(0)).enumerate())
-        // {
-        //     *out_val = sid_product(&sid_range_list[range_index - sid_range.start], &sid);
-        // });
-
-        // nd::par_azip!((mut out_col in out_val.axis_iter_mut(nd::Axis(1)),
-        //             in_sid_i_pr in sid_index) {
-        //     let in_col = in_val.index_axis(nd::Axis(1), *in_sid_i_pr);
-        //     for did_i in 0..did_count
-        //     {
-        //         for (out_iid_i, in_iid_i_ptr) in iid_index.iter().enumerate() {
-        //             out_col[(out_iid_i,did_i)] = in_col[(*in_iid_i_ptr,did_i)].into();
-        //         }
-        //     }
-        // });
     }
 
     return Ok(ata_piece);
