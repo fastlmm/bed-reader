@@ -5,12 +5,12 @@ use core::fmt::Debug;
 use ndarray as nd;
 use ndarray::ShapeBuilder;
 use num_traits::{Float, FromPrimitive, ToPrimitive};
-use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator, Zip};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use rayon::{iter::ParallelBridge, ThreadPoolBuildError};
 use statrs::distribution::{Beta, Continuous};
 use std::{
-    convert::{TryFrom, TryInto},
-    ops::{Div, Range, Sub},
+    convert::TryFrom,
+    ops::{Div, Sub},
 };
 use std::{
     fs::File,
@@ -714,157 +714,6 @@ pub fn create_pool(num_threads: usize) -> Result<rayon::ThreadPool, BedErrorPlus
     }
 }
 
-// could add code so that if the two blocks are the same, then only do half the *'s in the dot product
-
-// fn mmultfile_atax(
-//     filename: &str,
-//     offset: u64,
-//     iid_count: usize,
-//     sid_count: usize,
-//     work_index: usize,
-//     work_count: usize,
-//     ata_piece: &mut nd::ArrayViewMut2<'_, f64>,
-//     num_threads: usize,
-//     log_frequency: u64,
-// ) -> Result<(), BedErrorPlus> {
-//     let start = sid_count * work_index / work_count;
-//     let stop = sid_count * (work_index + 1) / work_count;
-
-//     // !!!cmk this will often be off by one
-//     let max_space = sid_count / work_count + ((sid_count % work_count != 0) as usize); // !!!cmk understand this
-
-//     let mut buffer_0 = vec![0.0; iid_count * max_space];
-//     let mut buffer_1 = vec![0.0; iid_count * max_space];
-//     let mut buffer_2 = vec![0.0; iid_count * max_space];
-
-//     let mut ref_cur = buffer_0.as_mut_slice();
-//     let mut ref_next = buffer_2.as_mut_slice();
-
-//     let mut buf_reader = BufReader::new(File::open(filename)?);
-
-//     let iid_count_u64 = iid_count as u64;
-//     buf_reader.seek(SeekFrom::Start(
-//         offset + start as u64 * iid_count_u64 * std::mem::size_of::<f64>() as u64,
-//     ))?;
-
-//     // !!!cmk f64's to read: iid_count * (stop - start)
-//     buf_reader.read_f64_into::<BigEndian>(ref_cur)?; // !!!cmk check BigEndian
-
-//     for i in work_index..work_count {
-//         // if (log_frequency > 0 && i % log_frequency == 0)
-//         // {
-//         // 	printf("For work_index=%lld of %lld, processing i=%lld (in %lld..%lld) (iid_count=%lld, sid_count=%lld, num_threads=%d)\n", work_index, work_count, i, work_index, work_count, iid_count, sid_count, num_threads);
-//         // }
-//         // else if (log_frequency == -2)
-//         // {
-//         // 	printf("For work_index=%lld of %lld, processing i=%lld (in %lld..%lld) (iid_count=%lld, sid_count=%lld, num_threads=%d)\n", work_index, work_count, i, work_index, work_count, iid_count, sid_count, num_threads);
-//         // 	printf("SKIPPING computation\n");
-//         // }
-
-//         let start_i = sid_count * i / work_count;
-//         let stop_i = sid_count * (i + 1) / work_count;
-//         let next_i = sid_count * (i + 2) / work_count;
-
-//         // See the equivalent Python code for a full explanation of the algorithm. In summary:
-//         // We are taking the matrix multiplication of one chunk against itself and all later chunks.
-//         // We loop on variable i, the index to the second chunk. Inside the loop we do
-//         // this in parallel:
-//         //        * On the main thread, read the data for the i+1 chunk, unless already at end of the file.
-//         //               This means our reading is always one chunk ahead. This works because the first
-//         //               matrix multiply is the first chunk with itself.
-//         //        * On all threads, do the matrix multiply (in parallel) for the first chuck with chunk i.
-
-//         if next_i <= sid_count {
-//             // if (log_frequency > 0) printf("reading next chunk\n");
-
-//             // !!!cmk f64's to read: iid_count * (nexti - stopi)
-//             buf_reader.read_f64_into::<BigEndian>(ref_next)?; // !!!cmk check BigEndian
-
-//             // if (log_frequency > 0) printf("finished reading next chunk======================================\n");
-//         }
-
-//         // !!!cmk in parallel
-//         for j in 0..stop_i - start_i {
-//             // if (log_frequency > 0)	printf("Doing computation %lld\n", j);
-//             let j_iid_count = j * iid_count;
-//             for k in 0usize..stop - start {
-//                 let k_iid_count = k * iid_count;
-//                 let mut temp = 0.0;
-//                 for m in 0..iid_count {
-//                     temp += (*ref_cur)[j_iid_count + m] * buffer_0[k_iid_count + m];
-//                 }
-//                 ata_piece[(j + start_i - start, k)] = temp;
-//             }
-//             // if (log_frequency > 0) printf("done with computation %lld\n", j);
-//         }
-//         // if (log_frequency > 0) printf("done with parallel loop\n");
-
-//         // if (log_frequency > 0) printf("done with parallel computation\n");
-
-//         if i == work_index {
-//             // We just finished the first loop, so before the swap, point at buffer #0
-//             ref_cur = buffer_1.as_mut_slice();
-//         }
-
-//         //Swap ref_cur and ref_next
-//         let slice_i_temp = ref_cur;
-//         ref_cur = ref_next;
-//         ref_next = slice_i_temp;
-//     }
-
-//     return Ok(());
-// }
-
-// fn cmkfile_dot(
-//     filename: &str,
-//     offset: u64,
-//     iid_count: usize,
-//     sid_count: usize,
-//     val: &mut nd::ArrayViewMut2<'_, f64>,
-// ) -> Result<(), BedErrorPlus> {
-//     let mut buf_reader = BufReader::new(File::open(filename)?);
-
-//     for i in 0..sid_count {
-//         let sid_i = read_sid(&mut buf_reader, i, offset, iid_count)?;
-//         for j in i..sid_count {
-//             // !!!cmk could skip read if i==j
-//             let sid_j = read_sid(&mut buf_reader, j, offset, iid_count)?;
-//             val[(i, j)] = sid_product(&sid_i, &sid_j);
-//             val[(j, i)] = val[(i, j)];
-//         }
-//     }
-//     return Ok(());
-// }
-
-fn file_dot(
-    filename: &str,
-    offset: u64,
-    iid_count: usize,
-    sid_count: usize,
-    sid_step: usize,
-    val: &mut nd::ArrayViewMut2<'_, f64>,
-) -> Result<(), BedErrorPlus> {
-    // let mut buf_reader = BufReader::new(File::open(filename)?);
-    for i in (0..sid_count).step_by(sid_step) {
-        let sid_range = i..sid_count.min(i + sid_step);
-        let mut ata_piece = nd::Array2::<f64>::zeros((sid_count - i, sid_range.len()));
-        file_dot_piece(filename, offset, iid_count, i, &mut ata_piece.view_mut())?;
-        insert_piece(sid_range.clone(), ata_piece, val);
-    }
-    return Ok(());
-}
-
-// !!!cmk understand all allocations
-fn insert_piece(sid_range: Range<usize>, piece: nd::Array2<f64>, val: &mut nd::ArrayViewMut2<f64>) {
-    for range_index in sid_range.clone() {
-        for j in range_index - sid_range.start..piece.shape()[0] {
-            // !!!cmk this is the inner loop, so precompute indexes as possible
-            val[(range_index, j + sid_range.start)] = piece[(j, range_index - sid_range.start)];
-            val[(j + sid_range.start, range_index)] = val[(range_index, j + sid_range.start)];
-        }
-    }
-}
-
 // Given A, a matrix in Fortran order in a file
 // with iid_count rows and sid_count columns,
 // Returns part of A.T x A for the columns in sid_start-and-beyond to sid_start-and-in-range.
@@ -876,9 +725,15 @@ fn file_dot_piece(
     iid_count: usize,
     sid_start: usize,
     ata_piece: &mut nd::ArrayViewMut2<'_, f64>,
+    log_frequency: usize,
 ) -> Result<(), BedErrorPlus> {
     let (nrows, ncols) = ata_piece.dim();
-    println!("cmk sid_start={}, {}x{} output", sid_start, nrows, ncols);
+    if log_frequency > 0 {
+        println!(
+            "file_dot_piece: sid_start={}, {}x{} output",
+            sid_start, nrows, ncols
+        );
+    };
 
     // Open the file and move to the starting sid
     let mut buf_reader = BufReader::new(File::open(filename)?);
@@ -890,8 +745,8 @@ fn file_dot_piece(
     let mut sid_reuse = vec![0.0; iid_count];
 
     for (sid_rel_index, mut ata_row) in ata_piece.axis_iter_mut(nd::Axis(0)).enumerate() {
-        if sid_rel_index % ncols == 0 {
-            println!("   cmk working on {} of {}", sid_rel_index, nrows);
+        if log_frequency > 0 && sid_rel_index % log_frequency == 0 {
+            println!("   working on {} of {}", sid_rel_index, nrows);
         }
 
         // Read next sid and save if in range

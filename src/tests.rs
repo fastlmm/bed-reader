@@ -1,13 +1,14 @@
 // https://stackoverflow.com/questions/32900809/how-to-suppress-function-is-never-used-warning-for-a-function-used-by-tests
 
 #[cfg(test)]
+use crate::file_dot_piece;
+#[cfg(test)]
 use crate::try_div_4;
 #[cfg(test)]
 use crate::Dist;
 #[cfg(test)]
 use crate::{
-    counts, file_dot, impute_and_zero_mean_snps, matrix_subset_no_alloc, read, read_with_indexes,
-    write,
+    counts, impute_and_zero_mean_snps, matrix_subset_no_alloc, read, read_with_indexes, write,
 };
 #[cfg(test)]
 use crate::{internal_read_no_alloc, read_no_alloc, BedError, BedErrorPlus};
@@ -21,6 +22,8 @@ use ndarray_npy::read_npy;
 use num_traits::{abs, Signed};
 #[cfg(test)]
 use std::io::{LineWriter, Write};
+#[cfg(test)]
+use std::ops::Range;
 #[cfg(test)]
 use std::path::Path;
 #[cfg(test)]
@@ -804,4 +807,47 @@ fn file_dot_giant() {
     .unwrap();
     println!("{}", out_val[(500, 5_000)]);
     assert!(abs(out_val[(500, 5_000)] - 33333.10839916621) < 1e-8); // !!!cmk not right
+}
+
+#[cfg(test)]
+fn file_dot(
+    filename: &str,
+    offset: u64,
+    iid_count: usize,
+    sid_count: usize,
+    sid_step: usize,
+    val: &mut nd::ArrayViewMut2<'_, f64>,
+) -> Result<(), BedErrorPlus> {
+    for sid_start in (0..sid_count).step_by(sid_step) {
+        let sid_range_len = sid_step.min(sid_count - sid_start);
+        let mut ata_piece = nd::Array2::<f64>::zeros((sid_count - sid_start, sid_range_len));
+        file_dot_piece(
+            filename,
+            offset,
+            iid_count,
+            sid_start,
+            &mut ata_piece.view_mut(),
+            sid_range_len,
+        )?;
+        insert_piece(
+            Range {
+                start: sid_start,
+                end: sid_start + sid_range_len,
+            },
+            ata_piece,
+            val,
+        );
+    }
+    return Ok(());
+}
+
+#[cfg(test)]
+fn insert_piece(sid_range: Range<usize>, piece: nd::Array2<f64>, val: &mut nd::ArrayViewMut2<f64>) {
+    for range_index in sid_range.clone() {
+        for j in range_index - sid_range.start..piece.shape()[0] {
+            // !!!cmk this is the inner loop, so pre-compute indexes as possible
+            val[(range_index, j + sid_range.start)] = piece[(j, range_index - sid_range.start)];
+            val[(j + sid_range.start, range_index)] = val[(range_index, j + sid_range.start)];
+        }
+    }
 }

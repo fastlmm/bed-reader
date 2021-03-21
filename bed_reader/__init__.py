@@ -5,6 +5,7 @@ from bed_reader._sample_data import sample_file, tmp_path  # noqa
 from bed_reader._to_bed import to_bed  # noqa
 
 from .bed_reader import (  # noqa
+    file_dot_piece,
     read_f32,
     read_f64,
     read_i8,

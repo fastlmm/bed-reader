@@ -8,8 +8,8 @@ use pyo3::{
 };
 
 use crate::{
-    create_pool, impute_and_zero_mean_snps, matrix_subset_no_alloc, read_no_alloc, write, BedError,
-    BedErrorPlus, Dist,
+    create_pool, file_dot_piece, impute_and_zero_mean_snps, matrix_subset_no_alloc, read_no_alloc,
+    write, BedError, BedErrorPlus, Dist,
 };
 
 #[pymodule]
@@ -311,6 +311,33 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
                 &mut stats.view_mut(),
             )
         })?;
+        Ok(())
+    }
+
+    #[pyfn(m, "file_dot_piece")]
+    fn file_dot_piece_py(
+        _py: Python<'_>,
+        filename: &str,
+        offset: u64,
+        iid_count: usize,
+        sid_start: usize,
+        ata_piece: &PyArray2<f64>,
+        num_threads: usize,
+        log_frequency: usize,
+    ) -> Result<(), PyErr> {
+        let mut ata_piece = unsafe { ata_piece.as_array_mut() };
+
+        create_pool(num_threads)?.install(|| {
+            file_dot_piece(
+                filename,
+                offset,
+                iid_count,
+                sid_start,
+                &mut ata_piece,
+                log_frequency,
+            )
+        })?;
+
         Ok(())
     }
 
