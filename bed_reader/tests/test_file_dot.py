@@ -11,10 +11,10 @@ from bed_reader._open_bed import get_num_threads, open_bed  # noqa
 
 
 def file_dot(filename, offset, iid_count, sid_count, sid_step):
-    ata = np.zeros((sid_count, sid_count))
+    ata = np.full((sid_count, sid_count), np.nan)
     for sid_start in range(0, sid_count, sid_step):
         sid_range_len = min(sid_step, sid_count - sid_start)
-        ata_piece = np.zeros((sid_count - sid_start, sid_range_len))
+        ata_piece = np.full((sid_count - sid_start, sid_range_len), np.nan)
         file_dot_piece(
             str(filename),
             offset,
@@ -25,6 +25,8 @@ def file_dot(filename, offset, iid_count, sid_count, sid_step):
             log_frequency=sid_range_len,
         )
         ata[sid_start:, sid_start : sid_start + sid_range_len] = ata_piece
+    for sid_index in range(sid_count):
+        ata[sid_index, sid_index + 1 :] = ata[sid_index + 1 :, sid_index]
     return ata
 
 
@@ -35,7 +37,7 @@ def test_file_dot_small(shared_datadir):
     out_val = file_dot(filename, 0, 2, 3, 2)
     print(out_val)
 
-    expected = np.array([[17.0, 0, 0], [22.0, 29.0, 0], [27.0, 36.0, 45.0]])
+    expected = np.array([[17.0, 22.0, 27.0], [22.0, 29.0, 36.0], [27.0, 36.0, 45.0]])
     print(expected)
     assert np.allclose(expected, out_val, equal_nan=True)
 

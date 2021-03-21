@@ -758,7 +758,7 @@ fn zeros() {
 #[test]
 fn file_dot_small() {
     let filename = "bed_reader/tests/data/small_array.memmap";
-    let mut out_val = nd::Array2::<f64>::zeros((3, 3));
+    let mut out_val = nd::Array2::<f64>::from_elem((3, 3), f64::NAN);
     file_dot(filename, 0, 2, 3, 2, &mut out_val.view_mut()).unwrap();
     println!("{:?}", out_val);
 
@@ -772,7 +772,7 @@ fn file_dot_medium() {
     println!("file_dot_medium");
     // !!! cmk generate this file
     let filename = r"M:\deldir\New folder (13)\100x1000_o640_array.memmap";
-    let mut out_val = nd::Array2::<f64>::zeros((1000, 1000));
+    let mut out_val = nd::Array2::<f64>::from_elem((1000, 1000), f64::NAN);
     file_dot(filename, 640, 100, 1000, 33, &mut out_val.view_mut()).unwrap();
     println!("{:?}", out_val[(50, 500)]);
     assert!(abs(out_val[(50, 500)] - 33.10816215993239) < 1e-8);
@@ -782,7 +782,7 @@ fn file_dot_medium() {
 fn file_dot_large() {
     // !!! cmk generate this file
     let filename = r"M:\deldir\New folder (13)\1000x10000_o640_array.memmap";
-    let mut out_val = nd::Array2::<f64>::zeros((10_000, 10_000));
+    let mut out_val = nd::Array2::<f64>::from_elem((10_000, 10_000), f64::NAN);
     file_dot(filename, 640, 1000, 10_000, 100, &mut out_val.view_mut()).unwrap();
     println!("{}", out_val[(500, 5000)]);
     assert!(abs(out_val[(500, 5000)] - 333.10831662165975) < 1e-8);
@@ -820,7 +820,8 @@ fn file_dot(
 ) -> Result<(), BedErrorPlus> {
     for sid_start in (0..sid_count).step_by(sid_step) {
         let sid_range_len = sid_step.min(sid_count - sid_start);
-        let mut ata_piece = nd::Array2::<f64>::zeros((sid_count - sid_start, sid_range_len));
+        let mut ata_piece =
+            nd::Array2::<f64>::from_elem((sid_count - sid_start, sid_range_len), f64::NAN);
         file_dot_piece(
             filename,
             offset,

@@ -727,6 +727,8 @@ fn file_dot_piece(
     ata_piece: &mut nd::ArrayViewMut2<'_, f64>,
     log_frequency: usize,
 ) -> Result<(), BedErrorPlus> {
+    println!("cmk {:?}", ata_piece);
+
     let (nrows, ncols) = ata_piece.dim();
     if log_frequency > 0 {
         println!(
@@ -742,7 +744,7 @@ fn file_dot_piece(
     ))?;
 
     let mut sid_save_list: Vec<Vec<f64>> = vec![];
-    let mut sid_reuse = vec![0.0; iid_count];
+    let mut sid_reuse = vec![f64::NAN; iid_count];
 
     for (sid_rel_index, mut ata_row) in ata_piece.axis_iter_mut(nd::Axis(0)).enumerate() {
         if log_frequency > 0 && sid_rel_index % log_frequency == 0 {
@@ -751,10 +753,10 @@ fn file_dot_piece(
 
         // Read next sid and save if in range
         let sid = if sid_save_list.len() < ncols {
-            let mut sid_save = vec![0.0; iid_count]; // !!!cmk nan instead? here and everywhere
+            let mut sid_save = vec![f64::NAN; iid_count]; // !!!cmk nan instead? here and everywhere
             buf_reader.read_f64_into::<LittleEndian>(&mut sid_save)?;
             sid_save_list.push(sid_save);
-            &sid_save_list.last().unwrap()
+            &sid_save_list.last().unwrap() // unwrap is OK here
         } else {
             buf_reader.read_f64_into::<LittleEndian>(&mut sid_reuse)?;
             &sid_reuse
@@ -771,6 +773,7 @@ fn file_dot_piece(
         });
     }
 
+    println!("cmk {:?}", ata_piece);
     return Ok(());
 }
 
