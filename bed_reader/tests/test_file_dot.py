@@ -30,6 +30,29 @@ def file_dot(filename, offset, iid_count, sid_count, sid_step):
     return ata
 
 
+def write_read_test(iid_count, sid_count, sid_step, tmp_path):
+    offset = 640
+    file_path = tmp_path / f"{iid_count}x{sid_count}_o{offset}_array.memmap"
+    mm = np.memmap(
+        file_path,
+        dtype="float64",
+        mode="w+",
+        offset=offset,
+        shape=(iid_count, sid_count),
+        order="F",
+    )
+    mm[:] = np.linspace(0, 1, mm.size).reshape(mm.shape)
+    mm.flush()
+
+    out_val = file_dot(file_path, offset, iid_count, sid_count, sid_step)
+    expected = mm.T.dot(mm)
+    assert np.allclose(expected, out_val, equal_nan=True)
+
+
+def test_file_dot_medium(tmp_path):
+    write_read_test(100, 1000, 33, tmp_path)
+
+
 def test_file_dot_small(shared_datadir):
 
     filename = shared_datadir / "small_array.memmap"
