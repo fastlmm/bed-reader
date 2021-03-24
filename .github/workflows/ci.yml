@@ -17,8 +17,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macOS-latest]
-        python-version: [3.7, 3.8 ,3.9]
+        os: [ubuntu-latest] # cmk, windows-latest, macOS-latest]
+        python-version: [3.7] # cmk, 3.8 ,3.9]
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout
@@ -54,14 +54,25 @@ jobs:
 
     - name: Test Rust
       run: cargo test --verbose
-    - name: Build wheel with Maturin (and list)
+
+
+    - name: Build wheel with Maturin - Linux
+      if: startsWith(matrix.os, 'ubuntu')
+      run: |
+        maturin list-python
+        docker run --rm -v $(pwd):/io konstin2/maturin build --release --out target/wheels
+        ls -las target/wheels
+      shell: bash
+
+    - name: Build wheel with Maturin - Non-Linux
+      if: ! startsWith(matrix.os, 'ubuntu')
       run: |
         maturin list-python
         maturin build --release -i $(which python)
         ls -las target/wheels
       shell: bash
 
-    - name: Test Python
+      - name: Test Python
       if: runner.os != 'Windows'
       run: |
         pip install virtualenv

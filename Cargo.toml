@@ -3,7 +3,7 @@
 [package]
 authors = ["FaST-LMM Team <fastlmm-dev@python.org>"]
 name = "bed-reader"
-version = "0.2.3"
+version = "0.2.4"
 repository = "https://github.com/fastlmm/bed-reader"
 description = "Read and write the PLINK BED format, simply and efficiently."
 exclude = ["tests/*", "doc/*", "docs/*"]
