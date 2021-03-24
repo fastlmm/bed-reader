@@ -72,7 +72,7 @@ jobs:
         ls -las target/wheels
       shell: bash
 
-      - name: Test Python
+    - name: Test Python
       if: runner.os != 'Windows'
       run: |
         pip install virtualenv
