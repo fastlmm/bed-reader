@@ -110,7 +110,7 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: wheels
-        path: *.whl
+        path: ./*.whl
         
     - name: Save SDist
       if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.9'
