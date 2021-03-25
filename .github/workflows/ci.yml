@@ -65,7 +65,7 @@ jobs:
       shell: bash
 
     - name: Build wheel with Maturin - Non-Linux
-      if: ! startsWith(matrix.os, 'ubuntu')
+      if: "!startsWith(matrix.os, 'ubuntu')"
       run: |
         maturin list-python
         maturin build --release -i $(which python)
