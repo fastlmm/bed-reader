@@ -62,6 +62,7 @@ jobs:
         maturin list-python
         docker run --rm -v $(pwd):/io konstin2/maturin build --release --out target/wheels -i python${{matrix.python-version}}
         ls -las target/wheels
+        chmod +w target/wheels/*manylinux1_*.whl
         rm target/wheels/*manylinux1_*.whl
         ls -las target/wheels
       shell: bash
