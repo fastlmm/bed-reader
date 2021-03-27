@@ -110,37 +110,39 @@ def mmultfile_b_less_aatb(a_snp_mem_map, b, log_frequency=0, force_python_only=F
     return aTb, aaTb
 
 
-def write_read_test_file_b_less_aatbx(
-    iid_count, test_sid_count, train_sid_count, tmp_path
-):
+def write_read_test_file_b_less_aatbx(iid_count, a_sid_count, b_sid_count, tmp_path):
     offset = 640
-    file_path = tmp_path / f"{iid_count}x{test_sid_count}_o{offset}_array.memmap"
+    file_path = tmp_path / f"{iid_count}x{a_sid_count}_o{offset}_array.memmap"
     mm = np.memmap(
         file_path,
         dtype="float64",
         mode="w+",
         offset=offset,
-        shape=(iid_count, test_sid_count),
+        shape=(iid_count, a_sid_count),
         order="F",
     )
     mm[:] = np.linspace(0, 1, mm.size).reshape(mm.shape)
     mm.flush()
 
     b = np.array(
-        np.linspace(0, 1, iid_count * train_sid_count).reshape(
-            (iid_count, train_sid_count), order="F"
+        np.linspace(0, 1, iid_count * b_sid_count).reshape(
+            (iid_count, b_sid_count), order="F"
         )
     )  # !!!cmk
+    b_again = b.copy()
 
     log_frequency = 10  # !!!cmk
     aTb_python, aaTb_python = mmultfile_b_less_aatb(
         mm, b, log_frequency, force_python_only=True
     )
-    aTb, aaTb = mmultfile_b_less_aatb(mm, b, log_frequency, force_python_only=False)
+
+    aTb, aaTb = mmultfile_b_less_aatb(
+        mm, b_again, log_frequency, force_python_only=False
+    )
 
     if (
         not np.abs(aTb_python - aTb).max() < 1e-12
-        or not np.abs(aaTb_python - aaTb).max() < 1e-12
+        or not np.abs(aaTb_python - aaTb).max() < 1e-10
     ):
         raise AssertionError(
             "Expect Python and Rust to get the same mmultfile_b_less_aatb answer"
