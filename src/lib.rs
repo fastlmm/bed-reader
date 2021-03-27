@@ -720,15 +720,13 @@ pub fn create_pool(num_threads: usize) -> Result<rayon::ThreadPool, BedErrorPlus
 // Makes only one pass through the file.
 // Uses no more than memory needed for columns of in-range sids plus 1.
 fn file_dot_piece(
-    filename: &str,
+    filename: &str, // !!!cmk use string segment?
     offset: u64,
     iid_count: usize,
     sid_start: usize,
     ata_piece: &mut nd::ArrayViewMut2<'_, f64>,
     log_frequency: usize,
 ) -> Result<(), BedErrorPlus> {
-    println!("cmk {:?}", ata_piece);
-
     let (nrows, ncols) = ata_piece.dim();
     if log_frequency > 0 {
         println!(
@@ -753,7 +751,7 @@ fn file_dot_piece(
 
         // Read next sid and save if in range
         let sid = if sid_save_list.len() < ncols {
-            let mut sid_save = vec![f64::NAN; iid_count]; // !!!cmk nan instead? here and everywhere
+            let mut sid_save = vec![f64::NAN; iid_count];
             buf_reader.read_f64_into::<LittleEndian>(&mut sid_save)?;
             sid_save_list.push(sid_save);
             &sid_save_list.last().unwrap() // unwrap is OK here
@@ -773,7 +771,12 @@ fn file_dot_piece(
         });
     }
 
-    println!("cmk {:?}", ata_piece);
+    // Reflect the new product values
+    for row_index in 0usize..ncols - 1 {
+        for col_index in row_index..ncols {
+            ata_piece[(row_index, col_index)] = ata_piece[(col_index, row_index)];
+        }
+    }
     return Ok(());
 }
 
@@ -784,6 +787,57 @@ fn sid_product(sid_i: &[f64], sid_j: &[f64]) -> f64 {
         product += sid_i[iid_index] * sid_j[iid_index];
     }
     product
+}
+
+fn file_b_less_aatbx(
+    a_filename: &str,
+    offset: u64,
+    iid_count: usize,
+    b1: &mut nd::ArrayViewMut2<'_, f64>,
+    aatb: &mut nd::ArrayViewMut2<'_, f64>,
+    atb: &mut nd::ArrayViewMut2<'_, f64>,
+    log_frequency: usize,
+) -> Result<(), BedErrorPlus> {
+    //speed idea from C++:
+    //Are copies really needed?
+    //is F, vc C order the best?
+    //would bigger snp blocks be better
+
+    let (a_sid_count, b_sid_count) = atb.dim();
+    if log_frequency > 0 {
+        println!(
+            "file_b_less_aatbx: iid_count={}, {}x{} output",
+            iid_count, a_sid_count, b_sid_count
+        );
+    };
+
+    // Open the file and move to the starting sid
+    let mut buf_reader = BufReader::new(File::open(a_filename)?);
+    buf_reader.seek(SeekFrom::Start(offset))?;
+
+    let mut sid_reuse = vec![f64::NAN; iid_count];
+    //for (sid_rel_index, mut ata_row) in ata_piece.axis_iter_mut(nd::Axis(0)).enumerate() {
+    for a_sid_index in 0..a_sid_count {
+        if log_frequency > 0 && a_sid_index % log_frequency == 0 {
+            println!(
+                "   working on train_sid_index={} of {} (iid_count={}, b_sid_count={})",
+                a_sid_index, a_sid_count, iid_count, b_sid_count
+            );
+        }
+
+        buf_reader.read_f64_into::<LittleEndian>(&mut sid_reuse)?;
+        for b_sid_index in 0..b_sid_count {
+            let mut atbi = 0.0;
+            for iid_index in 0..iid_count {
+                atbi += sid_reuse[iid_index] * b1[(iid_index, b_sid_index)];
+            }
+            atb[(a_sid_index, b_sid_index)] = atbi;
+            for iid_index in 0..iid_count {
+                aatb[(iid_index, b_sid_index)] -= sid_reuse[iid_index] * atbi;
+            }
+        }
+    }
+    return Ok(());
 }
 
 mod python_module;

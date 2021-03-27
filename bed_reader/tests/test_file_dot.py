@@ -2,9 +2,8 @@ import logging
 from pathlib import Path
 
 import numpy as np
-import pytest
 
-from bed_reader import file_dot_piece
+from bed_reader import file_dot_piece, file_b_less_aatbx
 from bed_reader._open_bed import get_num_threads, open_bed  # noqa
 
 
@@ -28,7 +27,7 @@ def file_dot(filename, offset, iid_count, sid_count, sid_step):
     return ata
 
 
-def write_read_test(iid_count, sid_count, sid_step, tmp_path):
+def write_read_test_file_dot(iid_count, sid_count, sid_step, tmp_path):
     offset = 640
     file_path = tmp_path / f"{iid_count}x{sid_count}_o{offset}_array.memmap"
     mm = np.memmap(
@@ -48,7 +47,12 @@ def write_read_test(iid_count, sid_count, sid_step, tmp_path):
 
 
 def test_file_dot_medium(tmp_path):
-    write_read_test(100, 1000, 33, tmp_path)
+    write_read_test_file_dot(100, 1000, 33, tmp_path)
+
+
+# # Too slow
+# def test_file_dot_giant(tmp_path):
+#     write_read_test_file_dot(100_000, 10_000, 1000, tmp_path)
 
 
 def test_file_dot_small(shared_datadir):
@@ -61,6 +65,90 @@ def test_file_dot_small(shared_datadir):
     expected = np.array([[17.0, 22.0, 27.0], [22.0, 29.0, 36.0], [27.0, 36.0, 45.0]])
     print(expected)
     assert np.allclose(expected, out_val, equal_nan=True)
+
+
+def mmultfile_b_less_aatb(a_snp_mem_map, b, log_frequency=0, force_python_only=False):
+
+    # Without memory efficiency
+    #   a=a_snp_mem_map.val
+    #   aTb = np.dot(a.T,b)
+    #   aaTb = b-np.dot(a,aTb)
+    #   return aTb, aaTb
+
+    if force_python_only:
+        aTb = np.zeros(
+            (a_snp_mem_map.shape[1], b.shape[1])
+        )  # b can be destroyed. Is everything is in best order, i.e. F vs C
+        aaTb = b.copy()
+        b_mem = np.array(b, order="F")
+        with open(a_snp_mem_map.filename, "rb") as U_fp:
+            U_fp.seek(a_snp_mem_map.offset)
+            for i in range(a_snp_mem_map.shape[1]):
+                a_mem = np.fromfile(
+                    U_fp, dtype=np.float64, count=a_snp_mem_map.shape[0]
+                )
+                if log_frequency > 0 and i % log_frequency == 0:
+                    logging.info("{0}/{1}".format(i, a_snp_mem_map.shape[1]))
+                aTb[i, :] = np.dot(a_mem, b_mem)
+                aaTb -= np.dot(a_mem.reshape(-1, 1), aTb[i : i + 1, :])
+    else:
+        b1 = np.array(b, order="F")
+        aTb = np.zeros((a_snp_mem_map.shape[1], b.shape[1]))
+        aaTb = np.array(b1, order="F")
+
+        file_b_less_aatbx(
+            str(a_snp_mem_map.filename),
+            a_snp_mem_map.offset,
+            a_snp_mem_map.shape[0],  # row count
+            b1,  # B copy 1 in "F" order
+            aaTb,  # B copy 2 in "F" order
+            aTb,  # result
+            num_threads=get_num_threads(None),
+            log_frequency=log_frequency,
+        )
+
+    return aTb, aaTb
+
+
+def write_read_test_file_b_less_aatbx(
+    iid_count, test_sid_count, train_sid_count, tmp_path
+):
+    offset = 640
+    file_path = tmp_path / f"{iid_count}x{test_sid_count}_o{offset}_array.memmap"
+    mm = np.memmap(
+        file_path,
+        dtype="float64",
+        mode="w+",
+        offset=offset,
+        shape=(iid_count, test_sid_count),
+        order="F",
+    )
+    mm[:] = np.linspace(0, 1, mm.size).reshape(mm.shape)
+    mm.flush()
+
+    b = np.array(
+        np.linspace(0, 1, iid_count * train_sid_count).reshape(
+            (iid_count, train_sid_count), order="F"
+        )
+    )  # !!!cmk
+
+    log_frequency = 10  # !!!cmk
+    aTb_python, aaTb_python = mmultfile_b_less_aatb(
+        mm, b, log_frequency, force_python_only=True
+    )
+    aTb, aaTb = mmultfile_b_less_aatb(mm, b, log_frequency, force_python_only=False)
+
+    if (
+        not np.abs(aTb_python - aTb).max() < 1e-12
+        or not np.abs(aaTb_python - aaTb).max() < 1e-12
+    ):
+        raise AssertionError(
+            "Expect Python and Rust to get the same mmultfile_b_less_aatb answer"
+        )
+
+
+def test_file_b_less_aatbx_medium(tmp_path):
+    write_read_test_file_b_less_aatbx(500, 400, 100, tmp_path)
 
 
 if __name__ == "__main__":
@@ -145,8 +233,9 @@ if __name__ == "__main__":
         print(mm.offset)
         mm.flush()
 
+    test_file_b_less_aatbx_medium(tmp_path)
     # test_zero_files(tmp_path)
     # test_index(shared_datadir)
     # test_c_reader_bed(shared_datadir)
     # test_read1(shared_datadir)
-    pytest.main([__file__])
+    # !!!cmk pytest.main([__file__])

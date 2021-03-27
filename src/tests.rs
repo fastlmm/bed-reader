@@ -1,6 +1,8 @@
 // https://stackoverflow.com/questions/32900809/how-to-suppress-function-is-never-used-warning-for-a-function-used-by-tests
 
 #[cfg(test)]
+use crate::file_b_less_aatbx;
+#[cfg(test)]
 use crate::file_dot_piece;
 #[cfg(test)]
 use crate::try_div_4;
@@ -767,6 +769,7 @@ fn file_dot_small() {
     assert!(allclose(&expected.view(), &out_val.view(), 1e-08, true));
 }
 
+// These are slow and use external files
 // #[test]
 // fn file_dot_medium() {
 //     println!("file_dot_medium");
@@ -846,9 +849,40 @@ fn file_dot(
 fn insert_piece(sid_range: Range<usize>, piece: nd::Array2<f64>, val: &mut nd::ArrayViewMut2<f64>) {
     for range_index in sid_range.clone() {
         for j in range_index - sid_range.start..piece.shape()[0] {
-            // !!!cmk this is the inner loop, so pre-compute indexes as possible
+            // this is the inner loop, so pre-computing indexes would speed it up
             val[(range_index, j + sid_range.start)] = piece[(j, range_index - sid_range.start)];
             val[(j + sid_range.start, range_index)] = val[(range_index, j + sid_range.start)];
         }
     }
+}
+
+#[test]
+fn file_b_less_aatbx_medium() {
+    let filename = "bed_reader/tests/data/500x400_o640_array.memmap";
+    let iid_count = 500usize;
+
+    let b_shape = ShapeBuilder::set_f((iid_count, 100usize), true);
+    let mut b1 = nd::Array2::<f64>::from_elem(b_shape, 2.0);
+    let atb_shape = ShapeBuilder::set_f((400usize, 100usize), true);
+    let mut atb = nd::Array2::<f64>::zeros(atb_shape);
+    let mut aatb = b1.clone();
+
+    file_b_less_aatbx(
+        filename,
+        640,
+        iid_count,
+        &mut b1.view_mut(),
+        &mut aatb.view_mut(),
+        &mut atb.view_mut(),
+        10,
+    )
+    .unwrap();
+    println!("cmk {:?}", atb);
+    println!("cmk {:?}", aatb);
+
+    println!("{:?}", atb[(2, 2)]);
+    assert!(abs(atb[(2, 2)] - 499.00749503747534) < 1e-11);
+
+    println!("{:?}", aatb[(2, 2)]);
+    assert!(abs(aatb[(2, 2)] - -597.6363313483225) < 1e-11);
 }
