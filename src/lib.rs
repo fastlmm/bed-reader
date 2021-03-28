@@ -96,7 +96,7 @@ pub enum BedError {
 }
 
 fn read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
-    filename: &str, // !!!cmk use string segment?
+    filename: &str,
     iid_count: usize,
     sid_count: usize,
     count_a1: bool,
@@ -720,7 +720,7 @@ pub fn create_pool(num_threads: usize) -> Result<rayon::ThreadPool, BedErrorPlus
 // Makes only one pass through the file.
 // Uses no more than memory needed for columns of in-range sids plus 1.
 fn file_dot_piece(
-    filename: &str, // !!!cmk use string segment?
+    filename: &str,
     offset: u64,
     iid_count: usize,
     sid_start: usize,
@@ -781,7 +781,7 @@ fn file_dot_piece(
 }
 
 fn sid_product(sid_i: &[f64], sid_j: &[f64]) -> f64 {
-    assert!(sid_i.len() == sid_j.len()); // !!!cmk
+    assert!(sid_i.len() == sid_j.len()); // real assert
     let mut product = 0.0;
     for iid_index in 0..sid_i.len() {
         product += sid_i[iid_index] * sid_j[iid_index];

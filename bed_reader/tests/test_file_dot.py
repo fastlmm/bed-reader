@@ -2,8 +2,9 @@ import logging
 from pathlib import Path
 
 import numpy as np
+import pytest
 
-from bed_reader import file_dot_piece, file_b_less_aatbx
+from bed_reader import file_b_less_aatbx, file_dot_piece
 from bed_reader._open_bed import get_num_threads, open_bed  # noqa
 
 
@@ -130,7 +131,7 @@ def write_read_test_file_b_less_aatbx(
         np.linspace(0, 1, iid_count * b_sid_count).reshape(
             (iid_count, b_sid_count), order="F"
         )
-    )  # !!!cmk
+    )
     b_again = b.copy()
 
     logging.info("Calling Rust")
@@ -161,8 +162,9 @@ def test_file_b_less_aatbx_medium2(tmp_path):
     write_read_test_file_b_less_aatbx(5_000, 400, 100, 100, tmp_path, do_both=True)
 
 
-def test_file_b_less_aatbx_2(tmp_path):
-    write_read_test_file_b_less_aatbx(50_000, 4000, 1000, 100, tmp_path, do_both=False)
+# Slow and doesn't check answer
+# def test_file_b_less_aatbx_2(tmp_path):
+#     write_read_test_file_b_less_aatbx(50_000, 4000, 1000, 100, tmp_path, do_both=False)
 
 
 if __name__ == "__main__":
@@ -247,9 +249,9 @@ if __name__ == "__main__":
         print(mm.offset)
         mm.flush()
 
-    test_file_b_less_aatbx_2(tmp_path)
+    # test_file_b_less_aatbx_2(tmp_path)
     # test_zero_files(tmp_path)
     # test_index(shared_datadir)
     # test_c_reader_bed(shared_datadir)
     # test_read1(shared_datadir)
-    # !!!cmk pytest.main([__file__])
+    pytest.main([__file__])
