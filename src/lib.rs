@@ -816,8 +816,7 @@ fn file_b_less_aatbx(
     buf_reader.seek(SeekFrom::Start(offset))?;
 
     let mut sid_reuse = vec![f64::NAN; iid_count];
-    //for (sid_rel_index, mut ata_row) in ata_piece.axis_iter_mut(nd::Axis(0)).enumerate() {
-    for a_sid_index in 0..a_sid_count {
+    for (a_sid_index, mut atb_row) in atb.axis_iter_mut(nd::Axis(0)).enumerate() {
         if log_frequency > 0 && a_sid_index % log_frequency == 0 {
             println!(
                 "   working on train_sid_index={} of {} (iid_count={}, b_sid_count={})",
@@ -826,16 +825,21 @@ fn file_b_less_aatbx(
         }
 
         buf_reader.read_f64_into::<LittleEndian>(&mut sid_reuse)?;
-        for b_sid_index in 0..b_sid_count {
+
+        nd::par_azip!(
+            (mut atb_element in atb_row.axis_iter_mut(nd::Axis(0)),
+            b1_col in b1.axis_iter(nd::Axis(1)),
+            mut aatb_col in aatb.axis_iter_mut(nd::Axis(1)))
+        {
             let mut atbi = 0.0;
             for iid_index in 0..iid_count {
-                atbi += sid_reuse[iid_index] * b1[(iid_index, b_sid_index)];
+                atbi += sid_reuse[iid_index] * b1_col[iid_index];
             }
-            atb[(a_sid_index, b_sid_index)] = atbi;
+            atb_element[()] = atbi;
             for iid_index in 0..iid_count {
-                aatb[(iid_index, b_sid_index)] -= sid_reuse[iid_index] * atbi;
+                aatb_col[iid_index] -= sid_reuse[iid_index] * atbi;
             }
-        }
+        });
     }
     return Ok(());
 }

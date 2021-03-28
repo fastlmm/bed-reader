@@ -880,9 +880,9 @@ fn file_b_less_aatbx_medium() {
     println!("cmk {:?}", atb);
     println!("cmk {:?}", aatb);
 
-    println!("{:?}", atb[(2, 2)]);
-    assert!(abs(atb[(2, 2)] - 499.00749503747534) < 1e-11);
+    println!("{:?}", atb[(1, 1)]);
+    assert!(abs(atb[(1, 1)] - 499.00749503747534) < 1e-11);
 
-    println!("{:?}", aatb[(2, 2)]);
-    assert!(abs(aatb[(2, 2)] - -597.6363313483225) < 1e-11);
+    println!("{:?}", aatb[(1, 1)]);
+    assert!(abs(aatb[(1, 1)] - -597.6363313483225) < 1e-11);
 }
