@@ -110,7 +110,9 @@ def mmultfile_b_less_aatb(a_snp_mem_map, b, log_frequency=0, force_python_only=F
     return aTb, aaTb
 
 
-def write_read_test_file_b_less_aatbx(iid_count, a_sid_count, b_sid_count, tmp_path):
+def write_read_test_file_b_less_aatbx(
+    iid_count, a_sid_count, b_sid_count, log_frequency, tmp_path, do_both=True
+):
     offset = 640
     file_path = tmp_path / f"{iid_count}x{a_sid_count}_o{offset}_array.memmap"
     mm = np.memmap(
@@ -131,26 +133,36 @@ def write_read_test_file_b_less_aatbx(iid_count, a_sid_count, b_sid_count, tmp_p
     )  # !!!cmk
     b_again = b.copy()
 
-    log_frequency = 10  # !!!cmk
-    aTb_python, aaTb_python = mmultfile_b_less_aatb(
-        mm, b, log_frequency, force_python_only=True
-    )
-
+    logging.info("Calling Rust")
     aTb, aaTb = mmultfile_b_less_aatb(
         mm, b_again, log_frequency, force_python_only=False
     )
 
-    if (
-        not np.abs(aTb_python - aTb).max() < 1e-12
-        or not np.abs(aaTb_python - aaTb).max() < 1e-10
-    ):
-        raise AssertionError(
-            "Expect Python and Rust to get the same mmultfile_b_less_aatb answer"
+    if do_both:
+        logging.info("Calling Python")
+        aTb_python, aaTb_python = mmultfile_b_less_aatb(
+            mm, b, log_frequency, force_python_only=True
         )
+
+        if (
+            not np.abs(aTb_python - aTb).max() < 1e-8
+            or not np.abs(aaTb_python - aaTb).max() < 1e-8
+        ):
+            raise AssertionError(
+                "Expect Python and Rust to get the same mmultfile_b_less_aatb answer"
+            )
 
 
 def test_file_b_less_aatbx_medium(tmp_path):
-    write_read_test_file_b_less_aatbx(500, 400, 100, tmp_path)
+    write_read_test_file_b_less_aatbx(500, 400, 100, 10, tmp_path, do_both=True)
+
+
+def test_file_b_less_aatbx_medium2(tmp_path):
+    write_read_test_file_b_less_aatbx(5_000, 400, 100, 100, tmp_path, do_both=True)
+
+
+def test_file_b_less_aatbx_2(tmp_path):
+    write_read_test_file_b_less_aatbx(50_000, 4000, 1000, 100, tmp_path, do_both=False)
 
 
 if __name__ == "__main__":
@@ -235,7 +247,7 @@ if __name__ == "__main__":
         print(mm.offset)
         mm.flush()
 
-    test_file_b_less_aatbx_medium(tmp_path)
+    test_file_b_less_aatbx_2(tmp_path)
     # test_zero_files(tmp_path)
     # test_index(shared_datadir)
     # test_c_reader_bed(shared_datadir)
