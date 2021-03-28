@@ -1,6 +1,10 @@
 // https://stackoverflow.com/questions/32900809/how-to-suppress-function-is-never-used-warning-for-a-function-used-by-tests
 
 #[cfg(test)]
+use crate::file_b_less_aatbx;
+#[cfg(test)]
+use crate::file_dot_piece;
+#[cfg(test)]
 use crate::try_div_4;
 #[cfg(test)]
 use crate::Dist;
@@ -20,6 +24,8 @@ use ndarray_npy::read_npy;
 use num_traits::{abs, Signed};
 #[cfg(test)]
 use std::io::{LineWriter, Write};
+#[cfg(test)]
+use std::ops::Range;
 #[cfg(test)]
 use std::path::Path;
 #[cfg(test)]
@@ -750,4 +756,90 @@ fn zeros() {
     let in_val00 = read(filename, true, true, f64::NAN).unwrap();
     assert!(in_val00.shape() == [0, 0]);
     assert!(allclose(&in_val00.view(), &out_val00.view(), 1e-08, true));
+}
+#[test]
+fn file_dot_small() {
+    let filename = "bed_reader/tests/data/small_array.memmap";
+    let mut out_val = nd::Array2::<f64>::from_elem((3, 3), f64::NAN);
+    file_dot(filename, 0, 2, 3, 2, &mut out_val.view_mut()).unwrap();
+    println!("{:?}", out_val);
+
+    let expected = nd::arr2(&[[17., 22., 27.], [22., 29., 36.], [27., 36., 45.]]);
+    println!("{:?}", expected);
+    assert!(allclose(&expected.view(), &out_val.view(), 1e-08, true));
+}
+
+#[cfg(test)]
+fn file_dot(
+    filename: &str,
+    offset: u64,
+    iid_count: usize,
+    sid_count: usize,
+    sid_step: usize,
+    val: &mut nd::ArrayViewMut2<'_, f64>,
+) -> Result<(), BedErrorPlus> {
+    for sid_start in (0..sid_count).step_by(sid_step) {
+        let sid_range_len = sid_step.min(sid_count - sid_start);
+        let mut ata_piece =
+            nd::Array2::<f64>::from_elem((sid_count - sid_start, sid_range_len), f64::NAN);
+        file_dot_piece(
+            filename,
+            offset,
+            iid_count,
+            sid_start,
+            &mut ata_piece.view_mut(),
+            sid_range_len,
+        )?;
+        insert_piece(
+            Range {
+                start: sid_start,
+                end: sid_start + sid_range_len,
+            },
+            ata_piece,
+            val,
+        );
+    }
+    return Ok(());
+}
+
+#[cfg(test)]
+fn insert_piece(sid_range: Range<usize>, piece: nd::Array2<f64>, val: &mut nd::ArrayViewMut2<f64>) {
+    for range_index in sid_range.clone() {
+        for j in range_index - sid_range.start..piece.shape()[0] {
+            // this is the inner loop, so pre-computing indexes would speed it up
+            val[(range_index, j + sid_range.start)] = piece[(j, range_index - sid_range.start)];
+            val[(j + sid_range.start, range_index)] = val[(range_index, j + sid_range.start)];
+        }
+    }
+}
+
+#[test]
+fn file_b_less_aatbx_medium() {
+    let filename = "bed_reader/tests/data/500x400_o640_array.memmap";
+    let iid_count = 500usize;
+
+    let b_shape = ShapeBuilder::set_f((iid_count, 100usize), true);
+    let mut b1 = nd::Array2::<f64>::from_elem(b_shape, 2.0);
+    let atb_shape = ShapeBuilder::set_f((400usize, 100usize), true);
+    let mut atb = nd::Array2::<f64>::zeros(atb_shape);
+    let mut aatb = b1.clone();
+
+    file_b_less_aatbx(
+        filename,
+        640,
+        iid_count,
+        &mut b1.view_mut(),
+        &mut aatb.view_mut(),
+        &mut atb.view_mut(),
+        10,
+    )
+    .unwrap();
+    // println!("{:?}", atb);
+    // println!("{:?}", aatb);
+
+    println!("{:?}", atb[(1, 1)]);
+    assert!(abs(atb[(1, 1)] - 499.00749503747534) < 1e-11);
+
+    println!("{:?}", aatb[(1, 1)]);
+    assert!(abs(aatb[(1, 1)] - -597.6363313483225) < 1e-11);
 }

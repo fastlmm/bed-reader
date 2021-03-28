@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]
-        python-version: [3.7, 3.8 ,3.9]
+        python-version: [3.7, 3.8, 3.9]
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout
@@ -54,11 +54,24 @@ jobs:
 
     - name: Test Rust
       run: cargo test --verbose
-    - name: Build wheel with Maturin (and list)
+
+
+    - name: Build wheel with Maturin - Linux
+      if: startsWith(matrix.os, 'ubuntu')
+      run: |
+        maturin list-python
+        docker run --rm -v $(pwd):/io konstin2/maturin build --release --out target/wheels -i python${{matrix.python-version}}
+        ls -las target/wheels
+        cp target/wheels/*manylinux2010_*.whl .
+      shell: bash
+
+    - name: Build wheel with Maturin - Non-Linux
+      if: "!startsWith(matrix.os, 'ubuntu')"
       run: |
         maturin list-python
         maturin build --release -i $(which python)
         ls -las target/wheels
+        cp target/wheels/*.whl .
       shell: bash
 
     - name: Test Python
@@ -67,7 +80,7 @@ jobs:
         pip install virtualenv
         virtualenv vEnv; source vEnv/bin/activate
         python -m pip install --upgrade pip maturin
-        pip install target/wheels/*.whl
+        pip install *.whl
         pip uninstall bed-reader --yes
         maturin develop
         pip install -r requirements-dev.txt
@@ -80,7 +93,7 @@ jobs:
         echo "pwd"
         pwd
         python -m pip install --upgrade pip maturin
-        # pip install target\wheels\*.whl
+        # pip install *.whl
         # pip uninstall bed-reader --yes
         echo "requirements"
         pip install -r requirements.txt
@@ -97,7 +110,7 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: wheels
-        path: target/wheels/*.whl
+        path: ./*.whl
         
     - name: Save SDist
       if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.9'
