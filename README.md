@@ -1,6 +1,6 @@
 [![PyPI version](https://badge.fury.io/py/bed-reader.svg)](https://badge.fury.io/py/bed-reader)
 [![Build Status](https://github.com/fastlmm/bed-reader/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/fastlmm/bed-reader/actions/workflows/ci.yml)
-![PyPI - Python Version](https://img.shields.io/pypi/pyversions/bed-reader)
+![PyPI](https://img.shields.io/pypi/v/bed-reader)
 
 
 Read and write the PLINK BED format, simply and efficiently.
