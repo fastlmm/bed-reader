@@ -47,26 +47,22 @@ jobs:
     - name: Set up Rust
       uses: actions-rs/toolchain@v1
       with:
+        profile: minimal
         toolchain: stable
         override: true
+
     - name: Install Maturin
-      run: python -m pip install --upgrade pip maturin
+      uses: messense/maturin-action@v1
+      with:
+        maturin-version: latest
+        command: build
+        args: --release
+        manylinux: auto
 
     - name: Test Rust
       run: cargo test --verbose
 
-
-    - name: Build wheel with Maturin - Linux
-      if: startsWith(matrix.os, 'ubuntu')
-      run: |
-        maturin list-python
-        docker run --rm -v $(pwd):/io konstin2/maturin build --release --out target/wheels -i python${{matrix.python-version}}
-        ls -las target/wheels
-        cp target/wheels/*manylinux2010_*.whl .
-      shell: bash
-
-    - name: Build wheel with Maturin - Non-Linux
-      if: "!startsWith(matrix.os, 'ubuntu')"
+    - name: Build wheel with Maturin
       run: |
         maturin list-python
         maturin build --release -i $(which python)
