@@ -20,8 +20,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macOS-latest]
-        python-version: [3.7, 3.8, 3.9]
+        os: [ubuntu-latest] #, windows-latest, macOS-latest]
+        python-version: [3.7] #, 3.8, 3.9]
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout
@@ -63,9 +63,9 @@ jobs:
       if: startsWith(matrix.os, 'ubuntu')
       run: |
         maturin list-python
-        docker run --rm -v $(pwd):/io konstin2/maturin:v0.10.4 build --release --out target/wheels -i python${{matrix.python-version}}
+        docker run --rm -v $(pwd):/io konstin2/maturin build --release --out target/wheels -i python${{matrix.python-version}}
         ls -las target/wheels
-        cp target/wheels/*manylinux2010_*.whl .
+        cp target/wheels/*manylinux1_*.whl .
       shell: bash
 
     - name: Build wheel with Maturin - Non-Linux
