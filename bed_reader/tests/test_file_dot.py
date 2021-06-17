@@ -4,16 +4,16 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from bed_reader import file_b_less_aatbx, file_dot_piece
+from bed_reader import file_b_less_aatbx, file_ata_piece_f64
 from bed_reader._open_bed import get_num_threads, open_bed  # noqa
 
 
-def file_dot(filename, offset, iid_count, sid_count, sid_step):
+def file_ata(filename, offset, iid_count, sid_count, sid_step):
     ata = np.full((sid_count, sid_count), np.nan)
     for sid_start in range(0, sid_count, sid_step):
         sid_range_len = min(sid_step, sid_count - sid_start)
         ata_piece = np.full((sid_count - sid_start, sid_range_len), np.nan)
-        file_dot_piece(
+        file_ata_piece_f64(
             str(filename),
             offset,
             iid_count,
@@ -28,7 +28,7 @@ def file_dot(filename, offset, iid_count, sid_count, sid_step):
     return ata
 
 
-def write_read_test_file_dot(iid_count, sid_count, sid_step, tmp_path):
+def write_read_test_file_ata(iid_count, sid_count, sid_step, tmp_path):
     offset = 640
     file_path = tmp_path / f"{iid_count}x{sid_count}_o{offset}_array.memmap"
     mm = np.memmap(
@@ -42,25 +42,25 @@ def write_read_test_file_dot(iid_count, sid_count, sid_step, tmp_path):
     mm[:] = np.linspace(0, 1, mm.size).reshape(mm.shape)
     mm.flush()
 
-    out_val = file_dot(file_path, offset, iid_count, sid_count, sid_step)
+    out_val = file_ata(file_path, offset, iid_count, sid_count, sid_step)
     expected = mm.T.dot(mm)
     assert np.allclose(expected, out_val, equal_nan=True)
 
 
-def test_file_dot_medium(tmp_path):
-    write_read_test_file_dot(100, 1000, 33, tmp_path)
+def test_file_ata_medium(tmp_path):
+    write_read_test_file_ata(100, 1000, 33, tmp_path)
 
 
 # # Too slow
-# def test_file_dot_giant(tmp_path):
-#     write_read_test_file_dot(100_000, 10_000, 1000, tmp_path)
+# def test_file_ata_giant(tmp_path):
+#     write_read_test_file_ata(100_000, 10_000, 1000, tmp_path)
 
 
-def test_file_dot_small(shared_datadir):
+def test_file_ata_small(shared_datadir):
 
     filename = shared_datadir / "small_array.memmap"
 
-    out_val = file_dot(filename, 0, 2, 3, 2)
+    out_val = file_ata(filename, 0, 2, 3, 2)
     print(out_val)
 
     expected = np.array([[17.0, 22.0, 27.0], [22.0, 29.0, 36.0], [27.0, 36.0, 45.0]])

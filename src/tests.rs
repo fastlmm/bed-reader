@@ -3,7 +3,7 @@
 #[cfg(test)]
 use crate::file_b_less_aatbx;
 #[cfg(test)]
-use crate::file_dot_piece;
+use crate::file_ata_piece_f64;
 #[cfg(test)]
 use crate::try_div_4;
 #[cfg(test)]
@@ -758,10 +758,10 @@ fn zeros() {
     assert!(allclose(&in_val00.view(), &out_val00.view(), 1e-08, true));
 }
 #[test]
-fn file_dot_small() {
+fn file_ata_small() {
     let filename = "bed_reader/tests/data/small_array.memmap";
     let mut out_val = nd::Array2::<f64>::from_elem((3, 3), f64::NAN);
-    file_dot(filename, 0, 2, 3, 2, &mut out_val.view_mut()).unwrap();
+    file_ata(filename, 0, 2, 3, 2, &mut out_val.view_mut()).unwrap();
     println!("{:?}", out_val);
 
     let expected = nd::arr2(&[[17., 22., 27.], [22., 29., 36.], [27., 36., 45.]]);
@@ -770,7 +770,7 @@ fn file_dot_small() {
 }
 
 #[cfg(test)]
-fn file_dot(
+fn file_ata(
     filename: &str,
     offset: u64,
     iid_count: usize,
@@ -782,7 +782,7 @@ fn file_dot(
         let sid_range_len = sid_step.min(sid_count - sid_start);
         let mut ata_piece =
             nd::Array2::<f64>::from_elem((sid_count - sid_start, sid_range_len), f64::NAN);
-        file_dot_piece(
+        file_ata_piece_f64(
             filename,
             offset,
             iid_count,

@@ -8,7 +8,7 @@ use pyo3::{
 };
 
 use crate::{
-    create_pool, file_b_less_aatbx, file_dot_piece, impute_and_zero_mean_snps,
+    create_pool, file_b_less_aatbx, file_ata_piece_f64, impute_and_zero_mean_snps,
     matrix_subset_no_alloc, read_no_alloc, write, BedError, BedErrorPlus, Dist,
 };
 
@@ -314,8 +314,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         Ok(())
     }
 
-    #[pyfn(m, "file_dot_piece")]
-    fn file_dot_piece_py(
+    #[pyfn(m, "file_ata_piece_f64")]
+    fn file_ata_piece_f64_py(
         _py: Python<'_>,
         filename: &str,
         offset: u64,
@@ -328,7 +328,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let mut ata_piece = unsafe { ata_piece.as_array_mut() };
 
         create_pool(num_threads)?.install(|| {
-            file_dot_piece(
+            file_ata_piece_f64(
                 filename,
                 offset,
                 iid_count,

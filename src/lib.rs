@@ -719,7 +719,7 @@ pub fn create_pool(num_threads: usize) -> Result<rayon::ThreadPool, BedErrorPlus
 // Returns part of A.T x A for the columns in sid_start-and-beyond to sid_start-and-in-range.
 // Makes only one pass through the file.
 // Uses no more than memory needed for columns of in-range sids plus 1.
-fn file_dot_piece(
+fn file_ata_piece_f64(
     filename: &str,
     offset: u64,
     iid_count: usize,
@@ -730,7 +730,7 @@ fn file_dot_piece(
     let (nrows, ncols) = ata_piece.dim();
     if log_frequency > 0 {
         println!(
-            "file_dot_piece: sid_start={}, {}x{} output",
+            "file_ata_piece_f64: sid_start={}, {}x{} output",
             sid_start, nrows, ncols
         );
     };
