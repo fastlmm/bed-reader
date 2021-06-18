@@ -1,9 +1,11 @@
 // https://stackoverflow.com/questions/32900809/how-to-suppress-function-is-never-used-warning-for-a-function-used-by-tests
 
 #[cfg(test)]
-use crate::file_b_less_aatbx;
+use crate::file_aat_piece_f64;
 #[cfg(test)]
 use crate::file_ata_piece_f64;
+#[cfg(test)]
+use crate::file_b_less_aatbx;
 #[cfg(test)]
 use crate::try_div_4;
 #[cfg(test)]
@@ -790,7 +792,7 @@ fn file_ata(
             &mut ata_piece.view_mut(),
             sid_range_len,
         )?;
-        insert_piece(
+        insert_ata_piece(
             Range {
                 start: sid_start,
                 end: sid_start + sid_range_len,
@@ -803,7 +805,11 @@ fn file_ata(
 }
 
 #[cfg(test)]
-fn insert_piece(sid_range: Range<usize>, piece: nd::Array2<f64>, val: &mut nd::ArrayViewMut2<f64>) {
+fn insert_ata_piece(
+    sid_range: Range<usize>,
+    piece: nd::Array2<f64>,
+    val: &mut nd::ArrayViewMut2<f64>,
+) {
     for range_index in sid_range.clone() {
         for j in range_index - sid_range.start..piece.shape()[0] {
             // this is the inner loop, so pre-computing indexes would speed it up
@@ -842,4 +848,77 @@ fn file_b_less_aatbx_medium() {
 
     println!("{:?}", aatb[(1, 1)]);
     assert!(abs(aatb[(1, 1)] - -597.6363313483225) < 1e-11);
+}
+
+#[test]
+fn file_aat_small() {
+    let filename = "bed_reader/tests/data/small_array.memmap";
+    let mut out_val = nd::Array2::<f64>::from_elem((2, 2), f64::NAN);
+    file_aat(filename, 0, 2, 3, 1, &mut out_val.view_mut()).unwrap();
+    println!("{:?}", out_val);
+
+    let expected = nd::arr2(&[[14.0, 32.0], [32.0, 77.0]]);
+    println!("{:?}", expected);
+    assert!(allclose(&expected.view(), &out_val.view(), 1e-08, true));
+}
+
+#[cfg(test)]
+fn file_aat(
+    filename: &str,
+    offset: u64,
+    iid_count: usize,
+    sid_count: usize,
+    iid_step: usize,
+    val: &mut nd::ArrayViewMut2<'_, f64>,
+) -> Result<(), BedErrorPlus> {
+    for iid0_start in (0..iid_count).step_by(iid_step) {
+        let iid0_range_len = iid_step.min(iid_count - iid0_start);
+        for iid1_start in (iid0_start..iid_count).step_by(iid_step) {
+            let iid1_range_len = iid_step.min(iid_count - iid1_start);
+            let mut aat_piece =
+                nd::Array2::<f64>::from_elem((iid0_range_len, iid1_range_len), f64::NAN);
+            file_aat_piece_f64(
+                filename,
+                offset,
+                iid_count,
+                iid0_start,
+                iid1_start,
+                sid_count,
+                &mut aat_piece.view_mut(),
+                iid0_range_len,
+            )?;
+            insert_aat_piece(
+                Range {
+                    start: iid0_start,
+                    end: iid0_start + iid0_range_len,
+                },
+                Range {
+                    start: iid1_start,
+                    end: iid1_start + iid1_range_len,
+                },
+                aat_piece,
+                val,
+            );
+        }
+    }
+    return Ok(());
+}
+
+#[cfg(test)]
+fn insert_aat_piece(
+    iid0_range: Range<usize>,
+    iid1_range: Range<usize>,
+    piece: nd::Array2<f64>,
+    val: &mut nd::ArrayViewMut2<f64>,
+) {
+    for range0_index in iid0_range.clone() {
+        for range1_index in iid1_range.clone() {
+            // this is the inner loop, so pre-computing indexes would speed it up
+            val[(range0_index, range1_index)] = piece[(
+                range0_index - iid0_range.start,
+                range1_index - iid1_range.start,
+            )];
+            val[(range1_index, range0_index)] = val[(range0_index, range1_index)];
+        }
+    }
 }

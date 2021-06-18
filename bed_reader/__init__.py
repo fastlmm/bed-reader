@@ -9,7 +9,7 @@ from .bed_reader import (  # noqa
     file_ata_piece_f64 as file_dot_piece,  # The old name for file_ata_piece_f64
     file_ata_piece_f64,  # !!!cmk make a f32, too?
     # file_aat_piece_f32, #!!!cmk
-    # file_aat_piece_f64, #!!!cmk
+    file_aat_piece_f64,
     read_f32,
     read_f64,
     read_i8,

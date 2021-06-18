@@ -846,5 +846,71 @@ fn file_b_less_aatbx(
     return Ok(());
 }
 
+// Given A, a matrix in Fortran order in a file !!!cmk update
+// with iid_count rows and sid_count columns,
+// Returns part of A x A.T for the columns in sid_start-and-beyond to sid_start-and-in-range.
+// Makes only one pass through the file.
+// Uses no more than memory needed for columns of in-range sids plus 1.
+fn file_aat_piece_f64(
+    filename: &str,
+    offset: u64,
+    iid_count: usize,
+    iid0_start: usize,
+    iid1_start: usize,
+    sid_count: usize,
+    aat_piece: &mut nd::ArrayViewMut2<'_, f64>,
+    log_frequency: usize,
+) -> Result<(), BedErrorPlus> {
+    let (nrows, ncols) = aat_piece.dim();
+    if log_frequency > 0 {
+        println!(
+            "file_aat_piece_f64: iid0_start={}, iid1_start={}, {}x{} output",
+            iid0_start, iid1_start, nrows, ncols
+        );
+    };
+    aat_piece.fill(0.0);
+
+    // Open the file and move to the starting sid
+    let mut buf_reader = BufReader::new(File::open(filename)?);
+    // buf_reader.seek(SeekFrom::Start(
+    //     offset + sid_start as u64 * iid_count as u64 * std::mem::size_of::<f64>() as u64,
+    // ))?;#cmk remove
+
+    let mut iid0_reuse = vec![f64::NAN; nrows];
+    let mut iid1_reuse = vec![f64::NAN; ncols];
+
+    for sid_index in 0..sid_count {
+        if log_frequency > 0 && sid_index % log_frequency == 0 {
+            println!("   working on {} of {}", sid_index, sid_count);
+        }
+
+        // !!!cmk these two reads could have much overlap. We could before any overlap, any overlap, after any overlap
+        // Read iid0_reuse
+        buf_reader.seek(SeekFrom::Start(
+            offset
+                + (sid_index as u64 * iid_count as u64 + iid0_start as u64)
+                    * std::mem::size_of::<f64>() as u64,
+        ))?;
+        buf_reader.read_f64_into::<LittleEndian>(&mut iid0_reuse)?;
+
+        // Read iid1_reuse
+        buf_reader.seek(SeekFrom::Start(
+            offset
+                + (sid_index as u64 * iid_count as u64 + iid1_start as u64) // !!! cmk could factor out parts
+                    * std::mem::size_of::<f64>() as u64,
+        ))?;
+        buf_reader.read_f64_into::<LittleEndian>(&mut iid1_reuse)?;
+
+        // !!!cmk add parallel
+        for iid0_rel_index in 0..nrows {
+            for iid1_rel_index in 0..ncols {
+                aat_piece[(iid0_rel_index, iid1_rel_index)] +=
+                    iid0_reuse[iid0_rel_index] * iid1_reuse[iid1_rel_index];
+            }
+        }
+    }
+    return Ok(());
+}
+
 mod python_module;
 mod tests;
