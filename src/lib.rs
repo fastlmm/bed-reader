@@ -8,6 +8,7 @@ use num_traits::{Float, FromPrimitive, ToPrimitive};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use rayon::{iter::ParallelBridge, ThreadPoolBuildError};
 use statrs::distribution::{Beta, Continuous};
+use std::ops::AddAssign;
 use std::{
     convert::TryFrom,
     ops::{Div, Sub},
@@ -564,7 +565,8 @@ fn _process_sid<T: Default + Copy + Debug + Sync + Send + Float + ToPrimitive + 
         let mean2_s: T = sum2_s / n_observed; //compute the mean of the squared SNP
 
         if mean_s.is_nan()
-            || (matches!(dist, Dist::Beta { a:_,b:_}) && ((mean_s > two) || (mean_s < T::zero())))
+            || (matches!(dist, Dist::Beta { a: _, b: _ })
+                && ((mean_s > two) || (mean_s < T::zero())))
         {
             return Err(BedError::IllegalSnpMean.into());
         }
@@ -780,9 +782,9 @@ fn file_ata_piece_f64(
     return Ok(());
 }
 
-fn sid_product(sid_i: &[f64], sid_j: &[f64]) -> f64 {
+fn sid_product<T: Float + AddAssign>(sid_i: &[T], sid_j: &[T]) -> T {
     assert!(sid_i.len() == sid_j.len()); // real assert
-    let mut product = 0.0;
+    let mut product = T::zero();
     for iid_index in 0..sid_i.len() {
         product += sid_i[iid_index] * sid_j[iid_index];
     }

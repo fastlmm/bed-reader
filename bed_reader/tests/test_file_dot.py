@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from bed_reader import file_b_less_aatbx, file_ata_piece_f64
+from bed_reader import file_ata_piece_f64, file_b_less_aatbx
 from bed_reader._open_bed import get_num_threads, open_bed  # noqa
 
 
