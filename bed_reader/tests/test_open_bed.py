@@ -246,10 +246,7 @@ def test_properties(shared_datadir):
                 else:
                     assert bed.chromosome is None
             val = bed.read()
-            assert val.shape == (
-                len(iid_list),
-                len(sid_list),
-            )
+            assert val.shape == (len(iid_list), len(sid_list),)
             if settings["iid_after_read"]:
                 if _not_set_to_none(settings, "iid"):
                     assert np.array_equal(bed.iid, iid_list)

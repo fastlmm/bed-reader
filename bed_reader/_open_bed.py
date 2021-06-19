@@ -369,8 +369,7 @@ class open_bed:
             self._sid_range = np.arange(self.sid_count, dtype="uintp")
 
         iid_index = np.ascontiguousarray(
-            self._iid_range[iid_index_or_slice_etc],
-            dtype="uintp",
+            self._iid_range[iid_index_or_slice_etc], dtype="uintp",
         )
         sid_index = np.ascontiguousarray(
             self._sid_range[sid_index_or_slice_etc], dtype="uintp"
