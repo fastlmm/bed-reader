@@ -28,6 +28,39 @@ def file_ata(filename, offset, iid_count, sid_count, sid_step):
     return ata
 
 
+def file_aat(
+    filename, offset, iid_count, iid_step, sid_count
+):  # !!! cmk be sure the rust version of this puts iid_step before sid_count
+    aat = np.full((iid_count, iid_count), np.nan)
+    # !!! cmk rename iid_index and above, too
+    for iid0_start in range(0, iid_count, iid_step):
+        iid0_range_len = min(iid_step, iid_count - iid0_start)
+        # !!! cmk rename iid_index and above, too
+        for iid1_start in range(iid0_start, iid_count, iid_step):
+            iid1_range_len = min(iid_step, iid_count - iid1_start)
+            aat_piece = np.full((iid0_range_len, iid1_range_len), np.nan)
+            file_aat_piece_f64(
+                str(filename),
+                offset,
+                iid_count,
+                iid0_start,
+                iid1_start,
+                sid_count,
+                aat_piece,
+                num_threads=get_num_threads(None),
+                log_frequency=iid0_range_len,
+            )
+            aat[
+                iid0_start : iid0_start + iid0_range_len,
+                iid1_start : iid1_start + iid1_range_len,
+            ] = aat_piece
+            aat[
+                iid1_start : iid1_start + iid1_range_len,
+                iid0_start : iid0_start + iid0_range_len,
+            ] = aat_piece.T
+    return aat
+
+
 def write_read_test_file_ata(iid_count, sid_count, sid_step, tmp_path):
     offset = 640
     file_path = tmp_path / f"{iid_count}x{sid_count}_o{offset}_array.memmap"
@@ -47,8 +80,31 @@ def write_read_test_file_ata(iid_count, sid_count, sid_step, tmp_path):
     assert np.allclose(expected, out_val, equal_nan=True)
 
 
+def write_read_test_file_aat(iid_count, iid_step, sid_count, tmp_path):
+    offset = 640
+    file_path = tmp_path / f"{iid_count}x{sid_count}_o{offset}_array.memmap"
+    mm = np.memmap(
+        file_path,
+        dtype="float64",
+        mode="w+",
+        offset=offset,
+        shape=(iid_count, sid_count),
+        order="F",
+    )
+    mm[:] = np.linspace(0, 1, mm.size).reshape(mm.shape)
+    mm.flush()
+
+    out_val = file_aat(file_path, offset, iid_count, iid_step, sid_count)
+    expected = mm.dot(mm.T)
+    assert np.allclose(expected, out_val, equal_nan=True)
+
+
 def test_file_ata_medium(tmp_path):
     write_read_test_file_ata(100, 1000, 33, tmp_path)
+
+
+def test_file_aat_medium(tmp_path):
+    write_read_test_file_aat(100, 34, 1000, tmp_path)
 
 
 # # Too slow
@@ -64,6 +120,18 @@ def test_file_ata_small(shared_datadir):
     print(out_val)
 
     expected = np.array([[17.0, 22.0, 27.0], [22.0, 29.0, 36.0], [27.0, 36.0, 45.0]])
+    print(expected)
+    assert np.allclose(expected, out_val, equal_nan=True)
+
+
+def test_file_aat_small(shared_datadir):
+
+    filename = shared_datadir / "small_array.memmap"
+
+    out_val = file_aat(filename, 0, iid_count=2, iid_step=1, sid_count=3)
+    print(out_val)
+
+    expected = np.array([[14.0, 32.0], [32.0, 77.0]])
     print(expected)
     assert np.allclose(expected, out_val, equal_nan=True)
 
