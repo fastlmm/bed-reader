@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 from pathlib import Path
 
@@ -54,16 +55,18 @@ def file_aat(
                 iid0_start : iid0_start + iid0_range_len,
                 iid1_start : iid1_start + iid1_range_len,
             ] = aat_piece
-            aat[
-                iid1_start : iid1_start + iid1_range_len,
-                iid0_start : iid0_start + iid0_range_len,
-            ] = aat_piece.T
+            if iid1_start != iid0_start or iid1_range_len != iid0_range_len:
+                aat[
+                    iid1_start : iid1_start + iid1_range_len,
+                    iid0_start : iid0_start + iid0_range_len,
+                ] = aat_piece.T
     return aat
 
 
 def write_read_test_file_ata(iid_count, sid_count, sid_step, tmp_path):
     offset = 640
     file_path = tmp_path / f"{iid_count}x{sid_count}_o{offset}_array.memmap"
+
     mm = np.memmap(
         file_path,
         dtype="float64",
@@ -80,23 +83,41 @@ def write_read_test_file_ata(iid_count, sid_count, sid_step, tmp_path):
     assert np.allclose(expected, out_val, equal_nan=True)
 
 
-def write_read_test_file_aat(iid_count, iid_step, sid_count, tmp_path):
+def write_read_test_file_aat(
+    iid_count, iid_step, sid_count, tmp_path, skip_if_there=False
+):
     offset = 640
     file_path = tmp_path / f"{iid_count}x{sid_count}_o{offset}_array.memmap"
-    mm = np.memmap(
-        file_path,
-        dtype="float64",
-        mode="w+",
-        offset=offset,
-        shape=(iid_count, sid_count),
-        order="F",
-    )
-    mm[:] = np.linspace(0, 1, mm.size).reshape(mm.shape)
-    mm.flush()
+    if skip_if_there and file_path.exists():
+        logging.info(f"'{file_path}' exists")
+        mm = np.memmap(
+            file_path,
+            dtype="float64",
+            mode="r",
+            offset=offset,
+            shape=(iid_count, sid_count),
+            order="F",
+        )
+    else:
+        logging.info(f"Creating '{file_path}'")
+        mm = np.memmap(
+            file_path,
+            dtype="float64",
+            mode="w+",
+            offset=offset,
+            shape=(iid_count, sid_count),
+            order="F",
+        )
+        mm[:] = np.linspace(0, 1, mm.size).reshape(mm.shape)
+        mm.flush()
+        logging.info(f"Finished creating '{file_path}'")
 
+    start_time = datetime.now()
     out_val = file_aat(file_path, offset, iid_count, iid_step, sid_count)
+    delta = datetime.now() - start_time
     expected = mm.dot(mm.T)
     assert np.allclose(expected, out_val, equal_nan=True)
+    return delta
 
 
 def test_file_ata_medium(tmp_path):
@@ -110,6 +131,10 @@ def test_file_aat_medium(tmp_path):
 # # Too slow
 # def test_file_ata_giant(tmp_path):
 #     write_read_test_file_ata(100_000, 10_000, 1000, tmp_path)
+
+# # Too slow
+# def test_file_aat_giant(tmp_path):
+#     write_read_test_file_ata(1_000, 10_000, 100, tmp_path)
 
 
 def test_file_ata_small(shared_datadir):
