@@ -1,5 +1,6 @@
 // Inspired by C++ version by Chris Widmer and Carl Kadie
 
+use byteorder::ByteOrder;
 use byteorder::{LittleEndian, ReadBytesExt};
 use core::fmt::Debug;
 use ndarray as nd;
@@ -716,6 +717,22 @@ pub fn create_pool(num_threads: usize) -> Result<rayon::ThreadPool, BedErrorPlus
     }
 }
 
+// pub trait ReadFrom {
+//     fn read_from<R: ReadBytesExt, B: ByteOrder>(&mut self, rdr: &mut R) -> std::io::Result<()>;
+// }
+
+// impl ReadFrom for [f32] {
+//     fn read_from<R: ReadBytesExt, B: ByteOrder>(&mut self, rdr: &mut R) -> std::io::Result<()> {
+//         rdr.read_f32_into::<B>(self)
+//     }
+// }
+
+// impl ReadFrom for [f64] {
+//     fn read_from<R: ReadBytesExt, B: ByteOrder>(&mut self, rdr: &mut R) -> std::io::Result<()> {
+//         rdr.read_f64_into::<B>(self)
+//     }
+// }
+
 // Given A, a matrix in Fortran order in a file
 // with iid_count rows and sid_count columns,
 // Returns part of A.T x A for the columns in sid_start-and-beyond to sid_start-and-in-range.
@@ -781,7 +798,75 @@ fn file_ata_piece_f64(
     }
     return Ok(());
 }
+/*
+// Given A, a matrix in Fortran order in a file
+// with iid_count rows and sid_count columns,
+// Returns part of A.T x A for the columns in sid_start-and-beyond to sid_start-and-in-range.
+// Makes only one pass through the file.
+// Uses no more than memory needed for columns of in-range sids plus 1.
+fn file_ata_piece<T: Float + ReadFrom + Send + AddAssign>(
+    filename: &str,
+    offset: u64,
+    iid_count: usize,
+    sid_start: usize,
+    ata_piece: &mut nd::ArrayViewMut2<'_, T>,
+    log_frequency: usize,
+) -> Result<(), BedErrorPlus> {
+    let (nrows, ncols) = ata_piece.dim();
+    if log_frequency > 0 {
+        println!(
+            "file_ata_piece: sid_start={}, {}x{} output",
+            sid_start, nrows, ncols
+        );
+    };
 
+    // Open the file and move to the starting sid
+    let mut buf_reader = BufReader::new(File::open(filename)?);
+    buf_reader.seek(SeekFrom::Start(
+        offset + sid_start as u64 * iid_count as u64 * std::mem::size_of::<T>() as u64,
+    ))?;
+
+    let mut sid_save_list: Vec<Vec<T>> = vec![];
+    let mut sid_reuse = vec![T::nan(); iid_count];
+
+    for (sid_rel_index, mut ata_row) in ata_piece.axis_iter_mut(nd::Axis(0)).enumerate() {
+        if log_frequency > 0 && sid_rel_index % log_frequency == 0 {
+            println!("   working on {} of {}", sid_rel_index, nrows);
+        }
+
+        // Read next sid and save if in range
+        let sid = if sid_save_list.len() < ncols {
+            let mut sid_save = vec![T::nan(); iid_count].as_slice();
+            sid_save.read_from(&mut buf_reader)?;
+            // !!! cmk buf_reader.read_f64_into::<LittleEndian>(&mut sid_save)?;
+            sid_save_list.push(sid_save);
+            &sid_save_list.last().unwrap() // unwrap is OK here
+        } else {
+            // !!! cmk buf_reader.read_f64_into::<LittleEndian>(&mut sid_reuse)?;
+            sid_reuse.read_from(&mut buf_reader)?;
+            &sid_reuse
+        };
+
+        // Multiple saved sids with new sid
+        let mut ata_row_trimmed = ata_row.slice_mut(nd::s![..sid_save_list.len()]);
+        nd::par_azip!((
+            sid_in_range in &sid_save_list,
+            mut ata_val in ata_row_trimmed.axis_iter_mut(nd::Axis(0))
+        )
+        {
+            ata_val[()] = sid_product(&sid_in_range, &sid);
+        });
+    }
+
+    // Reflect the new product values
+    for row_index in 0usize..ncols - 1 {
+        for col_index in row_index..ncols {
+            ata_piece[(row_index, col_index)] = ata_piece[(col_index, row_index)];
+        }
+    }
+    return Ok(());
+}
+*/
 fn sid_product<T: Float + AddAssign>(sid_i: &[T], sid_j: &[T]) -> T {
     assert!(sid_i.len() == sid_j.len()); // real assert
     let mut product = T::zero();

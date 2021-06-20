@@ -1,7 +1,10 @@
 // https://stackoverflow.com/questions/32900809/how-to-suppress-function-is-never-used-warning-for-a-function-used-by-tests
 
 #[cfg(test)]
+use byteorder::ByteOrder;
+#[cfg(test)]
 use byteorder::{BigEndian, ReadBytesExt};
+use num_traits::Float;
 #[cfg(test)]
 use std::f32;
 #[cfg(test)]
@@ -935,6 +938,7 @@ fn insert_aat_piece(
 
 #[test]
 fn read_into() {
+    // !!! cmk remove
     let mut dst32 = [0f32; 2];
     let mut rdr = Cursor::new(vec![0x40, 0x49, 0x0f, 0xdb, 0x3f, 0x80, 0x00, 0x00]);
     rdr.read_f32_into::<BigEndian>(&mut dst32).unwrap();
@@ -952,33 +956,40 @@ fn read_into() {
     rdr.read_f64_into::<BigEndian>(&mut dst64).unwrap();
     assert_eq!([f64::consts::PI, 1.0], dst64);
 
-    // !!! cmk ReadFrom?
-    // !!! cmk make Cur... generic
     pub trait ReadFrom {
-        fn read_into<R: ReadBytesExt>(&mut self, rdr: &mut R) -> std::io::Result<()>;
+        fn read_fromx<R: ReadBytesExt>(&mut self, rdr: &mut R) -> std::io::Result<()>;
     }
 
     impl ReadFrom for [f32] {
-        fn read_into<R: ReadBytesExt>(&mut self, rdr: &mut R) -> std::io::Result<()> {
+        fn read_fromx<R: ReadBytesExt>(&mut self, rdr: &mut R) -> std::io::Result<()> {
             rdr.read_f32_into::<BigEndian>(self)
         }
     }
 
     impl ReadFrom for [f64] {
-        fn read_into<R: ReadBytesExt>(&mut self, rdr: &mut R) -> std::io::Result<()> {
+        fn read_fromx<R: ReadBytesExt>(&mut self, rdr: &mut R) -> std::io::Result<()> {
             rdr.read_f64_into::<BigEndian>(self)
         }
     }
 
     // Can we make a generic read_into that works with f32,f64 destinations?
     let mut rdr = Cursor::new(vec![0x40, 0x49, 0x0f, 0xdb, 0x3f, 0x80, 0x00, 0x00]);
-    dst32.read_into(&mut rdr).unwrap();
+    dst32.read_fromx(&mut rdr).unwrap();
     assert_eq!([f32::consts::PI, 1.0], dst32);
 
     let mut rdr = Cursor::new(vec![
         0x40, 0x09, 0x21, 0xfb, 0x54, 0x44, 0x2d, 0x18, 0x3f, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00,
     ]);
-    dst64.read_into(&mut rdr).unwrap();
+    dst64.read_fromx(&mut rdr).unwrap();
     assert_eq!([f64::consts::PI, 1.0], dst64);
+
+    // fn do_stuff<T: Float + ReadFrom>() {
+    //     let mut rdr = Cursor::new(vec![
+    //         0x40, 0x09, 0x21, 0xfb, 0x54, 0x44, 0x2d, 0x18, 0x3f, 0xF0, 0x00, 0x00, 0x00, 0x00,
+    //         0x00, 0x00,
+    //     ]);
+    //     let mut dst = vec![T::zero(); 8];
+    //     //dst.as_slice().read_from(&mut rdr).unwrap();
+    // }
 }
