@@ -952,18 +952,20 @@ fn read_into() {
     rdr.read_f64_into::<BigEndian>(&mut dst64).unwrap();
     assert_eq!([f64::consts::PI, 1.0], dst64);
 
-    pub trait ReadInto {
-        fn read_into(&mut self, rdr: &mut Cursor<Vec<u8>>) -> std::io::Result<()>;
+    // !!! cmk ReadFrom?
+    // !!! cmk make Cur... generic
+    pub trait ReadFrom {
+        fn read_into<R: ReadBytesExt>(&mut self, rdr: &mut R) -> std::io::Result<()>;
     }
 
-    impl ReadInto for [f32] {
-        fn read_into(&mut self, rdr: &mut Cursor<Vec<u8>>) -> std::io::Result<()> {
+    impl ReadFrom for [f32] {
+        fn read_into<R: ReadBytesExt>(&mut self, rdr: &mut R) -> std::io::Result<()> {
             rdr.read_f32_into::<BigEndian>(self)
         }
     }
 
-    impl ReadInto for [f64] {
-        fn read_into(&mut self, rdr: &mut Cursor<Vec<u8>>) -> std::io::Result<()> {
+    impl ReadFrom for [f64] {
+        fn read_into<R: ReadBytesExt>(&mut self, rdr: &mut R) -> std::io::Result<()> {
             rdr.read_f64_into::<BigEndian>(self)
         }
     }
