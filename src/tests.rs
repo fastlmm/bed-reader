@@ -1,6 +1,15 @@
 // https://stackoverflow.com/questions/32900809/how-to-suppress-function-is-never-used-warning-for-a-function-used-by-tests
 
 #[cfg(test)]
+use byteorder::{BigEndian, ReadBytesExt};
+#[cfg(test)]
+use std::f32;
+#[cfg(test)]
+use std::f64;
+#[cfg(test)]
+use std::io::Cursor;
+
+#[cfg(test)]
 use crate::file_aat_piece_f64;
 #[cfg(test)]
 use crate::file_ata_piece_f64;
@@ -922,4 +931,52 @@ fn insert_aat_piece(
             val[(range1_index, range0_index)] = val[(range0_index, range1_index)];
         }
     }
+}
+
+#[test]
+fn read_into() {
+    let mut dst32 = [0f32; 2];
+    let mut rdr = Cursor::new(vec![0x40, 0x49, 0x0f, 0xdb, 0x3f, 0x80, 0x00, 0x00]);
+    rdr.read_f32_into::<BigEndian>(&mut dst32).unwrap();
+    assert_eq!([f32::consts::PI, 1.0], dst32);
+
+    let mut rdr = Cursor::new(vec![0x40, 0x49, 0x0f, 0xdb, 0x3f, 0x80, 0x00, 0x00]);
+    rdr.read_f32_into::<BigEndian>(&mut dst32).unwrap();
+    assert_eq!([f32::consts::PI, 1.0], dst32);
+
+    let mut dst64 = [0f64; 2];
+    let mut rdr = Cursor::new(vec![
+        0x40, 0x09, 0x21, 0xfb, 0x54, 0x44, 0x2d, 0x18, 0x3f, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00,
+    ]);
+    rdr.read_f64_into::<BigEndian>(&mut dst64).unwrap();
+    assert_eq!([f64::consts::PI, 1.0], dst64);
+
+    pub trait ReadInto {
+        fn read_into(&mut self, rdr: &mut Cursor<Vec<u8>>) -> std::io::Result<()>;
+    }
+
+    impl ReadInto for [f32] {
+        fn read_into(&mut self, rdr: &mut Cursor<Vec<u8>>) -> std::io::Result<()> {
+            rdr.read_f32_into::<BigEndian>(self)
+        }
+    }
+
+    impl ReadInto for [f64] {
+        fn read_into(&mut self, rdr: &mut Cursor<Vec<u8>>) -> std::io::Result<()> {
+            rdr.read_f64_into::<BigEndian>(self)
+        }
+    }
+
+    // Can we make a generic read_into that works with f32,f64 destinations?
+    let mut rdr = Cursor::new(vec![0x40, 0x49, 0x0f, 0xdb, 0x3f, 0x80, 0x00, 0x00]);
+    dst32.read_into(&mut rdr).unwrap();
+    assert_eq!([f32::consts::PI, 1.0], dst32);
+
+    let mut rdr = Cursor::new(vec![
+        0x40, 0x09, 0x21, 0xfb, 0x54, 0x44, 0x2d, 0x18, 0x3f, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00,
+    ]);
+    dst64.read_into(&mut rdr).unwrap();
+    assert_eq!([f64::consts::PI, 1.0], dst64);
 }
