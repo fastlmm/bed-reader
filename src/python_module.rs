@@ -348,10 +348,11 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         filename: &str,
         offset: u64,
         iid_count: usize,
+        sid_count: usize,
         iid0_start: usize,
         iid1_start: usize,
-        sid_count: usize,
         aat_piece: &PyArray2<f64>,
+        zero_fill: bool,
         num_threads: usize,
         log_frequency: usize,
     ) -> Result<(), PyErr> {
@@ -362,10 +363,11 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
                 filename,
                 offset,
                 iid_count,
+                sid_count,
                 iid0_start,
                 iid1_start,
-                sid_count,
                 &mut aat_piece,
+                zero_fill,
                 log_frequency,
             )
         })?;

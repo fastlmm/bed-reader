@@ -1,5 +1,5 @@
-from datetime import datetime
 import logging
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -30,7 +30,7 @@ def file_ata(filename, offset, iid_count, sid_count, sid_step):
 
 
 def file_aat(
-    filename, offset, iid_count, iid_step, sid_count
+    filename, offset, iid_count, sid_count, iid_step
 ):  # !!! cmk be sure the rust version of this puts iid_step before sid_count
     aat = np.full((iid_count, iid_count), np.nan)
     # !!! cmk rename iid_index and above, too
@@ -44,10 +44,11 @@ def file_aat(
                 str(filename),
                 offset,
                 iid_count,
+                sid_count,
                 iid0_start,
                 iid1_start,
-                sid_count,
                 aat_piece,
+                zero_fill=True,
                 num_threads=get_num_threads(None),
                 log_frequency=iid0_range_len,
             )
@@ -84,7 +85,7 @@ def write_read_test_file_ata(iid_count, sid_count, sid_step, tmp_path):
 
 
 def write_read_test_file_aat(
-    iid_count, iid_step, sid_count, tmp_path, skip_if_there=False
+    iid_count, sid_count, iid_step, tmp_path, skip_if_there=False
 ):
     offset = 640
     file_path = tmp_path / f"{iid_count}x{sid_count}_o{offset}_array.memmap"
@@ -113,7 +114,7 @@ def write_read_test_file_aat(
         logging.info(f"Finished creating '{file_path}'")
 
     start_time = datetime.now()
-    out_val = file_aat(file_path, offset, iid_count, iid_step, sid_count)
+    out_val = file_aat(file_path, offset, iid_count, sid_count, iid_step)
     delta = datetime.now() - start_time
     expected = mm.dot(mm.T)
     assert np.allclose(expected, out_val, equal_nan=True)
@@ -153,7 +154,7 @@ def test_file_aat_small(shared_datadir):
 
     filename = shared_datadir / "small_array.memmap"
 
-    out_val = file_aat(filename, 0, iid_count=2, iid_step=1, sid_count=3)
+    out_val = file_aat(filename, 0, iid_count=2, sid_count=3, iid_step=1)
     print(out_val)
 
     expected = np.array([[14.0, 32.0], [32.0, 77.0]])

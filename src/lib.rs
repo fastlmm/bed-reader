@@ -855,10 +855,11 @@ fn file_aat_piece_f64(
     filename: &str,
     offset: u64,
     iid_count: usize,
+    sid_count: usize,
     iid0_start: usize,
     iid1_start: usize,
-    sid_count: usize,
     aat_piece: &mut nd::ArrayViewMut2<'_, f64>,
+    zero_fill: bool,
     log_frequency: usize,
 ) -> Result<(), BedErrorPlus> {
     let (nrows, ncols) = aat_piece.dim();
@@ -868,7 +869,10 @@ fn file_aat_piece_f64(
             iid0_start, iid1_start, nrows, ncols
         );
     };
-    aat_piece.fill(0.0);
+
+    if zero_fill {
+        aat_piece.fill(0.0);
+    }
 
     // Open the file and move to the starting sid
     let mut buf_reader = BufReader::new(File::open(filename)?);
@@ -909,42 +913,7 @@ fn file_aat_piece_f64(
             }
         });
     }
-    // } else {
-    //     let mut iid_reuse = vec![f64::NAN; nrows];
 
-    //     for sid_index in 0..sid_count {
-    //         if log_frequency > 0 && sid_index % log_frequency == 0 {
-    //             println!("   working on {} of {}", sid_index, sid_count);
-    //         }
-
-    //         // Read iid_reuse
-    //         buf_reader.seek(SeekFrom::Start(
-    //             offset
-    //                 + (sid_index as u64 * iid_count as u64 + iid0_start as u64)
-    //                     * std::mem::size_of::<f64>() as u64,
-    //         ))?;
-    //         buf_reader.read_f64_into::<LittleEndian>(&mut iid_reuse)?;
-
-    //         nd::par_azip!(
-    //             ( index iid0_rel_index,
-    //               mut aat_row in aat_piece.axis_iter_mut(nd::Axis(0)),
-    //               &iid0_val in & iid_reuse,
-    //              )
-    //         {
-    //             for iid1_rel_index in iid0_rel_index..ncols {
-    //                 aat_row[iid1_rel_index] +=
-    //                 iid0_val * iid_reuse[iid1_rel_index];
-    //             }
-    //         });
-
-    //         for iid0_rel_index in 1..nrows {
-    //             for iid1_rel_index in 0..iid0_rel_index {
-    //                 aat_piece[(iid0_rel_index, iid1_rel_index)] =
-    //                     aat_piece[(iid1_rel_index, iid0_rel_index)];
-    //             }
-    //         }
-    //     }
-    // }
     return Ok(());
 }
 

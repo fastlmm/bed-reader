@@ -881,10 +881,11 @@ fn file_aat(
                 filename,
                 offset,
                 iid_count,
+                sid_count,
                 iid0_start,
                 iid1_start,
-                sid_count,
                 &mut aat_piece.view_mut(),
+                true,
                 iid0_range_len,
             )?;
             insert_aat_piece(
