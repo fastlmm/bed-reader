@@ -1,6 +1,5 @@
 // Inspired by C++ version by Chris Widmer and Carl Kadie
 
-use byteorder::ByteOrder;
 use byteorder::{LittleEndian, ReadBytesExt};
 use core::fmt::Debug;
 use ndarray as nd;
@@ -733,23 +732,28 @@ pub fn create_pool(num_threads: usize) -> Result<rayon::ThreadPool, BedErrorPlus
 //     }
 // }
 
+fn read_into_f64(src: &mut BufReader<File>, dst: &mut [f64]) -> std::io::Result<()> {
+    src.read_f64_into::<LittleEndian>(dst)
+}
+
 // Given A, a matrix in Fortran order in a file
 // with iid_count rows and sid_count columns,
 // Returns part of A.T x A for the columns in sid_start-and-beyond to sid_start-and-in-range.
 // Makes only one pass through the file.
 // Uses no more than memory needed for columns of in-range sids plus 1.
-fn file_ata_piece_f64(
+fn file_ata_piece<T: Float + Send + Sync + AddAssign>(
     filename: &str,
     offset: u64,
     iid_count: usize,
     sid_start: usize,
-    ata_piece: &mut nd::ArrayViewMut2<'_, f64>,
+    ata_piece: &mut nd::ArrayViewMut2<'_, T>,
     log_frequency: usize,
+    read_into: fn(&mut BufReader<File>, &mut [T]) -> std::io::Result<()>,
 ) -> Result<(), BedErrorPlus> {
     let (nrows, ncols) = ata_piece.dim();
     if log_frequency > 0 {
         println!(
-            "file_ata_piece_f64: sid_start={}, {}x{} output",
+            "file_ata_piece: sid_start={}, {}x{} output",
             sid_start, nrows, ncols
         );
     };
@@ -757,11 +761,11 @@ fn file_ata_piece_f64(
     // Open the file and move to the starting sid
     let mut buf_reader = BufReader::new(File::open(filename)?);
     buf_reader.seek(SeekFrom::Start(
-        offset + sid_start as u64 * iid_count as u64 * std::mem::size_of::<f64>() as u64,
+        offset + sid_start as u64 * iid_count as u64 * std::mem::size_of::<T>() as u64,
     ))?;
 
-    let mut sid_save_list: Vec<Vec<f64>> = vec![];
-    let mut sid_reuse = vec![f64::NAN; iid_count];
+    let mut sid_save_list: Vec<Vec<T>> = vec![];
+    let mut sid_reuse = vec![T::nan(); iid_count];
 
     for (sid_rel_index, mut ata_row) in ata_piece.axis_iter_mut(nd::Axis(0)).enumerate() {
         if log_frequency > 0 && sid_rel_index % log_frequency == 0 {
@@ -770,12 +774,14 @@ fn file_ata_piece_f64(
 
         // Read next sid and save if in range
         let sid = if sid_save_list.len() < ncols {
-            let mut sid_save = vec![f64::NAN; iid_count];
-            buf_reader.read_f64_into::<LittleEndian>(&mut sid_save)?;
+            let mut sid_save = vec![T::nan(); iid_count];
+            // !!!buf_reader.read_f64_into::<LittleEndian>(&mut sid_save)?;
+            read_into(&mut buf_reader, &mut sid_save)?;
             sid_save_list.push(sid_save);
             &sid_save_list.last().unwrap() // unwrap is OK here
         } else {
-            buf_reader.read_f64_into::<LittleEndian>(&mut sid_reuse)?;
+            read_into(&mut buf_reader, &mut sid_reuse)?;
+            // !!! cmk buf_reader.read_f64_into::<LittleEndian>(&mut sid_reuse)?;
             &sid_reuse
         };
 
