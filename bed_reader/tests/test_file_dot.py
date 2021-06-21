@@ -29,9 +29,7 @@ def file_ata(filename, offset, iid_count, sid_count, sid_step):
     return ata
 
 
-def file_aat(
-    filename, offset, iid_count, sid_count, iid_step
-):  # !!! cmk be sure the rust version of this puts iid_step before sid_count
+def file_aat(filename, offset, iid_count, sid_count, iid_step):
     aat = np.full((iid_count, iid_count), np.nan)
     # !!! cmk rename iid_index and above, too
     for iid0_start in range(0, iid_count, iid_step):

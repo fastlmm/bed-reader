@@ -1,16 +1,7 @@
 // https://stackoverflow.com/questions/32900809/how-to-suppress-function-is-never-used-warning-for-a-function-used-by-tests
 
 #[cfg(test)]
-use byteorder::{BigEndian, ReadBytesExt};
-#[cfg(test)]
-use std::f32;
-#[cfg(test)]
-use std::f64;
-#[cfg(test)]
-use std::io::Cursor;
-
-#[cfg(test)]
-use crate::file_aat_piece_f64;
+use crate::file_aat_piece;
 #[cfg(test)]
 use crate::file_ata_piece;
 #[cfg(test)]
@@ -35,6 +26,10 @@ use ndarray::ShapeBuilder;
 use ndarray_npy::read_npy;
 #[cfg(test)]
 use num_traits::{abs, Signed};
+#[cfg(test)]
+use std::f32;
+#[cfg(test)]
+use std::f64;
 #[cfg(test)]
 use std::io::{LineWriter, Write};
 #[cfg(test)]
@@ -889,7 +884,7 @@ fn file_aat(
             let iid1_range_len = iid_step.min(iid_count - iid1_start);
             let mut aat_piece =
                 nd::Array2::<f64>::from_elem((iid0_range_len, iid1_range_len), f64::NAN);
-            file_aat_piece_f64(
+            file_aat_piece(
                 filename,
                 offset,
                 iid_count,
@@ -899,6 +894,7 @@ fn file_aat(
                 &mut aat_piece.view_mut(),
                 true,
                 iid0_range_len,
+                read_into_f64,
             )?;
             insert_aat_piece(
                 Range {
@@ -934,69 +930,4 @@ fn insert_aat_piece(
             val[(range1_index, range0_index)] = val[(range0_index, range1_index)];
         }
     }
-}
-
-#[test]
-fn read_into() {
-    // !!! cmk remove
-    let mut dst32 = [0f32; 2];
-    let mut rdr = Cursor::new(vec![0x40, 0x49, 0x0f, 0xdb, 0x3f, 0x80, 0x00, 0x00]);
-    rdr.read_f32_into::<BigEndian>(&mut dst32).unwrap();
-    assert_eq!([f32::consts::PI, 1.0], dst32);
-
-    let mut rdr = Cursor::new(vec![0x40, 0x49, 0x0f, 0xdb, 0x3f, 0x80, 0x00, 0x00]);
-    rdr.read_f32_into::<BigEndian>(&mut dst32).unwrap();
-    assert_eq!([f32::consts::PI, 1.0], dst32);
-
-    let mut dst64 = [0f64; 2];
-    let mut rdr = Cursor::new(vec![
-        0x40, 0x09, 0x21, 0xfb, 0x54, 0x44, 0x2d, 0x18, 0x3f, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00,
-    ]);
-    rdr.read_f64_into::<BigEndian>(&mut dst64).unwrap();
-    assert_eq!([f64::consts::PI, 1.0], dst64);
-
-    pub trait ReadFrom {
-        fn read_from<R: ReadBytesExt>(&mut self, rdr: &mut R) -> std::io::Result<()>;
-    }
-
-    // !!! cmk remove
-    // impl ReadFrom for [f32] {
-    //     fn read_from<R: ReadBytesExt>(&mut self, rdr: &mut R) -> std::io::Result<()> {
-    //         rdr.read_f32_into::<BigEndian>(self)
-    //     }
-    // }
-
-    // impl ReadFrom for [f64] {
-    //     fn read_from<R: ReadBytesExt>(&mut self, rdr: &mut R) -> std::io::Result<()> {
-    //         rdr.read_f64_into::<BigEndian>(self)
-    //     }
-    // }
-
-    // impl<T> ReadFrom for [T] {
-    //     fn read_from<R: ReadBytesExt>(&mut self, rdr: &mut R) -> std::io::Result<()> {
-    //         rdr.read_f64_into::<BigEndian>(self)
-    //     }
-    // }
-
-    // // Can we make a generic read_into that works with f32,f64 destinations?
-    // let mut rdr = Cursor::new(vec![0x40, 0x49, 0x0f, 0xdb, 0x3f, 0x80, 0x00, 0x00]);
-    // dst32.read_from(&mut rdr).unwrap();
-    // assert_eq!([f32::consts::PI, 1.0], dst32);
-
-    // let mut rdr = Cursor::new(vec![
-    //     0x40, 0x09, 0x21, 0xfb, 0x54, 0x44, 0x2d, 0x18, 0x3f, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00,
-    //     0x00,
-    // ]);
-    // dst64.read_from(&mut rdr).unwrap();
-    // assert_eq!([f64::consts::PI, 1.0], dst64);
-
-    // fn do_stuff<T: Float + ReadFrom>() {
-    //     let mut rdr = Cursor::new(vec![
-    //         0x40, 0x09, 0x21, 0xfb, 0x54, 0x44, 0x2d, 0x18, 0x3f, 0xF0, 0x00, 0x00, 0x00, 0x00,
-    //         0x00, 0x00,
-    //     ]);
-    //     let mut dst = [T::zero(); 8];
-    //     dst.read_from::<T>(&mut rdr).unwrap();
-    // }
 }

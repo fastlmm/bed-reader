@@ -8,8 +8,9 @@ use pyo3::{
 };
 
 use crate::{
-    create_pool, file_aat_piece_f64, file_ata_piece, file_b_less_aatbx, impute_and_zero_mean_snps,
-    matrix_subset_no_alloc, read_into_f64, read_no_alloc, write, BedError, BedErrorPlus, Dist,
+    create_pool, file_aat_piece, file_ata_piece, file_b_less_aatbx, impute_and_zero_mean_snps,
+    matrix_subset_no_alloc, read_into_f32, read_into_f64, read_no_alloc, write, BedError,
+    BedErrorPlus, Dist,
 };
 
 #[pymodule]
@@ -314,6 +315,34 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         Ok(())
     }
 
+    #[pyfn(m, "file_ata_piece_f32")]
+    fn file_ata_piece_f32_py(
+        _py: Python<'_>,
+        filename: &str,
+        offset: u64,
+        iid_count: usize,
+        sid_start: usize,
+        ata_piece: &PyArray2<f32>,
+        num_threads: usize,
+        log_frequency: usize,
+    ) -> Result<(), PyErr> {
+        let mut ata_piece = unsafe { ata_piece.as_array_mut() };
+
+        create_pool(num_threads)?.install(|| {
+            file_ata_piece(
+                filename,
+                offset,
+                iid_count,
+                sid_start,
+                &mut ata_piece,
+                log_frequency,
+                read_into_f32,
+            )
+        })?;
+
+        Ok(())
+    }
+
     #[pyfn(m, "file_ata_piece_f64")]
     fn file_ata_piece_f64_py(
         _py: Python<'_>,
@@ -342,6 +371,40 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         Ok(())
     }
 
+    #[pyfn(m, "file_aat_piece_f32")]
+    fn file_aat_piece_f32_py(
+        _py: Python<'_>,
+        filename: &str,
+        offset: u64,
+        iid_count: usize,
+        sid_count: usize,
+        iid0_start: usize,
+        iid1_start: usize,
+        aat_piece: &PyArray2<f32>,
+        zero_fill: bool,
+        num_threads: usize,
+        log_frequency: usize,
+    ) -> Result<(), PyErr> {
+        let mut aat_piece = unsafe { aat_piece.as_array_mut() };
+
+        create_pool(num_threads)?.install(|| {
+            file_aat_piece(
+                filename,
+                offset,
+                iid_count,
+                sid_count,
+                iid0_start,
+                iid1_start,
+                &mut aat_piece,
+                zero_fill,
+                log_frequency,
+                read_into_f32,
+            )
+        })?;
+
+        Ok(())
+    }
+
     #[pyfn(m, "file_aat_piece_f64")]
     fn file_aat_piece_f64_py(
         _py: Python<'_>,
@@ -359,7 +422,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let mut aat_piece = unsafe { aat_piece.as_array_mut() };
 
         create_pool(num_threads)?.install(|| {
-            file_aat_piece_f64(
+            file_aat_piece(
                 filename,
                 offset,
                 iid_count,
@@ -369,6 +432,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
                 &mut aat_piece,
                 zero_fill,
                 log_frequency,
+                read_into_f64,
             )
         })?;
 

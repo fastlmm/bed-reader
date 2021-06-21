@@ -716,24 +716,12 @@ pub fn create_pool(num_threads: usize) -> Result<rayon::ThreadPool, BedErrorPlus
     }
 }
 
-// pub trait ReadFrom {
-//     fn read_from<R: ReadBytesExt, B: ByteOrder>(&mut self, rdr: &mut R) -> std::io::Result<()>;
-// }
-
-// impl ReadFrom for [f32] {
-//     fn read_from<R: ReadBytesExt, B: ByteOrder>(&mut self, rdr: &mut R) -> std::io::Result<()> {
-//         rdr.read_f32_into::<B>(self)
-//     }
-// }
-
-// impl ReadFrom for [f64] {
-//     fn read_from<R: ReadBytesExt, B: ByteOrder>(&mut self, rdr: &mut R) -> std::io::Result<()> {
-//         rdr.read_f64_into::<B>(self)
-//     }
-// }
-
 fn read_into_f64(src: &mut BufReader<File>, dst: &mut [f64]) -> std::io::Result<()> {
     src.read_f64_into::<LittleEndian>(dst)
+}
+
+fn read_into_f32(src: &mut BufReader<File>, dst: &mut [f32]) -> std::io::Result<()> {
+    src.read_f32_into::<LittleEndian>(dst)
 }
 
 // Given A, a matrix in Fortran order in a file
@@ -775,13 +763,11 @@ fn file_ata_piece<T: Float + Send + Sync + AddAssign>(
         // Read next sid and save if in range
         let sid = if sid_save_list.len() < ncols {
             let mut sid_save = vec![T::nan(); iid_count];
-            // !!!buf_reader.read_f64_into::<LittleEndian>(&mut sid_save)?;
             read_into(&mut buf_reader, &mut sid_save)?;
             sid_save_list.push(sid_save);
             &sid_save_list.last().unwrap() // unwrap is OK here
         } else {
             read_into(&mut buf_reader, &mut sid_reuse)?;
-            // !!! cmk buf_reader.read_f64_into::<LittleEndian>(&mut sid_reuse)?;
             &sid_reuse
         };
 
@@ -942,35 +928,36 @@ fn file_b_less_aatbx(
 // Returns part of A x A.T for the columns in sid_start-and-beyond to sid_start-and-in-range.
 // Makes only one pass through the file.
 // Uses no more than memory needed for columns of in-range sids plus 1.
-fn file_aat_piece_f64(
+fn file_aat_piece<T: Float + Sync + Send + AddAssign>(
     filename: &str,
     offset: u64,
     iid_count: usize,
     sid_count: usize,
     iid0_start: usize,
     iid1_start: usize,
-    aat_piece: &mut nd::ArrayViewMut2<'_, f64>,
+    aat_piece: &mut nd::ArrayViewMut2<'_, T>,
     zero_fill: bool,
     log_frequency: usize,
+    read_into: fn(&mut BufReader<File>, &mut [T]) -> std::io::Result<()>,
 ) -> Result<(), BedErrorPlus> {
     let (nrows, ncols) = aat_piece.dim();
     if log_frequency > 0 {
         println!(
-            "file_aat_piece_f64: iid0_start={}, iid1_start={}, {}x{} output",
+            "file_aat_piece: iid0_start={}, iid1_start={}, {}x{} output",
             iid0_start, iid1_start, nrows, ncols
         );
     };
 
     if zero_fill {
-        aat_piece.fill(0.0);
+        aat_piece.fill(T::zero());
     }
 
     // Open the file and move to the starting sid
     let mut buf_reader = BufReader::new(File::open(filename)?);
 
     // if nrows != ncols || iid0_start != iid1_start {
-    let mut iid0_reuse = vec![f64::NAN; nrows];
-    let mut iid1_reuse = vec![f64::NAN; ncols];
+    let mut iid0_reuse = vec![T::nan(); nrows];
+    let mut iid1_reuse = vec![T::nan(); ncols];
 
     for sid_index in 0..sid_count {
         if log_frequency > 0 && sid_index % log_frequency == 0 {
@@ -981,17 +968,17 @@ fn file_aat_piece_f64(
         buf_reader.seek(SeekFrom::Start(
             offset
                 + (sid_index as u64 * iid_count as u64 + iid0_start as u64)
-                    * std::mem::size_of::<f64>() as u64,
+                    * std::mem::size_of::<T>() as u64,
         ))?;
-        buf_reader.read_f64_into::<LittleEndian>(&mut iid0_reuse)?;
+        read_into(&mut buf_reader, &mut iid0_reuse)?;
 
         // Read iid1_reuse
         buf_reader.seek(SeekFrom::Start(
             offset
                 + (sid_index as u64 * iid_count as u64 + iid1_start as u64) // !!! cmk could factor out parts
-                    * std::mem::size_of::<f64>() as u64,
+                    * std::mem::size_of::<T>() as u64,
         ))?;
-        buf_reader.read_f64_into::<LittleEndian>(&mut iid1_reuse)?;
+        read_into(&mut buf_reader, &mut iid1_reuse)?;
 
         nd::par_azip!(
             (mut aat_row in aat_piece.axis_iter_mut(nd::Axis(0)),
