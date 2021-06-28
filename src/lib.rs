@@ -716,158 +716,6 @@ pub fn create_pool(num_threads: usize) -> Result<rayon::ThreadPool, BedErrorPlus
     }
 }
 
-fn read_into_f64(src: &mut BufReader<File>, dst: &mut [f64]) -> std::io::Result<()> {
-    src.read_f64_into::<LittleEndian>(dst)
-}
-
-fn read_into_f32(src: &mut BufReader<File>, dst: &mut [f32]) -> std::io::Result<()> {
-    src.read_f32_into::<LittleEndian>(dst)
-}
-
-// Given A, a matrix in Fortran order in a file
-// with iid_count rows and sid_count columns,
-// Returns part of A.T x A for the columns in sid_start-and-beyond to sid_start-and-in-range.
-// Makes only one pass through the file.
-// Uses no more than memory needed for columns of in-range sids plus 1.
-fn file_ata_piece<T: Float + Send + Sync + AddAssign>(
-    filename: &str,
-    offset: u64,
-    iid_count: usize,
-    sid_start: usize,
-    ata_piece: &mut nd::ArrayViewMut2<'_, T>,
-    log_frequency: usize,
-    read_into: fn(&mut BufReader<File>, &mut [T]) -> std::io::Result<()>,
-) -> Result<(), BedErrorPlus> {
-    let (nrows, ncols) = ata_piece.dim();
-    if log_frequency > 0 {
-        println!(
-            "file_ata_piece: sid_start={}, {}x{} output",
-            sid_start, nrows, ncols
-        );
-    };
-
-    // Open the file and move to the starting sid
-    let mut buf_reader = BufReader::new(File::open(filename)?);
-    buf_reader.seek(SeekFrom::Start(
-        offset + sid_start as u64 * iid_count as u64 * std::mem::size_of::<T>() as u64,
-    ))?;
-
-    let mut sid_save_list: Vec<Vec<T>> = vec![];
-    let mut sid_reuse = vec![T::nan(); iid_count];
-
-    for (sid_rel_index, mut ata_row) in ata_piece.axis_iter_mut(nd::Axis(0)).enumerate() {
-        if log_frequency > 0 && sid_rel_index % log_frequency == 0 {
-            println!("   working on {} of {}", sid_rel_index, nrows);
-        }
-
-        // Read next sid and save if in range
-        let sid = if sid_save_list.len() < ncols {
-            let mut sid_save = vec![T::nan(); iid_count];
-            read_into(&mut buf_reader, &mut sid_save)?;
-            sid_save_list.push(sid_save);
-            &sid_save_list.last().unwrap() // unwrap is OK here
-        } else {
-            read_into(&mut buf_reader, &mut sid_reuse)?;
-            &sid_reuse
-        };
-
-        // Multiple saved sids with new sid
-        let mut ata_row_trimmed = ata_row.slice_mut(nd::s![..sid_save_list.len()]);
-        nd::par_azip!((
-            sid_in_range in &sid_save_list,
-            mut ata_val in ata_row_trimmed.axis_iter_mut(nd::Axis(0))
-        )
-        {
-            ata_val[()] = sid_product(&sid_in_range, &sid);
-        });
-    }
-
-    // Reflect the new product values
-    for row_index in 0usize..ncols - 1 {
-        for col_index in row_index..ncols {
-            ata_piece[(row_index, col_index)] = ata_piece[(col_index, row_index)];
-        }
-    }
-    return Ok(());
-}
-/*
-// Given A, a matrix in Fortran order in a file
-// with iid_count rows and sid_count columns,
-// Returns part of A.T x A for the columns in sid_start-and-beyond to sid_start-and-in-range.
-// Makes only one pass through the file.
-// Uses no more than memory needed for columns of in-range sids plus 1.
-fn file_ata_piece<T: Float + ReadFrom + Send + AddAssign>(
-    filename: &str,
-    offset: u64,
-    iid_count: usize,
-    sid_start: usize,
-    ata_piece: &mut nd::ArrayViewMut2<'_, T>,
-    log_frequency: usize,
-) -> Result<(), BedErrorPlus> {
-    let (nrows, ncols) = ata_piece.dim();
-    if log_frequency > 0 {
-        println!(
-            "file_ata_piece: sid_start={}, {}x{} output",
-            sid_start, nrows, ncols
-        );
-    };
-
-    // Open the file and move to the starting sid
-    let mut buf_reader = BufReader::new(File::open(filename)?);
-    buf_reader.seek(SeekFrom::Start(
-        offset + sid_start as u64 * iid_count as u64 * std::mem::size_of::<T>() as u64,
-    ))?;
-
-    let mut sid_save_list: Vec<Vec<T>> = vec![];
-    let mut sid_reuse = vec![T::nan(); iid_count];
-
-    for (sid_rel_index, mut ata_row) in ata_piece.axis_iter_mut(nd::Axis(0)).enumerate() {
-        if log_frequency > 0 && sid_rel_index % log_frequency == 0 {
-            println!("   working on {} of {}", sid_rel_index, nrows);
-        }
-
-        // Read next sid and save if in range
-        let sid = if sid_save_list.len() < ncols {
-            let mut sid_save = vec![T::nan(); iid_count].as_slice();
-            sid_save.read_from(&mut buf_reader)?;
-            // !!! cmk buf_reader.read_f64_into::<LittleEndian>(&mut sid_save)?;
-            sid_save_list.push(sid_save);
-            &sid_save_list.last().unwrap() // unwrap is OK here
-        } else {
-            // !!! cmk buf_reader.read_f64_into::<LittleEndian>(&mut sid_reuse)?;
-            sid_reuse.read_from(&mut buf_reader)?;
-            &sid_reuse
-        };
-
-        // Multiple saved sids with new sid
-        let mut ata_row_trimmed = ata_row.slice_mut(nd::s![..sid_save_list.len()]);
-        nd::par_azip!((
-            sid_in_range in &sid_save_list,
-            mut ata_val in ata_row_trimmed.axis_iter_mut(nd::Axis(0))
-        )
-        {
-            ata_val[()] = sid_product(&sid_in_range, &sid);
-        });
-    }
-
-    // Reflect the new product values
-    for row_index in 0usize..ncols - 1 {
-        for col_index in row_index..ncols {
-            ata_piece[(row_index, col_index)] = ata_piece[(col_index, row_index)];
-        }
-    }
-    return Ok(());
-}
-*/
-fn sid_product<T: Float + AddAssign>(sid_i: &[T], sid_j: &[T]) -> T {
-    assert!(sid_i.len() == sid_j.len()); // real assert
-    let mut product = T::zero();
-    for iid_index in 0..sid_i.len() {
-        product += sid_i[iid_index] * sid_j[iid_index];
-    }
-    product
-}
-
 fn file_b_less_aatbx(
     a_filename: &str,
     offset: u64,
@@ -923,18 +771,130 @@ fn file_b_less_aatbx(
     return Ok(());
 }
 
+fn read_into_f64(src: &mut BufReader<File>, dst: &mut [f64]) -> std::io::Result<()> {
+    src.read_f64_into::<LittleEndian>(dst)
+}
+
+fn read_into_f32(src: &mut BufReader<File>, dst: &mut [f32]) -> std::io::Result<()> {
+    src.read_f32_into::<LittleEndian>(dst)
+}
+
+// !!!cmk what if columns are in multiple files????
+// Given A, a matrix in Fortran order in a file
+// with row_count rows and col_count columns,
+// Returns part of A.T x A for the columns in sid_start-and-beyond to sid_start-and-in-range.
+// Makes only one pass through the file.
+// Uses no more than memory needed for columns of in-range sids plus 1.
+fn file_ata_piece<T: Float + Send + Sync + AddAssign>(
+    filename: &str,
+    offset: u64,
+    row_count: usize,
+    col_count: usize,
+    col_start: usize,
+    ata_piece: &mut nd::ArrayViewMut2<'_, T>,
+    log_frequency: usize,
+    read_into: fn(&mut BufReader<File>, &mut [T]) -> std::io::Result<()>,
+) -> Result<(), BedErrorPlus> {
+    let (nrows, ncols) = ata_piece.dim();
+    assert!(col_start < col_count); // !!! cmk col_start must be less than col_count
+    assert!(col_start + nrows == col_count); // !!! cmk col_start+ata_piece.nrows must equal col_count
+    assert!(col_start + ncols <= col_count); // !!! cmk col_start+ata_piece.ncols must be less or equal to col_count
+
+    _file_ata_piece_internal(
+        filename,
+        offset,
+        row_count,
+        col_start,
+        ata_piece,
+        log_frequency,
+        read_into,
+    )
+}
+
+fn _file_ata_piece_internal<T: Float + Send + Sync + AddAssign>(
+    filename: &str,
+    offset: u64,
+    row_count: usize,
+    col_start: usize,
+    ata_piece: &mut nd::ArrayViewMut2<'_, T>,
+    log_frequency: usize,
+    read_into: fn(&mut BufReader<File>, &mut [T]) -> std::io::Result<()>,
+) -> Result<(), BedErrorPlus> {
+    let (nrows, ncols) = ata_piece.dim();
+    if log_frequency > 0 {
+        println!(
+            "file_ata_piece: col_start={}, {}x{} output",
+            col_start, nrows, ncols
+        );
+    };
+
+    // Open the file and move to the starting col
+    let mut buf_reader = BufReader::new(File::open(filename)?);
+    buf_reader.seek(SeekFrom::Start(
+        offset + col_start as u64 * row_count as u64 * std::mem::size_of::<T>() as u64,
+    ))?;
+
+    let mut col_save_list: Vec<Vec<T>> = vec![];
+    let mut col_reuse = vec![T::nan(); row_count];
+
+    for (col_rel_index, mut ata_row) in ata_piece.axis_iter_mut(nd::Axis(0)).enumerate() {
+        if log_frequency > 0 && col_rel_index % log_frequency == 0 {
+            println!("   working on {} of {}", col_rel_index, nrows);
+        }
+
+        // Read next col and save if in range
+        let col = if col_save_list.len() < ncols {
+            let mut col_save = vec![T::nan(); row_count];
+            read_into(&mut buf_reader, &mut col_save)?;
+            col_save_list.push(col_save);
+            &col_save_list.last().unwrap() // unwrap is OK here
+        } else {
+            read_into(&mut buf_reader, &mut col_reuse)?;
+            &col_reuse
+        };
+
+        // Multiple saved sids with new sid
+        let mut ata_row_trimmed = ata_row.slice_mut(nd::s![..col_save_list.len()]);
+        nd::par_azip!((
+            col_in_range in &col_save_list,
+            mut ata_val in ata_row_trimmed.axis_iter_mut(nd::Axis(0))
+        )
+        {
+            ata_val[()] = col_product(&col_in_range, &col);
+        });
+    }
+
+    // Reflect the new product values
+    for row_index in 0usize..ncols - 1 {
+        for col_index in row_index..ncols {
+            ata_piece[(row_index, col_index)] = ata_piece[(col_index, row_index)];
+        }
+    }
+    return Ok(());
+}
+
+fn col_product<T: Float + AddAssign>(col_i: &[T], col_j: &[T]) -> T {
+    assert!(col_i.len() == col_j.len()); // real assert
+    let mut product = T::zero();
+    for row_index in 0..col_i.len() {
+        product += col_i[row_index] * col_j[row_index];
+    }
+    product
+}
+
+// !!! cmk raise error if start+row(or col) > count
 // Given A, a matrix in Fortran order in a file !!!cmk update
-// with iid_count rows and sid_count columns,
+// with row_count rows and sid_count columns,
 // Returns part of A x A.T for the columns in sid_start-and-beyond to sid_start-and-in-range.
 // Makes only one pass through the file.
 // Uses no more than memory needed for columns of in-range sids plus 1.
 fn file_aat_piece<T: Float + Sync + Send + AddAssign>(
     filename: &str,
     offset: u64,
-    iid_count: usize,
-    sid_count: usize,
-    iid0_start: usize,
-    iid1_start: usize,
+    row_count: usize,
+    col_count: usize,
+    row0_start: usize,
+    row1_start: usize,
     aat_piece: &mut nd::ArrayViewMut2<'_, T>,
     zero_fill: bool,
     log_frequency: usize,
@@ -943,51 +903,54 @@ fn file_aat_piece<T: Float + Sync + Send + AddAssign>(
     let (nrows, ncols) = aat_piece.dim();
     if log_frequency > 0 {
         println!(
-            "file_aat_piece: iid0_start={}, iid1_start={}, {}x{} output",
-            iid0_start, iid1_start, nrows, ncols
+            "file_aat_piece: row0_start={}, row1_start={}, {}x{} output",
+            row0_start, row1_start, nrows, ncols
         );
     };
+
+    assert!(row0_start < row_count && row1_start < row_count); // start rows must be less than row count
+    assert!(row0_start + nrows <= row_count && row1_start + ncols <= row_count); // start rows + array dimension must be less than or equal to row count
 
     if zero_fill {
         aat_piece.fill(T::zero());
     }
 
-    // Open the file and move to the starting sid
+    // Open the file and move to the starting col
     let mut buf_reader = BufReader::new(File::open(filename)?);
 
-    // if nrows != ncols || iid0_start != iid1_start {
-    let mut iid0_reuse = vec![T::nan(); nrows];
-    let mut iid1_reuse = vec![T::nan(); ncols];
+    // if nrows != ncols || row0_start != row1_start {
+    let mut row0_reuse = vec![T::nan(); nrows];
+    let mut row1_reuse = vec![T::nan(); ncols];
 
-    for sid_index in 0..sid_count {
-        if log_frequency > 0 && sid_index % log_frequency == 0 {
-            println!("   working on {} of {}", sid_index, sid_count);
+    for col_index in 0..col_count {
+        if log_frequency > 0 && col_index % log_frequency == 0 {
+            println!("   working on {} of {}", col_index, col_count);
         }
 
-        // Read iid0_reuse
+        // Read row0_reuse
         buf_reader.seek(SeekFrom::Start(
             offset
-                + (sid_index as u64 * iid_count as u64 + iid0_start as u64)
+                + (col_index as u64 * row_count as u64 + row0_start as u64)
                     * std::mem::size_of::<T>() as u64,
         ))?;
-        read_into(&mut buf_reader, &mut iid0_reuse)?;
+        read_into(&mut buf_reader, &mut row0_reuse)?;
 
-        // Read iid1_reuse
+        // Read row1_reuse
         buf_reader.seek(SeekFrom::Start(
             offset
-                + (sid_index as u64 * iid_count as u64 + iid1_start as u64) // !!! cmk could factor out parts
+                + (col_index as u64 * row_count as u64 + row1_start as u64) // !!! cmk could factor out parts
                     * std::mem::size_of::<T>() as u64,
         ))?;
-        read_into(&mut buf_reader, &mut iid1_reuse)?;
+        read_into(&mut buf_reader, &mut row1_reuse)?;
 
         nd::par_azip!(
             (mut aat_row in aat_piece.axis_iter_mut(nd::Axis(0)),
-            &iid0_val in & iid0_reuse,
+            &row0_val in & row0_reuse,
              )
         {
-            for iid1_rel_index in 0..ncols {
-                aat_row[iid1_rel_index] +=
-                iid0_val * iid1_reuse[iid1_rel_index];
+            for row1_rel_index in 0..ncols {
+                aat_row[row1_rel_index] +=
+                row0_val * row1_reuse[row1_rel_index];
             }
         });
     }

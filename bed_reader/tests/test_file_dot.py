@@ -5,25 +5,45 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from bed_reader import file_aat_piece_f64, file_ata_piece_f64, file_b_less_aatbx
+from bed_reader import (
+    file_aat_piece_float64_orderf,
+    file_ata_piece_float64_orderf,
+    file_b_less_aatbx,
+    file_dot_piece,
+)
 from bed_reader._open_bed import get_num_threads, open_bed  # noqa
 
 
+# !!!cmk file_ata_piece_float64_orderf should not have iid or sid in name
+# !!!cmk should file_ata_piece_float64_orderf have col_count so can check don't go out of bounds
+# !!! cmk should there be a way to get a smaller piece back?
 def file_ata(filename, offset, iid_count, sid_count, sid_step):
     ata = np.full((sid_count, sid_count), np.nan)
-    for sid_start in range(0, sid_count, sid_step):
-        sid_range_len = min(sid_step, sid_count - sid_start)
-        ata_piece = np.full((sid_count - sid_start, sid_range_len), np.nan)
-        file_ata_piece_f64(
-            str(filename),
-            offset,
-            iid_count,
-            sid_start,
-            ata_piece,
-            num_threads=get_num_threads(None),
-            log_frequency=sid_range_len,
-        )
-        ata[sid_start:, sid_start : sid_start + sid_range_len] = ata_piece
+    for sid_index in range(0, sid_count, sid_step):
+        sid_range_len = min(sid_step, sid_count - sid_index)
+        ata_piece = np.full((sid_count - sid_index, sid_range_len), np.nan)
+        if sid_index % 2 == 0:  # test new and old method
+            file_ata_piece_float64_orderf(
+                str(filename),
+                offset,
+                iid_count,
+                sid_count,
+                sid_index,
+                ata_piece,
+                num_threads=get_num_threads(None),
+                log_frequency=sid_range_len,
+            )
+        else:
+            file_dot_piece(
+                str(filename),
+                offset,
+                iid_count,
+                sid_index,
+                ata_piece,
+                num_threads=get_num_threads(None),
+                log_frequency=sid_range_len,
+            )
+        ata[sid_index:, sid_index : sid_index + sid_range_len] = ata_piece
     for sid_index in range(sid_count):
         ata[sid_index, sid_index + 1 :] = ata[sid_index + 1 :, sid_index]
     return ata
@@ -31,33 +51,31 @@ def file_ata(filename, offset, iid_count, sid_count, sid_step):
 
 def file_aat(filename, offset, iid_count, sid_count, iid_step):
     aat = np.full((iid_count, iid_count), np.nan)
-    # !!! cmk rename iid_index and above, too
-    for iid0_start in range(0, iid_count, iid_step):
-        iid0_range_len = min(iid_step, iid_count - iid0_start)
-        # !!! cmk rename iid_index and above, too
-        for iid1_start in range(iid0_start, iid_count, iid_step):
-            iid1_range_len = min(iid_step, iid_count - iid1_start)
+    for iid0_index in range(0, iid_count, iid_step):
+        iid0_range_len = min(iid_step, iid_count - iid0_index)
+        for iid1_index in range(iid0_index, iid_count, iid_step):
+            iid1_range_len = min(iid_step, iid_count - iid1_index)
             aat_piece = np.full((iid0_range_len, iid1_range_len), np.nan)
-            file_aat_piece_f64(
+            file_aat_piece_float64_orderf(
                 str(filename),
                 offset,
                 iid_count,
                 sid_count,
-                iid0_start,
-                iid1_start,
+                iid0_index,
+                iid1_index,
                 aat_piece,
                 zero_fill=True,
                 num_threads=get_num_threads(None),
                 log_frequency=iid0_range_len,
             )
             aat[
-                iid0_start : iid0_start + iid0_range_len,
-                iid1_start : iid1_start + iid1_range_len,
+                iid0_index : iid0_index + iid0_range_len,
+                iid1_index : iid1_index + iid1_range_len,
             ] = aat_piece
-            if iid1_start != iid0_start or iid1_range_len != iid0_range_len:
+            if iid1_index != iid0_index or iid1_range_len != iid0_range_len:
                 aat[
-                    iid1_start : iid1_start + iid1_range_len,
-                    iid0_start : iid0_start + iid0_range_len,
+                    iid1_index : iid1_index + iid1_range_len,
+                    iid0_index : iid0_index + iid0_range_len,
                 ] = aat_piece.T
     return aat
 

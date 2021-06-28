@@ -5,11 +5,12 @@ from bed_reader._sample_data import sample_file, tmp_path  # noqa
 from bed_reader._to_bed import to_bed  # noqa
 
 from .bed_reader import (  # noqa
-    file_aat_piece_f32,
-    file_aat_piece_f64,
-    file_ata_piece_f32,
-    file_ata_piece_f64,
+    file_aat_piece_float32_orderf,
+    file_aat_piece_float64_orderf,
+    file_ata_piece_float32_orderf,
+    file_ata_piece_float64_orderf,
     file_b_less_aatbx,
+    file_dot_piece,
     read_f32,
     read_f64,
     read_i8,

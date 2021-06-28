@@ -8,9 +8,9 @@ use pyo3::{
 };
 
 use crate::{
-    create_pool, file_aat_piece, file_ata_piece, file_b_less_aatbx, impute_and_zero_mean_snps,
-    matrix_subset_no_alloc, read_into_f32, read_into_f64, read_no_alloc, write, BedError,
-    BedErrorPlus, Dist,
+    BedError, BedErrorPlus, Dist, _file_ata_piece_internal, create_pool, file_aat_piece,
+    file_ata_piece, file_b_less_aatbx, impute_and_zero_mean_snps, matrix_subset_no_alloc,
+    read_into_f32, read_into_f64, read_no_alloc, write,
 };
 
 #[pymodule]
@@ -315,13 +315,14 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         Ok(())
     }
 
-    #[pyfn(m, "file_ata_piece_f32")]
+    #[pyfn(m, "file_ata_piece_float32_orderf")]
     fn file_ata_piece_f32_py(
         _py: Python<'_>,
         filename: &str,
         offset: u64,
-        iid_count: usize,
-        sid_start: usize,
+        row_count: usize,
+        col_count: usize, // !!!cmk
+        col_start: usize,
         ata_piece: &PyArray2<f32>,
         num_threads: usize,
         log_frequency: usize,
@@ -332,8 +333,9 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
             file_ata_piece(
                 filename,
                 offset,
-                iid_count,
-                sid_start,
+                row_count,
+                col_count,
+                col_start,
                 &mut ata_piece,
                 log_frequency,
                 read_into_f32,
@@ -343,13 +345,14 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         Ok(())
     }
 
-    #[pyfn(m, "file_ata_piece_f64")]
+    #[pyfn(m, "file_ata_piece_float64_orderf")]
     fn file_ata_piece_f64_py(
         _py: Python<'_>,
         filename: &str,
         offset: u64,
-        iid_count: usize,
-        sid_start: usize,
+        row_count: usize,
+        col_count: usize,
+        col_start: usize,
         ata_piece: &PyArray2<f64>,
         num_threads: usize,
         log_frequency: usize,
@@ -360,8 +363,9 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
             file_ata_piece(
                 filename,
                 offset,
-                iid_count,
-                sid_start,
+                row_count,
+                col_count,
+                col_start,
                 &mut ata_piece,
                 log_frequency,
                 read_into_f64,
@@ -371,15 +375,44 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         Ok(())
     }
 
-    #[pyfn(m, "file_aat_piece_f32")]
+    // Old version of function for backwards compatibility
+    #[pyfn(m, "file_dot_piece")]
+    fn file_dot_piece_py(
+        _py: Python<'_>,
+        filename: &str,
+        offset: u64,
+        row_count: usize,
+        col_start: usize,
+        ata_piece: &PyArray2<f64>,
+        num_threads: usize,
+        log_frequency: usize,
+    ) -> Result<(), PyErr> {
+        let mut ata_piece = unsafe { ata_piece.as_array_mut() };
+
+        create_pool(num_threads)?.install(|| {
+            _file_ata_piece_internal(
+                filename,
+                offset,
+                row_count,
+                col_start,
+                &mut ata_piece,
+                log_frequency,
+                read_into_f64,
+            )
+        })?;
+
+        Ok(())
+    }
+
+    #[pyfn(m, "file_aat_piece_float32_orderf")]
     fn file_aat_piece_f32_py(
         _py: Python<'_>,
         filename: &str,
         offset: u64,
-        iid_count: usize,
-        sid_count: usize,
-        iid0_start: usize,
-        iid1_start: usize,
+        row_count: usize,
+        col_count: usize,
+        row0_start: usize,
+        row1_start: usize,
         aat_piece: &PyArray2<f32>,
         zero_fill: bool,
         num_threads: usize,
@@ -391,10 +424,10 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
             file_aat_piece(
                 filename,
                 offset,
-                iid_count,
-                sid_count,
-                iid0_start,
-                iid1_start,
+                row_count,
+                col_count,
+                row0_start,
+                row1_start,
                 &mut aat_piece,
                 zero_fill,
                 log_frequency,
@@ -405,15 +438,15 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         Ok(())
     }
 
-    #[pyfn(m, "file_aat_piece_f64")]
+    #[pyfn(m, "file_aat_piece_float64_orderf")]
     fn file_aat_piece_f64_py(
         _py: Python<'_>,
         filename: &str,
         offset: u64,
-        iid_count: usize,
-        sid_count: usize,
-        iid0_start: usize,
-        iid1_start: usize,
+        row_count: usize,
+        col_count: usize,
+        row0_start: usize,
+        row1_start: usize,
         aat_piece: &PyArray2<f64>,
         zero_fill: bool,
         num_threads: usize,
@@ -425,10 +458,10 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
             file_aat_piece(
                 filename,
                 offset,
-                iid_count,
-                sid_count,
-                iid0_start,
-                iid1_start,
+                row_count,
+                col_count,
+                row0_start,
+                row1_start,
                 &mut aat_piece,
                 zero_fill,
                 log_frequency,

@@ -794,6 +794,7 @@ fn file_ata(
             filename,
             offset,
             iid_count,
+            sid_count,
             sid_start,
             &mut ata_piece.view_mut(),
             sid_range_len,
