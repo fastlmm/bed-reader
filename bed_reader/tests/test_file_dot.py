@@ -50,33 +50,27 @@ def file_ata(filename, offset, iid_count, sid_count, sid_step):
 
 
 def file_aat(filename, offset, iid_count, sid_count, iid_step):
-    aat = np.full((iid_count, iid_count), np.nan)
-    for iid0_index in range(0, iid_count, iid_step):
-        iid0_range_len = min(iid_step, iid_count - iid0_index)
-        for iid1_index in range(iid0_index, iid_count, iid_step):
-            iid1_range_len = min(iid_step, iid_count - iid1_index)
-            aat_piece = np.full((iid0_range_len, iid1_range_len), np.nan)
+    aat = np.full(
+        (iid_count, iid_count), np.nan
+    )  # !!!cmk should be F or C? and which first?
+    for iid_index in range(0, iid_count, iid_step):
+        iid_range_len = min(iid_step, iid_count - iid_index)
+        for iid1_index in range(iid_count):
+            aat_piece = np.full((iid_count, iid_range_len), np.nan)
             file_aat_piece_float64_orderf(
                 str(filename),
                 offset,
                 iid_count,
                 sid_count,
-                iid0_index,
-                iid1_index,
+                iid_index,
                 aat_piece,
-                zero_fill=True,
                 num_threads=get_num_threads(None),
-                log_frequency=iid0_range_len,
+                log_frequency=iid_range_len,
             )
             aat[
-                iid0_index : iid0_index + iid0_range_len,
-                iid1_index : iid1_index + iid1_range_len,
+                :,
+                iid_index : iid_index + iid_range_len,
             ] = aat_piece
-            if iid1_index != iid0_index or iid1_range_len != iid0_range_len:
-                aat[
-                    iid1_index : iid1_index + iid1_range_len,
-                    iid0_index : iid0_index + iid0_range_len,
-                ] = aat_piece.T
     return aat
 
 
@@ -142,7 +136,7 @@ def test_file_ata_medium(tmp_path):
 
 
 def test_file_aat_medium(tmp_path):
-    write_read_test_file_aat(100, 34, 1000, tmp_path)
+    write_read_test_file_aat(1000, 100, 34, tmp_path)
 
 
 # # Too slow

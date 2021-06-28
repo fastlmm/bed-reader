@@ -883,78 +883,75 @@ fn col_product<T: Float + AddAssign>(col_i: &[T], col_j: &[T]) -> T {
 }
 
 // !!! cmk raise error if start+row(or col) > count
-// Given A, a matrix in Fortran order in a file !!!cmk update
-// with row_count rows and sid_count columns,
-// Returns part of A x A.T for the columns in sid_start-and-beyond to sid_start-and-in-range.
-// Makes only one pass through the file.
-// Uses no more than memory needed for columns of in-range sids plus 1.
+// !!! cmk add comments
 fn file_aat_piece<T: Float + Sync + Send + AddAssign>(
     filename: &str,
     offset: u64,
     row_count: usize,
     col_count: usize,
-    row0_start: usize,
-    row1_start: usize,
+    row_start: usize,
     aat_piece: &mut nd::ArrayViewMut2<'_, T>,
-    zero_fill: bool,
     log_frequency: usize,
     read_into: fn(&mut BufReader<File>, &mut [T]) -> std::io::Result<()>,
 ) -> Result<(), BedErrorPlus> {
     let (nrows, ncols) = aat_piece.dim();
+
     if log_frequency > 0 {
         println!(
-            "file_aat_piece: row0_start={}, row1_start={}, {}x{} output",
-            row0_start, row1_start, nrows, ncols
+            "file_aat_piece: row_start={}, {}x{} output",
+            row_start, nrows, ncols
         );
     };
 
-    assert!(row0_start < row_count && row1_start < row_count); // start rows must be less than row count
-    assert!(row0_start + nrows <= row_count && row1_start + ncols <= row_count); // start rows + array dimension must be less than or equal to row count
+    // assert nrows == row_count
+    // assert!(row_start < row_count); // !!! cmk row_start must be less than row_count
+    // assert!(row_start + ncols == row_count); // !!! cmk row_start+aat_piece.ncols must equal row_count
+    // assert!(row_start + nrows <= row_count); // !!! cmk row_start+ata_piece.nrows must be less or equal to row_count
 
-    if zero_fill {
-        aat_piece.fill(T::zero());
-    }
+    aat_piece.fill(T::zero());
 
     // Open the file and move to the starting col
     let mut buf_reader = BufReader::new(File::open(filename)?);
+    buf_reader.seek(SeekFrom::Start(
+        offset, // !!!cmk offset + col_start as u64 * row_count as u64 * std::mem::size_of::<T>() as u64,
+    ))?;
 
-    // if nrows != ncols || row0_start != row1_start {
-    let mut row0_reuse = vec![T::nan(); nrows];
-    let mut row1_reuse = vec![T::nan(); ncols];
+    let mut col = vec![T::nan(); row_count];
+
+    // cmk for (col_rel_index, mut ata_row) in ata_piece.axis_iter_mut(nd::Axis(0)).enumerate() {
 
     for col_index in 0..col_count {
         if log_frequency > 0 && col_index % log_frequency == 0 {
             println!("   working on {} of {}", col_index, col_count);
         }
 
-        // Read row0_reuse
-        buf_reader.seek(SeekFrom::Start(
-            offset
-                + (col_index as u64 * row_count as u64 + row0_start as u64)
-                    * std::mem::size_of::<T>() as u64,
-        ))?;
-        read_into(&mut buf_reader, &mut row0_reuse)?;
-
-        // Read row1_reuse
-        buf_reader.seek(SeekFrom::Start(
-            offset
-                + (col_index as u64 * row_count as u64 + row1_start as u64) // !!! cmk could factor out parts
-                    * std::mem::size_of::<T>() as u64,
-        ))?;
-        read_into(&mut buf_reader, &mut row1_reuse)?;
-
-        nd::par_azip!(
-            (mut aat_row in aat_piece.axis_iter_mut(nd::Axis(0)),
-            &row0_val in & row0_reuse,
-             )
-        {
-            for row1_rel_index in 0..ncols {
-                aat_row[row1_rel_index] +=
-                row0_val * row1_reuse[row1_rel_index];
+        // Read next col
+        read_into(&mut buf_reader, &mut col)?;
+        // !!!cmk make parallel
+        for out_col_rel_index in 0..ncols {
+            for row_index in 0..nrows {
+                aat_piece[(row_index, out_col_rel_index)] +=
+                    col[row_index] * col[row_start + out_col_rel_index];
             }
-        });
+        }
+
+        // // Multiple saved sids with new sid
+        // let mut ata_row_trimmed = ata_row.slice_mut(nd::s![..col_save_list.len()]);
+        // nd::par_azip!((
+        //     col_in_range in &col_save_list,
+        //     mut ata_val in ata_row_trimmed.axis_iter_mut(nd::Axis(0))
+        // )
+        // {
+        //     ata_val[()] = col_product(&col_in_range, &col);
+        // });
     }
 
+    // // Reflect the new product values
+    // for row_index in 0usize..ncols - 1 {
+    //     for col_index in row_index..ncols {
+    //         ata_piece[(row_index, col_index)] = ata_piece[(col_index, row_index)];
+    //     }
+    // }
     return Ok(());
 }
 

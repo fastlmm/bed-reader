@@ -879,37 +879,32 @@ fn file_aat(
     iid_step: usize,
     val: &mut nd::ArrayViewMut2<'_, f64>,
 ) -> Result<(), BedErrorPlus> {
-    for iid0_start in (0..iid_count).step_by(iid_step) {
-        let iid0_range_len = iid_step.min(iid_count - iid0_start);
-        for iid1_start in (iid0_start..iid_count).step_by(iid_step) {
-            let iid1_range_len = iid_step.min(iid_count - iid1_start);
-            let mut aat_piece =
-                nd::Array2::<f64>::from_elem((iid0_range_len, iid1_range_len), f64::NAN);
-            file_aat_piece(
-                filename,
-                offset,
-                iid_count,
-                sid_count,
-                iid0_start,
-                iid1_start,
-                &mut aat_piece.view_mut(),
-                true,
-                iid0_range_len,
-                read_into_f64,
-            )?;
-            insert_aat_piece(
-                Range {
-                    start: iid0_start,
-                    end: iid0_start + iid0_range_len,
-                },
-                Range {
-                    start: iid1_start,
-                    end: iid1_start + iid1_range_len,
-                },
-                aat_piece,
-                val,
-            );
-        }
+    for iid_start in (0..iid_count).step_by(iid_step) {
+        let iid_range_len = iid_step.min(iid_count - iid_start);
+        let mut aat_piece = nd::Array2::<f64>::from_elem((iid_count, iid_range_len), f64::NAN);
+        file_aat_piece(
+            filename,
+            offset,
+            iid_count,
+            sid_count,
+            iid_start,
+            &mut aat_piece.view_mut(),
+            iid_range_len,
+            read_into_f64,
+        )?;
+        insert_aat_piece(
+            // !!!cmk redefine insert_aat_piece to have iid_count as input
+            Range {
+                start: 0,
+                end: iid_count,
+            },
+            Range {
+                start: iid_start,
+                end: iid_start + iid_range_len,
+            },
+            aat_piece,
+            val,
+        );
     }
     return Ok(());
 }
