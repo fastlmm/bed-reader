@@ -903,10 +903,9 @@ fn file_aat_piece<T: Float + Sync + Send + AddAssign>(
         );
     };
 
-    // assert nrows == row_count
-    // assert!(row_start < row_count); // !!! cmk row_start must be less than row_count
-    // assert!(row_start + ncols == row_count); // !!! cmk row_start+aat_piece.ncols must equal row_count
-    // assert!(row_start + nrows <= row_count); // !!! cmk row_start+ata_piece.nrows must be less or equal to row_count
+    assert!(row_start < row_count); // !!! cmk row_start must be less than row_count
+                                    // assert!(row_start + nrows == row_count); // !!! cmk row_start+aat_piece.ncols must equal row_count
+                                    // assert!(row_start + ncols <= row_count); // !!! cmk row_start+ata_piece.nrows must be less or equal to row_count
 
     aat_piece.fill(T::zero());
 
@@ -928,30 +927,16 @@ fn file_aat_piece<T: Float + Sync + Send + AddAssign>(
         // Read next col
         read_into(&mut buf_reader, &mut col)?;
         // !!!cmk make parallel
-        for out_col_rel_index in 0..ncols {
-            for row_index in 0..nrows {
-                aat_piece[(row_index, out_col_rel_index)] +=
-                    col[row_index] * col[row_start + out_col_rel_index];
+        for row_index0 in 0..nrows {
+            let val0 = col[row_index0];
+            for row_index1 in 0..ncols {
+                let val1 = col[row_index1 + row_start];
+                let p = val0 * val1;
+                let prev = aat_piece[(row_index0, row_index1)];
+                aat_piece[(row_index0, row_index1)] = prev + p;
             }
         }
-
-        // // Multiple saved sids with new sid
-        // let mut ata_row_trimmed = ata_row.slice_mut(nd::s![..col_save_list.len()]);
-        // nd::par_azip!((
-        //     col_in_range in &col_save_list,
-        //     mut ata_val in ata_row_trimmed.axis_iter_mut(nd::Axis(0))
-        // )
-        // {
-        //     ata_val[()] = col_product(&col_in_range, &col);
-        // });
     }
-
-    // // Reflect the new product values
-    // for row_index in 0usize..ncols - 1 {
-    //     for col_index in row_index..ncols {
-    //         ata_piece[(row_index, col_index)] = ata_piece[(col_index, row_index)];
-    //     }
-    // }
     return Ok(());
 }
 

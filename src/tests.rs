@@ -800,7 +800,7 @@ fn file_ata(
             sid_range_len,
             read_into_f64,
         )?;
-        insert_ata_piece(
+        insert_piece(
             Range {
                 start: sid_start,
                 end: sid_start + sid_range_len,
@@ -813,11 +813,7 @@ fn file_ata(
 }
 
 #[cfg(test)]
-fn insert_ata_piece(
-    sid_range: Range<usize>,
-    piece: nd::Array2<f64>,
-    val: &mut nd::ArrayViewMut2<f64>,
-) {
+fn insert_piece(sid_range: Range<usize>, piece: nd::Array2<f64>, val: &mut nd::ArrayViewMut2<f64>) {
     for range_index in sid_range.clone() {
         for j in range_index - sid_range.start..piece.shape()[0] {
             // this is the inner loop, so pre-computing indexes would speed it up
@@ -879,6 +875,8 @@ fn file_aat(
     iid_step: usize,
     val: &mut nd::ArrayViewMut2<'_, f64>,
 ) -> Result<(), BedErrorPlus> {
+    let (nrows, ncols) = val.dim();
+    assert!(nrows == iid_count && ncols == iid_count); // real assert
     for iid_start in (0..iid_count).step_by(iid_step) {
         let iid_range_len = iid_step.min(iid_count - iid_start);
         let mut aat_piece = nd::Array2::<f64>::from_elem((iid_count, iid_range_len), f64::NAN);
@@ -892,38 +890,15 @@ fn file_aat(
             iid_range_len,
             read_into_f64,
         )?;
-        insert_aat_piece(
-            // !!!cmk redefine insert_aat_piece to have iid_count as input
-            Range {
-                start: 0,
-                end: iid_count,
-            },
-            Range {
-                start: iid_start,
-                end: iid_start + iid_range_len,
-            },
-            aat_piece,
-            val,
-        );
+        println!("piece:\n{:?}", aat_piece);
+
+        for range0_index in 0..iid_count {
+            for range1_index in 0..iid_range_len {
+                val[(range0_index, range1_index + iid_start)] =
+                    aat_piece[(range0_index, range1_index)];
+            }
+        }
+        println!("val:\n{:?}", val);
     }
     return Ok(());
-}
-
-#[cfg(test)]
-fn insert_aat_piece(
-    iid0_range: Range<usize>,
-    iid1_range: Range<usize>,
-    piece: nd::Array2<f64>,
-    val: &mut nd::ArrayViewMut2<f64>,
-) {
-    for range0_index in iid0_range.clone() {
-        for range1_index in iid1_range.clone() {
-            // this is the inner loop, so pre-computing indexes would speed it up
-            val[(range0_index, range1_index)] = piece[(
-                range0_index - iid0_range.start,
-                range1_index - iid1_range.start,
-            )];
-            val[(range1_index, range0_index)] = val[(range0_index, range1_index)];
-        }
-    }
 }
