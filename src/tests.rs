@@ -866,6 +866,22 @@ fn file_aat_small() {
     assert!(allclose(&expected.view(), &out_val.view(), 1e-08, true));
 }
 
+#[test]
+fn file_aat_small2() {
+    let filename = "bed_reader/tests/data/small2_array.memmap";
+    let mut out_val = nd::Array2::<f64>::from_elem((3, 3), f64::NAN);
+    file_aat(filename, 0, 3, 4, 2, &mut out_val.view_mut()).unwrap();
+    println!("{:?}", out_val);
+
+    let expected = nd::arr2(&[
+        [30.0, 70.0, 110.0],
+        [70.0, 174.0, 278.0],
+        [110.0, 278.0, 446.0],
+    ]);
+    println!("{:?}", expected);
+    assert!(allclose(&expected.view(), &out_val.view(), 1e-08, true));
+}
+
 #[cfg(test)]
 fn file_aat(
     filename: &str,
@@ -879,7 +895,8 @@ fn file_aat(
     assert!(nrows == iid_count && ncols == iid_count); // real assert
     for iid_start in (0..iid_count).step_by(iid_step) {
         let iid_range_len = iid_step.min(iid_count - iid_start);
-        let mut aat_piece = nd::Array2::<f64>::from_elem((iid_count, iid_range_len), f64::NAN);
+        let mut aat_piece =
+            nd::Array2::<f64>::from_elem((iid_count - iid_start, iid_range_len), f64::NAN);
         file_aat_piece(
             filename,
             offset,
@@ -892,10 +909,11 @@ fn file_aat(
         )?;
         println!("piece:\n{:?}", aat_piece);
 
-        for range0_index in 0..iid_count {
+        for range0_index in iid_start..iid_count {
             for range1_index in 0..iid_range_len {
-                val[(range0_index, range1_index + iid_start)] =
-                    aat_piece[(range0_index, range1_index)];
+                let val00 = aat_piece[(range0_index - iid_start, range1_index)];
+                val[(range0_index, range1_index + iid_start)] = val00;
+                val[(range1_index + iid_start, range0_index)] = val00;
             }
         }
         println!("val:\n{:?}", val);

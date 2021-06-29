@@ -277,6 +277,22 @@ if __name__ == "__main__":
     tmp_path = Path(r"m:/deldir/tests")
 
     if False:
+        small2_array = np.array(
+            [[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0], [9.0, 10.0, 11.0, 12.0]],
+            order="F",
+        )
+        mm = np.memmap(
+            tmp_path / "small2_array.memmap",
+            dtype="float64",
+            mode="w+",
+            shape=(3, 4),
+            order="F",
+        )
+        mm[:] = small2_array[:]
+        print(mm.offset)
+        mm.flush()
+
+    if False:
         small_array = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], order="F")
         mm = np.memmap(
             tmp_path / "small_array.memmap",

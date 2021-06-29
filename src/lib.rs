@@ -928,7 +928,7 @@ fn file_aat_piece<T: Float + Sync + Send + AddAssign>(
         read_into(&mut buf_reader, &mut col)?;
         // !!!cmk make parallel
         for row_index0 in 0..nrows {
-            let val0 = col[row_index0];
+            let val0 = col[row_index0 + row_start];
             for row_index1 in 0..ncols {
                 let val1 = col[row_index1 + row_start];
                 let p = val0 * val1;
