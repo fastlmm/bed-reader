@@ -911,11 +911,8 @@ fn file_aat_piece<T: Float + Sync + Send + AddAssign>(
 
     // Open the file and move to the starting col
     let mut buf_reader = BufReader::new(File::open(filename)?);
-    buf_reader.seek(SeekFrom::Start(
-        offset, // !!!cmk offset + col_start as u64 * row_count as u64 * std::mem::size_of::<T>() as u64,
-    ))?;
 
-    let mut col = vec![T::nan(); row_count];
+    let mut col = vec![T::nan(); row_count - row_start];
 
     // cmk for (col_rel_index, mut ata_row) in ata_piece.axis_iter_mut(nd::Axis(0)).enumerate() {
 
@@ -925,12 +922,15 @@ fn file_aat_piece<T: Float + Sync + Send + AddAssign>(
         }
 
         // Read next col
+        buf_reader.seek(SeekFrom::Start(
+            offset + (col_index * row_count + row_start) as u64 * std::mem::size_of::<T>() as u64,
+        ))?;
         read_into(&mut buf_reader, &mut col)?;
         // !!!cmk make parallel
         for row_index1 in 0..ncols {
-            let val1 = col[row_index1 + row_start];
+            let val1 = col[row_index1];
             for row_index0 in row_index1..nrows {
-                let val0 = col[row_index0 + row_start];
+                let val0 = col[row_index0];
                 let p = val0 * val1;
                 let prev = aat_piece[(row_index0, row_index1)];
                 aat_piece[(row_index0, row_index1)] = prev + p;

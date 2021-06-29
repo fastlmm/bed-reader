@@ -909,11 +909,13 @@ fn file_aat(
         )?;
         println!("piece:\n{:?}", aat_piece);
 
-        for range0_index in iid_start..iid_count {
+        for range0_index in 0..iid_count - iid_start {
             for range1_index in 0..iid_range_len {
-                let val00 = aat_piece[(range0_index - iid_start, range1_index)];
-                val[(range0_index, range1_index + iid_start)] = val00;
-                val[(range1_index + iid_start, range0_index)] = val00;
+                let val00 = aat_piece[(range0_index, range1_index)];
+                val[(range0_index + iid_start, range1_index + iid_start)] = val00;
+                if range0_index > range1_index {
+                    val[(range1_index + iid_start, range0_index + iid_start)] = val00;
+                }
             }
         }
         println!("val:\n{:?}", val);
