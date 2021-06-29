@@ -904,8 +904,8 @@ fn file_aat_piece<T: Float + Sync + Send + AddAssign>(
     };
 
     assert!(row_start < row_count); // !!! cmk row_start must be less than row_count
-                                    // assert!(row_start + nrows == row_count); // !!! cmk row_start+aat_piece.ncols must equal row_count
-                                    // assert!(row_start + ncols <= row_count); // !!! cmk row_start+ata_piece.nrows must be less or equal to row_count
+    assert!(row_start + nrows == row_count); // !!! cmk row_start+aat_piece.ncols must equal row_count
+    assert!(row_start + ncols <= row_count); // !!! cmk row_start+ata_piece.nrows must be less or equal to row_count
 
     aat_piece.fill(T::zero());
 
@@ -913,8 +913,6 @@ fn file_aat_piece<T: Float + Sync + Send + AddAssign>(
     let mut buf_reader = BufReader::new(File::open(filename)?);
 
     let mut col = vec![T::nan(); row_count - row_start];
-
-    // cmk for (col_rel_index, mut ata_row) in ata_piece.axis_iter_mut(nd::Axis(0)).enumerate() {
 
     for col_index in 0..col_count {
         if log_frequency > 0 && col_index % log_frequency == 0 {
@@ -926,17 +924,20 @@ fn file_aat_piece<T: Float + Sync + Send + AddAssign>(
             offset + (col_index * row_count + row_start) as u64 * std::mem::size_of::<T>() as u64,
         ))?;
         read_into(&mut buf_reader, &mut col)?;
-        // !!!cmk make parallel
-        for row_index1 in 0..ncols {
+
+        nd::par_azip!(
+            (index row_index1,
+            mut aat_col in aat_piece.axis_iter_mut(nd::Axis(1))
+        )
+        {
             let val1 = col[row_index1];
             for row_index0 in row_index1..nrows {
-                let val0 = col[row_index0];
-                let p = val0 * val1;
-                let prev = aat_piece[(row_index0, row_index1)];
-                aat_piece[(row_index0, row_index1)] = prev + p;
+                aat_col[row_index0] += val1 * col[row_index0];
             }
-        }
+        });
     }
+
+    // !!!cmk should we reflect?
     return Ok(());
 }
 
