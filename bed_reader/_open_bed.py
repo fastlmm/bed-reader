@@ -211,7 +211,7 @@ class open_bed:
         skip_format_check: bool = False,
         fam_filepath: Union[str, Path] = None,
         bim_filepath: Union[str, Path] = None,
-    ):  # !!!document these new optionals. they are here
+    ):
         self.filepath = Path(filepath)
         self.count_A1 = count_A1
         self._num_threads = num_threads

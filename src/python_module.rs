@@ -315,13 +315,13 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         Ok(())
     }
 
-    #[pyfn(m, "file_ata_piece_float32_orderf")]
+    #[pyfn(m, "file_ata_piece_f32_orderf")]
     fn file_ata_piece_f32_py(
         _py: Python<'_>,
         filename: &str,
         offset: u64,
         row_count: usize,
-        col_count: usize, // !!!cmk
+        col_count: usize,
         col_start: usize,
         ata_piece: &PyArray2<f32>,
         num_threads: usize,
@@ -345,7 +345,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         Ok(())
     }
 
-    #[pyfn(m, "file_ata_piece_float64_orderf")]
+    #[pyfn(m, "file_ata_piece_f64_orderf")]
     fn file_ata_piece_f64_py(
         _py: Python<'_>,
         filename: &str,
@@ -404,7 +404,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         Ok(())
     }
 
-    #[pyfn(m, "file_aat_piece_float32_orderf")]
+    #[pyfn(m, "file_aat_piece_f32_orderf")]
     fn file_aat_piece_f32_py(
         _py: Python<'_>,
         filename: &str,
@@ -434,7 +434,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         Ok(())
     }
 
-    #[pyfn(m, "file_aat_piece_float64_orderf")]
+    #[pyfn(m, "file_aat_piece_f64_orderf")]
     fn file_aat_piece_f64_py(
         _py: Python<'_>,
         filename: &str,

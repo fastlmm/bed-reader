@@ -6,24 +6,21 @@ import numpy as np
 import pytest
 
 from bed_reader import (
-    file_aat_piece_float64_orderf,
-    file_ata_piece_float64_orderf,
+    file_aat_piece_f64_orderf,
+    file_ata_piece_f64_orderf,
     file_b_less_aatbx,
     file_dot_piece,
 )
 from bed_reader._open_bed import get_num_threads, open_bed  # noqa
 
 
-# !!!cmk file_ata_piece_float64_orderf should not have iid or sid in name
-# !!!cmk should file_ata_piece_float64_orderf have col_count so can check don't go out of bounds
-# !!! cmk should there be a way to get a smaller piece back?
 def file_ata(filename, offset, iid_count, sid_count, sid_step):
     ata = np.full((sid_count, sid_count), np.nan)
     for sid_index in range(0, sid_count, sid_step):
         sid_range_len = min(sid_step, sid_count - sid_index)
         ata_piece = np.full((sid_count - sid_index, sid_range_len), np.nan)
         if sid_index % 2 == 0:  # test new and old method
-            file_ata_piece_float64_orderf(
+            file_ata_piece_f64_orderf(
                 str(filename),
                 offset,
                 iid_count,
@@ -50,12 +47,11 @@ def file_ata(filename, offset, iid_count, sid_count, sid_step):
 
 
 def file_aat(filename, offset, iid_count, sid_count, iid_step):
-    # !!!cmk should be F or C? and which first?
     aat = np.full((iid_count, iid_count), np.nan)
     for iid_index in range(0, iid_count, iid_step):
         iid_range_len = min(iid_step, iid_count - iid_index)
         aat_piece = np.full((iid_count - iid_index, iid_range_len), np.nan)
-        file_aat_piece_float64_orderf(
+        file_aat_piece_f64_orderf(
             str(filename),
             offset,
             iid_count,

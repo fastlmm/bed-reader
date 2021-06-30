@@ -94,6 +94,9 @@ pub enum BedError {
 
     #[error("Cannot open metadata file. '{0}'")]
     CannotOpenFamOrBim(String),
+
+    #[error("start, count, and/or output matrix size are illegal.")]
+    IllegalStartCountOutput,
 }
 
 fn read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
@@ -779,12 +782,64 @@ fn read_into_f32(src: &mut BufReader<File>, dst: &mut [f32]) -> std::io::Result<
     src.read_f32_into::<LittleEndian>(dst)
 }
 
-// !!!cmk what if columns are in multiple files????
+/* Here are Python algorithms that shows how to do a low-memory multiply A (or A.T) x B (or B.T)
+   They are used by file_ata_piece and file_aat_piece with some optimizations for A and B being the same.
+
+output_list = [np.zeros((4,4)) for i in range(4)]
+
+# a.T.dot(b)
+for a_col2 in range(0,4,2): # 1 pass through A, returning output chunk about the same size writing in one pass
+    buffer_a2 = a[:,a_col2:a_col2+2]
+    for b_col in range(4): # A1/a1 passes through B
+        buffer_b = b[:,b_col]
+        for i in range(4):
+            b_val = buffer_b[i]
+            a_slice = buffer_a2[i,:]
+            for k in range(2): # A1/a1 * A0 passes through the output
+                output_list[0][a_col2+k,b_col] += a_slice[k]*b_val
+
+# a.dot(b.T)
+for out_col2 in range(0,4,2): # 1 pass through output, returning chunk on each pass
+    for col in range(4): # O1/o1 passes through A and B
+        buffer_a = a[:,col]
+        buffer_b = b[:,col]
+        for k in range(2):
+            for i in range(4):
+                output_list[1][i,out_col2+k] += buffer_a[i]*buffer_b[out_col2+k]
+
+# a.T.dot(b.T)
+for a_col2 in range(0,4,2): # 1 pass through A, returning an output chunk on each pass
+    buffer_a2 = a[:,a_col2:a_col2+2]
+    for b_col in range(4):
+        buffer_b = b[:,b_col]
+        for i in range(4):
+            b_val = buffer_b[i]
+            for k in range(2):
+                output_list[2][a_col2+k,i] += buffer_a2[b_col,k]*b_val
+
+# a.dot(b)  - but should instead do  (b.T.dot(a.T)).T
+for b_col2 in range(0,4,2): #Transpose of preceding one
+    buffer_b2 = b[:,b_col2:b_col2+2]
+    for a_col in range(4):
+        buffer_a = a[:,a_col]
+        for i in range(4):
+            a_val = buffer_a[i]
+            for k in range(2):
+                output_list[3][i,b_col2+k] += buffer_b2[a_col,k]*a_val
+
+
+for output in output_list:
+    print(output)
+ */
+
 // Given A, a matrix in Fortran order in a file
 // with row_count rows and col_count columns,
-// Returns part of A.T x A for the columns in sid_start-and-beyond to sid_start-and-in-range.
+// and given a starting column,
+// returns part of A.T x A, the column vs column product.
+// The piece piece returned has dimensions
+// (col_count-col_start) x ncols
+// where ncols <= (col_count-col_start)
 // Makes only one pass through the file.
-// Uses no more than memory needed for columns of in-range sids plus 1.
 fn file_ata_piece<T: Float + Send + Sync + AddAssign>(
     filename: &str,
     offset: u64,
@@ -796,9 +851,12 @@ fn file_ata_piece<T: Float + Send + Sync + AddAssign>(
     read_into: fn(&mut BufReader<File>, &mut [T]) -> std::io::Result<()>,
 ) -> Result<(), BedErrorPlus> {
     let (nrows, ncols) = ata_piece.dim();
-    assert!(col_start < col_count); // !!! cmk col_start must be less than col_count
-    assert!(col_start + nrows == col_count); // !!! cmk col_start+ata_piece.nrows must equal col_count
-    assert!(col_start + ncols <= col_count); // !!! cmk col_start+ata_piece.ncols must be less or equal to col_count
+    if (col_start >= col_count)
+        || (col_start + nrows != col_count)
+        || (col_start + ncols > col_count)
+    {
+        return Err(BedErrorPlus::BedError(BedError::CannotConvertBetaToFromF64));
+    }
 
     _file_ata_piece_internal(
         filename,
@@ -882,8 +940,14 @@ fn col_product<T: Float + AddAssign>(col_i: &[T], col_j: &[T]) -> T {
     product
 }
 
-// !!! cmk raise error if start+row(or col) > count
-// !!! cmk add comments
+// Given A, a matrix in Fortran order in a file
+// with row_count rows and col_count columns,
+// and given a starting column,
+// returns part of A x A.T, the row vs row product.
+// The piece piece returned has dimensions
+// (row_count-row_start) x ncols
+// where ncols <= (row_count-row_start)
+// Makes only one pass through the file.
 fn file_aat_piece<T: Float + Sync + Send + AddAssign>(
     filename: &str,
     offset: u64,
@@ -903,9 +967,12 @@ fn file_aat_piece<T: Float + Sync + Send + AddAssign>(
         );
     };
 
-    assert!(row_start < row_count); // !!! cmk row_start must be less than row_count
-    assert!(row_start + nrows == row_count); // !!! cmk row_start+aat_piece.ncols must equal row_count
-    assert!(row_start + ncols <= row_count); // !!! cmk row_start+ata_piece.nrows must be less or equal to row_count
+    if (row_start >= row_count)
+        || (row_start + nrows != row_count)
+        || (row_start + ncols > row_count)
+    {
+        return Err(BedErrorPlus::BedError(BedError::CannotConvertBetaToFromF64));
+    }
 
     aat_piece.fill(T::zero());
 
@@ -937,7 +1004,8 @@ fn file_aat_piece<T: Float + Sync + Send + AddAssign>(
         });
     }
 
-    // !!!cmk should we reflect?
+    // Notice that ata reflects and aat doesn't. They don't need
+    // to be the same, but they could be.
     return Ok(());
 }
 
