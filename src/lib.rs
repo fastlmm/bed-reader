@@ -481,7 +481,7 @@ pub fn impute_and_zero_mean_snps<
     if val.stride_of(nd::Axis(0)) <= val.stride_of(nd::Axis(1)) {
         let result_list = nd::Zip::from(val.axis_iter_mut(nd::Axis(1)))
             .and(stats.axis_iter_mut(nd::Axis(0)))
-            .par_apply_collect(|mut col, mut stats_row| {
+            .par_map_collect(|mut col, mut stats_row| {
                 _process_sid(
                     &mut col,
                     apply_in_place,

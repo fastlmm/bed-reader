@@ -142,3 +142,8 @@ bed_reader/tests/data/tooshort.bed.bak
 /temp/
 doc/source/conf.py
 ignoredefault.profraw
+old2Cargo.lock
+old3Cargo.lock
+old4cargo.lock
+old5Cargo.lock
+oldCargo.lock
