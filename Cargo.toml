@@ -22,7 +22,12 @@ classifiers=[
         "Programming Language :: Python",
     ]
 requires-dist = ["numpy>=1.13.3", "pandas>=0.25.1", "pooch>=1.1.1"]
-project-url = { Homepage= "https://fastlmm.github.io", "Bug Tracker"= "https://github.com/fastlmm/bed-reader/issues", Documentation= "http://fastlmm.github.io/bed-reader", "Source Code"= "https://github.com/fastlmm/bed-reader"}
+
+[package.metadata.maturin.project-url]
+Homepage= "https://fastlmm.github.io"
+"Source Code" = "https://github.com/fastlmm/bed-reader"
+"Bug Tracker" = "https://github.com/fastlmm/bed-reader/issues"
+Documentation = "http://fastlmm.github.io/bed-reader"
 
 [lib]
 name = "bed_reader"
