@@ -86,7 +86,8 @@ jobs:
         pip install *.whl
         pip uninstall bed-reader --yes
         #ls -las -R
-        mkdir a+rw bed-reader/target/wheels
+        mkdir -p bed-reader/target/wheels
+        chmod a+rw bed-reader/target/wheels
         ls -las -R bed-reader
         maturin develop
         pip install -r requirements-dev.txt
