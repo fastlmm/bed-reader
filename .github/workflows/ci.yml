@@ -85,7 +85,9 @@ jobs:
         python -m pip install --upgrade pip maturin
         pip install *.whl
         pip uninstall bed-reader --yes
-        ls -las -R
+        #ls -las -R
+        mkdir a+rw bed-reader/target/wheels
+        ls -las -R bed-reader
         maturin develop
         pip install -r requirements-dev.txt
         pytest bed_reader
