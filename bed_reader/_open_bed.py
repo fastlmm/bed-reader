@@ -64,7 +64,7 @@ _meta_meta = {
 }
 
 
-def get_num_threads(num_threads):
+def get_num_threads(num_threads=None):
     if num_threads is not None:
         return num_threads
     if "PST_NUM_THREADS" in os.environ:

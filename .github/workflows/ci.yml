@@ -20,8 +20,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macOS-latest]
-        python-version: [3.7, 3.8, 3.9]
+        os: [ubuntu-latest] #, windows-latest, macOS-latest]
+        python-version: [3.7] #, 3.8, 3.9]
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout
@@ -85,6 +85,7 @@ jobs:
         python -m pip install --upgrade pip maturin
         pip install *.whl
         pip uninstall bed-reader --yes
+        ls -las *.whl
         maturin develop
         pip install -r requirements-dev.txt
         pytest bed_reader
