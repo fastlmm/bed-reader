@@ -86,6 +86,8 @@ jobs:
         pip install *.whl
         pip uninstall bed-reader --yes
         ls -las *.whl
+        chmod a+w *.whl
+        ls -las *.whl
         maturin develop
         pip install -r requirements-dev.txt
         pytest bed_reader
