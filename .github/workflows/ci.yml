@@ -84,12 +84,13 @@ jobs:
         virtualenv vEnv; source vEnv/bin/activate
         python -m pip install --upgrade pip maturin
         pip install *.whl
-        pip uninstall bed-reader --yes
-        #ls -las -R
         mkdir -p bed-reader/target/wheels
         chmod a+rw bed-reader/target/wheels
         ls -las -R bed-reader
         ls -R -d $PWD/* -las    
+        cp *.whl /home/runner/work/bed-reader/bed-reader/target/wheels/bed_reader-0.2.7-cp37-cp37m-linux_x86_64.whl
+        pip uninstall bed-reader --yes
+        #ls -las -R
         export RUST_LOG=debug    
         maturin develop
         pip install -r requirements-dev.txt
