@@ -89,7 +89,8 @@ jobs:
         mkdir -p bed-reader/target/wheels
         chmod a+rw bed-reader/target/wheels
         ls -las -R bed-reader
-        ls -R -d $PWD/* -las        
+        ls -R -d $PWD/* -las    
+        export RUST_LOG=debug    
         maturin develop
         pip install -r requirements-dev.txt
         pytest bed_reader
