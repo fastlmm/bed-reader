@@ -90,9 +90,9 @@ jobs:
         # ls -R -d $PWD/* -las    
         # cp *.whl /home/runner/work/bed-reader/bed-reader/target/wheels/bed_reader-0.2.7-cp37-cp37m-linux_x86_64.whl
         pip uninstall bed-reader --yes
-        ls -las
-        chown -R root .
-        ls -las
+        ls -las bed_reader
+        sudo chown -R root bed_reader
+        ls -las bed_reader
         # export RUST_LOG=debug    
         maturin develop
         pip install -r requirements-dev.txt
