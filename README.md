@@ -3,7 +3,7 @@
 ![PyPI](https://img.shields.io/pypi/v/bed-reader)
 
 
-Read and write the PLINK BED format, simply and efficiently.
+Read and write the PLINK BED format, simply and efficiently. 
 
 Features:
 
