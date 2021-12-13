@@ -87,6 +87,7 @@ jobs:
         pip install -r requirements.txt
         echo "requirements-dev"
         pip install -r requirements-dev.txt
+        cargo clean
         maturin develop
         echo "numpy"
         pip install numpy
