@@ -83,19 +83,32 @@ jobs:
         pip install virtualenv
         virtualenv vEnv; source vEnv/bin/activate
         python -m pip install --upgrade pip maturin
-        pip install *.whl
-        # mkdir -p bed-reader/target/wheels
-        # chmod a+rw bed-reader/target/wheels
-        # ls -las -R bed-reader
-        # ls -R -d $PWD/* -las    
-        # cp *.whl /home/runner/work/bed-reader/bed-reader/target/wheels/bed_reader-0.2.7-cp37-cp37m-linux_x86_64.whl
-        pip uninstall bed-reader --yes
-        ls -las bed_reader
-        sudo chown -R root bed_reader
-        ls -las bed_reader
-        # export RUST_LOG=debug    
-        maturin develop
+        echo "requirements"
+        pip install -r requirements.txt
+        echo "requirements-dev"
         pip install -r requirements-dev.txt
+        maturin develop
+        echo "numpy"
+        pip install numpy
+        echo "pytest"
+        pytest bed_reader
+
+        # pip install virtualenv
+        # virtualenv vEnv; source vEnv/bin/activate
+        # python -m pip install --upgrade pip maturin
+        # pip install *.whl
+        # # mkdir -p bed-reader/target/wheels
+        # # chmod a+rw bed-reader/target/wheels
+        # # ls -las -R bed-reader
+        # # ls -R -d $PWD/* -las    
+        # # cp *.whl /home/runner/work/bed-reader/bed-reader/target/wheels/bed_reader-0.2.7-cp37-cp37m-linux_x86_64.whl
+        # pip uninstall bed-reader --yes
+        # ls -las bed_reader
+        # sudo chown -R root bed_reader
+        # ls -las bed_reader
+        # # export RUST_LOG=debug    
+        # maturin develop
+        # pip install -r requirements-dev.txt
         pytest bed_reader
     - name: Test Python on Windows
       if: runner.os == 'Windows'
