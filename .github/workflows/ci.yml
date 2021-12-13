@@ -87,6 +87,11 @@ jobs:
         pip install -r requirements.txt
         echo "requirements-dev"
         pip install -r requirements-dev.txt
+        echo "pwd"
+        pwd
+        echo "ls -las"
+        ls -las
+        echo "cargo clean"
         cargo clean
         maturin develop
         echo "numpy"
@@ -110,7 +115,7 @@ jobs:
         # # export RUST_LOG=debug    
         # maturin develop
         # pip install -r requirements-dev.txt
-        pytest bed_reader
+        # pytest bed_reader
     - name: Test Python on Windows
       if: runner.os == 'Windows'
       run: |
