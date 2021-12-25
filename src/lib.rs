@@ -9,10 +9,7 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use rayon::{iter::ParallelBridge, ThreadPoolBuildError};
 use statrs::distribution::{Beta, Continuous};
 use std::ops::AddAssign;
-use std::{
-    convert::TryFrom,
-    ops::{Div, Sub},
-};
+use std::ops::{Div, Sub};
 use std::{
     fs::File,
     io::{BufRead, BufWriter, Read, Write},

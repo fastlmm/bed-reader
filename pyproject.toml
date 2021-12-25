@@ -8,3 +8,6 @@ multi_line_output = 3
 
 [tool.black]
 line-length = 88
+
+[tool.flake8]
+ignore = E501 E741 E203 W503 W0212 W0622 R0915 E743
