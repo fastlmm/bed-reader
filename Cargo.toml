@@ -32,7 +32,7 @@ Documentation = "http://fastlmm.github.io/bed-reader"
 
 [lib]
 name = "bed_reader"
-crate-type = ["cdylib", "rlib"]
+crate-type = ["cdylib"]
 
 [dependencies]
 thiserror = "1.0.30"
