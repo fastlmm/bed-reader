@@ -15,7 +15,7 @@ use crate::{
 
 #[pymodule]
 fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
-    // See User's guide: https://pyo3.rs/v0.13.1/
+    // See User's guide: https://pyo3.rs/v0.15.1/
     // mutable example (no return) see https://github.com/PyO3/rust-numpy
     // https://pyo3.rs/v0.13.1/exception.html
 

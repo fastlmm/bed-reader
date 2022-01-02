@@ -1,5 +1,8 @@
 // Inspired by C++ version by Chris Widmer and Carl Kadie
 
+// See: https://towardsdatascience.com/nine-rules-for-writing-python-extensions-in-rust-d35ea3a4ec29?sk=f8d808d5f414154fdb811e4137011437
+// for an article on this project uses Rust to create a Python extension.
+
 use byteorder::{LittleEndian, ReadBytesExt};
 use core::fmt::Debug;
 use ndarray as nd;
