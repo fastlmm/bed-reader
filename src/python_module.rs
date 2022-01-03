@@ -14,7 +14,7 @@ use crate::{
 };
 
 #[pymodule]
-fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
+fn bed_reader(m: &PyModule) -> PyResult<()> {
     // See User's guide: https://pyo3.rs/v0.15.1/
     // mutable example (no return) see https://github.com/PyO3/rust-numpy
     // https://pyo3.rs/v0.13.1/exception.html
@@ -43,7 +43,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[pyfn(m)]
     #[pyo3(name = "read_f64")]
     fn read_f64_py(
-        _py: Python<'_>,
         filename: &str,
         iid_count: usize,
         sid_count: usize,
@@ -79,7 +78,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[pyfn(m)]
     #[pyo3(name = "read_f32")]
     fn read_f32_py(
-        _py: Python<'_>,
         filename: &str,
         iid_count: usize,
         sid_count: usize,
@@ -115,7 +113,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[pyfn(m)]
     #[pyo3(name = "read_i8")]
     fn read_i8_py(
-        _py: Python<'_>,
         filename: &str,
         iid_count: usize,
         sid_count: usize,
@@ -144,7 +141,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[pyfn(m)]
     #[pyo3(name = "write_f64")]
     fn write_f64_py(
-        _py: Python<'_>,
         filename: &str,
         count_a1: bool,
         val: &PyArray2<f64>,
@@ -160,7 +156,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[pyfn(m)]
     #[pyo3(name = "write_f32")]
     fn write_f32_py(
-        _py: Python<'_>,
         filename: &str,
         count_a1: bool,
         val: &PyArray2<f32>,
@@ -176,7 +171,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[pyfn(m)]
     #[pyo3(name = "write_i8")]
     fn write_i8_py(
-        _py: Python<'_>,
         filename: &str,
         count_a1: bool,
         val: &PyArray2<i8>,
@@ -192,7 +186,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[pyfn(m)]
     #[pyo3(name = "subset_f64_f64")]
     fn subset_f64_f64(
-        _py: Python<'_>,
         val_in: &PyArray3<f64>,
         iid_index: &PyArray1<usize>,
         sid_index: &PyArray1<usize>,
@@ -216,7 +209,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[pyfn(m)]
     #[pyo3(name = "subset_f32_f64")]
     fn subset_f32_f64(
-        _py: Python<'_>,
         val_in: &PyArray3<f32>,
         iid_index: &PyArray1<usize>,
         sid_index: &PyArray1<usize>,
@@ -240,7 +232,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[pyfn(m)]
     #[pyo3(name = "subset_f32_f32")]
     fn subset_f32_f32(
-        _py: Python<'_>,
         val_in: &PyArray3<f32>,
         iid_index: &PyArray1<usize>,
         sid_index: &PyArray1<usize>,
@@ -264,7 +255,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[pyfn(m)]
     #[pyo3(name = "standardize_f32")]
     fn standardize_f32(
-        _py: Python<'_>,
         val: &PyArray2<f32>,
         beta_not_unit_variance: bool,
         beta_a: f64,
@@ -300,7 +290,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[pyfn(m)]
     #[pyo3(name = "standardize_f64")]
     fn standardize_f64(
-        _py: Python<'_>,
         val: &PyArray2<f64>,
         beta_not_unit_variance: bool,
         beta_a: f64,
@@ -329,7 +318,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[pyfn(m)]
     #[pyo3(name = "file_ata_piece_f32_orderf")]
     fn file_ata_piece_f32_py(
-        _py: Python<'_>,
         filename: &str,
         offset: u64,
         row_count: usize,
@@ -360,7 +348,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[pyfn(m)]
     #[pyo3(name = "file_ata_piece_f64_orderf")]
     fn file_ata_piece_f64_py(
-        _py: Python<'_>,
         filename: &str,
         offset: u64,
         row_count: usize,
@@ -392,7 +379,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[pyfn(m)]
     #[pyo3(name = "file_dot_piece")]
     fn file_dot_piece_py(
-        _py: Python<'_>,
         filename: &str,
         offset: u64,
         row_count: usize,
@@ -421,7 +407,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[pyfn(m)]
     #[pyo3(name = "file_aat_piece_f32_orderf")]
     fn file_aat_piece_f32_py(
-        _py: Python<'_>,
         filename: &str,
         offset: u64,
         row_count: usize,
@@ -452,7 +437,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[pyfn(m)]
     #[pyo3(name = "file_aat_piece_f64_orderf")]
     fn file_aat_piece_f64_py(
-        _py: Python<'_>,
         filename: &str,
         offset: u64,
         row_count: usize,
@@ -483,7 +467,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[pyfn(m)]
     #[pyo3(name = "file_b_less_aatbx")]
     fn file_b_less_aatbx_py(
-        _py: Python<'_>,
         a_filename: &str,
         offset: u64,
         iid_count: usize,
