@@ -42,7 +42,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     #[pyfn(m)]
     #[pyo3(name = "read_f64")]
-    fn read_f64_py(
+    fn read_f64(
         filename: &str,
         iid_count: usize,
         sid_count: usize,
@@ -77,7 +77,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     #[pyfn(m)]
     #[pyo3(name = "read_f32")]
-    fn read_f32_py(
+    fn read_f32(
         filename: &str,
         iid_count: usize,
         sid_count: usize,
@@ -112,7 +112,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     #[pyfn(m)]
     #[pyo3(name = "read_i8")]
-    fn read_i8_py(
+    fn read_i8(
         filename: &str,
         iid_count: usize,
         sid_count: usize,
