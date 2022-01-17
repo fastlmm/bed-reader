@@ -388,8 +388,8 @@ fn subset1() {
 fn fill_in() {
     let filename = "bed_reader/tests/data/some_missing.bed";
 
-    for output_is_order_f_ptr in [false, true].iter() {
-        let mut val = read(filename, *output_is_order_f_ptr, true, f64::NAN).unwrap();
+    for output_is_orderf_ptr in [false, true].iter() {
+        let mut val = read(filename, *output_is_orderf_ptr, true, f64::NAN).unwrap();
         let mut stats = nd::Array2::<f64>::zeros((val.dim().1, 2));
 
         impute_and_zero_mean_snps(
@@ -415,7 +415,7 @@ fn fill_in() {
             _ => panic!("test failure"),
         }
 
-        let mut val = read(filename, *output_is_order_f_ptr, true, f64::NAN).unwrap();
+        let mut val = read(filename, *output_is_orderf_ptr, true, f64::NAN).unwrap();
         let result = impute_and_zero_mean_snps(
             &mut val.view_mut(),
             Dist::Beta { a: -10.0, b: 0.0 },
@@ -455,10 +455,10 @@ fn fill_in() {
 
 #[test]
 fn standardize_unit() {
-    for output_is_order_f_ptr in [true, false].iter() {
+    for output_is_orderf_ptr in [true, false].iter() {
         let mut val = read(
             r"bed_reader/tests/data/toydata.5chrom.bed",
-            *output_is_order_f_ptr,
+            *output_is_orderf_ptr,
             false,
             f64::NAN,
         )
@@ -531,10 +531,10 @@ fn div_4() {
 
 #[test]
 fn standardize_beta() {
-    for output_is_order_f_ptr in [true, false].iter() {
+    for output_is_orderf_ptr in [true, false].iter() {
         let mut val = read(
             r"bed_reader/tests/data/toydata.5chrom.bed",
-            *output_is_order_f_ptr,
+            *output_is_orderf_ptr,
             false,
             f64::NAN,
         )
@@ -559,8 +559,8 @@ fn read_errors() {
     let sid_count = 200;
     let iid_index = (0..iid_count).collect::<Vec<usize>>();
     let sid_index = (0..iid_count).collect::<Vec<usize>>();
-    let output_is_order_f = true;
-    let shape = ShapeBuilder::set_f((iid_index.len(), sid_index.len()), output_is_order_f);
+    let output_is_orderf = true;
+    let shape = ShapeBuilder::set_f((iid_index.len(), sid_index.len()), output_is_orderf);
     let mut val = nd::Array2::<f64>::default(shape);
 
     match read_no_alloc(

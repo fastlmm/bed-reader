@@ -298,13 +298,13 @@ pub fn read_with_indexes<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
     filename: &str,
     iid_index: &[usize],
     sid_index: &[usize],
-    output_is_order_f: bool,
+    output_is_orderf: bool,
     count_a1: bool,
     missing_value: TOut,
 ) -> Result<nd::Array2<TOut>, BedErrorPlus> {
     let (iid_count, sid_count) = counts(filename)?;
 
-    let shape = ShapeBuilder::set_f((iid_index.len(), sid_index.len()), output_is_order_f);
+    let shape = ShapeBuilder::set_f((iid_index.len(), sid_index.len()), output_is_orderf);
     let mut val = nd::Array2::<TOut>::default(shape);
 
     read_no_alloc(
@@ -323,7 +323,7 @@ pub fn read_with_indexes<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
 
 pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
     filename: &str,
-    output_is_order_f: bool,
+    output_is_orderf: bool,
     count_a1: bool,
     missing_value: TOut,
 ) -> Result<nd::Array2<TOut>, BedErrorPlus> {
@@ -332,7 +332,7 @@ pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
     let iid_index: Vec<usize> = (0..iid_count).collect();
     let sid_index: Vec<usize> = (0..sid_count).collect();
 
-    let shape = ShapeBuilder::set_f((iid_count, sid_count), output_is_order_f);
+    let shape = ShapeBuilder::set_f((iid_count, sid_count), output_is_orderf);
     let mut val = nd::Array2::<TOut>::default(shape);
 
     read_no_alloc(

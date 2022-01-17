@@ -41,6 +41,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
+    #[pyo3(name = "read_f64")]
     fn read_f64(
         filename: &str,
         iid_count: usize,
@@ -75,6 +76,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
+    #[pyo3(name = "read_f32")]
     fn read_f32(
         filename: &str,
         iid_count: usize,
@@ -109,6 +111,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
+    #[pyo3(name = "read_i8")]
     fn read_i8(
         filename: &str,
         iid_count: usize,
@@ -137,6 +140,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
+    #[pyo3(name = "write_f64")]
     fn write_f64(
         filename: &str,
         count_a1: bool,
@@ -151,6 +155,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
+    #[pyo3(name = "write_f32")]
     fn write_f32(
         filename: &str,
         count_a1: bool,
@@ -165,6 +170,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
+    #[pyo3(name = "write_i8")]
     fn write_i8(
         filename: &str,
         count_a1: bool,
@@ -179,6 +185,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
+    #[pyo3(name = "subset_f64_f64")]
     fn subset_f64_f64(
         val_in: &PyArray3<f64>,
         iid_index: &PyArray1<usize>,
@@ -201,6 +208,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
+    #[pyo3(name = "subset_f32_f64")]
     fn subset_f32_f64(
         val_in: &PyArray3<f32>,
         iid_index: &PyArray1<usize>,
@@ -223,6 +231,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
+    #[pyo3(name = "subset_f32_f32")]
     fn subset_f32_f32(
         val_in: &PyArray3<f32>,
         iid_index: &PyArray1<usize>,
@@ -245,6 +254,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
+    #[pyo3(name = "standardize_f32")]
     fn standardize_f32(
         val: &PyArray2<f32>,
         beta_not_unit_variance: bool,
@@ -279,6 +289,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
+    #[pyo3(name = "standardize_f64")]
     fn standardize_f64(
         val: &PyArray2<f64>,
         beta_not_unit_variance: bool,
@@ -306,7 +317,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
-    fn file_ata_piece_f32_py(
+    #[pyo3(name = "file_ata_piece_f32_orderf")]
+    fn file_ata_piece_f32_orderf(
         filename: &str,
         offset: u64,
         row_count: usize,
@@ -335,7 +347,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
-    fn file_ata_piece_f64_py(
+    #[pyo3(name = "file_ata_piece_f64_orderf")]
+    fn file_ata_piece_f64_orderf(
         filename: &str,
         offset: u64,
         row_count: usize,
@@ -365,7 +378,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     // Old version of function for backwards compatibility
     #[pyfn(m)]
-    fn file_dot_piece_py(
+    #[pyo3(name = "file_dot_piece")]
+    fn file_dot_piece(
         filename: &str,
         offset: u64,
         row_count: usize,
@@ -392,7 +406,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
-    fn file_aat_piece_f32_py(
+    #[pyo3(name = "file_aat_piece_f32_orderf")]
+    fn file_aat_piece_f32_orderf(
         filename: &str,
         offset: u64,
         row_count: usize,
@@ -421,7 +436,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
-    fn file_aat_piece_f64_py(
+    #[pyo3(name = "file_aat_piece_f64_orderf")]
+    fn file_aat_piece_f64_orderf(
         filename: &str,
         offset: u64,
         row_count: usize,
@@ -450,7 +466,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
-    fn file_b_less_aatbx_py(
+    #[pyo3(name = "file_b_less_aatbx")]
+    fn file_b_less_aatbx_translator(
         a_filename: &str,
         offset: u64,
         iid_count: usize,
