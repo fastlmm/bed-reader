@@ -42,6 +42,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     #[pyfn(m)]
     #[pyo3(name = "read_f64")]
+    #[allow(clippy::too_many_arguments)]
     fn read_f64(
         filename: &str,
         iid_count: usize,
@@ -77,6 +78,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     #[pyfn(m)]
     #[pyo3(name = "read_f32")]
+    #[allow(clippy::too_many_arguments)]
     fn read_f32(
         filename: &str,
         iid_count: usize,
@@ -112,13 +114,13 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     #[pyfn(m)]
     #[pyo3(name = "read_i8")]
+    #[allow(clippy::too_many_arguments)]
     fn read_i8(
         filename: &str,
         iid_count: usize,
         sid_count: usize,
         count_a1: bool,
         iid_index: &PyArray1<usize>,
-
         sid_index: &PyArray1<usize>,
         val: &PyArray2<i8>,
         num_threads: usize,
@@ -255,6 +257,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     #[pyfn(m)]
     #[pyo3(name = "standardize_f32")]
+    #[allow(clippy::too_many_arguments)]
     fn standardize_f32(
         val: &PyArray2<f32>,
         beta_not_unit_variance: bool,
@@ -282,14 +285,15 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     fn create_dist(beta_not_unit_variance: bool, a: f64, b: f64) -> Dist {
         if beta_not_unit_variance {
-            return Dist::Beta { a: a, b: b };
+            Dist::Beta { a, b }
         } else {
-            return Dist::Unit;
-        };
+            Dist::Unit
+        }
     }
 
     #[pyfn(m)]
     #[pyo3(name = "standardize_f64")]
+    #[allow(clippy::too_many_arguments)]
     fn standardize_f64(
         val: &PyArray2<f64>,
         beta_not_unit_variance: bool,
@@ -318,6 +322,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     #[pyfn(m)]
     #[pyo3(name = "file_ata_piece_f32_orderf")]
+    #[allow(clippy::too_many_arguments)]
     fn file_ata_piece_f32_orderf(
         filename: &str,
         offset: u64,
@@ -348,6 +353,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     #[pyfn(m)]
     #[pyo3(name = "file_ata_piece_f64_orderf")]
+    #[allow(clippy::too_many_arguments)]
     fn file_ata_piece_f64_orderf(
         filename: &str,
         offset: u64,
@@ -407,6 +413,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     #[pyfn(m)]
     #[pyo3(name = "file_aat_piece_f32_orderf")]
+    #[allow(clippy::too_many_arguments)]
     fn file_aat_piece_f32_orderf(
         filename: &str,
         offset: u64,
@@ -437,6 +444,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     #[pyfn(m)]
     #[pyo3(name = "file_aat_piece_f64_orderf")]
+    #[allow(clippy::too_many_arguments)]
     fn file_aat_piece_f64_orderf(
         filename: &str,
         offset: u64,
@@ -467,6 +475,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     #[pyfn(m)]
     #[pyo3(name = "file_b_less_aatbx")]
+    #[allow(clippy::too_many_arguments)]
     fn file_b_less_aatbx_translator(
         a_filename: &str,
         offset: u64,

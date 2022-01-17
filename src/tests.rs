@@ -69,7 +69,7 @@ fn reference_val_i8(count_a1: bool) -> nd::Array2<i8> {
             }
         }
     }
-    return ref_val_i8;
+    ref_val_i8
 }
 
 #[test]
@@ -122,7 +122,7 @@ fn reference_val(count_a1: bool) -> nd::Array2<f64> {
         val = val * -1.0 + 2.0;
     }
 
-    return val;
+    val
 }
 
 #[cfg(test)]
@@ -137,27 +137,30 @@ fn allclose<
 ) -> bool {
     assert!(val1.dim() == val2.dim());
     // Could be run in parallel
-    let result = nd::Zip::from(val1)
+
+    nd::Zip::from(val1)
         .and(val2)
         .fold(true, |acc, ptr_a, ptr_b| -> bool {
             if !acc {
                 return false;
             }
+            // x != x is a generic nan check
+            #[allow(clippy::eq_op)]
             let a_nan = *ptr_a != *ptr_a;
+            #[allow(clippy::eq_op)]
             let b_nan = *ptr_b != *ptr_b;
 
             if a_nan || b_nan {
                 if equal_nan {
-                    return a_nan == b_nan;
+                    a_nan == b_nan
                 } else {
-                    return false;
+                    false
                 }
             } else {
                 let c: T1 = abs(*ptr_a - T2::into(*ptr_b));
-                return c <= atol;
+                c <= atol
             }
-        });
-    return result;
+        })
 }
 
 #[test]
@@ -244,7 +247,7 @@ fn index() {
     let buf_reader = BufReader::new(File::open("bed_reader/tests/data/small_no_bim.bed").unwrap());
     let result = internal_read_no_alloc(
         buf_reader,
-        &"ignore",
+        "ignore",
         usize::MAX,
         usize::MAX,
         true,
@@ -259,7 +262,7 @@ fn index() {
     };
 
     let result = read(
-        &"bed_reader/tests/data/no_such_file.nsf",
+        "bed_reader/tests/data/no_such_file.nsf",
         true,
         true,
         f64::NAN,
@@ -564,7 +567,7 @@ fn read_errors() {
     let mut val = nd::Array2::<f64>::default(shape);
 
     match read_no_alloc(
-        &"bed_reader/tests/data/no_such_file.nsf",
+        "bed_reader/tests/data/no_such_file.nsf",
         iid_count,
         sid_count,
         true,
@@ -578,7 +581,7 @@ fn read_errors() {
     };
 
     let result = read_no_alloc(
-        &"bed_reader/tests/data/some_missing.fam",
+        "bed_reader/tests/data/some_missing.fam",
         iid_count,
         sid_count,
         true,
@@ -593,7 +596,7 @@ fn read_errors() {
     };
 
     let result = read_no_alloc(
-        &"bed_reader/tests/data/empty.bed",
+        "bed_reader/tests/data/empty.bed",
         iid_count,
         sid_count,
         true,
@@ -617,7 +620,7 @@ fn read_modes() {
     let sid_index_s1 = (0..sid_count_s1).collect::<Vec<usize>>();
 
     let result = read_no_alloc(
-        &filename,
+        filename,
         iid_count_s1,
         sid_count_s1,
         true,
@@ -632,7 +635,7 @@ fn read_modes() {
     };
 
     let result = read_no_alloc(
-        &"bed_reader/tests/data/small_too_short.bed",
+        "bed_reader/tests/data/small_too_short.bed",
         iid_count_s1,
         sid_count_s1,
         true,
@@ -648,7 +651,7 @@ fn read_modes() {
 
     let mut val_small_mode_0 = nd::Array2::<i8>::default((sid_count_s1, iid_count_s1));
     let result = read_no_alloc(
-        &"bed_reader/tests/data/smallmode0.bed",
+        "bed_reader/tests/data/smallmode0.bed",
         sid_count_s1,
         iid_count_s1,
         true,
@@ -665,7 +668,7 @@ fn read_modes() {
     assert_eq!(val_small_mode_0.t(), val_small_mode_1);
 
     let result = read_no_alloc(
-        &"bed_reader/tests/data/smallmodebad.bed",
+        "bed_reader/tests/data/smallmodebad.bed",
         iid_count_s1,
         sid_count_s1,
         true,
@@ -809,7 +812,7 @@ fn file_ata(
             val,
         );
     }
-    return Ok(());
+    Ok(())
 }
 
 #[cfg(test)]
@@ -920,5 +923,5 @@ fn file_aat(
         }
         println!("val:\n{:?}", val);
     }
-    return Ok(());
+    Ok(())
 }
