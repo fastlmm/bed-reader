@@ -165,9 +165,9 @@ Environment Variables
 ======================
 
 By default :meth:`sample_file` puts files under the user's cache directory. Override this by setting
-the `BED_READER_DATA_DIR` environment variable.
+the ``BED_READER_DATA_DIR`` environment variable.
 
-By default, :class:`open_bed` uses all available processors. Override this with the `num_threads`
+By default, :class:`open_bed` uses all available processors. Override this with the ``num_threads``
 parameter or by setting environment variable (listed in priority order):
 'PST_NUM_THREADS', 'NUM_THREADS', 'MKL_NUM_THREADS'.
 

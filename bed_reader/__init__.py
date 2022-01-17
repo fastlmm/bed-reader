@@ -1,5 +1,8 @@
 """Read and write the PLINK BED format, simply and efficiently."""
 
+# See: https://towardsdatascience.com/nine-rules-for-writing-python-extensions-in-rust-d35ea3a4ec29?sk=f8d808d5f414154fdb811e4137011437
+# for an article on how this project uses Rust to create a Python extension.
+
 from bed_reader._open_bed import get_num_threads, open_bed  # noqa
 from bed_reader._sample_data import sample_file, tmp_path  # noqa
 from bed_reader._to_bed import to_bed  # noqa

@@ -171,6 +171,7 @@ class open_bed:
 
     Replace :attr:`iid`.
 
+
         >>> bed = open_bed(file_name, properties={"iid":["sample1","sample2","sample3"]})
         >>> print(bed.iid) # replaced
         ['sample1' 'sample2' 'sample3']

@@ -1,5 +1,8 @@
 // Inspired by C++ version by Chris Widmer and Carl Kadie
 
+// See: https://towardsdatascience.com/nine-rules-for-writing-python-extensions-in-rust-d35ea3a4ec29?sk=f8d808d5f414154fdb811e4137011437
+// for an article on how this project uses Rust to create a Python extension.
+
 use byteorder::{LittleEndian, ReadBytesExt};
 use core::fmt::Debug;
 use ndarray as nd;
@@ -9,10 +12,7 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use rayon::{iter::ParallelBridge, ThreadPoolBuildError};
 use statrs::distribution::{Beta, Continuous};
 use std::ops::AddAssign;
-use std::{
-    convert::TryFrom,
-    ops::{Div, Sub},
-};
+use std::ops::{Div, Sub};
 use std::{
     fs::File,
     io::{BufRead, BufWriter, Read, Write},
@@ -38,7 +38,7 @@ const CB_HEADER_USIZE: usize = 3;
 //  https://docs.rs/ndarray-npy
 //  https://rust-lang-nursery.github.io/rust-cookbook/science/mathematics/linear_algebra.html
 
-/// BedErrorPlus enumerates all possible errors returned by this library.
+/// BedError enumerates all possible errors returned by this library.
 /// Based on https://nick.groenen.me/posts/rust-error-handling/#the-library-error-type
 #[derive(Error, Debug)]
 pub enum BedErrorPlus {
@@ -99,6 +99,7 @@ pub enum BedError {
     IllegalStartCountOutput,
 }
 
+#[allow(clippy::too_many_arguments)]
 fn read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
     filename: &str,
     iid_count: usize,
@@ -118,7 +119,7 @@ fn read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
     match bytes_vector[2] {
         0 => {
             let mut val_t = val.view_mut().reversed_axes();
-            return internal_read_no_alloc(
+            internal_read_no_alloc(
                 buf_reader,
                 filename,
                 sid_count,
@@ -128,24 +129,20 @@ fn read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
                 iid_index,
                 missing_value,
                 &mut val_t,
-            );
+            )
         }
-        1 => {
-            return internal_read_no_alloc(
-                buf_reader,
-                filename,
-                iid_count,
-                sid_count,
-                count_a1,
-                iid_index,
-                sid_index,
-                missing_value,
-                val,
-            );
-        }
-        _ => {
-            return Err(BedError::BadMode(filename.to_string()).into());
-        }
+        1 => internal_read_no_alloc(
+            buf_reader,
+            filename,
+            iid_count,
+            sid_count,
+            count_a1,
+            iid_index,
+            sid_index,
+            missing_value,
+            val,
+        ),
+        _ => Err(BedError::BadMode(filename.to_string()).into()),
     }
 }
 
@@ -191,9 +188,10 @@ fn try_div_4<T: Max + TryFrom<usize> + Sub<Output = T> + Div<Output = T> + Ord>(
         return Err(BedError::IndexesTooBigForFiles(in_iid_count, in_sid_count).into());
     }
 
-    return Ok((in_iid_count_div4, in_iid_count_div4_t));
+    Ok((in_iid_count_div4, in_iid_count_div4_t))
 }
 
+#[allow(clippy::too_many_arguments)]
 fn internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
     mut buf_reader: BufReader<File>,
     filename: &str,
@@ -243,7 +241,7 @@ fn internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>
             let pos: u64 = (in_sid_i as u64) * in_iid_count_div4_u64 + CB_HEADER_U64; // "as" and math is safe because of early checks
             buf_reader.seek(SeekFrom::Start(pos))?;
             buf_reader.read_exact(&mut bytes_vector)?;
-            return Ok(bytes_vector);
+            Ok(bytes_vector)
         })
         // Zip in the column of the output array
         .zip(out_val.axis_iter_mut(nd::Axis(1)))
@@ -266,7 +264,7 @@ fn internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>
             }
         })?;
 
-    return Ok(());
+    Ok(())
 }
 
 fn set_up_two_bits_to_value<TOut: From<i8>>(count_a1: bool, missing_value: TOut) -> [TOut; 4] {
@@ -290,7 +288,7 @@ fn set_up_two_bits_to_value<TOut: From<i8>>(count_a1: bool, missing_value: TOut)
             homozygous_secondary_allele, // look-up 3
         ];
     }
-    return from_two_bits_to_value;
+    from_two_bits_to_value
 }
 
 // could make count_a1, etc. optional
@@ -298,13 +296,13 @@ pub fn read_with_indexes<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
     filename: &str,
     iid_index: &[usize],
     sid_index: &[usize],
-    output_is_order_f: bool,
+    output_is_orderf: bool,
     count_a1: bool,
     missing_value: TOut,
 ) -> Result<nd::Array2<TOut>, BedErrorPlus> {
     let (iid_count, sid_count) = counts(filename)?;
 
-    let shape = ShapeBuilder::set_f((iid_index.len(), sid_index.len()), output_is_order_f);
+    let shape = ShapeBuilder::set_f((iid_index.len(), sid_index.len()), output_is_orderf);
     let mut val = nd::Array2::<TOut>::default(shape);
 
     read_no_alloc(
@@ -318,12 +316,12 @@ pub fn read_with_indexes<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
         &mut val.view_mut(),
     )?;
 
-    return Ok(val);
+    Ok(val)
 }
 
 pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
     filename: &str,
-    output_is_order_f: bool,
+    output_is_orderf: bool,
     count_a1: bool,
     missing_value: TOut,
 ) -> Result<nd::Array2<TOut>, BedErrorPlus> {
@@ -332,7 +330,7 @@ pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
     let iid_index: Vec<usize> = (0..iid_count).collect();
     let sid_index: Vec<usize> = (0..sid_count).collect();
 
-    let shape = ShapeBuilder::set_f((iid_count, sid_count), output_is_order_f);
+    let shape = ShapeBuilder::set_f((iid_count, sid_count), output_is_orderf);
     let mut val = nd::Array2::<TOut>::default(shape);
 
     read_no_alloc(
@@ -346,7 +344,7 @@ pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
         &mut val.view_mut(),
     )?;
 
-    return Ok(val);
+    Ok(val)
 }
 
 pub fn write<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
@@ -370,10 +368,12 @@ pub fn write<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
     // 4 genotypes per byte so round up
     let (iid_count_div4, _) = try_div_4(iid_count, sid_count, CB_HEADER_U64)?;
 
-    let use_nan = missing != missing;
+    #[allow(clippy::eq_op)]
+    let use_nan = missing != missing; // Generic way to look for NaN
     for column in val.axis_iter(nd::Axis(1)) {
         let mut bytes_vector: Vec<u8> = vec![0; iid_count_div4]; // inits to 0
         for (iid_i, &v0) in column.iter().enumerate() {
+            #[allow(clippy::eq_op)]
             let genotype_byte = if v0 == homozygous_primary_allele {
                 zero_code
             } else if v0 == heterozygous_allele {
@@ -381,6 +381,7 @@ pub fn write<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
             } else if v0 == homozygous_secondary_allele {
                 two_code
             } else if (use_nan && v0 != v0) || (!use_nan && v0 == missing) {
+                // v0!=0 is generic NAN check
                 1
             } else {
                 return Err(BedError::BadValue(filename.to_string()).into());
@@ -392,7 +393,7 @@ pub fn write<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
         }
         writer.write_all(&bytes_vector)?;
     }
-    return Ok(());
+    Ok(())
 }
 
 fn count_lines(path_buf: PathBuf) -> Result<usize, BedErrorPlus> {
@@ -407,13 +408,13 @@ fn count_lines(path_buf: PathBuf) -> Result<usize, BedErrorPlus> {
     };
     let reader = BufReader::new(file);
     let count = reader.lines().count();
-    return Ok(count);
+    Ok(count)
 }
 pub fn counts(filename: &str) -> Result<(usize, usize), BedErrorPlus> {
     let path = Path::new(filename);
     let iid_count = count_lines(path.with_extension("fam"))?;
     let sid_count = count_lines(path.with_extension("bim"))?;
-    return Ok((iid_count, sid_count));
+    Ok((iid_count, sid_count))
 }
 
 pub fn matrix_subset_no_alloc<
@@ -452,12 +453,12 @@ pub fn matrix_subset_no_alloc<
                 }
             }
         });
-        return Ok(());
+        Ok(())
     } else {
         //If output is C-order, transpose input and output and recurse
         let in_val_t = in_val.view().permuted_axes([1, 0, 2]);
         let mut out_val_t = out_val.view_mut().permuted_axes([1, 0, 2]);
-        return matrix_subset_no_alloc(&in_val_t, &sid_index, &iid_index, &mut out_val_t);
+        matrix_subset_no_alloc(&in_val_t, sid_index, iid_index, &mut out_val_t)
     }
 }
 
@@ -498,10 +499,10 @@ pub fn impute_and_zero_mean_snps<
             .par_bridge()
             .try_for_each(|x| (*x).clone())?;
 
-        return Ok(());
+        Ok(())
     } else {
         //If C-order
-        return _process_all_iids(val, apply_in_place, use_stats, stats, dist, two);
+        _process_all_iids(val, apply_in_place, use_stats, stats, dist, two)
     }
 }
 
@@ -529,13 +530,13 @@ fn find_factor<T: Default + Copy + Debug + Sync + Send + Float + ToPrimitive + F
         }
 
         // Try to put the maf in the beta dist
-        return if let Some(b) = T::from_f64(beta_dist.pdf(maf)) {
+        if let Some(b) = T::from_f64(beta_dist.pdf(maf)) {
             Ok(b)
         } else {
             Err(BedError::CannotConvertBetaToFromF64)
-        };
+        }
     } else {
-        return Ok(T::one() / std);
+        Ok(T::one() / std)
     }
 }
 
@@ -562,7 +563,7 @@ fn _process_sid<T: Default + Copy + Debug + Sync + Send + Float + ToPrimitive + 
         }
         if n_observed < T::one() {
             //LATER make it work (in some form) for n of 0
-            return Err(BedError::NoIndividuals.into());
+            return Err(BedError::NoIndividuals);
         }
         let mean_s = sum_s / n_observed; //compute the mean over observed individuals for the current SNP
         let mean2_s: T = sum2_s / n_observed; //compute the mean of the squared SNP
@@ -571,7 +572,7 @@ fn _process_sid<T: Default + Copy + Debug + Sync + Send + Float + ToPrimitive + 
             || (matches!(dist, Dist::Beta { a: _, b: _ })
                 && ((mean_s > two) || (mean_s < T::zero())))
         {
-            return Err(BedError::IllegalSnpMean.into());
+            return Err(BedError::IllegalSnpMean);
         }
 
         let variance: T = mean2_s - mean_s * mean_s; //By the Cauchy Schwartz inequality this should always be positive
@@ -592,7 +593,7 @@ fn _process_sid<T: Default + Copy + Debug + Sync + Send + Float + ToPrimitive + 
             let std = stats_row[1];
             let is_snc = std.is_infinite();
 
-            let factor = find_factor(&dist, mean_s, std)?;
+            let factor = find_factor(dist, mean_s, std)?;
 
             for iid_i in 0..col.len() {
                 //check for Missing (NAN) or SNC
@@ -604,7 +605,7 @@ fn _process_sid<T: Default + Copy + Debug + Sync + Send + Float + ToPrimitive + 
             }
         }
     }
-    return Ok(());
+    Ok(())
 }
 
 fn _process_all_iids<
@@ -706,7 +707,7 @@ fn _process_all_iids<
             }
         });
     }
-    return Ok(());
+    Ok(())
 }
 
 pub fn create_pool(num_threads: usize) -> Result<rayon::ThreadPool, BedErrorPlus> {
@@ -771,7 +772,7 @@ fn file_b_less_aatbx(
             }
         });
     }
-    return Ok(());
+    Ok(())
 }
 
 fn read_into_f64(src: &mut BufReader<File>, dst: &mut [f64]) -> std::io::Result<()> {
@@ -840,6 +841,7 @@ for output in output_list:
 // (col_count-col_start) x ncols
 // where ncols <= (col_count-col_start)
 // Makes only one pass through the file.
+#[allow(clippy::too_many_arguments)]
 fn file_ata_piece<T: Float + Send + Sync + AddAssign>(
     filename: &str,
     offset: u64,
@@ -918,7 +920,7 @@ fn _file_ata_piece_internal<T: Float + Send + Sync + AddAssign>(
             mut ata_val in ata_row_trimmed.axis_iter_mut(nd::Axis(0))
         )
         {
-            ata_val[()] = col_product(&col_in_range, &col);
+            ata_val[()] = col_product(col_in_range, col);
         });
     }
 
@@ -928,7 +930,7 @@ fn _file_ata_piece_internal<T: Float + Send + Sync + AddAssign>(
             ata_piece[(row_index, col_index)] = ata_piece[(col_index, row_index)];
         }
     }
-    return Ok(());
+    Ok(())
 }
 
 fn col_product<T: Float + AddAssign>(col_i: &[T], col_j: &[T]) -> T {
@@ -948,6 +950,7 @@ fn col_product<T: Float + AddAssign>(col_i: &[T], col_j: &[T]) -> T {
 // (row_count-row_start) x ncols
 // where ncols <= (row_count-row_start)
 // Makes only one pass through the file.
+#[allow(clippy::too_many_arguments)]
 fn file_aat_piece<T: Float + Sync + Send + AddAssign>(
     filename: &str,
     offset: u64,
@@ -1006,7 +1009,7 @@ fn file_aat_piece<T: Float + Sync + Send + AddAssign>(
 
     // Notice that ata reflects and aat doesn't. They don't need
     // to be the same, but they could be.
-    return Ok(());
+    Ok(())
 }
 
 mod python_module;

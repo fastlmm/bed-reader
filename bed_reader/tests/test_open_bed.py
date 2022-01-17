@@ -625,7 +625,7 @@ def test_coverage2(shared_datadir, tmp_path):
     assert not val.flags["C_CONTIGUOUS"] and not val.flags["F_CONTIGUOUS"]
     with pytest.raises(ValueError):
         to_bed(tmp_path / "ignore", val)
-    val = np.zeros((3, 5), dtype=np.str)
+    val = np.zeros((3, 5), dtype=np.str_)
     with pytest.raises(ValueError):
         to_bed(tmp_path / "ignore", val)
 
