@@ -24,7 +24,7 @@ def test_writes(iid_count, sid_count, num_threads, drive, include_error, algo):
         val[iid_count // 2, sid_count // 2] = 22
 
     val_size = iid_count * sid_count
-    if val_size > 750000000:
+    if val_size > 10_000_000_000:
         raise ValueError(f"val_size {val_size} is too large")
 
     result_list = []
@@ -94,12 +94,12 @@ if False:
 
 if True:
     result = []
-    for sid_count in np.logspace(np.log10(5), np.log10(1_000), 25, base=10, dtype=int):
+    for sid_count in np.logspace(np.log10(5), np.log10(3500), 25, base=10, dtype=int):
         iid_count = 500_000
         for drive in ["ssd"]:
             for num_threads in [12]:
                 result.append(
-                    test_writes(iid_count, sid_count, num_threads, drive, False, [0, 1])
+                    test_writes(iid_count, sid_count, num_threads, drive, False, [1])
                 )
     df = pd.concat(result)
     df2 = df.pivot(
