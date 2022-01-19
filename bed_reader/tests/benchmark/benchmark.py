@@ -94,8 +94,8 @@ if False:
 
 if True:
     result = []
-    for sid_count in np.logspace(np.log10(5), np.log10(3500), 25, base=10, dtype=int):
-        iid_count = 500_000
+    for sid_count in np.logspace(np.log10(5), np.log10(35_000), 25, base=10, dtype=int):
+        iid_count = 50_000
         for drive in ["ssd"]:
             for num_threads in [12]:
                 result.append(
