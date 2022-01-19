@@ -99,7 +99,7 @@ if True:
         for drive in ["ssd"]:
             for num_threads in [12]:
                 result.append(
-                    test_writes(iid_count, sid_count, num_threads, drive, False, [1])
+                    test_writes(iid_count, sid_count, num_threads, drive, False, [1, 0])
                 )
     df = pd.concat(result)
     df2 = df.pivot(
