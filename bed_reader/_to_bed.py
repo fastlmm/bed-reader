@@ -7,7 +7,7 @@ import numpy as np
 
 from bed_reader import get_num_threads, open_bed
 
-from .bed_reader import write_f32, write_f64, write_i8
+from .bed_reader import write_f32, write0_f64, write1_f64, write_i8
 
 
 def to_bed(
@@ -19,6 +19,7 @@ def to_bed(
     bim_filepath: Union[str, Path] = None,
     force_python_only: bool = False,
     num_threads=None,
+    version=1,
 ):
     """
     Write values to a file in PLINK .bed format.
@@ -136,9 +137,22 @@ def to_bed(
         iid_count, sid_count = val.shape
         try:
             if val.dtype == np.float64:
-                write_f64(
-                    str(filepath), count_a1=count_A1, val=val, num_threads=num_threads
-                )
+                if version == 0:
+                    write0_f64(
+                        str(filepath),
+                        count_a1=count_A1,
+                        val=val,
+                        num_threads=num_threads,
+                    )
+                elif version == 1:
+                    write1_f64(
+                        str(filepath),
+                        count_a1=count_A1,
+                        val=val,
+                        num_threads=num_threads,
+                    )
+                else:
+                    raise ValueError("Version must be 0 or 1.")
             elif val.dtype == np.float32:
                 write_f32(
                     str(filepath), count_a1=count_A1, val=val, num_threads=num_threads

@@ -14,7 +14,7 @@ use crate::try_div_4;
 use crate::Dist;
 #[cfg(test)]
 use crate::{
-    counts, impute_and_zero_mean_snps, matrix_subset_no_alloc, read, read_with_indexes, write,
+    counts, impute_and_zero_mean_snps, matrix_subset_no_alloc, read, read_with_indexes, write1,
 };
 #[cfg(test)]
 use crate::{internal_read_no_alloc, read_no_alloc, BedError, BedErrorPlus};
@@ -284,7 +284,7 @@ fn writer() {
     let path2 = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_test.bed");
     let filename2 = path2.as_os_str().to_str().unwrap();
 
-    write(filename2, &val.view(), true, -127).unwrap();
+    write1(filename2, &val.view(), true, -127).unwrap();
     for ext in ["fam", "bim"].iter() {
         let from = Path::new(filename).with_extension(ext);
         let to = Path::new(filename2).with_extension(ext);
@@ -299,7 +299,7 @@ fn writer() {
     let path2 = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64.bed");
     let filename2 = path2.as_os_str().to_str().unwrap();
 
-    write(filename2, &val.view(), true, f64::NAN).unwrap();
+    write1(filename2, &val.view(), true, f64::NAN).unwrap();
     for ext in ["fam", "bim"].iter() {
         let from = Path::new(filename).with_extension(ext);
         let to = Path::new(filename2).with_extension(ext);
@@ -314,7 +314,7 @@ fn writer() {
     val[(0, 0)] = 5.0;
     let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_5.bed");
     let filename = path.as_os_str().to_str().unwrap();
-    let result = write(filename, &val.view(), true, f64::NAN);
+    let result = write1(filename, &val.view(), true, f64::NAN);
     match result {
         Err(BedErrorPlus::BedError(BedError::BadValue(_))) => (),
         _ => panic!("test failure"),
@@ -323,12 +323,12 @@ fn writer() {
     let val = nd::Array2::zeros((0, 0));
     let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_0s.bed");
     let filename = path.as_os_str().to_str().unwrap();
-    write(filename, &val.view(), true, f64::NAN).unwrap();
+    write1(filename, &val.view(), true, f64::NAN).unwrap();
 
     let val: nd::Array2<i8> = nd::Array2::zeros((3, 0));
     let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_3_0.bed");
     let filename = path.as_os_str().to_str().unwrap();
-    write(filename, &val.view(), true, -127).unwrap();
+    write1(filename, &val.view(), true, -127).unwrap();
 }
 
 #[test]
@@ -749,20 +749,20 @@ fn zeros() {
     let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_zeros.bed");
     let filename = path.as_os_str().to_str().unwrap();
 
-    write(filename, &out_val01.view(), true, f64::NAN).unwrap();
+    write1(filename, &out_val01.view(), true, f64::NAN).unwrap();
     write_fake_metadata(filename, 0, sid_count);
     let result = read(filename, true, true, f64::NAN);
     let in_val01 = result.unwrap();
     assert!(in_val01.shape() == [0, sid_count]);
     assert!(allclose(&in_val01.view(), &out_val01.view(), 1e-08, true));
 
-    write(filename, &out_val10.view(), true, f64::NAN).unwrap();
+    write1(filename, &out_val10.view(), true, f64::NAN).unwrap();
     write_fake_metadata(filename, iid_count, 0);
     let in_val10 = read(filename, true, true, f64::NAN).unwrap();
     assert!(in_val10.shape() == [iid_count, 0]);
     assert!(allclose(&in_val10.view(), &out_val10.view(), 1e-08, true));
 
-    write(filename, &out_val00.view(), true, f64::NAN).unwrap();
+    write1(filename, &out_val00.view(), true, f64::NAN).unwrap();
     write_fake_metadata(filename, 0, 0);
     let in_val00 = read(filename, true, true, f64::NAN).unwrap();
     assert!(in_val00.shape() == [0, 0]);
