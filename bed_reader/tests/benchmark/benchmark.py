@@ -114,17 +114,18 @@ if False:
 
 if True:
     result = []
-    for sid_count in np.logspace(np.log10(5), np.log10(5_000), 20, base=10, dtype=int):
+    for sid_count in np.logspace(np.log10(5), np.log10(50_000), 20, base=10, dtype=int):
         iid_count = 50_000
-        for drive in ["ssd", "hdd"]:
+        for drive in ["ssd"]:  # , "hdd"]:
+            result.append(test_writes(iid_count, sid_count, 1, drive, False, [0]))
             for num_threads in [1, 12]:
                 result.append(
-                    test_writes(iid_count, sid_count, num_threads, drive, False, [0, 1])
+                    test_writes(iid_count, sid_count, num_threads, drive, False, [1, 3])
                 )
     df = pd.concat(result)
     df2 = df.pivot(
         index="sid_count",
-        columns=["algorithm", "drive", "num_threads"],
+        columns=["iid_count", "algorithm", "drive", "num_threads"],
         values="val per second",
     )
     df2.plot(marker=".", logx=True)

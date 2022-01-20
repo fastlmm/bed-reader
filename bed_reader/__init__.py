@@ -26,4 +26,5 @@ from .bed_reader import (  # noqa
     write_f64,
     write0_i8,
     write1_i8,
+    write3_i8,
 )

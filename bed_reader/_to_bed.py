@@ -7,7 +7,7 @@ import numpy as np
 
 from bed_reader import get_num_threads, open_bed
 
-from .bed_reader import write_f32, write_f64, write0_i8, write1_i8
+from .bed_reader import write_f32, write_f64, write0_i8, write1_i8, write3_i8
 
 
 def to_bed(
@@ -157,6 +157,13 @@ def to_bed(
                     )
                 elif version == 1:
                     write1_i8(
+                        str(filepath),
+                        count_a1=count_A1,
+                        val=val,
+                        num_threads=num_threads,
+                    )
+                elif version == 3:
+                    write3_i8(
                         str(filepath),
                         count_a1=count_A1,
                         val=val,
