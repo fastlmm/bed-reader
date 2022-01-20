@@ -5,8 +5,8 @@ import time
 import pandas as pd
 import matplotlib.pyplot as plt
 
-ssd_path = Path(f"m:/deldir/bench")
-hdd_path = Path(f"e:/deldir/bench")
+ssd_path = Path("m:/deldir/bench")
+hdd_path = Path("e:/deldir/bench")
 
 
 def test_writes(iid_count, sid_count, num_threads, drive, include_error, algo):
@@ -19,12 +19,12 @@ def test_writes(iid_count, sid_count, num_threads, drive, include_error, algo):
 
     output_file = path / f"{iid_count}x{sid_count}.bed"
 
-    val = np.full((iid_count, sid_count), 1, dtype=np.float64)
+    val = np.full((iid_count, sid_count), 1, dtype=np.int8)
     if include_error:
         val[iid_count // 2, sid_count // 2] = 22
 
-    val_size = iid_count * sid_count
-    if val_size > 10_000_000_000:
+    val_size = float(iid_count) * sid_count
+    if val_size > 9_200_000_000:
         raise ValueError(f"val_size {val_size} is too large")
 
     result_list = []
@@ -41,6 +41,7 @@ def test_writes(iid_count, sid_count, num_threads, drive, include_error, algo):
             include_error,
             version,
             True,
+            "i8",
             "benchmark.py",
             val_size,
             round(delta, 4),
@@ -60,6 +61,7 @@ def test_writes(iid_count, sid_count, num_threads, drive, include_error, algo):
             "include_error",
             "algorithm",
             "release",
+            "dtype",
             "source",
             "val size",
             "time",
@@ -92,9 +94,29 @@ if False:
     df2.plot(marker=".", logx=True)
     plt.show()
 
-if True:
+if False:
     result = []
     for sid_count in np.logspace(np.log10(5), np.log10(35_000), 25, base=10, dtype=int):
+        iid_count = 50_000
+        for drive in ["ssd"]:
+            for num_threads in [12]:
+                result.append(
+                    test_writes(iid_count, sid_count, num_threads, drive, False, [1, 0])
+                )
+    df = pd.concat(result)
+    df2 = df.pivot(
+        index="sid_count",
+        columns=["algorithm", "drive", "num_threads"],
+        values="val per second",
+    )
+    df2.plot(marker=".", logx=True)
+    plt.show()
+
+if True:
+    result = []
+    for sid_count in np.logspace(
+        np.log10(5), np.log10(100_000), 20, base=10, dtype=int
+    ):
         iid_count = 50_000
         for drive in ["ssd"]:
             for num_threads in [12]:

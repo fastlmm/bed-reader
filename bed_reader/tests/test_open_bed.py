@@ -25,7 +25,7 @@ def test_read1(shared_datadir):
         assert bed.bp_position[-1] == 100
 
 
-def test_write1(tmp_path, shared_datadir):
+def test_write(tmp_path, shared_datadir):
     in_file = shared_datadir / "plink_sim_10s_100v_10pmiss.bed"
     out_file = tmp_path / "out.bed"
     with open_bed(in_file) as bed:

@@ -157,8 +157,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
-    #[pyo3(name = "write1_f64")]
-    fn write1_f64(
+    #[pyo3(name = "write_f64")]
+    fn write_f64(
         filename: &str,
         count_a1: bool,
         val: &PyArray2<f64>,
@@ -166,7 +166,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     ) -> Result<(), PyErr> {
         let val = unsafe { val.as_array() };
 
-        create_pool(num_threads)?.install(|| write1(filename, &val, count_a1, f64::NAN))?;
+        create_pool(num_threads)?.install(|| write0(filename, &val, count_a1, f64::NAN))?;
 
         Ok(())
     }
@@ -187,8 +187,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
-    #[pyo3(name = "write_i8")]
-    fn write_i8(
+    #[pyo3(name = "write0_i8")]
+    fn write0_i8(
         filename: &str,
         count_a1: bool,
         val: &PyArray2<i8>,
@@ -197,6 +197,21 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let val = unsafe { val.as_array() };
 
         create_pool(num_threads)?.install(|| write0(filename, &val, count_a1, -127))?;
+
+        Ok(())
+    }
+
+    #[pyfn(m)]
+    #[pyo3(name = "write1_i8")]
+    fn write1_i8(
+        filename: &str,
+        count_a1: bool,
+        val: &PyArray2<i8>,
+        num_threads: usize,
+    ) -> Result<(), PyErr> {
+        let val = unsafe { val.as_array() };
+
+        create_pool(num_threads)?.install(|| write1(filename, &val, count_a1, -127))?;
 
         Ok(())
     }

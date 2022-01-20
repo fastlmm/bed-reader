@@ -349,6 +349,99 @@ pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
     Ok(val)
 }
 
+// // cmk based on https://www.reddit.com/r/rust/comments/rxwqh4/a_puzzle_any_nice_way_to_multithread_work_in_order/hrvoabt/?context=3 HundredLuck
+// pub fn write2<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
+//     filename: &str,
+//     val: &nd::ArrayView2<'_, T>,
+//     count_a1: bool,
+//     missing: T,
+// ) -> Result<(), BedErrorPlus> {
+//     #[allow(clippy::eq_op)]
+//     let use_nan = missing != missing;
+
+//     let zero_code = if count_a1 { 3u8 } else { 0u8 };
+//     let two_code = if count_a1 { 0u8 } else { 3u8 };
+
+//     let homozygous_primary_allele = T::from(0); // Major Allele
+//     let heterozygous_allele = T::from(1);
+//     let homozygous_secondary_allele = T::from(2); // Minor Allele
+
+//     let (iid_count, sid_count) = val.dim();
+
+//     // 4 genotypes per byte so round up
+//     let (iid_count_div4, _) = try_div_4(iid_count, sid_count, CB_HEADER_U64)?;
+
+//     // Write the file, with header, to its full length
+//     // cmk should we clean it up if we return an error?
+//     let file = File::create(filename)?;
+//     file.set_len((iid_count_div4 * sid_count + CB_HEADER_USIZE) as u64)?;
+//     let mut writer = BufWriter::new(file);
+//     writer.write_all(&[BED_FILE_MAGIC1, BED_FILE_MAGIC2, 0x01])?;
+
+//     // map value to 2 bits
+//     let get_genotype = |v0| -> u16 {
+//         #[allow(clippy::eq_op)]
+//         if v0 == homozygous_primary_allele {
+//             zero_code as u16
+//         } else if v0 == heterozygous_allele {
+//             2
+//         } else if v0 == homozygous_secondary_allele {
+//             two_code as u16
+//         } else if (use_nan && v0 != v0) || (!use_nan && v0 == missing) {
+//             1
+//         } else {
+//             u8::MAX as u16 + 1 // Anything above u8::MAX will be treated as an error
+//                                // Shifting this left by 2, 3 times, gives 16K, which is in bounds for a u16
+//         }
+//     };
+
+//     // This chunking of the outer loop is kinda hacking around rayon as we are not allowing it to do its work stealing strategy
+
+//     let thread_count = rayon::current_num_threads();
+
+//     // Set the chuck size.
+//     // If more threads than columns, each thread does one column.
+//     let mut outer_chunk_size = 1;
+//     if sid_count > thread_count && sid_count <= thread_count * thread_count {
+//         // else
+//         outer_chunk_size = sid_count / thread_count; // Try to divide evenly
+//                                                      // If the number of leftover columns is large relative to the number of threads,
+//                                                      // we add one column to each chunk.
+//         let left_over = sid_count - outer_chunk_size * thread_count;
+//         if left_over as f32 > (thread_count as f32) * 0.5 {
+//             outer_chunk_size += 1;
+//         } else {
+//             outer_chunk_size = (sid_count as f32).powf(0.5) as usize;
+//         }
+//     };
+
+//     val.axis_chunks_iter(nd::Axis(1), outer_chunk_size)
+//         .into_par_iter()
+//         .enumerate()
+//         .try_for_each(|(idx, outer_chunk)| -> Result<(), BedErrorPlus> {
+//             // Must use open options as File::create truncates the file
+//             let mut writer = BufWriter::new(OpenOptions::new().write(true).open(filename)?);
+//             let offset = idx * iid_count_div4 * outer_chunk_size + CB_HEADER_USIZE;
+//             writer.seek(SeekFrom::Start(offset as u64))?;
+
+//             for column in outer_chunk.axis_iter(nd::Axis(1)) {
+//                 for chunk in column.axis_chunks_iter(nd::Axis(0), 4) {
+//                     let value: u16 = chunk
+//                         .iter()
+//                         .enumerate()
+//                         .map(|(idx, val)| get_genotype(*val) << (idx * 2))
+//                         .sum();
+
+//                     if value > u8::MAX as u16 {
+//                         return Err(BedError::BadValue(filename.to_string()).into());
+//                     }
+//                     writer.write_u8(value as u8)?;
+//                 }
+//             }
+//             Ok(())
+//         })
+// }
+
 // cmk based on https://www.reddit.com/r/rust/comments/rxwqh4/a_puzzle_any_nice_way_to_multithread_work_in_order/hrvoabt/?context=3 HundredLuck
 pub fn write1<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
     filename: &str,
@@ -439,6 +532,7 @@ pub fn write1<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
             Ok(())
         })
 }
+
 pub fn write0<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
     filename: &str,
     val: &nd::ArrayView2<'_, T>,

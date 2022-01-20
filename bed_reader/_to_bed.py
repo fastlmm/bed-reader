@@ -7,7 +7,7 @@ import numpy as np
 
 from bed_reader import get_num_threads, open_bed
 
-from .bed_reader import write_f32, write0_f64, write1_f64, write_i8
+from .bed_reader import write_f32, write_f64, write0_i8, write1_i8
 
 
 def to_bed(
@@ -137,15 +137,26 @@ def to_bed(
         iid_count, sid_count = val.shape
         try:
             if val.dtype == np.float64:
+                write_f64(
+                    str(filepath),
+                    count_a1=count_A1,
+                    val=val,
+                    num_threads=num_threads,
+                )
+            elif val.dtype == np.float32:
+                write_f32(
+                    str(filepath), count_a1=count_A1, val=val, num_threads=num_threads
+                )
+            elif val.dtype == np.int8:
                 if version == 0:
-                    write0_f64(
+                    write0_i8(
                         str(filepath),
                         count_a1=count_A1,
                         val=val,
                         num_threads=num_threads,
                     )
                 elif version == 1:
-                    write1_f64(
+                    write1_i8(
                         str(filepath),
                         count_a1=count_A1,
                         val=val,
@@ -153,14 +164,7 @@ def to_bed(
                     )
                 else:
                     raise ValueError("Version must be 0 or 1.")
-            elif val.dtype == np.float32:
-                write_f32(
-                    str(filepath), count_a1=count_A1, val=val, num_threads=num_threads
-                )
-            elif val.dtype == np.int8:
-                write_i8(
-                    str(filepath), count_a1=count_A1, val=val, num_threads=num_threads
-                )
+
             else:
                 raise ValueError(
                     f"dtype '{val.dtype}' not known, only "
