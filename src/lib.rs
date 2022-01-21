@@ -5,6 +5,7 @@
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use core::fmt::Debug;
+use dpc_pariter::{scope, IteratorExt};
 use ndarray as nd;
 use ndarray::ShapeBuilder;
 use num_traits::{Float, FromPrimitive, ToPrimitive};
@@ -349,9 +350,70 @@ pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
     Ok(val)
 }
 
+pub fn write4<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
+    filename: &str,
+    val: &nd::ArrayView2<'_, T>,
+    count_a1: bool,
+    missing: T,
+) -> Result<(), BedErrorPlus> {
+    let (iid_count, sid_count) = val.dim();
+
+    // 4 genotypes per byte so round up
+    let (iid_count_div4, _) = try_div_4(iid_count, sid_count, CB_HEADER_U64)?;
+
+    let mut writer = BufWriter::new(File::create(filename)?);
+
+    #[allow(clippy::eq_op)]
+    let use_nan = missing != missing; // generic NAN test
+    let zero_code = if count_a1 { 3u8 } else { 0u8 };
+    let two_code = if count_a1 { 0u8 } else { 3u8 };
+
+    let homozygous_primary_allele = T::from(0); // Major Allele
+    let heterozygous_allele = T::from(1);
+    let homozygous_secondary_allele = T::from(2); // Minor Allele
+
+    let result_list = scope(|scope| {
+        val.axis_iter(nd::Axis(1))
+            .parallel_map_scoped(scope, {
+                let filename = filename.to_owned();
+                move |column| {
+                    // Covert each column into a bytes_vector
+                    let mut bytes_vector: Vec<u8> = vec![0; iid_count_div4]; // inits to 0
+                    for (iid_i, &v0) in column.iter().enumerate() {
+                        #[allow(clippy::eq_op)]
+                        let genotype_byte = if v0 == homozygous_primary_allele {
+                            zero_code
+                        } else if v0 == heterozygous_allele {
+                            2
+                        } else if v0 == homozygous_secondary_allele {
+                            two_code
+                        //                    v0 !=v0 is generic NAN check
+                        } else if (use_nan && v0 != v0) || (!use_nan && v0 == missing) {
+                            1
+                        } else {
+                            return Err(BedError::BadValue(filename.to_string()).into());
+                        };
+                        // Possible optimization: We could pre-compute the conversion, the division, the mod, and the multiply*2
+                        let i_div_4 = iid_i / 4;
+                        let i_mod_4 = iid_i % 4;
+                        bytes_vector[i_div_4] |= genotype_byte << (i_mod_4 * 2);
+                    }
+                    Ok(bytes_vector)
+                }
+            })
+            .map(|bytes_vector: Result<_, BedErrorPlus>| {
+                // Write the bytes vector, they must be in order.
+                writer.write_all(&bytes_vector?)?;
+                Ok(())
+            })
+            .collect()
+    })?;
+    Ok(())
+}
+
 // Thanks to reddit user HundredLuck for multithreading approach for writing.
 //  See https://www.reddit.com/r/rust/comments/rxwqh4/a_puzzle_any_nice_way_to_multithread_work_in_order/hrvoabt
-pub fn write<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
+pub fn write3<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
     filename: &str,
     val: &nd::ArrayView2<'_, T>,
     count_a1: bool,
