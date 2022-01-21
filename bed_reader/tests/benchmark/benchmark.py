@@ -5,8 +5,12 @@ import time
 import pandas as pd
 import matplotlib.pyplot as plt
 
-ssd_path = Path("m:/deldir/bench")
-hdd_path = Path("e:/deldir/bench")
+if False:
+    ssd_path = Path("m:/deldir/bench")
+    hdd_path = Path("e:/deldir/bench")
+else:
+    ssd_path = Path("/mnt/m/deldir/bench")
+    hdd_path = Path("/mnt/e/deldir/bench")
 
 
 def test_writes(iid_count, sid_count, num_threads, drive, include_error, algo):
@@ -113,6 +117,9 @@ if False:
     plt.show()
 
 if True:
+    # 5K vs 50K
+    # 50K vs 50K
+    # 500K vs 5K
     result = []
     for sid_count in np.logspace(np.log10(5), np.log10(5_000), 20, base=10, dtype=int):
         iid_count = 500_000
