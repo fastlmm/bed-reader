@@ -10,7 +10,7 @@ use pyo3::{
 use crate::{
     BedError, BedErrorPlus, Dist, _file_ata_piece_internal, create_pool, file_aat_piece,
     file_ata_piece, file_b_less_aatbx, impute_and_zero_mean_snps, matrix_subset_no_alloc,
-    read_into_f32, read_into_f64, read_no_alloc, write0, write1, write3,
+    read_into_f32, read_into_f64, read_no_alloc, write,
 };
 
 #[pymodule]
@@ -142,21 +142,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
-    #[pyo3(name = "write0_f64")]
-    fn write0_f64(
-        filename: &str,
-        count_a1: bool,
-        val: &PyArray2<f64>,
-        num_threads: usize,
-    ) -> Result<(), PyErr> {
-        let val = unsafe { val.as_array() };
-
-        create_pool(num_threads)?.install(|| write0(filename, &val, count_a1, f64::NAN))?;
-
-        Ok(())
-    }
-
-    #[pyfn(m)]
     #[pyo3(name = "write_f64")]
     fn write_f64(
         filename: &str,
@@ -166,7 +151,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     ) -> Result<(), PyErr> {
         let val = unsafe { val.as_array() };
 
-        create_pool(num_threads)?.install(|| write0(filename, &val, count_a1, f64::NAN))?;
+        create_pool(num_threads)?.install(|| write(filename, &val, count_a1, f64::NAN))?;
 
         Ok(())
     }
@@ -181,14 +166,14 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     ) -> Result<(), PyErr> {
         let val = unsafe { val.as_array() };
 
-        create_pool(num_threads)?.install(|| write0(filename, &val, count_a1, f32::NAN))?;
+        create_pool(num_threads)?.install(|| write(filename, &val, count_a1, f32::NAN))?;
 
         Ok(())
     }
 
     #[pyfn(m)]
-    #[pyo3(name = "write0_i8")]
-    fn write0_i8(
+    #[pyo3(name = "write_i8")]
+    fn write_i8(
         filename: &str,
         count_a1: bool,
         val: &PyArray2<i8>,
@@ -196,36 +181,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     ) -> Result<(), PyErr> {
         let val = unsafe { val.as_array() };
 
-        create_pool(num_threads)?.install(|| write0(filename, &val, count_a1, -127))?;
-
-        Ok(())
-    }
-
-    #[pyfn(m)]
-    #[pyo3(name = "write3_i8")]
-    fn write3_i8(
-        filename: &str,
-        count_a1: bool,
-        val: &PyArray2<i8>,
-        num_threads: usize,
-    ) -> Result<(), PyErr> {
-        let val = unsafe { val.as_array() };
-
-        create_pool(num_threads)?.install(|| write3(filename, &val, count_a1, -127))?;
-
-        Ok(())
-    }
-    #[pyfn(m)]
-    #[pyo3(name = "write1_i8")]
-    fn write1_i8(
-        filename: &str,
-        count_a1: bool,
-        val: &PyArray2<i8>,
-        num_threads: usize,
-    ) -> Result<(), PyErr> {
-        let val = unsafe { val.as_array() };
-
-        create_pool(num_threads)?.install(|| write1(filename, &val, count_a1, -127))?;
+        create_pool(num_threads)?.install(|| write(filename, &val, count_a1, -127))?;
 
         Ok(())
     }
