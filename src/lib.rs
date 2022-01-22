@@ -362,6 +362,7 @@ pub fn write4<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
     let (iid_count_div4, _) = try_div_4(iid_count, sid_count, CB_HEADER_U64)?;
 
     let mut writer = BufWriter::new(File::create(filename)?);
+    writer.write_all(&[BED_FILE_MAGIC1, BED_FILE_MAGIC2, 0x01])?;
 
     #[allow(clippy::eq_op)]
     let use_nan = missing != missing; // generic NAN test
@@ -372,7 +373,7 @@ pub fn write4<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
     let heterozygous_allele = T::from(1);
     let homozygous_secondary_allele = T::from(2); // Minor Allele
 
-    let result_list = scope(|scope| {
+    let result_list: Result<Vec<()>, BedErrorPlus> = scope(|scope| {
         val.axis_iter(nd::Axis(1))
             .parallel_map_scoped(scope, {
                 let filename = filename.to_owned();
@@ -407,7 +408,11 @@ pub fn write4<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
                 Ok(())
             })
             .collect()
-    })?;
+    })
+    .expect("cmk");
+
+    result_list?;
+
     Ok(())
 }
 

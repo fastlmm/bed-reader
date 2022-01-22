@@ -172,8 +172,23 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
-    #[pyo3(name = "write_i8")]
-    fn write_i8(
+    #[pyo3(name = "write3_i8")]
+    fn write3_i8(
+        filename: &str,
+        count_a1: bool,
+        val: &PyArray2<i8>,
+        num_threads: usize,
+    ) -> Result<(), PyErr> {
+        let val = unsafe { val.as_array() };
+
+        create_pool(num_threads)?.install(|| write3(filename, &val, count_a1, -127))?;
+
+        Ok(())
+    }
+
+    #[pyfn(m)]
+    #[pyo3(name = "write4_i8")]
+    fn write4_i8(
         filename: &str,
         count_a1: bool,
         val: &PyArray2<i8>,
