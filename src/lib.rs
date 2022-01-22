@@ -68,6 +68,9 @@ pub enum BedError {
     #[error("Attempt to write illegal value to BED file. Only 0,1,2,missing allowed. '{0}'")]
     BadValue(String),
 
+    #[error("Multithreading resulted in panic(s) '{0}'")]
+    PanickedThread(Box<Error>),
+
     #[error("No individual observed for the SNP.")]
     NoIndividuals,
 
@@ -355,6 +358,7 @@ pub fn write4<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
     val: &nd::ArrayView2<'_, T>,
     count_a1: bool,
     missing: T,
+    num_threads: usize,
 ) -> Result<(), BedErrorPlus> {
     let (iid_count, sid_count) = val.dim();
 
@@ -373,7 +377,7 @@ pub fn write4<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
     let heterozygous_allele = T::from(1);
     let homozygous_secondary_allele = T::from(2); // Minor Allele
 
-    let result_list: Result<Vec<()>, BedErrorPlus> = scope(|scope| {
+    let result_list: Result<Vec<()>, BedErrorPlus> = match scope(|scope| {
         val.axis_iter(nd::Axis(1))
             .parallel_map_scoped(scope, {
                 let filename = filename.to_owned();
@@ -402,14 +406,17 @@ pub fn write4<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
                     Ok(bytes_vector)
                 }
             })
+            .threads(num_threads)
             .map(|bytes_vector: Result<_, BedErrorPlus>| {
                 // Write the bytes vector, they must be in order.
                 writer.write_all(&bytes_vector?)?;
                 Ok(())
             })
             .collect()
-    })
-    .expect("cmk");
+    }) {
+        Err(_thread_error) => Result::Err(BedError::PanickedThread("cmk").into()),
+        Ok(result) => result,
+    };
 
     result_list?;
 

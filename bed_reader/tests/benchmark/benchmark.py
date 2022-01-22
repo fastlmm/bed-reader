@@ -77,75 +77,22 @@ if __name__ == "__main__":
         )
         return result_df
 
-    if False:
-        test_writes(1_000, 1_000, 1, "ssd", False, [0, 1, 1, 0])
-        test_writes(1_000, 1_000, 1, "hdd", False, [0, 1, 1, 0])
-
-    if False:
-        result = []
-        for sid_count in np.logspace(
-            np.log10(5), np.log10(62_000), 25, base=10, dtype=int
-        ):
-            iid_count = 10_000
-            for drive in ["ssd"]:
-                for num_threads in [12]:
-                    result.append(
-                        test_writes(
-                            iid_count, sid_count, num_threads, drive, False, [0, 1]
-                        )
-                    )
-        df = pd.concat(result)
-        df2 = df.pivot(
-            index="sid_count",
-            columns=["algorithm", "drive", "num_threads"],
-            values="val per second",
-        )
-        df2.plot(marker=".", logx=True)
-        plt.show()
-
-    if False:
-        result = []
-        for sid_count in np.logspace(
-            np.log10(5), np.log10(35_000), 25, base=10, dtype=int
-        ):
-            iid_count = 50_000
-            for drive in ["ssd"]:
-                for num_threads in [12]:
-                    result.append(
-                        test_writes(
-                            iid_count, sid_count, num_threads, drive, False, [1, 0]
-                        )
-                    )
-        df = pd.concat(result)
-        df2 = df.pivot(
-            index="sid_count",
-            columns=["algorithm", "drive", "num_threads"],
-            values="val per second",
-        )
-        df2.plot(marker=".", logx=True)
-        plt.show()
-
-    if True:
-        # 5K vs 50K
-        # 50K vs 50K
-        # 500K vs 5K
-        result = []
-        for sid_count in np.logspace(
-            np.log10(100), np.log10(50_000), 20, base=10, dtype=int
-        ):
-            iid_count = 50_000
-            for drive in ["ssd"]:  # , "hdd"]:
-                for num_threads in [1, 20]:
-                    result.append(
-                        test_writes(
-                            iid_count, sid_count, num_threads, drive, False, [3, 4]
-                        )
-                    )
-        df = pd.concat(result)
-        df2 = df.pivot(
-            index="sid_count",
-            columns=["iid_count", "drive", "num_threads", "version"],
-            values="val per second",
-        )
-        df2.plot(marker=".", logx=True)
-        plt.show()
+    # 5K vs 50K
+    # 50K vs 50K
+    # 500K vs 5K
+    result = []
+    for sid_count in np.logspace(np.log10(5), np.log10(50_000), 30, base=10, dtype=int):
+        iid_count = 50_000
+        for drive in ["hdd"]:  # , "hdd"]:
+            for num_threads in [1, 20]:
+                result.append(
+                    test_writes(iid_count, sid_count, num_threads, drive, False, [3, 4])
+                )
+    df = pd.concat(result)
+    df2 = df.pivot(
+        index="sid_count",
+        columns=["iid_count", "drive", "num_threads", "version"],
+        values="val per second",
+    )
+    df2.plot(marker=".", logx=True)
+    plt.show()

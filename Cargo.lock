@@ -174,8 +174,9 @@ dependencies = [
 
 [[package]]
 name = "dpc-pariter"
-version = "0.2.1"
-source = "git+https://github.com/dpc/pariter?branch=non-static-f#e3ab2276bbff25d7304470cfaae1dd711d55a049"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d71c06d807e6d996714ba51ecde62908e64a3d4721886480cc603da757fb905e"
 dependencies = [
  "crossbeam",
  "crossbeam-channel",
