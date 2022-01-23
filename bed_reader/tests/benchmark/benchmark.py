@@ -115,7 +115,7 @@ if __name__ == "__main__":
         plt.savefig(
             ssd_path
             / "plots"
-            / f"plot{plot_index},{iid_count},{'_'.join(drive_list)}.png"
+            / f"plot{plot_index},iid_count{iid_count},{'_'.join(drive_list)}.png"
         )
         # plt.show()
         return df
@@ -128,7 +128,5 @@ for drive in ["ssd", "hdd"]:
             iid_count,
             drive_list=[drive],
             plot_index=plot_count,
-            sid_end=500,
-            point_count=10,
         )
         plot_count += 1

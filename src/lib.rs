@@ -228,7 +228,6 @@ fn internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>
     if buf_reader.seek(SeekFrom::End(0))?
         != in_iid_count_div4_u64 * (in_sid_count as u64) + CB_HEADER_U64
     {
-        //cmk is BedErrorPlus::BedError( needed here and elsewhere?
         return Err(BedErrorPlus::BedError(BedError::IllFormed(
             filename.to_string(),
         )));
@@ -366,6 +365,32 @@ pub fn write4<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
     // 4 genotypes per byte so round up
     let (iid_count_div4, _) = try_div_4(iid_count, sid_count, CB_HEADER_U64)?;
 
+    // We create and write to a file.
+    // If there is an error, we will delete it.
+    if let Err(e) = write4_internal(
+        filename,
+        iid_count_div4,
+        val,
+        count_a1,
+        missing,
+        num_threads,
+    ) {
+        // Clean up the file
+        let _ = fs::remove_file(filename);
+        Err(e)
+    } else {
+        Ok(())
+    }
+}
+
+fn write4_internal<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
+    filename: &str,
+    iid_count_div4: usize,
+    val: &nd::ArrayView2<'_, T>,
+    count_a1: bool,
+    missing: T,
+    num_threads: usize,
+) -> Result<(), BedErrorPlus> {
     let mut writer = BufWriter::new(File::create(filename)?);
     writer.write_all(&[BED_FILE_MAGIC1, BED_FILE_MAGIC2, 0x01])?;
 
@@ -438,7 +463,7 @@ pub fn write3<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
     // We will create a file and then write to it.
     // If there is an error, we will delete it.
     let file = File::create(filename)?;
-    if let Err(e) = write_internal(
+    if let Err(e) = write3_internal(
         filename,
         file,
         iid_count_div4,
@@ -455,7 +480,7 @@ pub fn write3<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
     }
 }
 
-fn write_internal<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
+fn write3_internal<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
     filename: &str,
     file: File,
     iid_count_div4: usize,

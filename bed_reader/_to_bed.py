@@ -19,7 +19,7 @@ def to_bed(
     bim_filepath: Union[str, Path] = None,
     force_python_only: bool = False,
     num_threads=None,
-    version=4,  #!!!cmk
+    version=4,  # !!!cmk
 ):
     """
     Write values to a file in PLINK .bed format.

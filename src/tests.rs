@@ -318,7 +318,7 @@ fn writer() {
     if let Err(BedErrorPlus::BedError(BedError::BadValue(_))) =
         write4(filename, &val.view(), true, f64::NAN, 1)
     {
-        // cmk assert!(!Path::new(filename).exists(), "file should not exist");
+        assert!(!Path::new(filename).exists(), "file should not exist");
     } else {
         panic!("test failure")
     };
