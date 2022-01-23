@@ -7,7 +7,7 @@ import numpy as np
 
 from bed_reader import get_num_threads, open_bed
 
-from .bed_reader import write_f32, write_f64, write3_i8, write4_i8
+from .bed_reader import write_f32, write_f64, write_i8
 
 
 def to_bed(
@@ -19,7 +19,6 @@ def to_bed(
     bim_filepath: Union[str, Path] = None,
     force_python_only: bool = False,
     num_threads=None,
-    version=4,  # !!!cmk
 ):
     """
     Write values to a file in PLINK .bed format.
@@ -148,23 +147,12 @@ def to_bed(
                     str(filepath), count_a1=count_A1, val=val, num_threads=num_threads
                 )
             elif val.dtype == np.int8:
-                if version == 3:
-                    write3_i8(
-                        str(filepath),
-                        count_a1=count_A1,
-                        val=val,
-                        num_threads=num_threads,
-                    )
-                elif version == 4:
-                    write4_i8(
-                        str(filepath),
-                        count_a1=count_A1,
-                        val=val,
-                        num_threads=num_threads,
-                    )
-                else:
-                    raise ValueError("version must be 3 or 4")
-
+                write_i8(
+                    str(filepath),
+                    count_a1=count_A1,
+                    val=val,
+                    num_threads=num_threads,
+                )
             else:
                 raise ValueError(
                     f"dtype '{val.dtype}' not known, only "

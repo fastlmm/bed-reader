@@ -9,11 +9,10 @@ use dpc_pariter::{scope, IteratorExt};
 use ndarray as nd;
 use ndarray::ShapeBuilder;
 use num_traits::{Float, FromPrimitive, ToPrimitive};
-use rayon::iter::{IndexedParallelIterator, IntoParallelIterator};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use rayon::{iter::ParallelBridge, ThreadPoolBuildError};
 use statrs::distribution::{Beta, Continuous};
-use std::fs::{self, OpenOptions};
+use std::fs::{self};
 use std::ops::AddAssign;
 use std::ops::{Div, Sub};
 use std::{
@@ -353,7 +352,7 @@ pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
     Ok(val)
 }
 
-pub fn write4<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
+pub fn write<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
     filename: &str,
     val: &nd::ArrayView2<'_, T>,
     count_a1: bool,
@@ -367,7 +366,7 @@ pub fn write4<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
 
     // We create and write to a file.
     // If there is an error, we will delete it.
-    if let Err(e) = write4_internal(
+    if let Err(e) = write_internal(
         filename,
         iid_count_div4,
         val,
@@ -383,7 +382,7 @@ pub fn write4<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
     }
 }
 
-fn write4_internal<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
+fn write_internal<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
     filename: &str,
     iid_count_div4: usize,
     val: &nd::ArrayView2<'_, T>,
@@ -445,112 +444,6 @@ fn write4_internal<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialE
     result_list?;
 
     Ok(())
-}
-
-// Thanks to reddit user HundredLuck for multithreading approach for writing.
-//  See https://www.reddit.com/r/rust/comments/rxwqh4/a_puzzle_any_nice_way_to_multithread_work_in_order/hrvoabt
-pub fn write3<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
-    filename: &str,
-    val: &nd::ArrayView2<'_, T>,
-    count_a1: bool,
-    missing: T,
-) -> Result<(), BedErrorPlus> {
-    let (iid_count, sid_count) = val.dim();
-
-    // 4 genotypes per byte so round up
-    let (iid_count_div4, _) = try_div_4(iid_count, sid_count, CB_HEADER_U64)?;
-
-    // We will create a file and then write to it.
-    // If there is an error, we will delete it.
-    let file = File::create(filename)?;
-    if let Err(e) = write3_internal(
-        filename,
-        file,
-        iid_count_div4,
-        sid_count,
-        val,
-        count_a1,
-        missing,
-    ) {
-        // Clean up the file
-        let _ = fs::remove_file(filename);
-        Err(e)
-    } else {
-        Ok(())
-    }
-}
-
-fn write3_internal<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
-    filename: &str,
-    file: File,
-    iid_count_div4: usize,
-    sid_count: usize,
-    val: &nd::ArrayView2<'_, T>,
-    count_a1: bool,
-    missing: T,
-) -> Result<(), BedErrorPlus> {
-    #[allow(clippy::eq_op)]
-    let use_nan = missing != missing;
-
-    // Write the file, with header, to its full length.
-    file.set_len((iid_count_div4 * sid_count + CB_HEADER_USIZE) as u64)?;
-    let mut writer = BufWriter::new(file);
-    writer.write_all(&[BED_FILE_MAGIC1, BED_FILE_MAGIC2, 0x01])?;
-
-    let zero_code = if count_a1 { 3u8 } else { 0u8 };
-    let two_code = if count_a1 { 0u8 } else { 3u8 };
-
-    let homozygous_primary_allele = T::from(0); // Major Allele
-    let heterozygous_allele = T::from(1);
-    let homozygous_secondary_allele = T::from(2); // Minor Allele
-
-    let thread_count = rayon::current_num_threads();
-    let mut outer_chunk_size = 1;
-    if sid_count > thread_count {
-        // else
-        outer_chunk_size = sid_count / thread_count; // Try to divide evenly
-                                                     // If the number of leftover columns is large relative to the number of threads,
-                                                     // we add one column to each chunk.
-        let left_over = sid_count - outer_chunk_size * thread_count;
-        if left_over as f32 > (thread_count as f32) * 0.5 {
-            outer_chunk_size += 1;
-        }
-    };
-
-    val.axis_chunks_iter(nd::Axis(1), outer_chunk_size)
-        .into_par_iter()
-        .enumerate()
-        .try_for_each(|(idx, outer_chunk)| -> Result<(), BedErrorPlus> {
-            // Must use open options as File::create truncates the file
-            let mut writer = BufWriter::new(OpenOptions::new().write(true).open(filename)?);
-            let offset = idx * iid_count_div4 * outer_chunk_size + CB_HEADER_USIZE;
-            writer.seek(SeekFrom::Start(offset as u64))?;
-
-            for column in outer_chunk.axis_iter(nd::Axis(1)) {
-                let mut bytes_vector: Vec<u8> = vec![0; iid_count_div4]; // inits to 0
-                for (iid_i, &v0) in column.iter().enumerate() {
-                    #[allow(clippy::eq_op)]
-                    let genotype_byte = if v0 == homozygous_primary_allele {
-                        zero_code
-                    } else if v0 == heterozygous_allele {
-                        2
-                    } else if v0 == homozygous_secondary_allele {
-                        two_code
-                    //                    v0 !=v0 is generic NAN check
-                    } else if (use_nan && v0 != v0) || (!use_nan && v0 == missing) {
-                        1
-                    } else {
-                        return Err(BedError::BadValue(filename.to_string()).into());
-                    };
-                    // Possible optimization: We could pre-compute the conversion, the division, the mod, and the multiply*2
-                    let i_div_4 = iid_i / 4;
-                    let i_mod_4 = iid_i % 4;
-                    bytes_vector[i_div_4] |= genotype_byte << (i_mod_4 * 2);
-                }
-                writer.write_all(&bytes_vector)?;
-            }
-            Ok(())
-        })
 }
 
 fn count_lines(path_buf: PathBuf) -> Result<usize, BedErrorPlus> {
