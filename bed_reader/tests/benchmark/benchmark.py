@@ -1,7 +1,6 @@
 import time
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -117,6 +116,7 @@ def meta_test(
 
 
 if __name__ == "__main__":
+    import matplotlib.pyplot as plt
 
     plot_count = 0
     for drive in ["ssd", "hdd"]:
