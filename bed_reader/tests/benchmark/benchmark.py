@@ -77,22 +77,58 @@ if __name__ == "__main__":
         )
         return result_df
 
-    # 5K vs 50K
-    # 50K vs 50K
-    # 500K vs 5K
-    result = []
-    for sid_count in np.logspace(np.log10(5), np.log10(50_000), 30, base=10, dtype=int):
-        iid_count = 50_000
-        for drive in ["hdd"]:  # , "hdd"]:
-            for num_threads in [1, 20]:
-                result.append(
-                    test_writes(iid_count, sid_count, num_threads, drive, False, [3, 4])
-                )
-    df = pd.concat(result)
-    df2 = df.pivot(
-        index="sid_count",
-        columns=["iid_count", "drive", "num_threads", "version"],
-        values="val per second",
-    )
-    df2.plot(marker=".", logx=True)
-    plt.show()
+    def meta_test(
+        iid_count,
+        sid_start=5,
+        sid_end=None,
+        point_count=30,
+        drive_list=["ssd"],
+        plot_index=0,
+    ):
+        # 5K vs 50K
+        # 50K vs 50K
+        # 500K vs 5K
+        if sid_end is None:
+            if iid_count <= 50_000:
+                sid_end = 50_000
+            else:
+                sid_end = 5_000
+
+        result = []
+        for sid_count in np.logspace(
+            np.log10(sid_start), np.log10(sid_end), point_count, base=10, dtype=int
+        ):
+            for drive in drive_list:
+                for num_threads in [1, 12]:
+                    result.append(
+                        test_writes(
+                            iid_count, sid_count, num_threads, drive, False, [3, 4]
+                        )
+                    )
+        df = pd.concat(result)
+        df2 = df.pivot(
+            index="sid_count",
+            columns=["iid_count", "drive", "num_threads", "version"],
+            values="val per second",
+        )
+        df2.plot(marker=".", logx=True)
+        plt.savefig(
+            ssd_path
+            / "plots"
+            / f"plot{plot_index},{iid_count},{'_'.join(drive_list)}.png"
+        )
+        # plt.show()
+        return df
+
+
+plot_count = 0
+for drive in ["ssd", "hdd"]:
+    for iid_count in [5_000, 50_000, 500_000]:
+        meta_test(
+            iid_count,
+            drive_list=[drive],
+            plot_index=plot_count,
+            sid_end=500,
+            point_count=10,
+        )
+        plot_count += 1

@@ -68,8 +68,8 @@ pub enum BedError {
     #[error("Attempt to write illegal value to BED file. Only 0,1,2,missing allowed. '{0}'")]
     BadValue(String),
 
-    #[error("Multithreading resulted in panic(s) '{0}'")]
-    PanickedThread(Box<Error>),
+    #[error("Multithreading resulted in panic(s)")]
+    PanickedThread(),
 
     #[error("No individual observed for the SNP.")]
     NoIndividuals,
@@ -228,6 +228,7 @@ fn internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>
     if buf_reader.seek(SeekFrom::End(0))?
         != in_iid_count_div4_u64 * (in_sid_count as u64) + CB_HEADER_U64
     {
+        //cmk is BedErrorPlus::BedError( needed here and elsewhere?
         return Err(BedErrorPlus::BedError(BedError::IllFormed(
             filename.to_string(),
         )));
@@ -377,7 +378,7 @@ pub fn write4<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
     let heterozygous_allele = T::from(1);
     let homozygous_secondary_allele = T::from(2); // Minor Allele
 
-    let result_list: Result<Vec<()>, BedErrorPlus> = match scope(|scope| {
+    let result_list: Result<Vec<()>, BedErrorPlus> = scope(|scope| {
         val.axis_iter(nd::Axis(1))
             .parallel_map_scoped(scope, {
                 let filename = filename.to_owned();
@@ -413,10 +414,8 @@ pub fn write4<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
                 Ok(())
             })
             .collect()
-    }) {
-        Err(_thread_error) => Result::Err(BedError::PanickedThread("cmk").into()),
-        Ok(result) => result,
-    };
+    })
+    .map_err(|_e| BedError::PanickedThread())?;
 
     result_list?;
 
