@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>bed_reader Documentation &mdash; Bed Reader 0.2.8 documentation</title>
+  <title>bed_reader Documentation &mdash; Bed Reader 0.2.9 documentation</title>
       <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
@@ -28,7 +28,7 @@
             <a href="#" class="icon icon-home"> Bed Reader
           </a>
               <div class="version">
-                0.2.8
+                0.2.9
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -943,11 +943,8 @@ Defaults to replacing the .bed file’s suffix with .bim.</p></li>
 <li><p><strong>force_python_only</strong> – If False (default), uses the faster Rust code; otherwise it uses the slower
 pure Python code.</p></li>
 <li><p><strong>num_threads</strong> (<a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.10)"><em>None</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><em>int</em></a><em>, </em><em>optional</em>) – The number of threads with which to write data.
-(Writing is currently always single-threaded, but multithreading
-may be enabled in the future.)
 Defaults to all available processors.
-Can also be set with these
-environment variables (listed in priority order):
+Can also be set with these environment variables (listed in priority order):
 ‘PST_NUM_THREADS’, ‘NUM_THREADS’, ‘MKL_NUM_THREADS’.</p></li>
 </ul>
 </dd>

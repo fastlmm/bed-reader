@@ -60,8 +60,7 @@ def to_bed(
     num_threads: None or int, optional
         The number of threads with which to write data.
         Defaults to all available processors.
-        Can also be set with these
-        environment variables (listed in priority order):
+        Can also be set with these environment variables (listed in priority order):
         'PST_NUM_THREADS', 'NUM_THREADS', 'MKL_NUM_THREADS'.
 
 
