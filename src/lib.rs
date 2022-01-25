@@ -352,6 +352,8 @@ pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
     Ok(val)
 }
 
+// Thanks to Dawid for his dpc-pariter library that makes this function scale.
+// https://dpc.pw/adding-parallelism-to-your-rust-iterators
 pub fn write<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
     filename: &str,
     val: &nd::ArrayView2<'_, T>,
@@ -402,12 +404,11 @@ fn write_internal<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq
     let heterozygous_allele = T::from(1);
     let homozygous_secondary_allele = T::from(2); // Minor Allele
 
-    let result_list: Result<Vec<()>, BedErrorPlus> = scope(|scope| {
+    scope(|scope| {
         val.axis_iter(nd::Axis(1))
             .parallel_map_scoped(scope, {
-                let filename = filename.to_owned();
                 move |column| {
-                    // Covert each column into a bytes_vector
+                    // Convert each column into a bytes_vector
                     let mut bytes_vector: Vec<u8> = vec![0; iid_count_div4]; // inits to 0
                     for (iid_i, &v0) in column.iter().enumerate() {
                         #[allow(clippy::eq_op)]
@@ -421,7 +422,7 @@ fn write_internal<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq
                         } else if (use_nan && v0 != v0) || (!use_nan && v0 == missing) {
                             1
                         } else {
-                            return Err(BedError::BadValue(filename.to_string()).into());
+                            return Err(BedError::BadValue(filename.to_string()));
                         };
                         // Possible optimization: We could pre-compute the conversion, the division, the mod, and the multiply*2
                         let i_div_4 = iid_i / 4;
@@ -432,18 +433,13 @@ fn write_internal<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq
                 }
             })
             .threads(num_threads)
-            .map(|bytes_vector: Result<_, BedErrorPlus>| {
+            .try_for_each(|bytes_vector| {
                 // Write the bytes vector, they must be in order.
                 writer.write_all(&bytes_vector?)?;
                 Ok(())
             })
-            .collect()
     })
-    .map_err(|_e| BedError::PanickedThread())?;
-
-    result_list?;
-
-    Ok(())
+    .map_err(|_e| BedError::PanickedThread())?
 }
 
 fn count_lines(path_buf: PathBuf) -> Result<usize, BedErrorPlus> {

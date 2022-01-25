@@ -59,8 +59,6 @@ def to_bed(
 
     num_threads: None or int, optional
         The number of threads with which to write data.
-        (Writing is currently always single-threaded, but multithreading
-        may be enabled in the future.)
         Defaults to all available processors.
         Can also be set with these
         environment variables (listed in priority order):
@@ -144,7 +142,10 @@ def to_bed(
                 )
             elif val.dtype == np.float32:
                 write_f32(
-                    str(filepath), count_a1=count_A1, val=val, num_threads=num_threads
+                    str(filepath),
+                    count_a1=count_A1,
+                    val=val,
+                    num_threads=num_threads,
                 )
             elif val.dtype == np.int8:
                 write_i8(
