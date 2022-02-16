@@ -5,6 +5,7 @@
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use core::fmt::Debug;
+use derive_builder::Builder;
 use dpc_pariter::{scope, IteratorExt};
 use ndarray as nd;
 use ndarray::ShapeBuilder;
@@ -104,6 +105,7 @@ pub enum BedError {
     IllegalStartCountOutput,
 }
 
+#[derive(Builder)]
 struct Bed {
     // !!!cmk or file_name: &'a Path,
     filename: String,

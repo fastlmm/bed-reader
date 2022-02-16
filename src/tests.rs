@@ -13,6 +13,8 @@ use crate::try_div_4;
 #[cfg(test)]
 use crate::Bed;
 #[cfg(test)]
+use crate::BedBuilder;
+#[cfg(test)]
 use crate::Dist;
 #[cfg(test)]
 use crate::{
@@ -934,7 +936,13 @@ fn file_aat(
 #[test]
 fn rusty_bed1() {
     let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
-    let bed = Bed::new(file, true);
+    // !!! cmk how come this can't return an error?
+    let bed = BedBuilder::default()
+        .filename(file.to_string())
+        .count_a1(true)
+        .build()
+        .unwrap();
+    // !!! cmk how to set missing values to defaults?
     let val = bed.read(-127).unwrap();
     let val_f64 = val.mapv(|elem| elem as f64);
     let mean_ = val_f64.mean().unwrap();
