@@ -937,11 +937,7 @@ fn file_aat(
 fn rusty_bed1() {
     let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
     // !!! cmk how come this can't return an error?
-    let bed = BedBuilder::default()
-        .filename(file.to_string())
-        .count_a1(true)
-        .build()
-        .unwrap();
+    let bed = Bed::builder().filename(file.to_string()).build();
     // !!! cmk how to set missing values to defaults?
     let val = bed.read(-127).unwrap();
     let val_f64 = val.mapv(|elem| elem as f64);

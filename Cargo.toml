@@ -46,7 +46,7 @@ statrs = "0.15.0"
 byteorder = { version = "1.4.3", default-features = false }
 pyo3 = { version = "0.15.1", features = ["extension-module"] }
 dpc-pariter = "0.3.1"
-derive_builder = "0.10.2"
+typed-builder = "0.10.0"
 
 [dev-dependencies]
 temp_testdir = "0.2.3"

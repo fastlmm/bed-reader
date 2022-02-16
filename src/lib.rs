@@ -5,7 +5,6 @@
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use core::fmt::Debug;
-use derive_builder::Builder;
 use dpc_pariter::{scope, IteratorExt};
 use ndarray as nd;
 use ndarray::ShapeBuilder;
@@ -26,6 +25,7 @@ use std::{
     path::Path,
 };
 use thiserror::Error;
+use typed_builder::TypedBuilder;
 
 const BED_FILE_MAGIC1: u8 = 0x6C; // 0b01101100 or 'l' (lowercase 'L')
 const BED_FILE_MAGIC2: u8 = 0x1B; // 0b00011011 or <esc>
@@ -104,11 +104,13 @@ pub enum BedError {
     #[error("start, count, and/or output matrix size are illegal.")]
     IllegalStartCountOutput,
 }
-
-#[derive(Builder)]
+// https://docs.rs/derive_builder/0.10.2/derive_builder/
+#[derive(TypedBuilder)]
 struct Bed {
-    // !!!cmk or file_name: &'a Path,
+    // !!!cmk or file_name or a Path,
     filename: String,
+
+    #[builder(default = true)]
     count_a1: bool,
 }
 
