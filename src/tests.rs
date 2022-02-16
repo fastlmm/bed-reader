@@ -11,6 +11,8 @@ use crate::read_into_f64;
 #[cfg(test)]
 use crate::try_div_4;
 #[cfg(test)]
+use crate::Bed;
+#[cfg(test)]
 use crate::Dist;
 #[cfg(test)]
 use crate::{
@@ -927,4 +929,14 @@ fn file_aat(
         println!("val:\n{:?}", val);
     }
     Ok(())
+}
+
+#[test]
+fn rusty_bed1() {
+    let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
+    let bed = Bed::new(file, true);
+    let val = bed.read(-127).unwrap();
+    let val_f64 = val.mapv(|elem| elem as f64);
+    let mean_ = val_f64.mean().unwrap();
+    assert!(mean_ == -13.142); // really shouldn't do mean on data where -127 represents missing
 }

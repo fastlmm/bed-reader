@@ -104,6 +104,72 @@ pub enum BedError {
     IllegalStartCountOutput,
 }
 
+struct Bed {
+    // !!!cmk or file_name: &'a Path,
+    filename: String,
+    count_a1: bool,
+}
+
+impl Bed {
+    // filepath: Union[str, Path],
+    // iid_count: Optional[int] = None,
+    // sid_count: Optional[int] = None,
+    // properties: Mapping[str, List[Any]] = {},
+    // count_A1: bool = True,
+    // num_threads: Optional[int] = None,
+    // skip_format_check: bool = False,
+    // fam_filepath: Union[str, Path] = None,
+    // bim_filepath: Union[str, Path] = None,
+
+    fn new(filename: &str, count_a1: bool) -> Self {
+        Bed {
+            filename: filename.to_string(),
+            count_a1: count_a1,
+        }
+    }
+
+    // index: Optional[Any] = None,
+    // dtype: Optional[Union[type, str]] = "float32",
+    // order: Optional[str] = "F",
+    // num_threads=None,
+
+    pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
+        &self,
+        // output_is_orderf: bool,
+        missing_value: TOut,
+    ) -> Result<nd::Array2<TOut>, BedErrorPlus> {
+        let output_is_orderf = true;
+        let (iid_count, sid_count) = counts(&self.filename)?;
+
+        let iid_index: Vec<usize> = (0..iid_count).collect();
+        let sid_index: Vec<usize> = (0..sid_count).collect();
+
+        let shape = ShapeBuilder::set_f((iid_count, sid_count), output_is_orderf);
+        let mut val = nd::Array2::<TOut>::default(shape);
+
+        read_no_alloc(
+            &self.filename,
+            iid_count,
+            sid_count,
+            self.count_a1,
+            &iid_index,
+            &sid_index,
+            missing_value,
+            &mut val.view_mut(),
+        )?;
+
+        Ok(val)
+    }
+}
+
+// // !!!cmk allow reads from various strings and streams and files
+// // !!!cmk    but how to get bim and fam?
+// // !!!cmk is 'open_bed' redundant?
+// fn open_bed(filename: &str) -> Result<Bed, BedErrorPlus> {
+//     return Ok(Bed { filename });
+//}
+
+//#!!!cmk hide this from the docs
 #[allow(clippy::too_many_arguments)]
 fn read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
     filename: &str,
