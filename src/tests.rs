@@ -988,9 +988,13 @@ fn rusty_bed3() {
     // !!!cmk remove the need for wrapping with Bool(), Full(), None()
     let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
     // !!! cmk how come this can't return an error?
-    let bed = Bed::builder().filename(file.to_string()).build();
-    let iid_bool: Vec<bool> = (0..10).map(|elem| (elem % 2) != 0).collect();
-    let sid_bool: Vec<bool> = (0..100).map(|elem| (elem % 8) != 0).collect();
+    let mut bed = Bed::builder().filename(file.to_string()).build();
+    let iid_bool: Vec<bool> = (0..bed.get_iid_count())
+        .map(|elem| (elem % 2) != 0)
+        .collect();
+    let sid_bool: Vec<bool> = (0..bed.get_sid_count())
+        .map(|elem| (elem % 8) != 0)
+        .collect();
     let val = bed
         .read(
             ReadArg::builder()

@@ -112,6 +112,12 @@ struct Bed {
 
     #[builder(default = true)]
     count_a1: bool,
+
+    #[builder(default = None, setter(strip_option))]
+    iid_count: Option<usize>,
+
+    #[builder(default = None, setter(strip_option))]
+    sid_count: Option<usize>,
 }
 
 impl Bed {
@@ -132,7 +138,27 @@ impl Bed {
     //     }
     // }
 
-    // index: Optional[Any] = None,
+    // !!!cmk is this how you do lazy accessors?
+    fn get_iid_count(&mut self) -> usize {
+        if let Some(iid_count) = self.iid_count {
+            iid_count
+        } else {
+            let (iid_count, sid_count) = counts(&self.filename).unwrap();
+            self.iid_count = Some(iid_count);
+            self.sid_count = Some(sid_count);
+            iid_count
+        }
+    }
+    fn get_sid_count(&mut self) -> usize {
+        if let Some(sid_count) = self.sid_count {
+            sid_count
+        } else {
+            let (iid_count, sid_count) = counts(&self.filename).unwrap();
+            self.iid_count = Some(iid_count);
+            self.sid_count = Some(sid_count);
+            sid_count
+        }
+    }
 
     pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
         &self,
