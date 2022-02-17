@@ -947,8 +947,8 @@ fn rusty_bed1() {
         .read(ReadArg::builder().missing_value(-127).build())
         .unwrap();
     let val_f64 = val.mapv(|elem| elem as f64);
-    let mean_ = val_f64.mean().unwrap();
-    assert!(mean_ == -13.142); // really shouldn't do mean on data where -127 represents missing
+    let mean = val.mapv(|elem| elem as f64).mean().unwrap();
+    assert!(mean == -13.142); // really shouldn't do mean on data where -127 represents missing
 
     let bed = Bed::builder()
         .filename(file.to_string())
@@ -957,7 +957,21 @@ fn rusty_bed1() {
     let val = bed
         .read(ReadArg::builder().missing_value(-127).build())
         .unwrap();
-    let val_f64 = val.mapv(|elem| elem as f64);
-    let mean_ = val_f64.mean().unwrap();
-    assert!(mean_ == -13.274); // really shouldn't do mean on data where -127 represents missing
+    let mean = val.mapv(|elem| elem as f64).mean().unwrap();
+    assert!(mean == -13.274); // really shouldn't do mean on data where -127 represents missing
+
+    let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
+    // !!! cmk how come this can't return an error?
+    let bed = Bed::builder().filename(file.to_string()).build();
+    let val = bed
+        .read(
+            ReadArg::builder()
+                .missing_value(-127)
+                // !!!cmk could it be any slice of usize?
+                .iid_index([0].to_vec())
+                .build(),
+        )
+        .unwrap();
+    let mean = val.mapv(|elem| elem as f64).mean().unwrap();
+    assert!(mean == -0.533); // really shouldn't do mean on data where -127 represents missing
 }

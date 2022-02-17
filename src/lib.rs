@@ -133,19 +133,28 @@ impl Bed {
     // }
 
     // index: Optional[Any] = None,
-    // dtype: Optional[Union[type, str]] = "float32",
-    // order: Optional[str] = "F",
-    // num_threads=None,
 
     pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
         &self,
         read_arg: ReadArg<TOut>,
     ) -> Result<nd::Array2<TOut>, BedErrorPlus> {
         let output_is_orderf = true;
+
+        // !!!cmk this should be lazy in Bed object, not here
         let (iid_count, sid_count) = counts(&self.filename)?;
 
-        let iid_index: Vec<usize> = (0..iid_count).collect();
-        let sid_index: Vec<usize> = (0..sid_count).collect();
+        let num_threads = read_arg.num_threads; // None or Some(num_threads) !!! cmk apply
+
+        let iid_index = if let Some(iid_index) = read_arg.iid_index {
+            iid_index
+        } else {
+            (0..iid_count).collect()
+        };
+        let sid_index = if let Some(sid_index) = read_arg.sid_index {
+            sid_index
+        } else {
+            (0..sid_count).collect()
+        };
 
         let shape = ShapeBuilder::set_f((iid_count, sid_count), read_arg.output_is_orderf);
         let mut val = nd::Array2::<TOut>::default(shape);
@@ -173,11 +182,19 @@ impl Bed {
 struct ReadArg<TOut: Copy + Default + From<i8> + Debug + Sync + Send> {
     missing_value: TOut,
 
-    // index: Optional[Any] = None,
-    // dtype: Optional[Union[type, str]] = "float32",
+    // !!!cmk what about slices and bools and both together?
+    #[builder(default, setter(strip_option))]
+    iid_index: Option<Vec<usize>>,
+
+    #[builder(default, setter(strip_option))]
+    sid_index: Option<Vec<usize>>,
+
     #[builder(default = true)]
     output_is_orderf: bool, // !!!cmk test name? use enum?
-                            // num_threads=None,
+
+    #[builder(default, setter(strip_option))]
+    num_threads: Option<usize>,
+    // num_threads=None,
 }
 
 // // !!!cmk allow reads from various strings and streams and files
