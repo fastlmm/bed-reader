@@ -145,16 +145,8 @@ impl Bed {
 
         let num_threads = read_arg.num_threads; // None or Some(num_threads) !!! cmk apply
 
-        let iid_index = if let Some(iid_index) = read_arg.iid_index {
-            iid_index
-        } else {
-            (0..iid_count).collect()
-        };
-        let sid_index = if let Some(sid_index) = read_arg.sid_index {
-            sid_index
-        } else {
-            (0..sid_count).collect()
-        };
+        let iid_index = to_vec(read_arg.iid_index, iid_count);
+        let sid_index = to_vec(read_arg.sid_index, sid_count);
 
         let shape = ShapeBuilder::set_f((iid_count, sid_count), read_arg.output_is_orderf);
         let mut val = nd::Array2::<TOut>::default(shape);
@@ -174,20 +166,44 @@ impl Bed {
     }
 }
 
+// !!!cmk avoid saying Index:: so much
+fn to_vec(index: Index, count: usize) -> Vec<usize> {
+    match index {
+        // !!!cmk fastest?
+        Index::None => (0..count).collect(),
+        Index::Full(iid_index) => iid_index,
+        Index::Bool(bool_index) => {
+            // !!!cmk check that bool_index.len() == iid_count
+            // !!!cmk use enumerate() instead of zip
+            (0..count)
+                .zip(bool_index)
+                .filter(|(_, b)| *b)
+                .map(|(i, _)| i)
+                .collect()
+        }
+    }
+}
+
 // !!!cmk add docs to type typedbuilder stuff: https://docs.rs/typed-builder/latest/typed_builder/derive.TypedBuilder.html#customisation-with-attributes
 
 // !!!cmk "Arg" is unlikely to be a good name
+enum Index {
+    None,
+    Full(Vec<usize>),
+    Bool(Vec<bool>),
+    // !!!cmk nd::slice
+}
 
+// See https://nullderef.com/blog/rust-parameters/
 #[derive(TypedBuilder)]
 struct ReadArg<TOut: Copy + Default + From<i8> + Debug + Sync + Send> {
     missing_value: TOut,
 
-    // !!!cmk what about slices and bools and both together?
-    #[builder(default, setter(strip_option))]
-    iid_index: Option<Vec<usize>>,
+    #[builder(default = Index::None)]
+    iid_index: Index,
 
-    #[builder(default, setter(strip_option))]
-    sid_index: Option<Vec<usize>>,
+    #[builder(default = Index::None)]
+    sid_index: Index,
 
     #[builder(default = true)]
     output_is_orderf: bool, // !!!cmk test name? use enum?

@@ -13,9 +13,10 @@ use crate::try_div_4;
 #[cfg(test)]
 use crate::Bed;
 #[cfg(test)]
-use crate::BedBuilder;
-#[cfg(test)]
 use crate::Dist;
+#[cfg(test)]
+use crate::Index;
+#[cfg(test)]
 use crate::ReadArg;
 #[cfg(test)]
 use crate::{
@@ -946,7 +947,6 @@ fn rusty_bed1() {
     let val = bed
         .read(ReadArg::builder().missing_value(-127).build())
         .unwrap();
-    let val_f64 = val.mapv(|elem| elem as f64);
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     assert!(mean == -13.142); // really shouldn't do mean on data where -127 represents missing
 
@@ -959,7 +959,11 @@ fn rusty_bed1() {
         .unwrap();
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     assert!(mean == -13.274); // really shouldn't do mean on data where -127 represents missing
+}
 
+#[test]
+fn rusty_bed2() {
+    // !!!cmk reading one iid is very common. Make it easy.
     let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
     // !!! cmk how come this can't return an error?
     let bed = Bed::builder().filename(file.to_string()).build();
@@ -968,10 +972,36 @@ fn rusty_bed1() {
             ReadArg::builder()
                 .missing_value(-127)
                 // !!!cmk could it be any slice of usize?
-                .iid_index([0].to_vec())
+                .iid_index(Index::Full([0].to_vec()))
+                .sid_index(Index::Full([1].to_vec()))
                 .build(),
         )
         .unwrap();
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
-    assert!(mean == -0.533); // really shouldn't do mean on data where -127 represents missing
+    println!("{:?}", mean);
+    assert!(mean == 0.001); // really shouldn't do mean on data where -127 represents missing
+}
+
+#[test]
+fn rusty_bed3() {
+    // !!!cmk also show mixing bool and full and none
+    // !!!cmk remove the need for wrapping with Bool(), Full(), None()
+    let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
+    // !!! cmk how come this can't return an error?
+    let bed = Bed::builder().filename(file.to_string()).build();
+    let iid_bool: Vec<bool> = (0..10).map(|elem| (elem % 2) != 0).collect();
+    let sid_bool: Vec<bool> = (0..100).map(|elem| (elem % 8) != 0).collect();
+    let val = bed
+        .read(
+            ReadArg::builder()
+                .missing_value(-127)
+                // !!!cmk could it be any slice of usize?
+                .iid_index(Index::Bool(iid_bool))
+                .sid_index(Index::Bool(sid_bool))
+                .build(),
+        )
+        .unwrap();
+    let mean = val.mapv(|elem| elem as f64).mean().unwrap();
+    println!("{:?}", mean);
+    assert!(mean == -6.309); // really shouldn't do mean on data where -127 represents missing
 }
