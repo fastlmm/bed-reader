@@ -56,6 +56,8 @@ chromosome. Then, read every value in chromosome 5.
 
 use bed_reader;
 
+cmk See slicing macro s! https://docs.rs/ndarray/latest/ndarray/macro.s.html
+
 ```rust
 fn main() {
     let file_name2 = sample_file("some_missing.bed");

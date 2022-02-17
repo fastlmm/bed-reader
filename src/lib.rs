@@ -104,11 +104,11 @@ pub enum BedError {
     #[error("start, count, and/or output matrix size are illegal.")]
     IllegalStartCountOutput,
 }
-// https://docs.rs/derive_builder/0.10.2/derive_builder/
+// https://crates.io/crates/typed-builder
 #[derive(TypedBuilder)]
 struct Bed {
     // !!!cmk or file_name or a Path,
-    filename: String,
+    filename: String, // !!!cmk always clone?
 
     #[builder(default = true)]
     count_a1: bool,
@@ -125,12 +125,12 @@ impl Bed {
     // fam_filepath: Union[str, Path] = None,
     // bim_filepath: Union[str, Path] = None,
 
-    fn new(filename: &str, count_a1: bool) -> Self {
-        Bed {
-            filename: filename.to_string(),
-            count_a1: count_a1,
-        }
-    }
+    // fn new(filename: &str, count_a1: bool) -> Self {
+    //     Bed {
+    //         filename: filename.to_string(),
+    //         count_a1: count_a1,
+    //     }
+    // }
 
     // index: Optional[Any] = None,
     // dtype: Optional[Union[type, str]] = "float32",
@@ -139,8 +139,7 @@ impl Bed {
 
     pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
         &self,
-        // output_is_orderf: bool,
-        missing_value: TOut,
+        read_arg: ReadArg<TOut>,
     ) -> Result<nd::Array2<TOut>, BedErrorPlus> {
         let output_is_orderf = true;
         let (iid_count, sid_count) = counts(&self.filename)?;
@@ -148,7 +147,7 @@ impl Bed {
         let iid_index: Vec<usize> = (0..iid_count).collect();
         let sid_index: Vec<usize> = (0..sid_count).collect();
 
-        let shape = ShapeBuilder::set_f((iid_count, sid_count), output_is_orderf);
+        let shape = ShapeBuilder::set_f((iid_count, sid_count), read_arg.output_is_orderf);
         let mut val = nd::Array2::<TOut>::default(shape);
 
         read_no_alloc(
@@ -158,12 +157,27 @@ impl Bed {
             self.count_a1,
             &iid_index,
             &sid_index,
-            missing_value,
+            read_arg.missing_value,
             &mut val.view_mut(),
         )?;
 
         Ok(val)
     }
+}
+
+// !!!cmk add docs to type typedbuilder stuff: https://docs.rs/typed-builder/latest/typed_builder/derive.TypedBuilder.html#customisation-with-attributes
+
+// !!!cmk "Arg" is unlikely to be a good name
+
+#[derive(TypedBuilder)]
+struct ReadArg<TOut: Copy + Default + From<i8> + Debug + Sync + Send> {
+    missing_value: TOut,
+
+    // index: Optional[Any] = None,
+    // dtype: Optional[Union[type, str]] = "float32",
+    #[builder(default = true)]
+    output_is_orderf: bool, // !!!cmk test name? use enum?
+                            // num_threads=None,
 }
 
 // // !!!cmk allow reads from various strings and streams and files

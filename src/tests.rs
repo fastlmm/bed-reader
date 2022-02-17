@@ -16,6 +16,7 @@ use crate::Bed;
 use crate::BedBuilder;
 #[cfg(test)]
 use crate::Dist;
+use crate::ReadArg;
 #[cfg(test)]
 use crate::{
     counts, impute_and_zero_mean_snps, matrix_subset_no_alloc, read, read_with_indexes, write,
@@ -933,14 +934,30 @@ fn file_aat(
     Ok(())
 }
 
+// !!!cmk test slicing macro s! https://docs.rs/ndarray/latest/ndarray/macro.s.html
+// !!!cmk use read_all or new macros to make reading all easier.
+// !!!cmk is there a way to set default value based on the result type (if given)
+
 #[test]
 fn rusty_bed1() {
     let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
     // !!! cmk how come this can't return an error?
     let bed = Bed::builder().filename(file.to_string()).build();
-    // !!! cmk how to set missing values to defaults?
-    let val = bed.read(-127).unwrap();
+    let val = bed
+        .read(ReadArg::builder().missing_value(-127).build())
+        .unwrap();
     let val_f64 = val.mapv(|elem| elem as f64);
     let mean_ = val_f64.mean().unwrap();
     assert!(mean_ == -13.142); // really shouldn't do mean on data where -127 represents missing
+
+    let bed = Bed::builder()
+        .filename(file.to_string())
+        .count_a1(false)
+        .build();
+    let val = bed
+        .read(ReadArg::builder().missing_value(-127).build())
+        .unwrap();
+    let val_f64 = val.mapv(|elem| elem as f64);
+    let mean_ = val_f64.mean().unwrap();
+    assert!(mean_ == -13.274); // really shouldn't do mean on data where -127 represents missing
 }
