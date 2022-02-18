@@ -1083,17 +1083,21 @@ fn readme_examples() {
     let mut bed3 = Bed::builder().filename(file_name2.to_string()).build();
     println!("{:?}", &(bed3.get_iid())[5..]);
     println!("{:?}", &(bed3.get_sid())[5..]);
-    let set: HashSet<_> = bed3.get_chromosome().iter().collect();
-    println!("{:?}", set);
-    // let val3: nd::ArrayBase<nd::OwnedRepr<f64>, nd::Dim<[usize; 2]>> = bed3
-    //     .read(
-    //         ReadArg::builder()
-    //             .sid_index(Index::Bool(
-    //                 bed3.get_chromosome().map(|elem| elem == "5").collect(),
-    //             ))
-    //             .missing_value(NAN)
-    //             .build(),
-    //     )
-    //     .unwrap();
-    // println!("{:?}", val3.shape());
+    let unique: HashSet<_> = bed3.get_chromosome().iter().collect();
+    println!("{:?}", unique);
+    let is_5 = bed3
+        .get_chromosome()
+        .iter()
+        .map(|elem| elem == "5")
+        .collect();
+    let val3: nd::ArrayBase<nd::OwnedRepr<f64>, nd::Dim<[usize; 2]>> = bed3
+        .read(
+            ReadArg::builder()
+                .sid_index(Index::Bool(is_5))
+                .missing_value(NAN)
+                .build(),
+        )
+        .unwrap();
+    println!("{:?}", val3.shape());
+    // [100, 6]
 }
