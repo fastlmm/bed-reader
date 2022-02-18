@@ -107,6 +107,8 @@ pub enum BedError {
 }
 // https://docs.rs/derive_builder/latest/derive_builder/ or
 // https://crates.io/crates/typed-builder
+// Somehow ndarray can do this: 	Array::zeros((3, 4, 5).f())
+//       see https://docs.rs/ndarray/latest/ndarray/doc/ndarray_for_numpy_users/index.html
 #[derive(TypedBuilder)]
 struct Bed {
     // !!!cmk or file_name or a Path,
@@ -297,6 +299,7 @@ enum Index {
 }
 
 // See https://nullderef.com/blog/rust-parameters/
+// !!!cmk not that ndarray can do this: a.slice(s![1..4;2, ..;-1])
 #[derive(TypedBuilder)]
 struct ReadArg<TOut: Copy + Default + From<i8> + Debug + Sync + Send> {
     missing_value: TOut,

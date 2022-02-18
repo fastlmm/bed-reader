@@ -1032,10 +1032,14 @@ fn readme_examples() {
     /// !!!cmk document use statements
     /// !!!cmk pull down sample file
     let file_name = "bed_reader/tests/data/small.bed";
+    // !!!cmk this should be able to fail is the file is the wrong format and default checking is used.
     let bed = Bed::builder().filename(file_name.to_string()).build();
+    //nd let bed = Bed::new(filename)?;
     let val = bed
         .read(ReadArg::builder().missing_value(NAN).build())
         .unwrap();
+    //nd val = bed.read(NAN).unwrap();
+    //nd val = bed.read!().unwrap();
     println!("{:?}", val);
     // [[1.0, 0.0, NaN, 0.0],
     // [2.0, 0.0, NaN, 2.0],
@@ -1054,6 +1058,7 @@ fn readme_examples() {
     let mut bed2 = Bed::builder().filename(file_name2.to_string()).build();
     let iid_count = bed2.get_iid_count();
     let iid_index = (0..iid_count).step_by(2).collect();
+    //nd iid_index = s![..;2];
     let val2 = bed2
         .read(
             ReadArg::builder()
@@ -1063,6 +1068,7 @@ fn readme_examples() {
                 .build(),
         )
         .unwrap();
+    //nd val2 = bed2.read!(index(s![..,20..30]).missing_value(NAN)).unwrap();
     println!("{:?}", val2.shape());
     // [50, 10]
 
@@ -1090,6 +1096,7 @@ fn readme_examples() {
         .iter()
         .map(|elem| elem == "5")
         .collect();
+    //nd is_5 = bed3.get_chromosome().mapv(|elem| elem == "5");
     let val3: nd::ArrayBase<nd::OwnedRepr<f64>, nd::Dim<[usize; 2]>> = bed3
         .read(
             ReadArg::builder()
@@ -1098,6 +1105,7 @@ fn readme_examples() {
                 .build(),
         )
         .unwrap();
+    //nd val3 = bed3.read!(sid_index(is_5).missing_value(NAN)).unwrap();
     println!("{:?}", val3.shape());
     // [100, 6]
 }
