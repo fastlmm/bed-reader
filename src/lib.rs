@@ -5,6 +5,8 @@
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use core::fmt::Debug;
+use typed_builder::TypedBuilder;
+// !!!cmk use derive_builder::Builder;
 use dpc_pariter::{scope, IteratorExt};
 use ndarray as nd;
 use ndarray::ShapeBuilder;
@@ -25,7 +27,6 @@ use std::{
     path::Path,
 };
 use thiserror::Error;
-use typed_builder::TypedBuilder;
 
 const BED_FILE_MAGIC1: u8 = 0x6C; // 0b01101100 or 'l' (lowercase 'L')
 const BED_FILE_MAGIC2: u8 = 0x1B; // 0b00011011 or <esc>
@@ -104,6 +105,7 @@ pub enum BedError {
     #[error("start, count, and/or output matrix size are illegal.")]
     IllegalStartCountOutput,
 }
+// https://docs.rs/derive_builder/latest/derive_builder/ or
 // https://crates.io/crates/typed-builder
 #[derive(TypedBuilder)]
 struct Bed {
@@ -118,25 +120,23 @@ struct Bed {
 
     #[builder(default = None, setter(strip_option))]
     sid_count: Option<usize>,
+
+    #[builder(default = None, setter(strip_option))]
+    iid: Option<Vec<String>>,
+
+    #[builder(default = None, setter(strip_option))]
+    sid: Option<Vec<String>>,
+
+    #[builder(default = None, setter(strip_option))]
+    chromosome: Option<Vec<String>>,
 }
 
 impl Bed {
-    // filepath: Union[str, Path],
-    // iid_count: Optional[int] = None,
-    // sid_count: Optional[int] = None,
     // properties: Mapping[str, List[Any]] = {},
-    // count_A1: bool = True,
     // num_threads: Optional[int] = None,
     // skip_format_check: bool = False,
     // fam_filepath: Union[str, Path] = None,
     // bim_filepath: Union[str, Path] = None,
-
-    // fn new(filename: &str, count_a1: bool) -> Self {
-    //     Bed {
-    //         filename: filename.to_string(),
-    //         count_a1: count_a1,
-    //     }
-    // }
 
     // !!!cmk is this how you do lazy accessors?
     fn get_iid_count(&mut self) -> usize {
@@ -160,6 +160,79 @@ impl Bed {
         }
     }
 
+    /// !!!cmk don't re-read for every column
+    pub fn read_fam_or_bim(
+        &self,
+        suffix: &str,
+        field_index: usize,
+    ) -> Result<impl Iterator<Item = String>, BedErrorPlus> {
+        // !!!cmk allow fam file to be specified.
+        let path_buf = Path::new(&self.filename).with_extension(suffix);
+        // !!!cmk here and elsewhere if there are only two arms, use 'if let' maybe?
+        let file = match File::open(&path_buf) {
+            Err(_) => {
+                let string_path = path_buf.to_string_lossy().to_string();
+                return Err(BedErrorPlus::BedError(BedError::CannotOpenFamOrBim(
+                    string_path,
+                )));
+            }
+            Ok(file) => file,
+        };
+
+        // !!!cmk use the correct delims (here is the Python spec)
+        // count = self._counts[suffix]
+        // delimiter = _delimiters[suffix]
+        // if delimiter in {r"\s+"}:
+        //     delimiter = None
+        //     delim_whitespace = True
+        // else:
+        //     delim_whitespace = False
+
+        let reader = BufReader::new(file);
+        let iter = reader.lines().map(move |line|
+                    // !!!cmk replace every unwrap with a ? or something better
+                    {
+                        let line = line.unwrap();
+                        let field = line.split_whitespace().nth(field_index).unwrap();
+                        field.to_string()
+                    });
+
+        Ok(iter)
+    }
+
+    // !!!cmk should not have any unwraps in this code
+    fn get_iid(&mut self) -> &Vec<String> {
+        if self.iid.is_some() {
+            self.iid.as_ref().unwrap()
+        } else {
+            let iid = self.read_fam_or_bim("fam", 1).unwrap().collect();
+            self.iid = Some(iid);
+            self.iid.as_ref().unwrap()
+        }
+    }
+
+    // !!!cmk should not have any unwraps in this code
+    fn get_sid(&mut self) -> &Vec<String> {
+        if self.sid.is_some() {
+            self.sid.as_ref().unwrap()
+        } else {
+            let sid = self.read_fam_or_bim("bim", 1).unwrap().collect();
+            self.sid = Some(sid);
+            self.sid.as_ref().unwrap()
+        }
+    }
+
+    // !!!cmk should not have any unwraps in this code
+    fn get_chromosome(&mut self) -> &Vec<String> {
+        if self.chromosome.is_some() {
+            self.chromosome.as_ref().unwrap()
+        } else {
+            let chromosome = self.read_fam_or_bim("bim", 0).unwrap().collect();
+            self.chromosome = Some(chromosome);
+            self.chromosome.as_ref().unwrap()
+        }
+    }
+
     pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
         &self,
         read_arg: ReadArg<TOut>,
@@ -174,7 +247,10 @@ impl Bed {
         let iid_index = to_vec(read_arg.iid_index, iid_count);
         let sid_index = to_vec(read_arg.sid_index, sid_count);
 
-        let shape = ShapeBuilder::set_f((iid_count, sid_count), read_arg.output_is_orderf);
+        let shape = ShapeBuilder::set_f(
+            (iid_index.len(), sid_index.len()),
+            read_arg.output_is_orderf,
+        );
         let mut val = nd::Array2::<TOut>::default(shape);
 
         read_no_alloc(
