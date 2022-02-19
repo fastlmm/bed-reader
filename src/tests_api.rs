@@ -1,6 +1,7 @@
 // !!!cmk test slicing macro s! https://docs.rs/ndarray/latest/ndarray/macro.s.html
 // !!!cmk use read_all or new macros to make reading all easier.
 // !!!cmk is there a way to set default value based on the result type (if given)
+#[cfg(test)]
 use ndarray as nd;
 
 #[test]
@@ -55,8 +56,10 @@ fn rusty_bed2() {
 //        //};
 // }
 
+#[cfg(test)]
 use std::{collections::HashSet, f64::NAN};
 
+#[cfg(test)]
 use crate::api::{Bed, Index, ReadArg};
 
 #[test]

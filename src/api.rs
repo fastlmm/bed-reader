@@ -17,9 +17,9 @@ use crate::{counts, read_no_alloc, BedError, BedErrorPlus};
 // Somehow ndarray can do this: 	Array::zeros((3, 4, 5).f())
 //       see https://docs.rs/ndarray/latest/ndarray/doc/ndarray_for_numpy_users/index.html
 #[derive(TypedBuilder)]
-pub(crate) struct Bed {
+pub struct Bed {
     // !!!cmk or file_name or a Path,
-    filename: String, // !!!cmk always clone?
+    pub filename: String, // !!!cmk always clone?
 
     #[builder(default = true)]
     count_a1: bool,
@@ -146,12 +146,10 @@ impl Bed {
         &self,
         read_arg: ReadArg<TOut>,
     ) -> Result<nd::Array2<TOut>, BedErrorPlus> {
-        let output_is_orderf = true;
-
         // !!!cmk this should be lazy in Bed object, not here
         let (iid_count, sid_count) = counts(&self.filename)?;
 
-        let num_threads = read_arg.num_threads; // None or Some(num_threads) !!! cmk apply
+        // !!!cmk do something with read_arg.num_threads
 
         let iid_index = to_vec(read_arg.iid_index, iid_count);
         let sid_index = to_vec(read_arg.sid_index, sid_count);
@@ -178,7 +176,7 @@ impl Bed {
 }
 
 // !!!cmk avoid saying Index:: so much
-pub(crate) fn to_vec(index: Index, count: usize) -> Vec<usize> {
+pub fn to_vec(index: Index, count: usize) -> Vec<usize> {
     match index {
         // !!!cmk fastest?
         Index::None => (0..count).collect(),
@@ -198,7 +196,7 @@ pub(crate) fn to_vec(index: Index, count: usize) -> Vec<usize> {
 // !!!cmk add docs to type typedbuilder stuff: https://docs.rs/typed-builder/latest/typed_builder/derive.TypedBuilder.html#customisation-with-attributes
 
 // !!!cmk "Arg" is unlikely to be a good name
-pub(crate) enum Index {
+pub enum Index {
     None,
     Full(Vec<usize>),
     Bool(Vec<bool>),
@@ -208,7 +206,7 @@ pub(crate) enum Index {
 // See https://nullderef.com/blog/rust-parameters/
 // !!!cmk not that ndarray can do this: a.slice(s![1..4;2, ..;-1])
 #[derive(TypedBuilder)]
-pub(crate) struct ReadArg<TOut: Copy + Default + From<i8> + Debug + Sync + Send> {
+pub struct ReadArg<TOut: Copy + Default + From<i8> + Debug + Sync + Send> {
     missing_value: TOut,
 
     #[builder(default = Index::None)]
@@ -221,7 +219,7 @@ pub(crate) struct ReadArg<TOut: Copy + Default + From<i8> + Debug + Sync + Send>
     output_is_orderf: bool, // !!!cmk test name? use enum?
 
     #[builder(default, setter(strip_option))]
-    num_threads: Option<usize>,
+    pub num_threads: Option<usize>,
     // num_threads=None,
 }
 

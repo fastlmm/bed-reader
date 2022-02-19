@@ -3,9 +3,11 @@
 // See: https://towardsdatascience.com/nine-rules-for-writing-python-extensions-in-rust-d35ea3a4ec29?sk=f8d808d5f414154fdb811e4137011437
 // for an article on how this project uses Rust to create a Python extension.
 
-mod api;
+pub mod api;
 mod tests;
 mod tests_api;
+
+mod python_module;
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use core::fmt::Debug;
@@ -1062,5 +1064,3 @@ fn file_aat_piece<T: Float + Sync + Send + AddAssign>(
     // to be the same, but they could be.
     Ok(())
 }
-
-mod python_module;
