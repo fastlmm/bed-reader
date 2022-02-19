@@ -7,8 +7,8 @@ use std::{
     path::Path,
 };
 
-// !!! might want to use this instead derive_builder::Builder;
-use typed_builder::TypedBuilder;
+use derive_builder::Builder;
+// !!! might want to use this instead use typed_builder::TypedBuilder;
 
 use crate::{counts, read_no_alloc, BedError, BedErrorPlus};
 
@@ -16,27 +16,27 @@ use crate::{counts, read_no_alloc, BedError, BedErrorPlus};
 // (or https://docs.rs/derive_builder/latest/derive_builder/)
 // Somehow ndarray can do this: 	Array::zeros((3, 4, 5).f())
 //       see https://docs.rs/ndarray/latest/ndarray/doc/ndarray_for_numpy_users/index.html
-#[derive(TypedBuilder)]
+#[derive(Builder)]
 pub struct Bed {
     // !!!cmk later or file_name or a Path,
     pub filename: String, // !!!cmk always clone?
 
-    #[builder(default = true)]
+    #[builder(default = "true")]
     count_a1: bool,
 
-    #[builder(default = None, setter(strip_option))]
+    #[builder(default = "None", setter(strip_option))]
     iid_count: Option<usize>,
 
-    #[builder(default = None, setter(strip_option))]
+    #[builder(default = "None", setter(strip_option))]
     sid_count: Option<usize>,
 
-    #[builder(default = None, setter(strip_option))]
+    #[builder(default = "None", setter(strip_option))]
     iid: Option<Vec<String>>,
 
-    #[builder(default = None, setter(strip_option))]
+    #[builder(default = "None", setter(strip_option))]
     sid: Option<Vec<String>>,
 
-    #[builder(default = None, setter(strip_option))]
+    #[builder(default = "None", setter(strip_option))]
     chromosome: Option<Vec<String>>,
 }
 
@@ -190,7 +190,7 @@ pub fn to_vec(index: Index, count: usize) -> Vec<usize> {
 }
 
 // !!!cmk later add docs to type typedbuilder stuff: https://docs.rs/typed-builder/latest/typed_builder/derive.TypedBuilder.html#customisation-with-attributes
-
+#[derive(Debug, Clone)]
 pub enum Index {
     None,
     Full(Vec<usize>),
@@ -201,17 +201,17 @@ pub enum Index {
 // !!!cmk  later "Arg" is unlikely to be a good name
 // See https://nullderef.com/blog/rust-parameters/
 // !!!cmk 0 note that ndarray can do this: a.slice(s![1..4;2, ..;-1])
-#[derive(TypedBuilder)]
+#[derive(Builder)]
 pub struct ReadArg<TOut: Copy + Default + From<i8> + Debug + Sync + Send> {
     missing_value: TOut,
 
-    #[builder(default = Index::None)]
+    #[builder(default = "Index::None")]
     iid_index: Index,
 
-    #[builder(default = Index::None)]
+    #[builder(default = "Index::None")]
     sid_index: Index,
 
-    #[builder(default = true)]
+    #[builder(default = "true")]
     output_is_orderf: bool, // !!!cmk later use enum or .f()
 
     #[builder(default, setter(strip_option))]

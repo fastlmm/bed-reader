@@ -2,25 +2,43 @@
 // !!!cmk later use read_all or new macros to make reading all easier.
 // !!!cmk later is there a way to set default value based on the result type (if given)
 #[cfg(test)]
+use crate::api::BedBuilder;
+#[cfg(test)]
+use crate::api::ReadArgBuilder;
+#[cfg(test)]
 use ndarray as nd;
 
 #[test]
 fn rusty_bed1() {
     let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
     // !!! cmk 0 how come this Bed builder can't return an error?
-    let bed = Bed::builder().filename(file.to_string()).build();
+    let bed = BedBuilder::default()
+        .filename(file.to_string())
+        .build()
+        .unwrap();
     let val = bed
-        .read(ReadArg::builder().missing_value(-127).build())
+        .read(
+            ReadArgBuilder::default()
+                .missing_value(-127)
+                .build()
+                .unwrap(),
+        )
         .unwrap();
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     assert!(mean == -13.142); // really shouldn't do mean on data where -127 represents missing
 
-    let bed = Bed::builder()
+    let bed = BedBuilder::default()
         .filename(file.to_string())
         .count_a1(false)
-        .build();
+        .build()
+        .unwrap();
     let val = bed
-        .read(ReadArg::builder().missing_value(-127).build())
+        .read(
+            ReadArgBuilder::default()
+                .missing_value(-127)
+                .build()
+                .unwrap(),
+        )
         .unwrap();
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     assert!(mean == -13.274); // really shouldn't do mean on data where -127 represents missing
@@ -30,15 +48,19 @@ fn rusty_bed1() {
 fn rusty_bed2() {
     // !!!cmk later reading one iid is very common. Make it easy.
     let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
-    let bed = Bed::builder().filename(file.to_string()).build();
+    let bed = BedBuilder::default()
+        .filename(file.to_string())
+        .build()
+        .unwrap();
     let val = bed
         .read(
-            ReadArg::builder()
+            ReadArgBuilder::default()
                 .missing_value(-127)
                 // !!!cmk 0 could it be any slice of usize?
                 .iid_index(Index::Full([0].to_vec()))
                 .sid_index(Index::Full([1].to_vec()))
-                .build(),
+                .build()
+                .unwrap(),
         )
         .unwrap();
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
@@ -49,9 +71,9 @@ fn rusty_bed2() {
 // !!!cmk later ask reddit help (mention builder library creator)
 // macro_rules! read {
 //     ($b:expr,$x:expr) => {
-//         $b.read(ReadArg::builder().$x.build())
+//         $b.read(ReadArgBuilder::default().$x.build())
 //     }; // () => {
-//        //      ReadArg::builder().build()
+//        //      ReadArgBuilder::default().build()
 //        //};
 // }
 
@@ -59,14 +81,17 @@ fn rusty_bed2() {
 use std::{collections::HashSet, f64::NAN};
 
 #[cfg(test)]
-use crate::api::{Bed, Index, ReadArg};
+use crate::api::Index;
 
 #[test]
 fn rusty_bed3() {
     // !!!cmk later also show mixing bool and full and none
     // !!!cmk 0 remove the need for wrapping with Bool(), Full(), None()
     let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
-    let mut bed = Bed::builder().filename(file.to_string()).build();
+    let mut bed = BedBuilder::default()
+        .filename(file.to_string())
+        .build()
+        .unwrap();
     let iid_bool: Vec<bool> = (0..bed.get_iid_count())
         .map(|elem| (elem % 2) != 0)
         .collect();
@@ -75,11 +100,12 @@ fn rusty_bed3() {
         .collect();
     let val = bed
         .read(
-            ReadArg::builder()
+            ReadArgBuilder::default()
                 .missing_value(-127)
                 .iid_index(Index::Bool(iid_bool))
                 .sid_index(Index::Bool(sid_bool))
-                .build(),
+                .build()
+                .unwrap(),
         )
         .unwrap();
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
@@ -107,10 +133,18 @@ fn readme_examples() {
     // !!!cmk later pull down sample file
     let file_name = "bed_reader/tests/data/small.bed";
     // !!!cmk 0 this should be able to fail is the file is the wrong format and default checking is used.
-    let bed = Bed::builder().filename(file_name.to_string()).build();
+    let bed = BedBuilder::default()
+        .filename(file_name.to_string())
+        .build()
+        .unwrap();
     //nd let bed = Bed::new(filename)?;
     let val = bed
-        .read(ReadArg::builder().missing_value(NAN).build())
+        .read(
+            ReadArgBuilder::default()
+                .missing_value(NAN)
+                .build()
+                .unwrap(),
+        )
         .unwrap();
     //nd val = bed.read(NAN).unwrap();
     //nd val = bed.read!().unwrap();
@@ -129,17 +163,21 @@ fn readme_examples() {
     // >>> del bed2
 
     let file_name2 = "bed_reader/tests/data/some_missing.bed";
-    let mut bed2 = Bed::builder().filename(file_name2.to_string()).build();
+    let mut bed2 = BedBuilder::default()
+        .filename(file_name2.to_string())
+        .build()
+        .unwrap();
     let iid_count = bed2.get_iid_count();
     let iid_index = (0..iid_count).step_by(2).collect();
     //nd iid_index = s![..;2];
     let val2 = bed2
         .read(
-            ReadArg::builder()
+            ReadArgBuilder::default()
                 .iid_index(Index::Full(iid_index))
                 .sid_index(Index::Full((20..30).collect()))
                 .missing_value(NAN)
-                .build(),
+                .build()
+                .unwrap(),
         )
         .unwrap();
     //nd val2 = bed2.read!(index(s![..,20..30]).missing_value(NAN)).unwrap();
@@ -160,7 +198,10 @@ fn readme_examples() {
     //  '3' '4' '5' '6' '7' '8' '9']
     // (100, 6)
 
-    let mut bed3 = Bed::builder().filename(file_name2.to_string()).build();
+    let mut bed3 = BedBuilder::default()
+        .filename(file_name2.to_string())
+        .build()
+        .unwrap();
     println!("{:?}", &(bed3.get_iid())[5..]);
     println!("{:?}", &(bed3.get_sid())[5..]);
     let unique: HashSet<_> = bed3.get_chromosome().iter().collect();
@@ -173,10 +214,11 @@ fn readme_examples() {
     //nd is_5 = bed3.get_chromosome().mapv(|elem| elem == "5");
     let val3: nd::ArrayBase<nd::OwnedRepr<f64>, nd::Dim<[usize; 2]>> = bed3
         .read(
-            ReadArg::builder()
+            ReadArgBuilder::default()
                 .sid_index(Index::Bool(is_5))
                 .missing_value(NAN)
-                .build(),
+                .build()
+                .unwrap(),
         )
         .unwrap();
     //nd val3 = bed3.read!(sid_index(is_5).missing_value(NAN)).unwrap();
