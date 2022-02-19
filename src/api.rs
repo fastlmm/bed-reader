@@ -3,22 +3,27 @@ use nd::ShapeBuilder;
 use ndarray as nd;
 use std::{
     fs::File,
-    io::{BufRead, BufReader},
+    io::{BufRead, BufReader, Read},
     path::Path,
 };
 
 use derive_builder::Builder;
 // !!! might want to use this instead use typed_builder::TypedBuilder;
 
-use crate::{counts, read_no_alloc, BedError, BedErrorPlus};
+use crate::{
+    counts, read_no_alloc, BedError, BedErrorPlus, BED_FILE_MAGIC1, BED_FILE_MAGIC2,
+    CB_HEADER_USIZE,
+};
 
 // https://crates.io/crates/typed-builder
 // (or https://docs.rs/derive_builder/latest/derive_builder/)
 // Somehow ndarray can do this: 	Array::zeros((3, 4, 5).f())
 //       see https://docs.rs/ndarray/latest/ndarray/doc/ndarray_for_numpy_users/index.html
 #[derive(Builder)]
+#[builder(build_fn(skip))]
 pub struct Bed {
     // !!!cmk later or file_name or a Path,
+    // !!!cmk 0 confirm that this is required by derive_builder
     pub filename: String, // !!!cmk always clone?
 
     #[builder(default = "true")]
@@ -40,7 +45,60 @@ pub struct Bed {
     chromosome: Option<Vec<String>>,
 }
 
+impl BedBuilder {
+    pub fn build(&self) -> Result<Bed, BedErrorPlus> {
+        let bed = Bed {
+            filename: match self.filename {
+                Some(ref value) => Clone::clone(value),
+                None => {
+                    panic!("filename is required");
+                    // !!!cmk later put this code back
+                    // return Result::Err(Into::into(
+                    //     ::derive_builder::UninitializedFieldError::from("filename"),
+                    // ))
+                }
+            },
+            count_a1: match self.count_a1 {
+                Some(ref value) => Clone::clone(value),
+                None => true,
+            },
+            iid_count: match self.iid_count {
+                Some(ref value) => Clone::clone(value),
+                None => None,
+            },
+            sid_count: match self.sid_count {
+                Some(ref value) => Clone::clone(value),
+                None => None,
+            },
+            iid: match self.iid {
+                Some(ref value) => Clone::clone(value),
+                None => None,
+            },
+            sid: match self.sid {
+                Some(ref value) => Clone::clone(value),
+                None => None,
+            },
+            chromosome: match self.chromosome {
+                Some(ref value) => Clone::clone(value),
+                None => None,
+            },
+        };
+
+        // !!!cmk later similar code elsewhere
+        let filename = bed.filename.to_string();
+        let mut buf_reader = BufReader::new(File::open(&filename).unwrap());
+        let mut bytes_vector: Vec<u8> = vec![0; CB_HEADER_USIZE];
+        buf_reader.read_exact(&mut bytes_vector).unwrap();
+        if (BED_FILE_MAGIC1 != bytes_vector[0]) || (BED_FILE_MAGIC2 != bytes_vector[1]) {
+            return Err(BedError::IllFormed(filename.to_string()).into());
+        }
+
+        Result::Ok(bed)
+    }
+}
+
 impl Bed {
+    // !!!cmk later
     // properties: Mapping[str, List[Any]] = {},
     // num_threads: Optional[int] = None,
     // skip_format_check: bool = False,

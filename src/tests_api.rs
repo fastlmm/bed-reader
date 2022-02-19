@@ -1,3 +1,5 @@
+use crate::BedError;
+use crate::BedErrorPlus;
 // !!!cmk 0 test slicing macro s! https://docs.rs/ndarray/latest/ndarray/macro.s.html
 // !!!cmk later use read_all or new macros to make reading all easier.
 // !!!cmk later is there a way to set default value based on the result type (if given)
@@ -111,6 +113,18 @@ fn rusty_bed3() {
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     println!("{:?}", mean);
     assert!(mean == -14.50344827586207); // really shouldn't do mean on data where -127 represents missing
+}
+
+#[test]
+fn bad_header() {
+    let filename = "bed_reader/tests/data/badfile.bed";
+    // !!!cmk 0 this should be able to fail is the file is the wrong format and default checking is used.
+    let result = BedBuilder::default().filename(filename.to_string()).build();
+
+    match result {
+        Err(BedErrorPlus::BedError(BedError::IllFormed(_))) => (),
+        _ => panic!("test failure"),
+    };
 }
 
 #[test]
