@@ -44,7 +44,7 @@ fn rusty_bed2() {
         .unwrap();
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     println!("{:?}", mean);
-    assert!(mean == 0.001); // really shouldn't do mean on data where -127 represents missing
+    assert!(mean == 1.0); // really shouldn't do mean on data where -127 represents missing
 }
 
 // !!!cmk ask reddit help (mention builder library creator)
@@ -95,7 +95,7 @@ fn rusty_bed3() {
         .unwrap();
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     println!("{:?}", mean);
-    assert!(mean == -6.309); // really shouldn't do mean on data where -127 represents missing
+    assert!(mean == -14.50344827586207); // really shouldn't do mean on data where -127 represents missing
 }
 
 #[test]
