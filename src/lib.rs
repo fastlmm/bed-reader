@@ -110,7 +110,7 @@ pub enum BedError {
     IllegalStartCountOutput,
 }
 
-//#!!!cmk hide this from the docs
+//#!!!cmk later hide this from the docs
 #[allow(clippy::too_many_arguments)]
 fn read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
     filename: &str,

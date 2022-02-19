@@ -1,13 +1,13 @@
-// !!!cmk test slicing macro s! https://docs.rs/ndarray/latest/ndarray/macro.s.html
-// !!!cmk use read_all or new macros to make reading all easier.
-// !!!cmk is there a way to set default value based on the result type (if given)
+// !!!cmk 0 test slicing macro s! https://docs.rs/ndarray/latest/ndarray/macro.s.html
+// !!!cmk later use read_all or new macros to make reading all easier.
+// !!!cmk later is there a way to set default value based on the result type (if given)
 #[cfg(test)]
 use ndarray as nd;
 
 #[test]
 fn rusty_bed1() {
     let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
-    // !!! cmk how come this can't return an error?
+    // !!! cmk 0 how come this Bed builder can't return an error?
     let bed = Bed::builder().filename(file.to_string()).build();
     let val = bed
         .read(ReadArg::builder().missing_value(-127).build())
@@ -28,15 +28,14 @@ fn rusty_bed1() {
 
 #[test]
 fn rusty_bed2() {
-    // !!!cmk reading one iid is very common. Make it easy.
+    // !!!cmk later reading one iid is very common. Make it easy.
     let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
-    // !!! cmk how come this can't return an error?
     let bed = Bed::builder().filename(file.to_string()).build();
     let val = bed
         .read(
             ReadArg::builder()
                 .missing_value(-127)
-                // !!!cmk could it be any slice of usize?
+                // !!!cmk 0 could it be any slice of usize?
                 .iid_index(Index::Full([0].to_vec()))
                 .sid_index(Index::Full([1].to_vec()))
                 .build(),
@@ -47,7 +46,7 @@ fn rusty_bed2() {
     assert!(mean == 1.0); // really shouldn't do mean on data where -127 represents missing
 }
 
-// !!!cmk ask reddit help (mention builder library creator)
+// !!!cmk later ask reddit help (mention builder library creator)
 // macro_rules! read {
 //     ($b:expr,$x:expr) => {
 //         $b.read(ReadArg::builder().$x.build())
@@ -64,11 +63,9 @@ use crate::api::{Bed, Index, ReadArg};
 
 #[test]
 fn rusty_bed3() {
-    // !!!cmk how come fields of bed don't need 'pub' to be accessible here?
-    // !!!cmk also show mixing bool and full and none
-    // !!!cmk remove the need for wrapping with Bool(), Full(), None()
+    // !!!cmk later also show mixing bool and full and none
+    // !!!cmk 0 remove the need for wrapping with Bool(), Full(), None()
     let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
-    // !!! cmk how come this can't return an error?
     let mut bed = Bed::builder().filename(file.to_string()).build();
     let iid_bool: Vec<bool> = (0..bed.get_iid_count())
         .map(|elem| (elem % 2) != 0)
@@ -76,18 +73,10 @@ fn rusty_bed3() {
     let sid_bool: Vec<bool> = (0..bed.get_sid_count())
         .map(|elem| (elem % 8) != 0)
         .collect();
-    // let val = read!(
-    //     bed,
-    //     ReadArg::missing_value(-127)
-    //         .iid_index(Index::Bool(iid_bool))
-    //         .sid_index(Index::Bool(sid_bool))
-    // )
-    // .unwrap();
     let val = bed
         .read(
             ReadArg::builder()
                 .missing_value(-127)
-                // !!!cmk could it be any slice of usize?
                 .iid_index(Index::Bool(iid_bool))
                 .sid_index(Index::Bool(sid_bool))
                 .build(),
@@ -114,10 +103,10 @@ fn readme_examples() {
     //  [ 0.  1.  2.  0.]]
     // >>> del bed
 
-    // !!!cmk document use statements
-    // !!!cmk pull down sample file
+    // !!!cmk later document use statements
+    // !!!cmk later pull down sample file
     let file_name = "bed_reader/tests/data/small.bed";
-    // !!!cmk this should be able to fail is the file is the wrong format and default checking is used.
+    // !!!cmk 0 this should be able to fail is the file is the wrong format and default checking is used.
     let bed = Bed::builder().filename(file_name.to_string()).build();
     //nd let bed = Bed::new(filename)?;
     let val = bed

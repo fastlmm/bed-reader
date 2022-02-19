@@ -7,18 +7,18 @@ use std::{
     path::Path,
 };
 
+// !!! might want to use this instead derive_builder::Builder;
 use typed_builder::TypedBuilder;
 
 use crate::{counts, read_no_alloc, BedError, BedErrorPlus};
-// !!!cmk use derive_builder::Builder;
 
-// https://docs.rs/derive_builder/latest/derive_builder/ or
 // https://crates.io/crates/typed-builder
+// (or https://docs.rs/derive_builder/latest/derive_builder/)
 // Somehow ndarray can do this: 	Array::zeros((3, 4, 5).f())
 //       see https://docs.rs/ndarray/latest/ndarray/doc/ndarray_for_numpy_users/index.html
 #[derive(TypedBuilder)]
 pub struct Bed {
-    // !!!cmk or file_name or a Path,
+    // !!!cmk later or file_name or a Path,
     pub filename: String, // !!!cmk always clone?
 
     #[builder(default = true)]
@@ -47,7 +47,7 @@ impl Bed {
     // fam_filepath: Union[str, Path] = None,
     // bim_filepath: Union[str, Path] = None,
 
-    // !!!cmk is this how you do lazy accessors?
+    // !!!cmk later is this how you do lazy accessors?
     pub fn get_iid_count(&mut self) -> usize {
         if let Some(iid_count) = self.iid_count {
             iid_count
@@ -69,15 +69,15 @@ impl Bed {
         }
     }
 
-    /// !!!cmk don't re-read for every column
+    /// !!!cmk later don't re-read for every column
     fn read_fam_or_bim(
         &self,
         suffix: &str,
         field_index: usize,
     ) -> Result<impl Iterator<Item = String>, BedErrorPlus> {
-        // !!!cmk allow fam file to be specified.
+        // !!!cmk later allow fam file to be specified.
         let path_buf = Path::new(&self.filename).with_extension(suffix);
-        // !!!cmk here and elsewhere if there are only two arms, use 'if let' maybe?
+        // !!!cmk later here and elsewhere if there are only two arms, use 'if let' maybe?
         let file = match File::open(&path_buf) {
             Err(_) => {
                 let string_path = path_buf.to_string_lossy().to_string();
@@ -88,7 +88,7 @@ impl Bed {
             Ok(file) => file,
         };
 
-        // !!!cmk use the correct delimiters (here is the Python spec)
+        // !!!cmk later use the correct delimiters (here is the Python spec:)
         // count = self._counts[suffix]
         // delimiter = _delimiters[suffix]
         // if delimiter in {r"\s+"}:
@@ -98,18 +98,16 @@ impl Bed {
         //     delim_whitespace = False
 
         let reader = BufReader::new(file);
-        let iter = reader.lines().map(move |line|
-                    // !!!cmk replace every unwrap with a ? or something better
-                    {
-                        let line = line.unwrap();
-                        let field = line.split_whitespace().nth(field_index).unwrap();
-                        field.to_string()
-                    });
+        let iter = reader.lines().map(move |line| {
+            let line = line.unwrap();
+            let field = line.split_whitespace().nth(field_index).unwrap();
+            field.to_string()
+        });
 
         Ok(iter)
     }
 
-    // !!!cmk should not have any unwraps in this code
+    // !!!cmk later should not have any unwraps in this whole file
     pub fn get_iid(&mut self) -> &Vec<String> {
         if self.iid.is_some() {
             self.iid.as_ref().unwrap()
@@ -120,7 +118,6 @@ impl Bed {
         }
     }
 
-    // !!!cmk should not have any unwraps in this code
     pub fn get_sid(&mut self) -> &Vec<String> {
         if self.sid.is_some() {
             self.sid.as_ref().unwrap()
@@ -131,7 +128,6 @@ impl Bed {
         }
     }
 
-    // !!!cmk should not have any unwraps in this code
     pub fn get_chromosome(&mut self) -> &Vec<String> {
         if self.chromosome.is_some() {
             self.chromosome.as_ref().unwrap()
@@ -146,10 +142,10 @@ impl Bed {
         &self,
         read_arg: ReadArg<TOut>,
     ) -> Result<nd::Array2<TOut>, BedErrorPlus> {
-        // !!!cmk this should be lazy in Bed object, not here
+        // !!!cmk later this should be lazy in Bed object, not here
         let (iid_count, sid_count) = counts(&self.filename)?;
 
-        // !!!cmk do something with read_arg.num_threads
+        // !!!cmk later do something with read_arg.num_threads
 
         let iid_index = to_vec(read_arg.iid_index, iid_count);
         let sid_index = to_vec(read_arg.sid_index, sid_count);
@@ -175,15 +171,15 @@ impl Bed {
     }
 }
 
-// !!!cmk avoid saying Index:: so much
+// !!!cmk 0 avoid saying Index:: so much
 pub fn to_vec(index: Index, count: usize) -> Vec<usize> {
     match index {
-        // !!!cmk fastest?
+        // !!!cmk 0 faster to add slice support to Index???
         Index::None => (0..count).collect(),
         Index::Full(iid_index) => iid_index,
         Index::Bool(bool_index) => {
-            // !!!cmk check that bool_index.len() == iid_count
-            // !!!cmk use enumerate() instead of zip
+            // !!!cmk later check that bool_index.len() == iid_count
+            // !!!cmk later use enumerate() instead of zip
             (0..count)
                 .zip(bool_index)
                 .filter(|(_, b)| *b)
@@ -193,18 +189,18 @@ pub fn to_vec(index: Index, count: usize) -> Vec<usize> {
     }
 }
 
-// !!!cmk add docs to type typedbuilder stuff: https://docs.rs/typed-builder/latest/typed_builder/derive.TypedBuilder.html#customisation-with-attributes
+// !!!cmk later add docs to type typedbuilder stuff: https://docs.rs/typed-builder/latest/typed_builder/derive.TypedBuilder.html#customisation-with-attributes
 
-// !!!cmk "Arg" is unlikely to be a good name
 pub enum Index {
     None,
     Full(Vec<usize>),
     Bool(Vec<bool>),
-    // !!!cmk nd::slice
+    // !!!cmk 0 nd::slice
 }
 
+// !!!cmk  later "Arg" is unlikely to be a good name
 // See https://nullderef.com/blog/rust-parameters/
-// !!!cmk not that ndarray can do this: a.slice(s![1..4;2, ..;-1])
+// !!!cmk 0 note that ndarray can do this: a.slice(s![1..4;2, ..;-1])
 #[derive(TypedBuilder)]
 pub struct ReadArg<TOut: Copy + Default + From<i8> + Debug + Sync + Send> {
     missing_value: TOut,
@@ -216,16 +212,9 @@ pub struct ReadArg<TOut: Copy + Default + From<i8> + Debug + Sync + Send> {
     sid_index: Index,
 
     #[builder(default = true)]
-    output_is_orderf: bool, // !!!cmk test name? use enum?
+    output_is_orderf: bool, // !!!cmk later use enum or .f()
 
     #[builder(default, setter(strip_option))]
     pub num_threads: Option<usize>,
     // num_threads=None,
 }
-
-// // !!!cmk allow reads from various strings and streams and files
-// // !!!cmk    but how to get bim and fam?
-// // !!!cmk is 'open_bed' redundant?
-// fn open_bed(filename: &str) -> Result<Bed, BedErrorPlus> {
-//     return Ok(Bed { filename });
-//}
