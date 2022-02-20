@@ -253,14 +253,24 @@ pub fn to_vec(index: Index, count: usize) -> Vec<usize> {
     }
 }
 
+pub(crate) type SliceInfo1 =
+    nd::SliceInfo<[nd::SliceInfoElem; 1], nd::Dim<[usize; 1]>, nd::Dim<[usize; 1]>>;
+
 // !!!cmk later add docs to type typedbuilder stuff: https://docs.rs/typed-builder/latest/typed_builder/derive.TypedBuilder.html#customisation-with-attributes
 #[derive(Debug, Clone)]
 pub enum Index {
     None,
     Full(Vec<usize>),
     Bool(nd::Array1<bool>),
-    Slice(nd::SliceInfo<[nd::SliceInfoElem; 1], nd::Dim<[usize; 1]>, nd::Dim<[usize; 1]>>),
+    Slice(SliceInfo1),
     // !!! cmk0 what about supporting ranges?
+}
+
+// !!!cmk later see if what ref conversions. See https://ricardomartins.cc/2016/08/03/convenient_and_idiomatic_conversions_in_rust
+impl From<crate::api::SliceInfo1> for crate::api::Index {
+    fn from(slice_info: SliceInfo1) -> Index {
+        Index::Slice(slice_info)
+    }
 }
 
 // !!!cmk  later "Arg" is unlikely to be a good name

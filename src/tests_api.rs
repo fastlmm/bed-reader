@@ -186,8 +186,8 @@ fn readme_examples() {
     let val2 = bed2
         .read(
             ReadArgBuilder::default()
-                .iid_index(Index::Slice(nd::s![..;2]))
-                .sid_index(Index::Slice(nd::s![20..30]))
+                .iid_index(nd::s![..;2].into())
+                .sid_index(nd::s![20..30].into())
                 .missing_value(NAN)
                 .build()
                 .unwrap(),
