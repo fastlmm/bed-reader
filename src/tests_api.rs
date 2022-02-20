@@ -2,7 +2,6 @@
 use crate::BedError;
 #[cfg(test)]
 use crate::BedErrorPlus;
-// !!!cmk 0 test slicing macro s! https://docs.rs/ndarray/latest/ndarray/macro.s.html
 // !!!cmk later use read_all or new macros to make reading all easier.
 // !!!cmk later is there a way to set default value based on the result type (if given)
 #[cfg(test)]
@@ -15,7 +14,6 @@ use ndarray as nd;
 #[test]
 fn rusty_bed1() {
     let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
-    // !!! cmk 0 how come this Bed builder can't return an error?
     let bed = BedBuilder::default()
         .filename(file.to_string())
         .build()
@@ -56,13 +54,15 @@ fn rusty_bed2() {
         .filename(file.to_string())
         .build()
         .unwrap();
+
     let val = bed
         .read(
             ReadArgBuilder::default()
                 .missing_value(-127)
                 // !!!cmk 0 could it be any slice of usize?
-                .iid_index(Index::Full([0].to_vec()))
-                .sid_index(Index::Full([1].to_vec()))
+                // !!!cmk 0 or work with everything that works with ndarray indexing
+                .iid_index([0].to_vec().into())
+                .sid_index([1].to_vec().into())
                 .build()
                 .unwrap(),
         )
@@ -84,13 +84,9 @@ fn rusty_bed2() {
 #[cfg(test)]
 use std::{collections::HashSet, f64::NAN};
 
-#[cfg(test)]
-use crate::api::Index;
-
 #[test]
 fn rusty_bed3() {
     // !!!cmk later also show mixing bool and full and none
-    // !!!cmk 0 remove the need for wrapping with Bool(), Full(), None()
     let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
     let mut bed = BedBuilder::default()
         .filename(file.to_string())
@@ -106,8 +102,8 @@ fn rusty_bed3() {
         .read(
             ReadArgBuilder::default()
                 .missing_value(-127)
-                .iid_index(Index::Bool(iid_bool))
-                .sid_index(Index::Bool(sid_bool))
+                .iid_index(iid_bool.into())
+                .sid_index(sid_bool.into())
                 .build()
                 .unwrap(),
         )
@@ -120,7 +116,6 @@ fn rusty_bed3() {
 #[test]
 fn bad_header() {
     let filename = "bed_reader/tests/data/badfile.bed";
-    // !!!cmk 0 this should be able to fail is the file is the wrong format and default checking is used.
     let result = BedBuilder::default().filename(filename.to_string()).build();
 
     match result {
@@ -148,7 +143,6 @@ fn readme_examples() {
     // !!!cmk later document use statements
     // !!!cmk later pull down sample file
     let file_name = "bed_reader/tests/data/small.bed";
-    // !!!cmk 0 this should be able to fail is the file is the wrong format and default checking is used.
     let bed = BedBuilder::default()
         .filename(file_name.to_string())
         .build()
@@ -220,10 +214,10 @@ fn readme_examples() {
     let unique: HashSet<_> = bed3.get_chromosome().iter().collect();
     println!("{:?}", unique);
     let is_5 = bed3.get_chromosome().mapv(|elem| elem == "5");
-    let val3: nd::ArrayBase<nd::OwnedRepr<f64>, nd::Dim<[usize; 2]>> = bed3
+    let val3 = bed3
         .read(
             ReadArgBuilder::default()
-                .sid_index(Index::Bool(is_5))
+                .sid_index(is_5.into())
                 .missing_value(NAN)
                 .build()
                 .unwrap(),

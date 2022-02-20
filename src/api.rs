@@ -1,3 +1,8 @@
+// References: https://www.youtube.com/watch?v=0zOg8_B71gE&t=22s
+// https://deterministic.space/elegant-apis-in-rust.html
+// https://rust-lang.github.io/api-guidelines/
+// https://ricardomartins.cc/2016/08/03/convenient_and_idiomatic_conversions_in_rust
+
 use core::fmt::Debug;
 use nd::ShapeBuilder;
 use ndarray as nd;
@@ -229,12 +234,13 @@ impl Bed {
     }
 }
 
-// !!!cmk 0 avoid saying Index:: so much
+// !!!cmk later implement this with conversion impl
 pub fn to_vec(index: Index, count: usize) -> Vec<usize> {
     match index {
-        // !!!cmk 0 faster to add slice support to Index???
         Index::None => (0..count).collect(),
-        Index::Full(iid_index) => iid_index,
+        Index::Vec(iid_index) => iid_index,
+        // !!!cmk ask how to support slices
+        // !!!cmk ask Index::RustSlice(iid_index) => iid_index.to_vec(),
         Index::Bool(bool_index) => {
             // !!!cmk later check that bool_index.len() == iid_count
             // !!!cmk later use enumerate() instead of zip
@@ -245,7 +251,7 @@ pub fn to_vec(index: Index, count: usize) -> Vec<usize> {
                 .collect()
         }
         // !!!cmk later can we implement this without two allocations?
-        Index::Slice(slice_index) => {
+        Index::NDSlice(slice_index) => {
             let full_array: nd::Array1<usize> = (0..count).collect();
             let array = full_array.slice(slice_index);
             array.to_vec()
@@ -260,22 +266,40 @@ pub(crate) type SliceInfo1 =
 #[derive(Debug, Clone)]
 pub enum Index {
     None,
-    Full(Vec<usize>),
+    Vec(Vec<usize>),
     Bool(nd::Array1<bool>),
-    Slice(SliceInfo1),
+    NDSlice(SliceInfo1),
     // !!! cmk0 what about supporting ranges?
 }
 
 // !!!cmk later see if what ref conversions. See https://ricardomartins.cc/2016/08/03/convenient_and_idiomatic_conversions_in_rust
-impl From<crate::api::SliceInfo1> for crate::api::Index {
+impl From<SliceInfo1> for Index {
     fn from(slice_info: SliceInfo1) -> Index {
-        Index::Slice(slice_info)
+        Index::NDSlice(slice_info)
+    }
+}
+
+impl From<Vec<usize>> for Index {
+    fn from(full: Vec<usize>) -> Index {
+        Index::Vec(full)
+    }
+}
+
+impl From<nd::Array1<bool>> for Index {
+    fn from(bool_array: nd::Array1<bool>) -> Index {
+        Index::Bool(bool_array)
+    }
+}
+
+impl From<()> for Index {
+    fn from(_: ()) -> Index {
+        Index::None
     }
 }
 
 // !!!cmk  later "Arg" is unlikely to be a good name
 // See https://nullderef.com/blog/rust-parameters/
-// !!!cmk 0 note that ndarray can do this: a.slice(s![1..4;2, ..;-1])
+// !!!cmk later note that ndarray can do this: a.slice(s![1..4;2, ..;-1])
 #[derive(Builder)]
 pub struct ReadArg<TOut: Copy + Default + From<i8> + Debug + Sync + Send> {
     missing_value: TOut,
