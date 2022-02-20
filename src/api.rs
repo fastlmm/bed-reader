@@ -221,19 +221,28 @@ impl Bed {
 
     pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send + Missing>(
         &self,
-        read_arg: ReadOptions<TOut>,
+    ) -> Result<nd::Array2<TOut>, BedErrorPlus> {
+        let read_options = ReadOptions::<TOut>::builder().build().unwrap();
+        self.read_with_options(read_options)
+    }
+
+    pub(crate) fn read_with_options<
+        TOut: From<i8> + Default + Copy + Debug + Sync + Send + Missing,
+    >(
+        &self,
+        read_options: ReadOptions<TOut>,
     ) -> Result<nd::Array2<TOut>, BedErrorPlus> {
         // !!!cmk later this should be lazy in Bed object, not here
         let (iid_count, sid_count) = counts(&self.filename)?;
 
-        // !!!cmk later do something with read_arg.num_threads
+        // !!!cmk later do something with read_options.num_threads
 
-        let iid_index = to_vec(read_arg.iid_index, iid_count);
-        let sid_index = to_vec(read_arg.sid_index, sid_count);
+        let iid_index = to_vec(read_options.iid_index, iid_count);
+        let sid_index = to_vec(read_options.sid_index, sid_count);
 
         let shape = ShapeBuilder::set_f(
             (iid_index.len(), sid_index.len()),
-            read_arg.output_is_orderf,
+            read_options.output_is_orderf,
         );
         let mut val = nd::Array2::<TOut>::default(shape);
 
@@ -244,7 +253,7 @@ impl Bed {
             self.count_a1,
             &iid_index,
             &sid_index,
-            read_arg.missing_value,
+            read_options.missing_value,
             &mut val.view_mut(),
         )?;
 
@@ -348,6 +357,6 @@ impl<TOut: Copy + Default + From<i8> + Debug + Sync + Send + Missing + Clone>
 {
     pub fn read(&self, bed: &Bed) -> Result<nd::Array2<TOut>, BedErrorPlus> {
         let read_option = self.build().unwrap();
-        bed.read(read_option)
+        bed.read_with_options(read_option)
     }
 }

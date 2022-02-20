@@ -17,7 +17,7 @@ use ndarray::s;
 fn rusty_bed1() {
     let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
     let bed = Bed::builder(file.to_string()).build().unwrap();
-    let val: nd::Array2<i8> = ReadOptions::builder().read(&bed).unwrap();
+    let val = bed.read::<i8>().unwrap();
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     assert!(mean == -13.142); // really shouldn't do mean on data where -127 represents missing
 
@@ -25,7 +25,7 @@ fn rusty_bed1() {
         .count_a1(false)
         .build()
         .unwrap();
-    let val: nd::Array2<i8> = ReadOptions::builder().read(&bed).unwrap();
+    let val = bed.read::<i8>().unwrap();
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     assert!(mean == -13.274); // really shouldn't do mean on data where -127 represents missing
 }
@@ -114,9 +114,7 @@ fn readme_examples() {
     let bed = Bed::builder(file_name.to_string()).build().unwrap();
     // !!!cmk 0 implement this too
     //nd let bed = Bed::new(filename)?;
-    let val = ReadOptions::<f64>::builder().read(&bed).unwrap();
-    // !!!cmk0 make this work too
-    //nd val = bed.read().unwrap();
+    let val = bed.read::<f64>().unwrap();
     println!("{:?}", val);
     // [[1.0, 0.0, NaN, 0.0],
     // [2.0, 0.0, NaN, 2.0],
