@@ -54,6 +54,12 @@ impl Bed {
     pub fn builder(filename: String) -> BedBuilder {
         BedBuilder::new(filename)
     }
+
+    pub fn read_options<TOut: From<i8> + Default + Copy + Debug + Sync + Send + Missing>(
+        &self,
+    ) -> ReadOptionsBuilder<TOut> {
+        ReadOptionsBuilder::default()
+    }
 }
 
 impl BedBuilder {
@@ -221,7 +227,7 @@ impl Bed {
 
     pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send + Missing>(
         &self,
-        read_arg: ReadArg<TOut>,
+        read_arg: ReadOptions<TOut>,
     ) -> Result<nd::Array2<TOut>, BedErrorPlus> {
         // !!!cmk later this should be lazy in Bed object, not here
         let (iid_count, sid_count) = counts(&self.filename)?;
@@ -319,7 +325,8 @@ impl From<()> for Index {
 // See https://nullderef.com/blog/rust-parameters/
 // !!!cmk later note that ndarray can do this: a.slice(s![1..4;2, ..;-1])
 #[derive(Builder)]
-pub struct ReadArg<TOut: Copy + Default + From<i8> + Debug + Sync + Send + Missing> {
+#[builder(build_fn(skip))]
+pub struct ReadOptions<TOut: Copy + Default + From<i8> + Debug + Sync + Send + Missing> {
     #[builder(default = "TOut::missing()")]
     missing_value: TOut,
 
@@ -335,4 +342,40 @@ pub struct ReadArg<TOut: Copy + Default + From<i8> + Debug + Sync + Send + Missi
     #[builder(default, setter(strip_option))]
     pub num_threads: Option<usize>,
     // num_threads=None,
+}
+
+impl<TOut: Copy + Default + From<i8> + Debug + Sync + Send + Missing + Clone> ReadOptions<TOut> {
+    pub fn builder() -> ReadOptionsBuilder<TOut> {
+        ReadOptionsBuilder::default()
+    }
+}
+
+impl<TOut: Copy + Default + From<i8> + Debug + Sync + Send + Missing + Clone>
+    ReadOptionsBuilder<TOut>
+{
+    pub fn build(&self, bed: &Bed) -> Result<nd::Array2<TOut>, BedErrorPlus> {
+        let read_option = ReadOptions {
+            missing_value: match self.missing_value {
+                Some(ref value) => Clone::clone(value),
+                None => TOut::missing(),
+            },
+            iid_index: match self.iid_index {
+                Some(ref value) => Clone::clone(value),
+                None => Index::None,
+            },
+            sid_index: match self.sid_index {
+                Some(ref value) => Clone::clone(value),
+                None => Index::None,
+            },
+            output_is_orderf: match self.output_is_orderf {
+                Some(ref value) => Clone::clone(value),
+                None => true,
+            },
+            num_threads: match self.num_threads {
+                Some(ref value) => Clone::clone(value),
+                None => ::std::default::Default::default(),
+            },
+        };
+        bed.read(read_option)
+    }
 }
