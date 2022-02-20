@@ -1,4 +1,6 @@
+#[cfg(test)]
 use crate::BedError;
+#[cfg(test)]
 use crate::BedErrorPlus;
 // !!!cmk 0 test slicing macro s! https://docs.rs/ndarray/latest/ndarray/macro.s.html
 // !!!cmk later use read_all or new macros to make reading all easier.
@@ -177,18 +179,15 @@ fn readme_examples() {
     // >>> del bed2
 
     let file_name2 = "bed_reader/tests/data/some_missing.bed";
-    let mut bed2 = BedBuilder::default()
+    let bed2 = BedBuilder::default()
         .filename(file_name2.to_string())
         .build()
         .unwrap();
-    let iid_count = bed2.get_iid_count();
-    let iid_index = (0..iid_count).step_by(2).collect();
-    //nd iid_index = s![..;2];
     let val2 = bed2
         .read(
             ReadArgBuilder::default()
-                .iid_index(Index::Full(iid_index))
-                .sid_index(Index::Full((20..30).collect()))
+                .iid_index(Index::Slice(nd::s![..;2]))
+                .sid_index(Index::Slice(nd::s![20..30]))
                 .missing_value(NAN)
                 .build()
                 .unwrap(),

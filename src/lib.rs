@@ -203,6 +203,7 @@ fn try_div_4<T: Max + TryFrom<usize> + Sub<Output = T> + Div<Output = T> + Ord>(
     Ok((in_iid_count_div4, in_iid_count_div4_t))
 }
 
+// !!!cmk later could iid_index and sid_index be ExpectSizeIterator<Item=usize>?
 #[allow(clippy::too_many_arguments)]
 fn internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
     mut buf_reader: BufReader<File>,
@@ -222,8 +223,8 @@ fn internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>
         }
     }
 
-    let out_iid_count = iid_index.len();
-    let out_sid_count = sid_index.len();
+    // !!!cmk later let out_iid_count = iid_index.len();
+    // !!!cmk later let out_sid_count = sid_index.len();
 
     let (in_iid_count_div4, in_iid_count_div4_u64) =
         try_div_4(in_iid_count, in_sid_count, CB_HEADER_U64)?;
@@ -242,15 +243,15 @@ fn internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>
     // See https://morestina.net/blog/1432/parallel-stream-processing-with-rayon
     // Possible optimization: We could try to read only the iid info needed
     // Possible optimization: We could read snp in their input order instead of their output order
-    (0..out_sid_count)
+    sid_index
+        .iter()
         // Read all the iid info for one snp from the disk
-        .map(|out_sid_i| {
-            let in_sid_i = sid_index[out_sid_i];
-            if in_sid_i >= in_sid_count {
-                return Err(BedErrorPlus::BedError(BedError::SidIndexTooBig(in_sid_i)));
+        .map(|in_sid_i| {
+            if in_sid_i >= &in_sid_count {
+                return Err(BedErrorPlus::BedError(BedError::SidIndexTooBig(*in_sid_i)));
             }
             let mut bytes_vector: Vec<u8> = vec![0; in_iid_count_div4];
-            let pos: u64 = (in_sid_i as u64) * in_iid_count_div4_u64 + CB_HEADER_U64; // "as" and math is safe because of early checks
+            let pos: u64 = (*in_sid_i as u64) * in_iid_count_div4_u64 + CB_HEADER_U64; // "as" and math is safe because of early checks
             buf_reader.seek(SeekFrom::Start(pos))?;
             buf_reader.read_exact(&mut bytes_vector)?;
             Ok(bytes_vector)
@@ -263,9 +264,8 @@ fn internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>
             match bytes_vector_result {
                 Err(e) => Err(e),
                 Ok(bytes_vector) => {
-                    for out_iid_i in 0..out_iid_count {
+                    for (out_iid_i, in_iid_i) in iid_index.iter().enumerate() {
                         // Possible optimization: We could pre-compute the conversion, the division, the mod, and the multiply*2
-                        let in_iid_i = iid_index[out_iid_i];
                         let i_div_4 = in_iid_i / 4;
                         let i_mod_4 = in_iid_i % 4;
                         let genotype_byte: u8 = (bytes_vector[i_div_4] >> (i_mod_4 * 2)) & 0x03;

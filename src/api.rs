@@ -23,7 +23,7 @@ use crate::{
 #[builder(build_fn(skip))]
 pub struct Bed {
     // !!!cmk later or file_name or a Path,
-    // !!!cmk 0 confirm that this is required by derive_builder
+    // !!!cmk later confirm that this is required by derive_builder
     pub filename: String, // !!!cmk always clone?
 
     #[builder(default = "true")]
@@ -244,6 +244,12 @@ pub fn to_vec(index: Index, count: usize) -> Vec<usize> {
                 .map(|(i, _)| i)
                 .collect()
         }
+        // !!!cmk later can we implement this without two allocations?
+        Index::Slice(slice_index) => {
+            let full_array: nd::Array1<usize> = (0..count).collect();
+            let array = full_array.slice(slice_index);
+            array.to_vec()
+        }
     }
 }
 
@@ -253,7 +259,8 @@ pub enum Index {
     None,
     Full(Vec<usize>),
     Bool(Vec<bool>),
-    // !!!cmk 0 nd::slice
+    Slice(nd::SliceInfo<[nd::SliceInfoElem; 1], nd::Dim<[usize; 1]>, nd::Dim<[usize; 1]>>),
+    // !!! cmk0 what about supporting ranges?
 }
 
 // !!!cmk  later "Arg" is unlikely to be a good name
