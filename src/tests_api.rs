@@ -17,7 +17,7 @@ use ndarray::s;
 fn rusty_bed1() {
     let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
     let bed = Bed::builder(file.to_string()).build().unwrap();
-    let val: nd::Array2<i8> = ReadOptions::builder().build(&bed).unwrap();
+    let val: nd::Array2<i8> = ReadOptions::builder().read(&bed).unwrap();
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     assert!(mean == -13.142); // really shouldn't do mean on data where -127 represents missing
 
@@ -25,7 +25,7 @@ fn rusty_bed1() {
         .count_a1(false)
         .build()
         .unwrap();
-    let val: nd::Array2<i8> = ReadOptions::builder().build(&bed).unwrap();
+    let val: nd::Array2<i8> = ReadOptions::builder().read(&bed).unwrap();
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     assert!(mean == -13.274); // really shouldn't do mean on data where -127 represents missing
 }
@@ -39,7 +39,7 @@ fn rusty_bed2() {
     let val: nd::Array2<i8> = ReadOptions::builder()
         .iid_index([0].to_vec().into())
         .sid_index([1].to_vec().into())
-        .build(&bed)
+        .read(&bed)
         .unwrap();
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     println!("{:?}", mean);
@@ -73,7 +73,7 @@ fn rusty_bed3() {
         .missing_value(-127)
         .iid_index(iid_bool.into())
         .sid_index(sid_bool.into())
-        .build(&bed)
+        .read(&bed)
         .unwrap();
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     println!("{:?}", mean);
@@ -110,12 +110,13 @@ fn readme_examples() {
     // !!!cmk later document use statements
     // !!!cmk 0 pull down sample file
     let file_name = "bed_reader/tests/data/small.bed";
+    // !!!cmk 0 remove the unwraps from the read methods in api.rs
     let bed = Bed::builder(file_name.to_string()).build().unwrap();
+    // !!!cmk 0 implement this too
     //nd let bed = Bed::new(filename)?;
-    // !!!cmk 0 can we call this ReadOptions and call "read" instead of "build", but then will bed be required arg?
-    let val: nd::Array2<f64> = ReadOptions::builder().build(&bed).unwrap();
-    //nd val = bed.read(NAN).unwrap();
-    //nd val = bed.read!().unwrap();
+    let val = ReadOptions::<f64>::builder().read(&bed).unwrap();
+    // !!!cmk0 make this work too
+    //nd val = bed.read().unwrap();
     println!("{:?}", val);
     // [[1.0, 0.0, NaN, 0.0],
     // [2.0, 0.0, NaN, 2.0],
@@ -132,12 +133,13 @@ fn readme_examples() {
 
     let file_name2 = "bed_reader/tests/data/some_missing.bed";
     let bed2 = Bed::builder(file_name2.to_string()).build().unwrap();
-    let val2: nd::Array2<f64> = ReadOptions::builder()
+    // !!!cmk ask can we do this without the into?
+    let val2 = ReadOptions::<f64>::builder()
         .iid_index(s![..;2].into())
         .sid_index(s![20..30].into())
-        .build(&bed2)
+        .read(&bed2)
         .unwrap();
-    //nd val2 = bed2.read!(index(s![..,20..30]).missing_value(NAN)).unwrap();
+    // !!!cmk 0 make we make a read! macro that covers reading with and without options?
     println!("{:?}", val2.shape());
     // [50, 10]
 
@@ -160,12 +162,12 @@ fn readme_examples() {
     println!("{:?}", bed3.get_sid().slice(s![5..]));
     let unique: HashSet<_> = bed3.get_chromosome().iter().collect();
     println!("{:?}", unique);
+    // !!!cmk later it's weird that indexes are vectors, but properties are Array1
     let is_5 = bed3.get_chromosome().mapv(|elem| elem == "5");
-    let val3: nd::Array2<f64> = ReadOptions::builder()
+    let val3 = ReadOptions::<f64>::builder()
         .sid_index(is_5.into())
-        .build(&bed3)
+        .read(&bed3)
         .unwrap();
-    //nd val3 = bed3.read!(sid_index(is_5).missing_value(NAN)).unwrap();
     println!("{:?}", val3.shape());
     // [100, 6]
 }

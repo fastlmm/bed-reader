@@ -54,12 +54,6 @@ impl Bed {
     pub fn builder(filename: String) -> BedBuilder {
         BedBuilder::new(filename)
     }
-
-    pub fn read_options<TOut: From<i8> + Default + Copy + Debug + Sync + Send + Missing>(
-        &self,
-    ) -> ReadOptionsBuilder<TOut> {
-        ReadOptionsBuilder::default()
-    }
 }
 
 impl BedBuilder {
@@ -325,7 +319,6 @@ impl From<()> for Index {
 // See https://nullderef.com/blog/rust-parameters/
 // !!!cmk later note that ndarray can do this: a.slice(s![1..4;2, ..;-1])
 #[derive(Builder)]
-#[builder(build_fn(skip))]
 pub struct ReadOptions<TOut: Copy + Default + From<i8> + Debug + Sync + Send + Missing> {
     #[builder(default = "TOut::missing()")]
     missing_value: TOut,
@@ -353,29 +346,8 @@ impl<TOut: Copy + Default + From<i8> + Debug + Sync + Send + Missing + Clone> Re
 impl<TOut: Copy + Default + From<i8> + Debug + Sync + Send + Missing + Clone>
     ReadOptionsBuilder<TOut>
 {
-    pub fn build(&self, bed: &Bed) -> Result<nd::Array2<TOut>, BedErrorPlus> {
-        let read_option = ReadOptions {
-            missing_value: match self.missing_value {
-                Some(ref value) => Clone::clone(value),
-                None => TOut::missing(),
-            },
-            iid_index: match self.iid_index {
-                Some(ref value) => Clone::clone(value),
-                None => Index::None,
-            },
-            sid_index: match self.sid_index {
-                Some(ref value) => Clone::clone(value),
-                None => Index::None,
-            },
-            output_is_orderf: match self.output_is_orderf {
-                Some(ref value) => Clone::clone(value),
-                None => true,
-            },
-            num_threads: match self.num_threads {
-                Some(ref value) => Clone::clone(value),
-                None => ::std::default::Default::default(),
-            },
-        };
+    pub fn read(&self, bed: &Bed) -> Result<nd::Array2<TOut>, BedErrorPlus> {
+        let read_option = self.build().unwrap();
         bed.read(read_option)
     }
 }
