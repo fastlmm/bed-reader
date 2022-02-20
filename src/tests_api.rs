@@ -96,10 +96,10 @@ fn rusty_bed3() {
         .filename(file.to_string())
         .build()
         .unwrap();
-    let iid_bool: Vec<bool> = (0..bed.get_iid_count())
+    let iid_bool: nd::Array1<bool> = (0..bed.get_iid_count())
         .map(|elem| (elem % 2) != 0)
         .collect();
-    let sid_bool: Vec<bool> = (0..bed.get_sid_count())
+    let sid_bool: nd::Array1<bool> = (0..bed.get_sid_count())
         .map(|elem| (elem % 8) != 0)
         .collect();
     let val = bed
@@ -215,16 +215,11 @@ fn readme_examples() {
         .filename(file_name2.to_string())
         .build()
         .unwrap();
-    println!("{:?}", &(bed3.get_iid())[5..]);
-    println!("{:?}", &(bed3.get_sid())[5..]);
+    println!("{:?}", bed3.get_iid().slice(nd::s![5..]));
+    println!("{:?}", bed3.get_sid().slice(nd::s![5..]));
     let unique: HashSet<_> = bed3.get_chromosome().iter().collect();
     println!("{:?}", unique);
-    let is_5 = bed3
-        .get_chromosome()
-        .iter()
-        .map(|elem| elem == "5")
-        .collect();
-    //nd is_5 = bed3.get_chromosome().mapv(|elem| elem == "5");
+    let is_5 = bed3.get_chromosome().mapv(|elem| elem == "5");
     let val3: nd::ArrayBase<nd::OwnedRepr<f64>, nd::Dim<[usize; 2]>> = bed3
         .read(
             ReadArgBuilder::default()

@@ -36,13 +36,13 @@ pub struct Bed {
     sid_count: Option<usize>,
 
     #[builder(default = "None", setter(strip_option))]
-    iid: Option<Vec<String>>,
+    iid: Option<nd::Array1<String>>,
 
     #[builder(default = "None", setter(strip_option))]
-    sid: Option<Vec<String>>,
+    sid: Option<nd::Array1<String>>,
 
     #[builder(default = "None", setter(strip_option))]
-    chromosome: Option<Vec<String>>,
+    chromosome: Option<nd::Array1<String>>,
 }
 
 impl BedBuilder {
@@ -166,7 +166,7 @@ impl Bed {
     }
 
     // !!!cmk later should not have any unwraps in this whole file
-    pub fn get_iid(&mut self) -> &Vec<String> {
+    pub fn get_iid(&mut self) -> &nd::Array1<String> {
         if self.iid.is_some() {
             self.iid.as_ref().unwrap()
         } else {
@@ -176,7 +176,7 @@ impl Bed {
         }
     }
 
-    pub fn get_sid(&mut self) -> &Vec<String> {
+    pub fn get_sid(&mut self) -> &nd::Array1<String> {
         if self.sid.is_some() {
             self.sid.as_ref().unwrap()
         } else {
@@ -186,7 +186,7 @@ impl Bed {
         }
     }
 
-    pub fn get_chromosome(&mut self) -> &Vec<String> {
+    pub fn get_chromosome(&mut self) -> &nd::Array1<String> {
         if self.chromosome.is_some() {
             self.chromosome.as_ref().unwrap()
         } else {
@@ -258,7 +258,7 @@ pub fn to_vec(index: Index, count: usize) -> Vec<usize> {
 pub enum Index {
     None,
     Full(Vec<usize>),
-    Bool(Vec<bool>),
+    Bool(nd::Array1<bool>),
     Slice(nd::SliceInfo<[nd::SliceInfoElem; 1], nd::Dim<[usize; 1]>, nd::Dim<[usize; 1]>>),
     // !!! cmk0 what about supporting ranges?
 }
