@@ -54,6 +54,10 @@ impl Bed {
     pub fn builder(filename: String) -> BedBuilder {
         BedBuilder::new(filename)
     }
+
+    pub fn new(filename: String) -> Result<Self, BedErrorPlus> {
+        Bed::builder(filename).build()
+    }
 }
 
 impl BedBuilder {
