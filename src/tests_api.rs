@@ -1,11 +1,11 @@
 #[cfg(test)]
+use crate::api::Bed;
+#[cfg(test)]
 use crate::BedError;
 #[cfg(test)]
 use crate::BedErrorPlus;
 // !!!cmk later use read_all or new macros to make reading all easier.
 // !!!cmk later is there a way to set default value based on the result type (if given)
-#[cfg(test)]
-use crate::api::BedBuilder;
 #[cfg(test)]
 use crate::api::ReadArgBuilder;
 #[cfg(test)]
@@ -16,18 +16,14 @@ use ndarray::s;
 #[test]
 fn rusty_bed1() {
     let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
-    let bed = BedBuilder::default()
-        .filename(file.to_string())
-        .build()
-        .unwrap();
+    let bed = Bed::builder(file.to_string()).build().unwrap();
     let val: nd::Array2<i8> = bed
         .read(ReadArgBuilder::default().build().unwrap())
         .unwrap();
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     assert!(mean == -13.142); // really shouldn't do mean on data where -127 represents missing
 
-    let bed = BedBuilder::default()
-        .filename(file.to_string())
+    let bed = Bed::builder(file.to_string())
         .count_a1(false)
         .build()
         .unwrap();
@@ -42,15 +38,11 @@ fn rusty_bed1() {
 fn rusty_bed2() {
     // !!!cmk later reading one iid is very common. Make it easy.
     let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
-    let bed = BedBuilder::default()
-        .filename(file.to_string())
-        .build()
-        .unwrap();
+    let bed = Bed::builder(file.to_string()).build().unwrap();
 
-    let val = bed
+    let val: nd::Array2<i8> = bed
         .read(
             ReadArgBuilder::default()
-                .missing_value(-127)
                 .iid_index([0].to_vec().into())
                 .sid_index([1].to_vec().into())
                 .build()
@@ -72,16 +64,13 @@ fn rusty_bed2() {
 // }
 
 #[cfg(test)]
-use std::{collections::HashSet, f64::NAN};
+use std::collections::HashSet;
 
 #[test]
 fn rusty_bed3() {
     // !!!cmk later also show mixing bool and full and none
     let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
-    let mut bed = BedBuilder::default()
-        .filename(file.to_string())
-        .build()
-        .unwrap();
+    let mut bed = Bed::builder(file.to_string()).build().unwrap();
     let iid_bool: nd::Array1<bool> = (0..bed.get_iid_count())
         .map(|elem| (elem % 2) != 0)
         .collect();
@@ -106,7 +95,7 @@ fn rusty_bed3() {
 #[test]
 fn bad_header() {
     let filename = "bed_reader/tests/data/badfile.bed";
-    let result = BedBuilder::default().filename(filename.to_string()).build();
+    let result = Bed::builder(filename.to_string()).build();
 
     match result {
         Err(BedErrorPlus::BedError(BedError::IllFormed(_))) => (),
@@ -134,10 +123,7 @@ fn readme_examples() {
     // !!!cmk later pull down sample file
     // !!!cmk 0 can we replace default with new with filename in it
     let file_name = "bed_reader/tests/data/small.bed";
-    let bed = BedBuilder::default()
-        .filename(file_name.to_string())
-        .build()
-        .unwrap();
+    let bed = Bed::builder(file_name.to_string()).build().unwrap();
     //nd let bed = Bed::new(filename)?;
     // !!!cmk 0 can we call this ReadOptions and call "read" instead of "build", but then will bed be required arg?
     let val: nd::Array2<f64> = bed
@@ -160,16 +146,12 @@ fn readme_examples() {
     // >>> del bed2
 
     let file_name2 = "bed_reader/tests/data/some_missing.bed";
-    let bed2 = BedBuilder::default()
-        .filename(file_name2.to_string())
-        .build()
-        .unwrap();
-    let val2 = bed2
+    let bed2 = Bed::builder(file_name2.to_string()).build().unwrap();
+    let val2: nd::Array2<f64> = bed2
         .read(
             ReadArgBuilder::default()
                 .iid_index(s![..;2].into())
                 .sid_index(s![20..30].into())
-                .missing_value(NAN)
                 .build()
                 .unwrap(),
         )
@@ -192,20 +174,16 @@ fn readme_examples() {
     //  '3' '4' '5' '6' '7' '8' '9']
     // (100, 6)
 
-    let mut bed3 = BedBuilder::default()
-        .filename(file_name2.to_string())
-        .build()
-        .unwrap();
+    let mut bed3 = Bed::builder(file_name2.to_string()).build().unwrap();
     println!("{:?}", bed3.get_iid().slice(s![5..]));
     println!("{:?}", bed3.get_sid().slice(s![5..]));
     let unique: HashSet<_> = bed3.get_chromosome().iter().collect();
     println!("{:?}", unique);
     let is_5 = bed3.get_chromosome().mapv(|elem| elem == "5");
-    let val3 = bed3
+    let val3: nd::Array2<f64> = bed3
         .read(
             ReadArgBuilder::default()
                 .sid_index(is_5.into())
-                .missing_value(NAN)
                 .build()
                 .unwrap(),
         )

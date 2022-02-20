@@ -50,7 +50,25 @@ pub struct Bed {
     chromosome: Option<nd::Array1<String>>,
 }
 
+impl Bed {
+    pub fn builder(filename: String) -> BedBuilder {
+        BedBuilder::new(filename)
+    }
+}
+
 impl BedBuilder {
+    pub fn new(filename: String) -> Self {
+        Self {
+            filename: Some(filename),
+            count_a1: Some(true),
+            iid_count: None,
+            sid_count: None,
+            iid: None,
+            sid: None,
+            chromosome: None,
+        }
+    }
+
     pub fn build(&self) -> Result<Bed, BedErrorPlus> {
         let bed = Bed {
             filename: match self.filename {
