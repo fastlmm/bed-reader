@@ -112,7 +112,7 @@ pub enum BedError {
 
 //#!!!cmk later hide this from the docs
 #[allow(clippy::too_many_arguments)]
-fn read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
+fn read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send + Missing>(
     filename: &str,
     iid_count: usize,
     sid_count: usize,
@@ -174,6 +174,28 @@ impl Max for u64 {
     }
 }
 
+pub trait Missing {
+    fn missing() -> Self;
+}
+
+impl Missing for f64 {
+    fn missing() -> Self {
+        f64::NAN
+    }
+}
+
+impl Missing for f32 {
+    fn missing() -> Self {
+        f32::NAN
+    }
+}
+
+impl Missing for i8 {
+    fn missing() -> Self {
+        -127i8
+    }
+}
+
 // We make this generic instead of u64, so that we can test it via u8
 fn try_div_4<T: Max + TryFrom<usize> + Sub<Output = T> + Div<Output = T> + Ord>(
     in_iid_count: usize,
@@ -205,7 +227,7 @@ fn try_div_4<T: Max + TryFrom<usize> + Sub<Output = T> + Div<Output = T> + Ord>(
 
 // !!!cmk later could iid_index and sid_index be ExpectSizeIterator<Item=usize>?
 #[allow(clippy::too_many_arguments)]
-fn internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send>(
+fn internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send + Missing>(
     mut buf_reader: BufReader<File>,
     filename: &str,
     in_iid_count: usize,
@@ -304,7 +326,7 @@ fn set_up_two_bits_to_value<TOut: From<i8>>(count_a1: bool, missing_value: TOut)
 }
 
 // could make count_a1, etc. optional
-pub fn read_with_indexes<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
+pub fn read_with_indexes<TOut: From<i8> + Default + Copy + Debug + Sync + Send + Missing>(
     filename: &str,
     iid_index: &[usize],
     sid_index: &[usize],
@@ -331,7 +353,7 @@ pub fn read_with_indexes<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
     Ok(val)
 }
 
-pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
+pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send + Missing>(
     filename: &str,
     output_is_orderf: bool,
     count_a1: bool,

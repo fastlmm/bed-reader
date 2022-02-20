@@ -16,7 +16,7 @@ use derive_builder::Builder;
 // !!! might want to use this instead use typed_builder::TypedBuilder;
 
 use crate::{
-    counts, read_no_alloc, BedError, BedErrorPlus, BED_FILE_MAGIC1, BED_FILE_MAGIC2,
+    counts, read_no_alloc, BedError, BedErrorPlus, Missing, BED_FILE_MAGIC1, BED_FILE_MAGIC2,
     CB_HEADER_USIZE,
 };
 
@@ -201,7 +201,7 @@ impl Bed {
         }
     }
 
-    pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send>(
+    pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send + Missing>(
         &self,
         read_arg: ReadArg<TOut>,
     ) -> Result<nd::Array2<TOut>, BedErrorPlus> {
@@ -301,7 +301,8 @@ impl From<()> for Index {
 // See https://nullderef.com/blog/rust-parameters/
 // !!!cmk later note that ndarray can do this: a.slice(s![1..4;2, ..;-1])
 #[derive(Builder)]
-pub struct ReadArg<TOut: Copy + Default + From<i8> + Debug + Sync + Send> {
+pub struct ReadArg<TOut: Copy + Default + From<i8> + Debug + Sync + Send + Missing> {
+    #[builder(default = "TOut::missing()")]
     missing_value: TOut,
 
     #[builder(default = "Index::None")]

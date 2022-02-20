@@ -10,6 +10,8 @@ use crate::api::BedBuilder;
 use crate::api::ReadArgBuilder;
 #[cfg(test)]
 use ndarray as nd;
+#[cfg(test)]
+use ndarray::s;
 
 #[test]
 fn rusty_bed1() {
@@ -18,13 +20,8 @@ fn rusty_bed1() {
         .filename(file.to_string())
         .build()
         .unwrap();
-    let val = bed
-        .read(
-            ReadArgBuilder::default()
-                .missing_value(-127)
-                .build()
-                .unwrap(),
-        )
+    let val: nd::Array2<i8> = bed
+        .read(ReadArgBuilder::default().build().unwrap())
         .unwrap();
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     assert!(mean == -13.142); // really shouldn't do mean on data where -127 represents missing
@@ -34,13 +31,8 @@ fn rusty_bed1() {
         .count_a1(false)
         .build()
         .unwrap();
-    let val = bed
-        .read(
-            ReadArgBuilder::default()
-                .missing_value(-127)
-                .build()
-                .unwrap(),
-        )
+    let val: nd::Array2<i8> = bed
+        .read(ReadArgBuilder::default().build().unwrap())
         .unwrap();
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     assert!(mean == -13.274); // really shouldn't do mean on data where -127 represents missing
@@ -59,8 +51,6 @@ fn rusty_bed2() {
         .read(
             ReadArgBuilder::default()
                 .missing_value(-127)
-                // !!!cmk 0 could it be any slice of usize?
-                // !!!cmk 0 or work with everything that works with ndarray indexing
                 .iid_index([0].to_vec().into())
                 .sid_index([1].to_vec().into())
                 .build()
@@ -142,19 +132,16 @@ fn readme_examples() {
 
     // !!!cmk later document use statements
     // !!!cmk later pull down sample file
+    // !!!cmk 0 can we replace default with new with filename in it
     let file_name = "bed_reader/tests/data/small.bed";
     let bed = BedBuilder::default()
         .filename(file_name.to_string())
         .build()
         .unwrap();
     //nd let bed = Bed::new(filename)?;
-    let val = bed
-        .read(
-            ReadArgBuilder::default()
-                .missing_value(NAN)
-                .build()
-                .unwrap(),
-        )
+    // !!!cmk 0 can we call this ReadOptions and call "read" instead of "build", but then will bed be required arg?
+    let val: nd::Array2<f64> = bed
+        .read(ReadArgBuilder::default().build().unwrap())
         .unwrap();
     //nd val = bed.read(NAN).unwrap();
     //nd val = bed.read!().unwrap();
@@ -180,8 +167,8 @@ fn readme_examples() {
     let val2 = bed2
         .read(
             ReadArgBuilder::default()
-                .iid_index(nd::s![..;2].into())
-                .sid_index(nd::s![20..30].into())
+                .iid_index(s![..;2].into())
+                .sid_index(s![20..30].into())
                 .missing_value(NAN)
                 .build()
                 .unwrap(),
@@ -209,8 +196,8 @@ fn readme_examples() {
         .filename(file_name2.to_string())
         .build()
         .unwrap();
-    println!("{:?}", bed3.get_iid().slice(nd::s![5..]));
-    println!("{:?}", bed3.get_sid().slice(nd::s![5..]));
+    println!("{:?}", bed3.get_iid().slice(s![5..]));
+    println!("{:?}", bed3.get_sid().slice(s![5..]));
     let unique: HashSet<_> = bed3.get_chromosome().iter().collect();
     println!("{:?}", unique);
     let is_5 = bed3.get_chromosome().mapv(|elem| elem == "5");
