@@ -282,16 +282,15 @@ fn writer() {
 
     let temp = TempDir::default();
     let path2 = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_test.bed");
-    let filename2 = path2.as_os_str().to_str().unwrap();
+    // !!!cmk 0 let filename2 = path2.as_os_str().to_str().unwrap();
 
-    write(filename2, &val.view(), true, -127, 1).unwrap();
+    write(&path2, &val.view(), true, -127, 1).unwrap();
     for ext in ["fam", "bim"].iter() {
         let from = Path::new(filename).with_extension(ext);
-        let to = Path::new(filename2).with_extension(ext);
-        std::fs::copy(from, to).unwrap();
+        std::fs::copy(from, &path2).unwrap();
     }
 
-    let val2 = read(filename2, false, true, -127).unwrap();
+    let val2 = read(path2, false, true, -127).unwrap();
     assert!(allclose(&val.view(), &val2.view(), 0, true));
 
     let val = read(filename, false, true, f64::NAN).unwrap();

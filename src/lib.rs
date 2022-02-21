@@ -338,15 +338,18 @@ fn set_up_two_bits_to_value<TOut: From<i8>>(count_a1: bool, missing_value: TOut)
 }
 
 // could make count_a1, etc. optional
-pub fn read_with_indexes<TOut: From<i8> + Default + Copy + Debug + Sync + Send + Missing>(
-    filename: &str,
+pub fn read_with_indexes<
+    TOut: From<i8> + Default + Copy + Debug + Sync + Send + Missing,
+    P: AsRef<Path>,
+>(
+    filename: P,
     iid_index: &[usize],
     sid_index: &[usize],
     output_is_orderf: bool,
     count_a1: bool,
     missing_value: TOut,
 ) -> Result<nd::Array2<TOut>, BedErrorPlus> {
-    let (iid_count, sid_count) = counts(filename)?;
+    let (iid_count, sid_count) = counts(&filename)?;
 
     let shape = ShapeBuilder::set_f((iid_index.len(), sid_index.len()), output_is_orderf);
     let mut val = nd::Array2::<TOut>::default(shape);
@@ -395,8 +398,8 @@ pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send + Missing, P: 
 
 // Thanks to Dawid for his dpc-pariter library that makes this function scale.
 // https://dpc.pw/adding-parallelism-to-your-rust-iterators
-pub fn write<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
-    filename: &str,
+pub fn write<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq, P: AsRef<Path>>(
+    filename: P,
     val: &nd::ArrayView2<'_, T>,
     count_a1: bool,
     missing: T,
@@ -410,7 +413,7 @@ pub fn write<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
     // We create and write to a file.
     // If there is an error, we will delete it.
     if let Err(e) = write_internal(
-        filename,
+        &filename,
         iid_count_div4,
         val,
         count_a1,
@@ -425,15 +428,19 @@ pub fn write<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
     }
 }
 
-fn write_internal<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq>(
-    filename: &str,
+// !!!cmk 0 filename to path here and elsewhere
+fn write_internal<
+    T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq,
+    P: AsRef<Path>,
+>(
+    filename: P,
     iid_count_div4: usize,
     val: &nd::ArrayView2<'_, T>,
     count_a1: bool,
     missing: T,
     num_threads: usize,
 ) -> Result<(), BedErrorPlus> {
-    let mut writer = BufWriter::new(File::create(filename)?);
+    let mut writer = BufWriter::new(File::create(&filename)?);
     writer.write_all(&[BED_FILE_MAGIC1, BED_FILE_MAGIC2, 0x01])?;
 
     #[allow(clippy::eq_op)]
@@ -445,6 +452,7 @@ fn write_internal<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq
     let heterozygous_allele = T::from(1);
     let homozygous_secondary_allele = T::from(2); // Minor Allele
 
+    let path_buf = PathBuf::from(filename.as_ref());
     scope(|scope| {
         val.axis_iter(nd::Axis(1))
             .parallel_map_scoped(scope, {
@@ -463,7 +471,7 @@ fn write_internal<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq
                         } else if (use_nan && v0 != v0) || (!use_nan && v0 == missing) {
                             1
                         } else {
-                            return Err(BedError::BadValue(filename.to_string()));
+                            return Err(BedError::BadValue(path_buf.display().to_string()));
                         };
                         // Possible optimization: We could pre-compute the conversion, the division, the mod, and the multiply*2
                         let i_div_4 = iid_i / 4;
@@ -926,8 +934,8 @@ for output in output_list:
 // where ncols <= (col_count-col_start)
 // Makes only one pass through the file.
 #[allow(clippy::too_many_arguments)]
-fn file_ata_piece<T: Float + Send + Sync + AddAssign>(
-    filename: &str,
+fn file_ata_piece<T: Float + Send + Sync + AddAssign, P: AsRef<Path>>(
+    filename: P,
     offset: u64,
     row_count: usize,
     col_count: usize,
@@ -955,8 +963,8 @@ fn file_ata_piece<T: Float + Send + Sync + AddAssign>(
     )
 }
 
-fn _file_ata_piece_internal<T: Float + Send + Sync + AddAssign>(
-    filename: &str,
+fn _file_ata_piece_internal<T: Float + Send + Sync + AddAssign, P: AsRef<Path>>(
+    filename: P,
     offset: u64,
     row_count: usize,
     col_start: usize,
@@ -1035,8 +1043,8 @@ fn col_product<T: Float + AddAssign>(col_i: &[T], col_j: &[T]) -> T {
 // where ncols <= (row_count-row_start)
 // Makes only one pass through the file.
 #[allow(clippy::too_many_arguments)]
-fn file_aat_piece<T: Float + Sync + Send + AddAssign>(
-    filename: &str,
+fn file_aat_piece<T: Float + Sync + Send + AddAssign, P: AsRef<Path>>(
+    filename: P,
     offset: u64,
     row_count: usize,
     col_count: usize,

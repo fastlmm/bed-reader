@@ -16,15 +16,12 @@ use ndarray::s;
 #[test]
 fn rusty_bed1() {
     let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
-    let bed = Bed::new(file.to_string()).unwrap();
+    let bed = Bed::new(file).unwrap();
     let val = bed.read::<i8>().unwrap();
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     assert!(mean == -13.142); // really shouldn't do mean on data where -127 represents missing
 
-    let bed = Bed::builder(file.to_string())
-        .count_a1(false)
-        .build()
-        .unwrap();
+    let bed = Bed::builder(file).count_a1(false).build().unwrap();
     let val = bed.read::<i8>().unwrap();
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     assert!(mean == -13.274); // really shouldn't do mean on data where -127 represents missing
@@ -34,7 +31,7 @@ fn rusty_bed1() {
 fn rusty_bed2() {
     // !!!cmk later reading one iid is very common. Make it easy.
     let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
-    let bed = Bed::new(file.to_string()).unwrap();
+    let bed = Bed::new(file).unwrap();
 
     let val: nd::Array2<i8> = ReadOptions::builder()
         .iid_index([0].to_vec().into())
@@ -62,7 +59,7 @@ use std::collections::HashSet;
 fn rusty_bed3() {
     // !!!cmk later also show mixing bool and full and none
     let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
-    let mut bed = Bed::new(file.to_string()).unwrap();
+    let mut bed = Bed::new(file).unwrap();
     let iid_bool: nd::Array1<bool> = (0..bed.get_iid_count().unwrap())
         .map(|elem| (elem % 2) != 0)
         .collect();
@@ -83,7 +80,7 @@ fn rusty_bed3() {
 #[test]
 fn bad_header() {
     let filename = "bed_reader/tests/data/badfile.bed";
-    let result = Bed::new(filename.to_string());
+    let result = Bed::new(filename);
 
     match result {
         Err(BedErrorPlus::BedError(BedError::IllFormed(_))) => (),
@@ -110,7 +107,7 @@ fn readme_examples() {
     // !!!cmk later document use statements
     // !!!cmk ask is there a rust crate for pulling down files if needed (using hash to check if file correct), like Python's Pooch
     let file_name = "bed_reader/tests/data/small.bed";
-    let bed = Bed::new(file_name.to_string()).unwrap();
+    let bed = Bed::new(file_name).unwrap();
     let val = bed.read::<f64>().unwrap();
     println!("{:?}", val);
     // [[1.0, 0.0, NaN, 0.0],
@@ -127,7 +124,7 @@ fn readme_examples() {
     // >>> del bed2
 
     let file_name2 = "bed_reader/tests/data/some_missing.bed";
-    let bed2 = Bed::new(file_name2.to_string()).unwrap();
+    let bed2 = Bed::new(file_name2).unwrap();
     // !!!cmk ask can we do this without the into?
     let val2 = ReadOptions::<f64>::builder()
         .iid_index(s![..;2].into())
@@ -151,7 +148,7 @@ fn readme_examples() {
     //  '3' '4' '5' '6' '7' '8' '9']
     // (100, 6)
 
-    let mut bed3 = Bed::new(file_name2.to_string()).unwrap();
+    let mut bed3 = Bed::new(file_name2).unwrap();
     println!("{:?}", bed3.get_iid().unwrap().slice(s![5..]));
     println!("{:?}", bed3.get_sid().unwrap().slice(s![5..]));
     let unique: HashSet<_> = bed3.get_chromosome().unwrap().iter().collect();
