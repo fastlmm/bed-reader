@@ -14,33 +14,35 @@ use ndarray as nd;
 use ndarray::s;
 
 #[test]
-fn rusty_bed1() {
+fn rusty_bed1() -> Result<(), BedErrorPlus> {
     let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
-    let bed = Bed::new(file).unwrap();
-    let val = bed.read::<i8>().unwrap();
+    let bed = Bed::new(file)?;
+    let val = bed.read::<i8>()?;
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     assert!(mean == -13.142); // really shouldn't do mean on data where -127 represents missing
 
-    let bed = Bed::builder(file).count_a1(false).build().unwrap();
-    let val = bed.read::<i8>().unwrap();
+    let bed = Bed::builder(file).count_a1(false).build()?;
+    let val = bed.read::<i8>()?;
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     assert!(mean == -13.274); // really shouldn't do mean on data where -127 represents missing
+    Ok(())
 }
 
 #[test]
-fn rusty_bed2() {
+fn rusty_bed2() -> Result<(), BedErrorPlus> {
     // !!!cmk later reading one iid is very common. Make it easy.
     let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
-    let bed = Bed::new(file).unwrap();
+    let bed = Bed::new(file)?;
 
     let val: nd::Array2<i8> = ReadOptions::builder()
         .iid_index([0].to_vec().into())
         .sid_index([1].to_vec().into())
-        .read(&bed)
-        .unwrap();
+        .read(&bed)?;
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     println!("{:?}", mean);
     assert!(mean == 1.0); // really shouldn't do mean on data where -127 represents missing
+
+    Ok(())
 }
 
 // !!!cmk later ask reddit help (mention builder library creator)
@@ -56,25 +58,26 @@ fn rusty_bed2() {
 use std::collections::HashSet;
 
 #[test]
-fn rusty_bed3() {
+fn rusty_bed3() -> Result<(), BedErrorPlus> {
     // !!!cmk later also show mixing bool and full and none
     let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
-    let mut bed = Bed::new(file).unwrap();
-    let iid_bool: nd::Array1<bool> = (0..bed.get_iid_count().unwrap())
+    let mut bed = Bed::new(file)?;
+    let iid_bool: nd::Array1<bool> = (0..bed.get_iid_count()?)
         .map(|elem| (elem % 2) != 0)
         .collect();
-    let sid_bool: nd::Array1<bool> = (0..bed.get_sid_count().unwrap())
+    let sid_bool: nd::Array1<bool> = (0..bed.get_sid_count()?)
         .map(|elem| (elem % 8) != 0)
         .collect();
     let val = ReadOptions::builder()
         .missing_value(-127)
         .iid_index(iid_bool.into())
         .sid_index(sid_bool.into())
-        .read(&bed)
-        .unwrap();
+        .read(&bed)?;
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     println!("{:?}", mean);
     assert!(mean == -14.50344827586207); // really shouldn't do mean on data where -127 represents missing
+
+    Ok(())
 }
 
 #[test]
@@ -89,7 +92,7 @@ fn bad_header() {
 }
 
 #[test]
-fn readme_examples() {
+fn readme_examples() -> Result<(), BedErrorPlus> {
     // Read genomic data from a .bed file.
 
     // >>> import numpy as np
@@ -107,8 +110,8 @@ fn readme_examples() {
     // !!!cmk later document use statements
     // !!!cmk ask is there a rust crate for pulling down files if needed (using hash to check if file correct), like Python's Pooch
     let file_name = "bed_reader/tests/data/small.bed";
-    let bed = Bed::new(file_name).unwrap();
-    let val = bed.read::<f64>().unwrap();
+    let bed = Bed::new(file_name)?;
+    let val = bed.read::<f64>()?;
     println!("{:?}", val);
     // [[1.0, 0.0, NaN, 0.0],
     // [2.0, 0.0, NaN, 2.0],
@@ -124,13 +127,12 @@ fn readme_examples() {
     // >>> del bed2
 
     let file_name2 = "bed_reader/tests/data/some_missing.bed";
-    let bed2 = Bed::new(file_name2).unwrap();
+    let bed2 = Bed::new(file_name2)?;
     // !!!cmk ask can we do this without the into?
     let val2 = ReadOptions::<f64>::builder()
         .iid_index(s![..;2].into())
         .sid_index(s![20..30].into())
-        .read(&bed2)
-        .unwrap();
+        .read(&bed2)?;
     println!("{:?}", val2.shape());
     // [50, 10]
 
@@ -148,21 +150,22 @@ fn readme_examples() {
     //  '3' '4' '5' '6' '7' '8' '9']
     // (100, 6)
 
-    let mut bed3 = Bed::new(file_name2).unwrap();
-    println!("{:?}", bed3.get_iid().unwrap().slice(s![5..]));
-    println!("{:?}", bed3.get_sid().unwrap().slice(s![5..]));
-    let unique: HashSet<_> = bed3.get_chromosome().unwrap().iter().collect();
+    let mut bed3 = Bed::new(file_name2)?;
+    println!("{:?}", bed3.get_iid()?.slice(s![5..]));
+    println!("{:?}", bed3.get_sid()?.slice(s![5..]));
+    let unique: HashSet<_> = bed3.get_chromosome()?.iter().collect();
     println!("{:?}", unique);
     // !!!cmk later it's weird that indexes are vectors, but properties are Array1
-    let is_5 = bed3.get_chromosome().unwrap().mapv(|elem| elem == "5");
+    let is_5 = bed3.get_chromosome()?.mapv(|elem| elem == "5");
     let val3 = ReadOptions::<f64>::builder()
         .sid_index(is_5.into())
-        .read(&bed3)
-        .unwrap();
+        .read(&bed3)?;
 
     // !!!cmk ask could a macro likes be nice?
-    // let val3: nd::Array2<f64> = bed_read!(bed3, sid_index(is_5.into())).unwrap();
-    // let val5: nd::Array2<f64> = bed_read!(bed3).unwrap();
+    // let val3: nd::Array2<f64> = bed_read!(bed3, sid_index(is_5.into()))?;
+    // let val5: nd::Array2<f64> = bed_read!(bed3)?;
     println!("{:?}", val3.shape());
     // [100, 6]
+
+    Ok(())
 }
