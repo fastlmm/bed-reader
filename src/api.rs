@@ -78,11 +78,9 @@ impl BedBuilder {
             filename: match self.filename {
                 Some(ref value) => Clone::clone(value),
                 None => {
-                    panic!("filename is required");
-                    // !!!cmk later put this code back
-                    // return Result::Err(Into::into(
-                    //     ::derive_builder::UninitializedFieldError::from("filename"),
-                    // ))
+                    return Err(BedErrorPlus::UninitializedFieldError(
+                        ::derive_builder::UninitializedFieldError::from("filename"),
+                    ))
                 }
             },
             count_a1: match self.count_a1 {
@@ -113,9 +111,9 @@ impl BedBuilder {
 
         // !!!cmk later similar code elsewhere
         let filename = bed.filename.to_string();
-        let mut buf_reader = BufReader::new(File::open(&filename).unwrap());
+        let mut buf_reader = BufReader::new(File::open(&filename)?);
         let mut bytes_vector: Vec<u8> = vec![0; CB_HEADER_USIZE];
-        buf_reader.read_exact(&mut bytes_vector).unwrap();
+        buf_reader.read_exact(&mut bytes_vector)?;
         if (BED_FILE_MAGIC1 != bytes_vector[0]) || (BED_FILE_MAGIC2 != bytes_vector[1]) {
             return Err(BedError::IllFormed(filename.to_string()).into());
         }
@@ -133,24 +131,25 @@ impl Bed {
     // bim_filepath: Union[str, Path] = None,
 
     // !!!cmk later is this how you do lazy accessors?
-    pub fn get_iid_count(&mut self) -> usize {
+    // !!!cmk later should this be "try_get_..." or just "iid_count" or as is
+    pub fn get_iid_count(&mut self) -> Result<usize, BedErrorPlus> {
         if let Some(iid_count) = self.iid_count {
-            iid_count
+            Ok(iid_count)
         } else {
-            let (iid_count, sid_count) = counts(&self.filename).unwrap();
+            let (iid_count, sid_count) = counts(&self.filename)?;
             self.iid_count = Some(iid_count);
             self.sid_count = Some(sid_count);
-            iid_count
+            Ok(iid_count)
         }
     }
-    pub fn get_sid_count(&mut self) -> usize {
+    pub fn get_sid_count(&mut self) -> Result<usize, BedErrorPlus> {
         if let Some(sid_count) = self.sid_count {
-            sid_count
+            Ok(sid_count)
         } else {
-            let (iid_count, sid_count) = counts(&self.filename).unwrap();
+            let (iid_count, sid_count) = counts(&self.filename)?;
             self.iid_count = Some(iid_count);
             self.sid_count = Some(sid_count);
-            sid_count
+            Ok(sid_count)
         }
     }
 
@@ -184,7 +183,9 @@ impl Bed {
 
         let reader = BufReader::new(file);
         let iter = reader.lines().map(move |line| {
+            // !!!cmk later unwrap
             let line = line.unwrap();
+            // !!!cmk later unwrap
             let field = line.split_whitespace().nth(field_index).unwrap();
             field.to_string()
         });
@@ -193,40 +194,46 @@ impl Bed {
     }
 
     // !!!cmk later should not have any unwraps in this whole file
-    pub fn get_iid(&mut self) -> &nd::Array1<String> {
+    pub fn get_iid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         if self.iid.is_some() {
-            self.iid.as_ref().unwrap()
+            // !!!cmk later unwrap
+            Ok(self.iid.as_ref().unwrap())
         } else {
-            let iid = self.read_fam_or_bim("fam", 1).unwrap().collect();
+            let iid = self.read_fam_or_bim("fam", 1)?.collect();
             self.iid = Some(iid);
-            self.iid.as_ref().unwrap()
+            // !!!cmk later unwrap
+            Ok(self.iid.as_ref().unwrap())
         }
     }
 
-    pub fn get_sid(&mut self) -> &nd::Array1<String> {
+    pub fn get_sid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         if self.sid.is_some() {
-            self.sid.as_ref().unwrap()
+            // !!!cmk later unwrap
+            Ok(self.sid.as_ref().unwrap())
         } else {
-            let sid = self.read_fam_or_bim("bim", 1).unwrap().collect();
+            let sid = self.read_fam_or_bim("bim", 1)?.collect();
             self.sid = Some(sid);
-            self.sid.as_ref().unwrap()
+            // !!!cmk later unwrap
+            Ok(self.sid.as_ref().unwrap())
         }
     }
 
-    pub fn get_chromosome(&mut self) -> &nd::Array1<String> {
+    pub fn get_chromosome(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         if self.chromosome.is_some() {
-            self.chromosome.as_ref().unwrap()
+            // !!!cmk later unwrap
+            Ok(self.chromosome.as_ref().unwrap())
         } else {
-            let chromosome = self.read_fam_or_bim("bim", 0).unwrap().collect();
+            let chromosome = self.read_fam_or_bim("bim", 0)?.collect();
             self.chromosome = Some(chromosome);
-            self.chromosome.as_ref().unwrap()
+            // !!!cmk later unwrap
+            Ok(self.chromosome.as_ref().unwrap())
         }
     }
 
     pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send + Missing>(
         &self,
     ) -> Result<nd::Array2<TOut>, BedErrorPlus> {
-        let read_options = ReadOptions::<TOut>::builder().build().unwrap();
+        let read_options = ReadOptions::<TOut>::builder().build()?;
         self.read_with_options(read_options)
     }
 
@@ -360,7 +367,7 @@ impl<TOut: Copy + Default + From<i8> + Debug + Sync + Send + Missing + Clone>
     ReadOptionsBuilder<TOut>
 {
     pub fn read(&self, bed: &Bed) -> Result<nd::Array2<TOut>, BedErrorPlus> {
-        let read_option = self.build().unwrap();
+        let read_option = self.build()?;
         bed.read_with_options(read_option)
     }
 }

@@ -9,6 +9,7 @@ mod tests_api;
 
 mod python_module;
 
+use crate::api::ReadOptionsBuilderError;
 use byteorder::{LittleEndian, ReadBytesExt};
 use core::fmt::Debug;
 use dpc_pariter::{scope, IteratorExt};
@@ -58,6 +59,12 @@ pub enum BedErrorPlus {
 
     #[error(transparent)]
     ThreadPoolError(#[from] ThreadPoolBuildError),
+
+    #[error(transparent)]
+    ReadOptionsBuilderError(#[from] ReadOptionsBuilderError),
+
+    #[error(transparent)]
+    UninitializedFieldError(#[from] ::derive_builder::UninitializedFieldError),
 }
 // https://docs.rs/thiserror/1.0.23/thiserror/
 #[derive(Error, Debug, Clone)]

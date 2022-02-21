@@ -63,10 +63,10 @@ fn rusty_bed3() {
     // !!!cmk later also show mixing bool and full and none
     let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
     let mut bed = Bed::new(file.to_string()).unwrap();
-    let iid_bool: nd::Array1<bool> = (0..bed.get_iid_count())
+    let iid_bool: nd::Array1<bool> = (0..bed.get_iid_count().unwrap())
         .map(|elem| (elem % 2) != 0)
         .collect();
-    let sid_bool: nd::Array1<bool> = (0..bed.get_sid_count())
+    let sid_bool: nd::Array1<bool> = (0..bed.get_sid_count().unwrap())
         .map(|elem| (elem % 8) != 0)
         .collect();
     let val = ReadOptions::builder()
@@ -154,12 +154,12 @@ fn readme_examples() {
     // (100, 6)
 
     let mut bed3 = Bed::new(file_name2.to_string()).unwrap();
-    println!("{:?}", bed3.get_iid().slice(s![5..]));
-    println!("{:?}", bed3.get_sid().slice(s![5..]));
-    let unique: HashSet<_> = bed3.get_chromosome().iter().collect();
+    println!("{:?}", bed3.get_iid().unwrap().slice(s![5..]));
+    println!("{:?}", bed3.get_sid().unwrap().slice(s![5..]));
+    let unique: HashSet<_> = bed3.get_chromosome().unwrap().iter().collect();
     println!("{:?}", unique);
     // !!!cmk later it's weird that indexes are vectors, but properties are Array1
-    let is_5 = bed3.get_chromosome().mapv(|elem| elem == "5");
+    let is_5 = bed3.get_chromosome().unwrap().mapv(|elem| elem == "5");
     let val3 = ReadOptions::<f64>::builder()
         .sid_index(is_5.into())
         .read(&bed3)
