@@ -278,59 +278,59 @@ fn index() {
 #[test]
 fn writer() {
     let filename = "bed_reader/tests/data/some_missing.bed";
-    let val = read(filename, false, true, -127).unwrap();
+    let path = Path::new(filename);
+
+    let val = read(path, false, true, -127).unwrap();
 
     let temp = TempDir::default();
     let path2 = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_test.bed");
-    // !!!cmk 0 let filename2 = path2.as_os_str().to_str().unwrap();
+    // !!!cmk later understand every use of "as_os_str()" and try to remove it.
 
     write(&path2, &val.view(), true, -127, 1).unwrap();
     for ext in ["fam", "bim"].iter() {
-        let from = Path::new(filename).with_extension(ext);
-        std::fs::copy(from, &path2).unwrap();
+        // !!!cmk later understand ever use of Path::new and PathBuf::from, etc
+        let from = path.with_extension(ext);
+        let to = path2.with_extension(ext);
+        std::fs::copy(from, to).unwrap();
     }
 
     let val2 = read(path2, false, true, -127).unwrap();
     assert!(allclose(&val.view(), &val2.view(), 0, true));
 
-    let val = read(filename, false, true, f64::NAN).unwrap();
+    let val = read(path, false, true, f64::NAN).unwrap();
 
     let path2 = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64.bed");
-    let filename2 = path2.as_os_str().to_str().unwrap();
 
-    write(filename2, &val.view(), true, f64::NAN, 1).unwrap();
+    write(&path2, &val.view(), true, f64::NAN, 1).unwrap();
     for ext in ["fam", "bim"].iter() {
-        let from = Path::new(filename).with_extension(ext);
-        let to = Path::new(filename2).with_extension(ext);
+        let from = path.with_extension(ext);
+        let to = path2.with_extension(ext);
         std::fs::copy(from, to).unwrap();
     }
 
-    let val2 = read(filename2, false, true, f64::NAN).unwrap();
+    let val2 = read(path2, false, true, f64::NAN).unwrap();
 
     assert!(allclose(&val.view(), &val2.view(), 1e-8, true));
 
-    let mut val = read(filename, false, true, f64::NAN).unwrap();
+    let mut val = read(path, false, true, f64::NAN).unwrap();
     val[(0, 0)] = 5.0;
     let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_5.bed");
-    let filename = path.as_os_str().to_str().unwrap();
 
     if let Err(BedErrorPlus::BedError(BedError::BadValue(_))) =
-        write(filename, &val.view(), true, f64::NAN, 1)
+        write(&path, &val.view(), true, f64::NAN, 1)
     {
-        assert!(!Path::new(filename).exists(), "file should not exist");
+        assert!(!path.exists(), "file should not exist");
     } else {
         panic!("test failure")
     };
 
     let val = nd::Array2::zeros((0, 0));
     let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_0s.bed");
-    let filename = path.as_os_str().to_str().unwrap();
-    write(filename, &val.view(), true, f64::NAN, 1).unwrap();
+    write(&path, &val.view(), true, f64::NAN, 1).unwrap();
 
     let val: nd::Array2<i8> = nd::Array2::zeros((3, 0));
     let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_3_0.bed");
-    let filename = path.as_os_str().to_str().unwrap();
-    write(filename, &val.view(), true, -127, 1).unwrap();
+    write(&path, &val.view(), true, -127, 1).unwrap();
 }
 
 #[test]
@@ -783,8 +783,8 @@ fn file_ata_small() {
 }
 
 #[cfg(test)]
-fn file_ata(
-    filename: &str,
+fn file_ata<P: AsRef<Path>>(
+    path: P,
     offset: u64,
     iid_count: usize,
     sid_count: usize,
@@ -796,7 +796,7 @@ fn file_ata(
         let mut ata_piece =
             nd::Array2::<f64>::from_elem((sid_count - sid_start, sid_range_len), f64::NAN);
         file_ata_piece(
-            filename,
+            &path,
             offset,
             iid_count,
             sid_count,
@@ -888,8 +888,8 @@ fn file_aat_small2() {
 }
 
 #[cfg(test)]
-fn file_aat(
-    filename: &str,
+fn file_aat<P: AsRef<Path>>(
+    path: P,
     offset: u64,
     iid_count: usize,
     sid_count: usize,
@@ -903,7 +903,7 @@ fn file_aat(
         let mut aat_piece =
             nd::Array2::<f64>::from_elem((iid_count - iid_start, iid_range_len), f64::NAN);
         file_aat_piece(
-            filename,
+            &path,
             offset,
             iid_count,
             sid_count,

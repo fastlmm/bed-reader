@@ -342,20 +342,20 @@ pub fn read_with_indexes<
     TOut: From<i8> + Default + Copy + Debug + Sync + Send + Missing,
     P: AsRef<Path>,
 >(
-    filename: P,
+    path: P,
     iid_index: &[usize],
     sid_index: &[usize],
     output_is_orderf: bool,
     count_a1: bool,
     missing_value: TOut,
 ) -> Result<nd::Array2<TOut>, BedErrorPlus> {
-    let (iid_count, sid_count) = counts(&filename)?;
+    let (iid_count, sid_count) = counts(&path)?;
 
     let shape = ShapeBuilder::set_f((iid_index.len(), sid_index.len()), output_is_orderf);
     let mut val = nd::Array2::<TOut>::default(shape);
 
     read_no_alloc(
-        filename,
+        path,
         iid_count,
         sid_count,
         count_a1,
@@ -399,7 +399,7 @@ pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send + Missing, P: 
 // Thanks to Dawid for his dpc-pariter library that makes this function scale.
 // https://dpc.pw/adding-parallelism-to-your-rust-iterators
 pub fn write<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq, P: AsRef<Path>>(
-    filename: P,
+    path: P,
     val: &nd::ArrayView2<'_, T>,
     count_a1: bool,
     missing: T,
@@ -412,16 +412,9 @@ pub fn write<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq, P: 
 
     // We create and write to a file.
     // If there is an error, we will delete it.
-    if let Err(e) = write_internal(
-        &filename,
-        iid_count_div4,
-        val,
-        count_a1,
-        missing,
-        num_threads,
-    ) {
+    if let Err(e) = write_internal(&path, iid_count_div4, val, count_a1, missing, num_threads) {
         // Clean up the file
-        let _ = fs::remove_file(filename);
+        let _ = fs::remove_file(path);
         Err(e)
     } else {
         Ok(())
@@ -433,14 +426,14 @@ fn write_internal<
     T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq,
     P: AsRef<Path>,
 >(
-    filename: P,
+    path: P,
     iid_count_div4: usize,
     val: &nd::ArrayView2<'_, T>,
     count_a1: bool,
     missing: T,
     num_threads: usize,
 ) -> Result<(), BedErrorPlus> {
-    let mut writer = BufWriter::new(File::create(&filename)?);
+    let mut writer = BufWriter::new(File::create(&path)?);
     writer.write_all(&[BED_FILE_MAGIC1, BED_FILE_MAGIC2, 0x01])?;
 
     #[allow(clippy::eq_op)]
@@ -452,7 +445,7 @@ fn write_internal<
     let heterozygous_allele = T::from(1);
     let homozygous_secondary_allele = T::from(2); // Minor Allele
 
-    let path_buf = PathBuf::from(filename.as_ref());
+    let path_buf = PathBuf::from(path.as_ref());
     scope(|scope| {
         val.axis_iter(nd::Axis(1))
             .parallel_map_scoped(scope, {
@@ -812,8 +805,8 @@ pub fn create_pool(num_threads: usize) -> Result<rayon::ThreadPool, BedErrorPlus
     }
 }
 
-fn file_b_less_aatbx(
-    a_filename: &str,
+fn file_b_less_aatbx<P: AsRef<Path>>(
+    a_filename: P,
     offset: u64,
     iid_count: usize,
     b1: &mut nd::ArrayViewMut2<'_, f64>,
@@ -935,7 +928,7 @@ for output in output_list:
 // Makes only one pass through the file.
 #[allow(clippy::too_many_arguments)]
 fn file_ata_piece<T: Float + Send + Sync + AddAssign, P: AsRef<Path>>(
-    filename: P,
+    path: P,
     offset: u64,
     row_count: usize,
     col_count: usize,
@@ -953,7 +946,7 @@ fn file_ata_piece<T: Float + Send + Sync + AddAssign, P: AsRef<Path>>(
     }
 
     _file_ata_piece_internal(
-        filename,
+        path,
         offset,
         row_count,
         col_start,
@@ -964,7 +957,7 @@ fn file_ata_piece<T: Float + Send + Sync + AddAssign, P: AsRef<Path>>(
 }
 
 fn _file_ata_piece_internal<T: Float + Send + Sync + AddAssign, P: AsRef<Path>>(
-    filename: P,
+    path: P,
     offset: u64,
     row_count: usize,
     col_start: usize,
@@ -981,7 +974,7 @@ fn _file_ata_piece_internal<T: Float + Send + Sync + AddAssign, P: AsRef<Path>>(
     };
 
     // Open the file and move to the starting col
-    let mut buf_reader = BufReader::new(File::open(filename)?);
+    let mut buf_reader = BufReader::new(File::open(path)?);
     buf_reader.seek(SeekFrom::Start(
         offset + col_start as u64 * row_count as u64 * std::mem::size_of::<T>() as u64,
     ))?;
@@ -1044,7 +1037,7 @@ fn col_product<T: Float + AddAssign>(col_i: &[T], col_j: &[T]) -> T {
 // Makes only one pass through the file.
 #[allow(clippy::too_many_arguments)]
 fn file_aat_piece<T: Float + Sync + Send + AddAssign, P: AsRef<Path>>(
-    filename: P,
+    path: P,
     offset: u64,
     row_count: usize,
     col_count: usize,
@@ -1072,7 +1065,7 @@ fn file_aat_piece<T: Float + Sync + Send + AddAssign, P: AsRef<Path>>(
     aat_piece.fill(T::zero());
 
     // Open the file and move to the starting col
-    let mut buf_reader = BufReader::new(File::open(filename)?);
+    let mut buf_reader = BufReader::new(File::open(path)?);
 
     let mut col = vec![T::nan(); row_count - row_start];
 
