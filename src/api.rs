@@ -65,7 +65,6 @@ impl BedBuilder {
     pub fn new<P: AsRef<Path>>(path: P) -> Self {
         Self {
             // !!!cmk 0 understand this as_ref
-            // !!!cmk 0 rename filename to path
             path: Some(PathBuf::from(path.as_ref())),
             count_a1: Some(true),
             iid_count: None,

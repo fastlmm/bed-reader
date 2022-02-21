@@ -749,24 +749,23 @@ fn zeros() {
     // Writing zero length vals
     let temp = TempDir::default();
     let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_zeros.bed");
-    let filename = path.as_os_str().to_str().unwrap();
 
-    write(filename, &out_val01.view(), true, f64::NAN, 1).unwrap();
-    write_fake_metadata(filename, 0, sid_count);
-    let result = read(filename, true, true, f64::NAN);
+    write(&path, &out_val01.view(), true, f64::NAN, 1).unwrap();
+    write_fake_metadata(&path, 0, sid_count);
+    let result = read(&path, true, true, f64::NAN);
     let in_val01 = result.unwrap();
     assert!(in_val01.shape() == [0, sid_count]);
     assert!(allclose(&in_val01.view(), &out_val01.view(), 1e-08, true));
 
-    write(filename, &out_val10.view(), true, f64::NAN, 1).unwrap();
-    write_fake_metadata(filename, iid_count, 0);
-    let in_val10 = read(filename, true, true, f64::NAN).unwrap();
+    write(&path, &out_val10.view(), true, f64::NAN, 1).unwrap();
+    write_fake_metadata(&path, iid_count, 0);
+    let in_val10 = read(&path, true, true, f64::NAN).unwrap();
     assert!(in_val10.shape() == [iid_count, 0]);
     assert!(allclose(&in_val10.view(), &out_val10.view(), 1e-08, true));
 
-    write(filename, &out_val00.view(), true, f64::NAN, 1).unwrap();
-    write_fake_metadata(filename, 0, 0);
-    let in_val00 = read(filename, true, true, f64::NAN).unwrap();
+    write(&path, &out_val00.view(), true, f64::NAN, 1).unwrap();
+    write_fake_metadata(&path, 0, 0);
+    let in_val00 = read(&path, true, true, f64::NAN).unwrap();
     assert!(in_val00.shape() == [0, 0]);
     assert!(allclose(&in_val00.view(), &out_val00.view(), 1e-08, true));
 }
