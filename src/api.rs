@@ -371,3 +371,14 @@ impl<TOut: Copy + Default + From<i8> + Debug + Sync + Send + Missing + Clone>
         bed.read_with_options(read_option)
     }
 }
+
+// !!!cmk ask could a macro likes be nice?
+// #[macro_export]
+// macro_rules! read {
+//     ($bed:expr) => {
+//         $bed.read()
+//     };
+//     ($bed:expr, $option: expr) => {
+//         ReadOptions::builder().$option.read($bed)
+//     };
+// }

@@ -110,7 +110,6 @@ fn readme_examples() {
     // !!!cmk later document use statements
     // !!!cmk 0 pull down sample file
     let file_name = "bed_reader/tests/data/small.bed";
-    // !!!cmk 0 remove the unwraps from the read methods in api.rs
     let bed = Bed::new(file_name.to_string()).unwrap();
     let val = bed.read::<f64>().unwrap();
     println!("{:?}", val);
@@ -135,7 +134,6 @@ fn readme_examples() {
         .sid_index(s![20..30].into())
         .read(&bed2)
         .unwrap();
-    // !!!cmk 0 make we make a read! macro that covers reading with and without options?
     println!("{:?}", val2.shape());
     // [50, 10]
 
@@ -164,6 +162,10 @@ fn readme_examples() {
         .sid_index(is_5.into())
         .read(&bed3)
         .unwrap();
+
+    // !!!cmk ask could a macro likes be nice?
+    // let val3: nd::Array2<f64> = bed_read!(bed3, sid_index(is_5.into())).unwrap();
+    // let val5: nd::Array2<f64> = bed_read!(bed3).unwrap();
     println!("{:?}", val3.shape());
     // [100, 6]
 }
