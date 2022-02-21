@@ -123,8 +123,7 @@ fn read_no_alloc<
     TOut: Copy + Default + From<i8> + Debug + Sync + Send + Missing,
     P: AsRef<Path>,
 >(
-    // !!!cmk 0 rename filename to path
-    filename: P,
+    path: P,
     iid_count: usize,
     sid_count: usize,
     count_a1: bool,
@@ -133,8 +132,8 @@ fn read_no_alloc<
     missing_value: TOut,
     val: &mut nd::ArrayViewMut2<'_, TOut>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
 ) -> Result<(), BedErrorPlus> {
-    let path_buf = PathBuf::from(filename.as_ref());
-    let mut buf_reader = BufReader::new(File::open(filename)?);
+    let path_buf = PathBuf::from(path.as_ref());
+    let mut buf_reader = BufReader::new(File::open(path)?);
     let mut bytes_vector: Vec<u8> = vec![0; CB_HEADER_USIZE];
     buf_reader.read_exact(&mut bytes_vector)?;
     if (BED_FILE_MAGIC1 != bytes_vector[0]) || (BED_FILE_MAGIC2 != bytes_vector[1]) {
@@ -244,7 +243,7 @@ fn internal_read_no_alloc<
     P: AsRef<Path>,
 >(
     mut buf_reader: BufReader<File>,
-    filename: P,
+    path: P,
     in_iid_count: usize,
     in_sid_count: usize,
     count_a1: bool,
@@ -272,9 +271,7 @@ fn internal_read_no_alloc<
     if buf_reader.seek(SeekFrom::End(0))?
         != in_iid_count_div4_u64 * (in_sid_count as u64) + CB_HEADER_U64
     {
-        return Err(
-            BedError::IllFormed(PathBuf::from(filename.as_ref()).display().to_string()).into(),
-        );
+        return Err(BedError::IllFormed(PathBuf::from(path.as_ref()).display().to_string()).into());
     }
 
     // See https://morestina.net/blog/1432/parallel-stream-processing-with-rayon
@@ -368,13 +365,13 @@ pub fn read_with_indexes<TOut: From<i8> + Default + Copy + Debug + Sync + Send +
     Ok(val)
 }
 
-pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send + Missing>(
-    filename: &str,
+pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send + Missing, P: AsRef<Path>>(
+    path: P,
     output_is_orderf: bool,
     count_a1: bool,
     missing_value: TOut,
 ) -> Result<nd::Array2<TOut>, BedErrorPlus> {
-    let (iid_count, sid_count) = counts(filename)?;
+    let (iid_count, sid_count) = counts(path.as_ref())?;
 
     let iid_index: Vec<usize> = (0..iid_count).collect();
     let sid_index: Vec<usize> = (0..sid_count).collect();
@@ -383,7 +380,7 @@ pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send + Missing>(
     let mut val = nd::Array2::<TOut>::default(shape);
 
     read_no_alloc(
-        filename,
+        path,
         iid_count,
         sid_count,
         count_a1,

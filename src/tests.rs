@@ -687,9 +687,9 @@ fn read_modes() {
 }
 
 #[cfg(test)]
-fn write_fake_metadata(filename: &str, iid_count: usize, sid_count: usize) {
+fn write_fake_metadata<P: AsRef<Path>>(path: P, iid_count: usize, sid_count: usize) {
     for (ext, count) in ["fam", "bim"].iter().zip([iid_count, sid_count].iter()) {
-        let meta_name = std::path::Path::new(filename).with_extension(ext);
+        let meta_name = PathBuf::from(path.as_ref()).with_extension(ext);
         let file = std::fs::File::create(meta_name).unwrap();
         let mut file = LineWriter::new(file);
         for _ in 0..*count {

@@ -20,13 +20,6 @@ use crate::{
     CB_HEADER_USIZE,
 };
 
-// !!!cmk 0 quote:
-// https://sodocumentation.net/rust/topic/2661/conversion-traits
-// This is useful for performing type conversions without copying or moving values. An example in the standard library is std::fs::File.open():
-
-// fn open<P: AsRef<Path>>(path: P) -> Result<File>
-// This allows File.open() to accept not only Path, but also OsStr, OsString, str, String, and PathBuf with implicit conversion because these types all implement AsRef<Path>.
-
 // https://crates.io/crates/typed-builder
 // (or https://docs.rs/derive_builder/latest/derive_builder/)
 // Somehow ndarray can do this: 	Array::zeros((3, 4, 5).f())
@@ -37,7 +30,7 @@ pub struct Bed {
     // !!!cmk later or file_name or a Path,
     // !!!cmk later confirm that this is required by derive_builder
     // https://stackoverflow.com/questions/32730714/what-is-the-right-way-to-store-an-immutable-path-in-a-struct
-    pub filename: PathBuf, // !!!cmk later always clone?
+    pub path: PathBuf, // !!!cmk later always clone?
 
     #[builder(default = "true")]
     count_a1: bool,
@@ -73,7 +66,7 @@ impl BedBuilder {
         Self {
             // !!!cmk 0 understand this as_ref
             // !!!cmk 0 rename filename to path
-            filename: Some(PathBuf::from(path.as_ref())),
+            path: Some(PathBuf::from(path.as_ref())),
             count_a1: Some(true),
             iid_count: None,
             sid_count: None,
@@ -85,11 +78,11 @@ impl BedBuilder {
 
     pub fn build(&self) -> Result<Bed, BedErrorPlus> {
         let bed = Bed {
-            filename: match self.filename {
+            path: match self.path {
                 Some(ref value) => Clone::clone(value),
                 None => {
                     return Err(BedErrorPlus::UninitializedFieldError(
-                        ::derive_builder::UninitializedFieldError::from("filename"),
+                        ::derive_builder::UninitializedFieldError::from("path"),
                     ))
                 }
             },
@@ -120,13 +113,11 @@ impl BedBuilder {
         };
 
         // !!!cmk later similar code elsewhere
-        let mut buf_reader = BufReader::new(File::open(&bed.filename)?);
+        let mut buf_reader = BufReader::new(File::open(&bed.path)?);
         let mut bytes_vector: Vec<u8> = vec![0; CB_HEADER_USIZE];
         buf_reader.read_exact(&mut bytes_vector)?;
         if (BED_FILE_MAGIC1 != bytes_vector[0]) || (BED_FILE_MAGIC2 != bytes_vector[1]) {
-            return Err(
-                BedError::IllFormed(PathBuf::from(&bed.filename).display().to_string()).into(),
-            );
+            return Err(BedError::IllFormed(PathBuf::from(&bed.path).display().to_string()).into());
         }
 
         Result::Ok(bed)
@@ -147,7 +138,7 @@ impl Bed {
         if let Some(iid_count) = self.iid_count {
             Ok(iid_count)
         } else {
-            let (iid_count, sid_count) = counts(&self.filename)?;
+            let (iid_count, sid_count) = counts(&self.path)?;
             self.iid_count = Some(iid_count);
             self.sid_count = Some(sid_count);
             Ok(iid_count)
@@ -157,7 +148,7 @@ impl Bed {
         if let Some(sid_count) = self.sid_count {
             Ok(sid_count)
         } else {
-            let (iid_count, sid_count) = counts(&self.filename)?;
+            let (iid_count, sid_count) = counts(&self.path)?;
             self.iid_count = Some(iid_count);
             self.sid_count = Some(sid_count);
             Ok(sid_count)
@@ -171,7 +162,7 @@ impl Bed {
         field_index: usize,
     ) -> Result<impl Iterator<Item = String>, BedErrorPlus> {
         // !!!cmk later allow fam file to be specified.
-        let path_buf = Path::new(&self.filename).with_extension(suffix);
+        let path_buf = Path::new(&self.path).with_extension(suffix);
         // !!!cmk later here and elsewhere if there are only two arms, use 'if let' maybe?
         let file = match File::open(&path_buf) {
             Err(_) => {
@@ -252,7 +243,7 @@ impl Bed {
         read_options: ReadOptions<TOut>,
     ) -> Result<nd::Array2<TOut>, BedErrorPlus> {
         // !!!cmk later this should be lazy in Bed object, not here
-        let (iid_count, sid_count) = counts(&self.filename)?;
+        let (iid_count, sid_count) = counts(&self.path)?;
 
         // !!!cmk later do something with read_options.num_threads
 
@@ -266,7 +257,7 @@ impl Bed {
         let mut val = nd::Array2::<TOut>::default(shape);
 
         read_no_alloc(
-            &self.filename,
+            &self.path,
             iid_count,
             sid_count,
             self.count_a1,
