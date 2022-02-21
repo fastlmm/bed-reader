@@ -119,8 +119,12 @@ pub enum BedError {
 
 //#!!!cmk later hide this from the docs
 #[allow(clippy::too_many_arguments)]
-fn read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send + Missing>(
-    filename: &str,
+fn read_no_alloc<
+    TOut: Copy + Default + From<i8> + Debug + Sync + Send + Missing,
+    P: AsRef<Path>,
+>(
+    // !!!cmk 0 rename filename to path
+    filename: P,
     iid_count: usize,
     sid_count: usize,
     count_a1: bool,
@@ -129,18 +133,19 @@ fn read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send + Missing
     missing_value: TOut,
     val: &mut nd::ArrayViewMut2<'_, TOut>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
 ) -> Result<(), BedErrorPlus> {
+    let path_buf = PathBuf::from(filename.as_ref());
     let mut buf_reader = BufReader::new(File::open(filename)?);
     let mut bytes_vector: Vec<u8> = vec![0; CB_HEADER_USIZE];
     buf_reader.read_exact(&mut bytes_vector)?;
     if (BED_FILE_MAGIC1 != bytes_vector[0]) || (BED_FILE_MAGIC2 != bytes_vector[1]) {
-        return Err(BedError::IllFormed(filename.to_string()).into());
+        return Err(BedError::IllFormed(path_buf.display().to_string()).into());
     }
     match bytes_vector[2] {
         0 => {
             let mut val_t = val.view_mut().reversed_axes();
             internal_read_no_alloc(
                 buf_reader,
-                filename,
+                path_buf,
                 sid_count,
                 iid_count,
                 count_a1,
@@ -152,7 +157,7 @@ fn read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send + Missing
         }
         1 => internal_read_no_alloc(
             buf_reader,
-            filename,
+            path_buf,
             iid_count,
             sid_count,
             count_a1,
@@ -161,7 +166,7 @@ fn read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send + Missing
             missing_value,
             val,
         ),
-        _ => Err(BedError::BadMode(filename.to_string()).into()),
+        _ => Err(BedError::BadMode(path_buf.display().to_string()).into()),
     }
 }
 
@@ -234,9 +239,12 @@ fn try_div_4<T: Max + TryFrom<usize> + Sub<Output = T> + Div<Output = T> + Ord>(
 
 // !!!cmk later could iid_index and sid_index be ExpectSizeIterator<Item=usize>?
 #[allow(clippy::too_many_arguments)]
-fn internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send + Missing>(
+fn internal_read_no_alloc<
+    TOut: Copy + Default + From<i8> + Debug + Sync + Send + Missing,
+    P: AsRef<Path>,
+>(
     mut buf_reader: BufReader<File>,
-    filename: &str,
+    filename: P,
     in_iid_count: usize,
     in_sid_count: usize,
     count_a1: bool,
@@ -264,9 +272,9 @@ fn internal_read_no_alloc<TOut: Copy + Default + From<i8> + Debug + Sync + Send 
     if buf_reader.seek(SeekFrom::End(0))?
         != in_iid_count_div4_u64 * (in_sid_count as u64) + CB_HEADER_U64
     {
-        return Err(BedErrorPlus::BedError(BedError::IllFormed(
-            filename.to_string(),
-        )));
+        return Err(
+            BedError::IllFormed(PathBuf::from(filename.as_ref()).display().to_string()).into(),
+        );
     }
 
     // See https://morestina.net/blog/1432/parallel-stream-processing-with-rayon
@@ -478,13 +486,11 @@ fn write_internal<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq
     .map_err(|_e| BedError::PanickedThread())?
 }
 
-fn count_lines(path_buf: PathBuf) -> Result<usize, BedErrorPlus> {
-    let file = match File::open(&path_buf) {
+fn count_lines<P: AsRef<Path>>(path: P) -> Result<usize, BedErrorPlus> {
+    let path_buf = PathBuf::from(path.as_ref());
+    let file = match File::open(path) {
         Err(_) => {
-            let string_path = path_buf.to_string_lossy().to_string();
-            return Err(BedErrorPlus::BedError(BedError::CannotOpenFamOrBim(
-                string_path,
-            )));
+            return Err(BedError::CannotOpenFamOrBim(path_buf.display().to_string()).into());
         }
         Ok(file) => file,
     };
@@ -492,10 +498,9 @@ fn count_lines(path_buf: PathBuf) -> Result<usize, BedErrorPlus> {
     let count = reader.lines().count();
     Ok(count)
 }
-pub fn counts(filename: &str) -> Result<(usize, usize), BedErrorPlus> {
-    let path = Path::new(filename);
-    let iid_count = count_lines(path.with_extension("fam"))?;
-    let sid_count = count_lines(path.with_extension("bim"))?;
+pub fn counts<P: AsRef<Path>>(path: P) -> Result<(usize, usize), BedErrorPlus> {
+    let iid_count = count_lines(path.as_ref().with_extension("fam"))?;
+    let sid_count = count_lines(path.as_ref().with_extension("bim"))?;
     Ok((iid_count, sid_count))
 }
 

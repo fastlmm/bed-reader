@@ -9,7 +9,7 @@ use ndarray as nd;
 use std::{
     fs::File,
     io::{BufRead, BufReader, Read},
-    path::Path,
+    path::{Path, PathBuf},
 };
 
 use derive_builder::Builder;
@@ -20,6 +20,13 @@ use crate::{
     CB_HEADER_USIZE,
 };
 
+// !!!cmk 0 quote:
+// https://sodocumentation.net/rust/topic/2661/conversion-traits
+// This is useful for performing type conversions without copying or moving values. An example in the standard library is std::fs::File.open():
+
+// fn open<P: AsRef<Path>>(path: P) -> Result<File>
+// This allows File.open() to accept not only Path, but also OsStr, OsString, str, String, and PathBuf with implicit conversion because these types all implement AsRef<Path>.
+
 // https://crates.io/crates/typed-builder
 // (or https://docs.rs/derive_builder/latest/derive_builder/)
 // Somehow ndarray can do this: 	Array::zeros((3, 4, 5).f())
@@ -29,7 +36,8 @@ use crate::{
 pub struct Bed {
     // !!!cmk later or file_name or a Path,
     // !!!cmk later confirm that this is required by derive_builder
-    pub filename: String, // !!!cmk always clone?
+    // https://stackoverflow.com/questions/32730714/what-is-the-right-way-to-store-an-immutable-path-in-a-struct
+    pub filename: PathBuf, // !!!cmk later always clone?
 
     #[builder(default = "true")]
     count_a1: bool,
@@ -51,19 +59,21 @@ pub struct Bed {
 }
 
 impl Bed {
-    pub fn builder(filename: String) -> BedBuilder {
-        BedBuilder::new(filename)
+    pub fn builder<P: AsRef<Path>>(path: P) -> BedBuilder {
+        BedBuilder::new(path)
     }
 
-    pub fn new(filename: String) -> Result<Self, BedErrorPlus> {
-        Bed::builder(filename).build()
+    pub fn new<P: AsRef<Path>>(path: P) -> Result<Self, BedErrorPlus> {
+        Bed::builder(path).build()
     }
 }
 
 impl BedBuilder {
-    pub fn new(filename: String) -> Self {
+    pub fn new<P: AsRef<Path>>(path: P) -> Self {
         Self {
-            filename: Some(filename),
+            // !!!cmk 0 understand this as_ref
+            // !!!cmk 0 rename filename to path
+            filename: Some(PathBuf::from(path.as_ref())),
             count_a1: Some(true),
             iid_count: None,
             sid_count: None,
@@ -110,12 +120,13 @@ impl BedBuilder {
         };
 
         // !!!cmk later similar code elsewhere
-        let filename = bed.filename.to_string();
-        let mut buf_reader = BufReader::new(File::open(&filename)?);
+        let mut buf_reader = BufReader::new(File::open(&bed.filename)?);
         let mut bytes_vector: Vec<u8> = vec![0; CB_HEADER_USIZE];
         buf_reader.read_exact(&mut bytes_vector)?;
         if (BED_FILE_MAGIC1 != bytes_vector[0]) || (BED_FILE_MAGIC2 != bytes_vector[1]) {
-            return Err(BedError::IllFormed(filename.to_string()).into());
+            return Err(
+                BedError::IllFormed(PathBuf::from(&bed.filename).display().to_string()).into(),
+            );
         }
 
         Result::Ok(bed)
@@ -164,10 +175,7 @@ impl Bed {
         // !!!cmk later here and elsewhere if there are only two arms, use 'if let' maybe?
         let file = match File::open(&path_buf) {
             Err(_) => {
-                let string_path = path_buf.to_string_lossy().to_string();
-                return Err(BedErrorPlus::BedError(BedError::CannotOpenFamOrBim(
-                    string_path,
-                )));
+                return Err(BedError::CannotOpenFamOrBim(path_buf.display().to_string()).into());
             }
             Ok(file) => file,
         };

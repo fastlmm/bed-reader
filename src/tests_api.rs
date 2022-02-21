@@ -108,7 +108,7 @@ fn readme_examples() {
     // >>> del bed
 
     // !!!cmk later document use statements
-    // !!!cmk 0 pull down sample file
+    // !!!cmk ask is there a rust crate for pulling down files if needed (using hash to check if file correct), like Python's Pooch
     let file_name = "bed_reader/tests/data/small.bed";
     let bed = Bed::new(file_name.to_string()).unwrap();
     let val = bed.read::<f64>().unwrap();
