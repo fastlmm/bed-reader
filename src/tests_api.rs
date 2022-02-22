@@ -36,8 +36,11 @@ fn rusty_bed2() -> Result<(), BedErrorPlus> {
 
     let val: nd::Array2<i8> = ReadOptions::builder()
         // !!!cmk 0 make this: .iid_index([0].into()) work and .iid_index(0.into())
-        .iid_index([0].to_vec().into())
-        .sid_index([1].to_vec().into())
+        // [0].as_ref() or [0].as_slice() or [0][..]
+        .iid_index(0.into())
+        .sid_index(nd::array![0].into())
+        // .iid_index([0].to_vec().as_ref().into())
+        // .sid_index([1].into())
         .read(&bed)?;
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     println!("{:?}", mean);

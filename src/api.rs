@@ -325,9 +325,26 @@ impl From<Range<usize>> for Index {
     }
 }
 
+impl From<&[usize]> for Index {
+    fn from(full: &[usize]) -> Index {
+        Index::Vec(full.to_vec())
+    }
+}
+
+impl From<usize> for Index {
+    fn from(full: usize) -> Index {
+        Index::Vec(vec![full])
+    }
+}
+
 impl From<Vec<usize>> for Index {
     fn from(full: Vec<usize>) -> Index {
         Index::Vec(full)
+    }
+}
+impl From<nd::Array1<usize>> for Index {
+    fn from(full: nd::Array1<usize>) -> Index {
+        Index::Vec(full.to_vec())
     }
 }
 
