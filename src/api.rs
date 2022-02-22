@@ -279,23 +279,35 @@ impl Bed {
 pub fn to_vec(index: Index, count: usize) -> Vec<usize> {
     match index {
         Index::None => (0..count).collect(),
-        Index::Vec(iid_index) => iid_index,
-        Index::Bool(bool_index) => {
+        Index::Vec(vec) => vec,
+        Index::NDArrayBool(nd_array_bool) => {
             // !!!cmk later check that bool_index.len() == iid_count
             // !!!cmk 0 use enumerate() instead of zip
             (0..count)
-                .zip(bool_index)
+                .zip(nd_array_bool)
                 .filter(|(_, b)| *b)
                 .map(|(i, _)| i)
                 .collect()
         }
         // !!!cmk later can we implement this without two allocations?
-        Index::NDSlice(slice_index) => {
+        Index::NDSliceInfo(nd_slice_info) => {
             let full_array: nd::Array1<usize> = (0..count).collect();
-            let array = full_array.slice(slice_index);
+            let array = full_array.slice(nd_slice_info);
             array.to_vec()
         }
         Index::Range(range) => range.collect(),
+        Index::NDArray(nd_array) => nd_array.to_vec(),
+        Index::One(one) => vec![one],
+        Index::VecBool(vec_bool) => {
+            // !!!cmk later similar code elsewhere
+            // !!!cmk later check that vec_bool.len() == iid_count
+            // !!!cmk 0 use enumerate() instead of zip
+            (0..count)
+                .zip(vec_bool)
+                .filter(|(_, b)| *b)
+                .map(|(i, _)| i)
+                .collect()
+        }
     }
 }
 
@@ -306,16 +318,19 @@ pub(crate) type SliceInfo1 =
 #[derive(Debug, Clone)]
 pub enum Index {
     None,
+    One(usize),
     Vec(Vec<usize>),
-    Bool(nd::Array1<bool>),
-    NDSlice(SliceInfo1),
+    NDArray(nd::Array1<usize>),
+    VecBool(Vec<bool>),
+    NDArrayBool(nd::Array1<bool>),
+    NDSliceInfo(SliceInfo1),
     Range(Range<usize>),
 }
 
 // !!!cmk later see if what ref conversions. See https://ricardomartins.cc/2016/08/03/convenient_and_idiomatic_conversions_in_rust
 impl From<SliceInfo1> for Index {
     fn from(slice_info: SliceInfo1) -> Index {
-        Index::NDSlice(slice_info)
+        Index::NDSliceInfo(slice_info)
     }
 }
 
@@ -326,31 +341,37 @@ impl From<Range<usize>> for Index {
 }
 
 impl From<&[usize]> for Index {
-    fn from(full: &[usize]) -> Index {
-        Index::Vec(full.to_vec())
+    fn from(slice: &[usize]) -> Index {
+        Index::Vec(slice.to_vec())
     }
 }
 
 impl From<usize> for Index {
-    fn from(full: usize) -> Index {
-        Index::Vec(vec![full])
+    fn from(one: usize) -> Index {
+        Index::One(one)
     }
 }
 
 impl From<Vec<usize>> for Index {
-    fn from(full: Vec<usize>) -> Index {
-        Index::Vec(full)
+    fn from(vec: Vec<usize>) -> Index {
+        Index::Vec(vec)
     }
 }
 impl From<nd::Array1<usize>> for Index {
-    fn from(full: nd::Array1<usize>) -> Index {
-        Index::Vec(full.to_vec())
+    fn from(nd_array: nd::Array1<usize>) -> Index {
+        Index::NDArray(nd_array)
     }
 }
 
 impl From<nd::Array1<bool>> for Index {
-    fn from(bool_array: nd::Array1<bool>) -> Index {
-        Index::Bool(bool_array)
+    fn from(nd_array_bool: nd::Array1<bool>) -> Index {
+        Index::NDArrayBool(nd_array_bool)
+    }
+}
+
+impl From<Vec<bool>> for Index {
+    fn from(vec_bool: Vec<bool>) -> Index {
+        Index::VecBool(vec_bool)
     }
 }
 
