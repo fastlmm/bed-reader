@@ -16,12 +16,12 @@ use ndarray::s;
 #[test]
 fn rusty_bed1() -> Result<(), BedErrorPlus> {
     let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
-    let bed = Bed::new(file)?;
+    let mut bed = Bed::new(file)?;
     let val = bed.read::<i8>()?;
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     assert!(mean == -13.142); // really shouldn't do mean on data where -127 represents missing
 
-    let bed = Bed::builder(file).count_a1(false).build()?;
+    let mut bed = Bed::builder(file).count_a1(false).build()?;
     let val = bed.read::<i8>()?;
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     assert!(mean == -13.274); // really shouldn't do mean on data where -127 represents missing
@@ -32,7 +32,7 @@ fn rusty_bed1() -> Result<(), BedErrorPlus> {
 fn rusty_bed2() -> Result<(), BedErrorPlus> {
     // !!!cmk later reading one iid is very common. Make it easy.
     let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
-    let bed = Bed::new(file)?;
+    let mut bed = Bed::new(file)?;
 
     let val: nd::Array2<i8> = ReadOptions::builder()
         // !!!cmk 0 make this: .iid_index([0].into()) work and .iid_index(0.into())
@@ -41,7 +41,7 @@ fn rusty_bed2() -> Result<(), BedErrorPlus> {
         .sid_index(nd::array![0].into())
         // .iid_index([0].to_vec().as_ref().into())
         // .sid_index([1].into())
-        .read(&bed)?;
+        .read(&mut bed)?;
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     println!("{:?}", mean);
     assert!(mean == 1.0); // really shouldn't do mean on data where -127 represents missing
@@ -76,7 +76,7 @@ fn rusty_bed3() -> Result<(), BedErrorPlus> {
         .missing_value(-127)
         .iid_index(iid_bool.into())
         .sid_index(sid_bool.into())
-        .read(&bed)?;
+        .read(&mut bed)?;
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     println!("{:?}", mean);
     assert!(mean == -14.50344827586207); // really shouldn't do mean on data where -127 represents missing
@@ -114,7 +114,7 @@ fn readme_examples() -> Result<(), BedErrorPlus> {
     // !!!cmk later document use statements
     // !!!cmk ask is there a rust crate for pulling down files if needed (using hash to check if file correct), like Python's Pooch
     let file_name = "bed_reader/tests/data/small.bed";
-    let bed = Bed::new(file_name)?;
+    let mut bed = Bed::new(file_name)?;
     let val = bed.read::<f64>()?;
     println!("{:?}", val);
     // [[1.0, 0.0, NaN, 0.0],
@@ -131,12 +131,12 @@ fn readme_examples() -> Result<(), BedErrorPlus> {
     // >>> del bed2
 
     let file_name2 = "bed_reader/tests/data/some_missing.bed";
-    let bed2 = Bed::new(file_name2)?;
+    let mut bed2 = Bed::new(file_name2)?;
     // !!!cmk ask can we do this without the into?
     let val2 = ReadOptions::<f64>::builder()
         .iid_index(s![..;2].into())
         .sid_index((20..30).into())
-        .read(&bed2)?;
+        .read(&mut bed2)?;
     println!("{:?}", val2.shape());
     // [50, 10]
 
@@ -163,7 +163,7 @@ fn readme_examples() -> Result<(), BedErrorPlus> {
     let is_5 = bed3.get_chromosome()?.mapv(|elem| elem == "5");
     let val3 = ReadOptions::<f64>::builder()
         .sid_index(is_5.into())
-        .read(&bed3)?;
+        .read(&mut bed3)?;
 
     // !!!cmk ask could a macro likes be nice?
     // let val3: nd::Array2<f64> = bed_read!(bed3, sid_index(is_5.into()))?;

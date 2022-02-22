@@ -234,7 +234,7 @@ impl Bed {
     }
 
     pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send + Missing>(
-        &self,
+        &mut self,
     ) -> Result<nd::Array2<TOut>, BedErrorPlus> {
         let read_options = ReadOptions::<TOut>::builder().build()?;
         self.read_with_options(read_options)
@@ -243,16 +243,16 @@ impl Bed {
     pub(crate) fn read_with_options<
         TOut: From<i8> + Default + Copy + Debug + Sync + Send + Missing,
     >(
-        &self,
+        &mut self,
         read_options: ReadOptions<TOut>,
     ) -> Result<nd::Array2<TOut>, BedErrorPlus> {
-        // !!!cmk 0 this should be lazy in Bed object, not here
-        let (iid_count, sid_count) = counts(&self.path)?;
+        let iid_count = self.get_iid_count()?;
+        let sid_count = &self.get_sid_count()?;
 
         // !!!cmk later do something with read_options.num_threads
 
         let iid_index = to_vec(read_options.iid_index, iid_count);
-        let sid_index = to_vec(read_options.sid_index, sid_count);
+        let sid_index = to_vec(read_options.sid_index, *sid_count);
 
         let shape = ShapeBuilder::set_f(
             (iid_index.len(), sid_index.len()),
@@ -263,7 +263,7 @@ impl Bed {
         read_no_alloc(
             &self.path,
             iid_count,
-            sid_count,
+            *sid_count,
             self.count_a1,
             &iid_index,
             &sid_index,
@@ -275,6 +275,7 @@ impl Bed {
     }
 }
 
+// !!!cmk later test every case
 // !!!cmk 0 implement this with conversion impl
 pub fn to_vec(index: Index, count: usize) -> Vec<usize> {
     match index {
@@ -410,7 +411,7 @@ impl<TOut: Copy + Default + From<i8> + Debug + Sync + Send + Missing + Clone> Re
 impl<TOut: Copy + Default + From<i8> + Debug + Sync + Send + Missing + Clone>
     ReadOptionsBuilder<TOut>
 {
-    pub fn read(&self, bed: &Bed) -> Result<nd::Array2<TOut>, BedErrorPlus> {
+    pub fn read(&self, bed: &mut Bed) -> Result<nd::Array2<TOut>, BedErrorPlus> {
         let read_option = self.build()?;
         bed.read_with_options(read_option)
     }
