@@ -421,7 +421,6 @@ pub fn write<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq, P: 
     }
 }
 
-// !!!cmk 0 filename to path here and elsewhere
 fn write_internal<
     T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq,
     P: AsRef<Path>,

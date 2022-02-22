@@ -64,7 +64,6 @@ impl Bed {
 impl BedBuilder {
     pub fn new<P: AsRef<Path>>(path: P) -> Self {
         Self {
-            // !!!cmk 0 understand this as_ref
             path: Some(PathBuf::from(path.as_ref())),
             count_a1: Some(true),
             iid_count: None,
@@ -159,15 +158,14 @@ impl Bed {
         &self,
         suffix: &str,
         field_index: usize,
-    ) -> Result<impl Iterator<Item = String>, BedErrorPlus> {
+    ) -> Result<nd::Array1<String>, BedErrorPlus> {
         // !!!cmk later allow fam file to be specified.
         let path_buf = Path::new(&self.path).with_extension(suffix);
         // !!!cmk later here and elsewhere if there are only two arms, use 'if let' maybe?
-        let file = match File::open(&path_buf) {
-            Err(_) => {
-                return Err(BedError::CannotOpenFamOrBim(path_buf.display().to_string()).into());
-            }
-            Ok(file) => file,
+        let file = if let Ok(file) = File::open(&path_buf) {
+            file
+        } else {
+            return Err(BedError::CannotOpenFamOrBim(path_buf.display().to_string()).into());
         };
 
         // !!!cmk later use the correct delimiters (here is the Python spec:)
@@ -180,50 +178,59 @@ impl Bed {
         //     delim_whitespace = False
 
         let reader = BufReader::new(file);
-        let iter = reader.lines().map(move |line| {
-            // !!!cmk later unwrap
-            let line = line.unwrap();
-            // !!!cmk later unwrap
-            let field = line.split_whitespace().nth(field_index).unwrap();
-            field.to_string()
-        });
+        let mut line_vec = Vec::<String>::new();
+        for line in reader.lines() {
+            let line = line?;
+            let field = line.split_whitespace().nth(field_index);
+            if let Some(field) = field {
+                line_vec.push(field.to_string());
+            } else {
+                // !!!cmk update to more specific error message
+                return Err(BedError::CannotOpenFamOrBim(path_buf.display().to_string()).into());
+            }
+        }
 
-        Ok(iter)
+        let array = match nd::Array1::from_shape_vec(line_vec.len(), line_vec) {
+            Ok(array) => array,
+            Err(_error) => {
+                // !!!cmk update to more specific error message
+                return Err(BedError::CannotOpenFamOrBim(path_buf.display().to_string()).into());
+                // return Err(error).into();
+            }
+        };
+
+        Ok(array)
     }
 
-    // !!!cmk later should not have any unwraps in this whole file
     pub fn get_iid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        if self.iid.is_some() {
-            // !!!cmk later unwrap
-            Ok(self.iid.as_ref().unwrap())
+        if let Some(ref iid) = self.iid {
+            Ok(iid)
         } else {
-            let iid = self.read_fam_or_bim("fam", 1)?.collect();
+            let iid = self.read_fam_or_bim("fam", 1)?;
             self.iid = Some(iid);
-            // !!!cmk later unwrap
+            // This unwrap is safe because we just created 'Some'
             Ok(self.iid.as_ref().unwrap())
         }
     }
 
     pub fn get_sid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        if self.sid.is_some() {
-            // !!!cmk later unwrap
-            Ok(self.sid.as_ref().unwrap())
+        if let Some(ref sid) = self.sid {
+            Ok(sid)
         } else {
-            let sid = self.read_fam_or_bim("bim", 1)?.collect();
+            let sid = self.read_fam_or_bim("bim", 1)?;
             self.sid = Some(sid);
-            // !!!cmk later unwrap
+            // This unwrap is safe because we just created 'Some'
             Ok(self.sid.as_ref().unwrap())
         }
     }
 
     pub fn get_chromosome(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        if self.chromosome.is_some() {
-            // !!!cmk later unwrap
-            Ok(self.chromosome.as_ref().unwrap())
+        if let Some(ref chromosome) = self.chromosome {
+            Ok(chromosome)
         } else {
-            let chromosome = self.read_fam_or_bim("bim", 0)?.collect();
+            let chromosome = self.read_fam_or_bim("bim", 0)?;
             self.chromosome = Some(chromosome);
-            // !!!cmk later unwrap
+            // This unwrap is safe because we just created 'Some'
             Ok(self.chromosome.as_ref().unwrap())
         }
     }
