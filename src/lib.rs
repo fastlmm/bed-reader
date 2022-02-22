@@ -259,9 +259,6 @@ fn internal_read_no_alloc<
         }
     }
 
-    // !!!cmk later let out_iid_count = iid_index.len();
-    // !!!cmk later let out_sid_count = sid_index.len();
-
     let (in_iid_count_div4, in_iid_count_div4_u64) =
         try_div_4(in_iid_count, in_sid_count, CB_HEADER_U64)?;
 

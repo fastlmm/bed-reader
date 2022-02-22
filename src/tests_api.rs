@@ -35,6 +35,7 @@ fn rusty_bed2() -> Result<(), BedErrorPlus> {
     let bed = Bed::new(file)?;
 
     let val: nd::Array2<i8> = ReadOptions::builder()
+        // !!!cmk 0 make this: .iid_index([0].into()) work and .iid_index(0.into())
         .iid_index([0].to_vec().into())
         .sid_index([1].to_vec().into())
         .read(&bed)?;
@@ -131,7 +132,7 @@ fn readme_examples() -> Result<(), BedErrorPlus> {
     // !!!cmk ask can we do this without the into?
     let val2 = ReadOptions::<f64>::builder()
         .iid_index(s![..;2].into())
-        .sid_index(s![20..30].into())
+        .sid_index((20..30).into())
         .read(&bed2)?;
     println!("{:?}", val2.shape());
     // [50, 10]

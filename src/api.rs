@@ -9,6 +9,7 @@ use ndarray as nd;
 use std::{
     fs::File,
     io::{BufRead, BufReader, Read},
+    ops::Range,
     path::{Path, PathBuf},
 };
 
@@ -27,8 +28,6 @@ use crate::{
 #[derive(Builder)]
 #[builder(build_fn(skip))]
 pub struct Bed {
-    // !!!cmk later or file_name or a Path,
-    // !!!cmk later confirm that this is required by derive_builder
     // https://stackoverflow.com/questions/32730714/what-is-the-right-way-to-store-an-immutable-path-in-a-struct
     pub path: PathBuf, // !!!cmk later always clone?
 
@@ -161,7 +160,6 @@ impl Bed {
     ) -> Result<nd::Array1<String>, BedErrorPlus> {
         // !!!cmk later allow fam file to be specified.
         let path_buf = Path::new(&self.path).with_extension(suffix);
-        // !!!cmk later here and elsewhere if there are only two arms, use 'if let' maybe?
         let file = if let Ok(file) = File::open(&path_buf) {
             file
         } else {
@@ -185,7 +183,7 @@ impl Bed {
             if let Some(field) = field {
                 line_vec.push(field.to_string());
             } else {
-                // !!!cmk update to more specific error message
+                // !!!cmk later update to more specific error message
                 return Err(BedError::CannotOpenFamOrBim(path_buf.display().to_string()).into());
             }
         }
@@ -193,7 +191,7 @@ impl Bed {
         let array = match nd::Array1::from_shape_vec(line_vec.len(), line_vec) {
             Ok(array) => array,
             Err(_error) => {
-                // !!!cmk update to more specific error message
+                // !!!cmk later update to more specific error message
                 return Err(BedError::CannotOpenFamOrBim(path_buf.display().to_string()).into());
                 // return Err(error).into();
             }
@@ -248,7 +246,7 @@ impl Bed {
         &self,
         read_options: ReadOptions<TOut>,
     ) -> Result<nd::Array2<TOut>, BedErrorPlus> {
-        // !!!cmk later this should be lazy in Bed object, not here
+        // !!!cmk 0 this should be lazy in Bed object, not here
         let (iid_count, sid_count) = counts(&self.path)?;
 
         // !!!cmk later do something with read_options.num_threads
@@ -277,16 +275,14 @@ impl Bed {
     }
 }
 
-// !!!cmk later implement this with conversion impl
+// !!!cmk 0 implement this with conversion impl
 pub fn to_vec(index: Index, count: usize) -> Vec<usize> {
     match index {
         Index::None => (0..count).collect(),
         Index::Vec(iid_index) => iid_index,
-        // !!!cmk ask how to support slices
-        // !!!cmk ask Index::RustSlice(iid_index) => iid_index.to_vec(),
         Index::Bool(bool_index) => {
             // !!!cmk later check that bool_index.len() == iid_count
-            // !!!cmk later use enumerate() instead of zip
+            // !!!cmk 0 use enumerate() instead of zip
             (0..count)
                 .zip(bool_index)
                 .filter(|(_, b)| *b)
@@ -299,6 +295,7 @@ pub fn to_vec(index: Index, count: usize) -> Vec<usize> {
             let array = full_array.slice(slice_index);
             array.to_vec()
         }
+        Index::Range(range) => range.collect(),
     }
 }
 
@@ -312,13 +309,19 @@ pub enum Index {
     Vec(Vec<usize>),
     Bool(nd::Array1<bool>),
     NDSlice(SliceInfo1),
-    // !!! cmk0 what about supporting ranges?
+    Range(Range<usize>),
 }
 
 // !!!cmk later see if what ref conversions. See https://ricardomartins.cc/2016/08/03/convenient_and_idiomatic_conversions_in_rust
 impl From<SliceInfo1> for Index {
     fn from(slice_info: SliceInfo1) -> Index {
         Index::NDSlice(slice_info)
+    }
+}
+
+impl From<Range<usize>> for Index {
+    fn from(range: Range<usize>) -> Index {
+        Index::Range(range)
     }
 }
 
@@ -340,9 +343,7 @@ impl From<()> for Index {
     }
 }
 
-// !!!cmk  later "Arg" is unlikely to be a good name
 // See https://nullderef.com/blog/rust-parameters/
-// !!!cmk later note that ndarray can do this: a.slice(s![1..4;2, ..;-1])
 #[derive(Builder)]
 pub struct ReadOptions<TOut: Copy + Default + From<i8> + Debug + Sync + Send + Missing> {
     #[builder(default = "TOut::missing()")]

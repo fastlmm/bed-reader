@@ -288,7 +288,7 @@ fn writer() {
 
     write(&path2, &val.view(), true, -127, 1).unwrap();
     for ext in ["fam", "bim"].iter() {
-        // !!!cmk later understand ever use of Path::new and PathBuf::from, etc
+        // !!!cmk 0 understand ever use of Path::new and PathBuf::from, etc
         let from = path.with_extension(ext);
         let to = path2.with_extension(ext);
         std::fs::copy(from, to).unwrap();
