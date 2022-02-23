@@ -277,18 +277,15 @@ fn index() {
 
 #[test]
 fn writer() {
-    let filename = "bed_reader/tests/data/some_missing.bed";
-    let path = Path::new(filename);
+    let path = Path::new("bed_reader/tests/data/some_missing.bed");
 
     let val = read(path, false, true, -127).unwrap();
 
     let temp = TempDir::default();
     let path2 = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_test.bed");
-    // !!!cmk later understand every use of "as_os_str()" and try to remove it.
 
     write(&path2, &val.view(), true, -127, 1).unwrap();
     for ext in ["fam", "bim"].iter() {
-        // !!!cmk 0 understand ever use of Path::new and PathBuf::from, etc
         let from = path.with_extension(ext);
         let to = path2.with_extension(ext);
         std::fs::copy(from, to).unwrap();
@@ -613,7 +610,6 @@ fn read_errors() {
     };
 }
 
-// !!!cmk 0 fix read mode 0 test
 #[test]
 fn read_modes() {
     let filename = "bed_reader/tests/data/small.bed";

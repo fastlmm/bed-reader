@@ -159,7 +159,7 @@ impl Bed {
         field_index: usize,
     ) -> Result<nd::Array1<String>, BedErrorPlus> {
         // !!!cmk later allow fam file to be specified.
-        let path_buf = Path::new(&self.path).with_extension(suffix);
+        let path_buf = self.path.with_extension(suffix);
         let file = if let Ok(file) = File::open(&path_buf) {
             file
         } else {
@@ -277,16 +277,16 @@ impl Bed {
 
 impl Index {
     // !!!cmk later test every case
-    // !!!cmk 0 implement this with conversion impl
+    // We can't define a 'From' because we want to add count at the last moment.
     pub fn to_vec(&self, count: usize) -> Vec<usize> {
         match self {
             Index::None => (0..count).collect(),
             Index::Vec(vec) => vec.to_vec(),
             Index::NDArrayBool(nd_array_bool) => {
                 // !!!cmk later check that bool_index.len() == iid_count
-                // !!!cmk 0 use enumerate() instead of zip
-                (0..count)
-                    .zip(nd_array_bool)
+                nd_array_bool
+                    .iter()
+                    .enumerate()
                     .filter(|(_, b)| **b)
                     .map(|(i, _)| i)
                     .collect()
@@ -303,9 +303,9 @@ impl Index {
             Index::VecBool(vec_bool) => {
                 // !!!cmk later similar code elsewhere
                 // !!!cmk later check that vec_bool.len() == iid_count
-                // !!!cmk 0 use enumerate() instead of zip
-                (0..count)
-                    .zip(vec_bool)
+                vec_bool
+                    .iter()
+                    .enumerate()
                     .filter(|(_, b)| **b)
                     .map(|(i, _)| i)
                     .collect()
