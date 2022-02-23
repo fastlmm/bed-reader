@@ -247,12 +247,12 @@ impl Bed {
         read_options: ReadOptions<TOut>,
     ) -> Result<nd::Array2<TOut>, BedErrorPlus> {
         let iid_count = self.get_iid_count()?;
-        let sid_count = &self.get_sid_count()?;
+        let sid_count = self.get_sid_count()?;
 
         // !!!cmk later do something with read_options.num_threads
 
-        let iid_index = to_vec(read_options.iid_index, iid_count);
-        let sid_index = to_vec(read_options.sid_index, *sid_count);
+        let iid_index = read_options.iid_index.to_vec(iid_count);
+        let sid_index = read_options.sid_index.to_vec(sid_count);
 
         let shape = ShapeBuilder::set_f(
             (iid_index.len(), sid_index.len()),
@@ -263,7 +263,7 @@ impl Bed {
         read_no_alloc(
             &self.path,
             iid_count,
-            *sid_count,
+            sid_count,
             self.count_a1,
             &iid_index,
             &sid_index,
@@ -275,39 +275,41 @@ impl Bed {
     }
 }
 
-// !!!cmk later test every case
-// !!!cmk 0 implement this with conversion impl
-pub fn to_vec(index: Index, count: usize) -> Vec<usize> {
-    match index {
-        Index::None => (0..count).collect(),
-        Index::Vec(vec) => vec,
-        Index::NDArrayBool(nd_array_bool) => {
-            // !!!cmk later check that bool_index.len() == iid_count
-            // !!!cmk 0 use enumerate() instead of zip
-            (0..count)
-                .zip(nd_array_bool)
-                .filter(|(_, b)| *b)
-                .map(|(i, _)| i)
-                .collect()
-        }
-        // !!!cmk later can we implement this without two allocations?
-        Index::NDSliceInfo(nd_slice_info) => {
-            let full_array: nd::Array1<usize> = (0..count).collect();
-            let array = full_array.slice(nd_slice_info);
-            array.to_vec()
-        }
-        Index::Range(range) => range.collect(),
-        Index::NDArray(nd_array) => nd_array.to_vec(),
-        Index::One(one) => vec![one],
-        Index::VecBool(vec_bool) => {
-            // !!!cmk later similar code elsewhere
-            // !!!cmk later check that vec_bool.len() == iid_count
-            // !!!cmk 0 use enumerate() instead of zip
-            (0..count)
-                .zip(vec_bool)
-                .filter(|(_, b)| *b)
-                .map(|(i, _)| i)
-                .collect()
+impl Index {
+    // !!!cmk later test every case
+    // !!!cmk 0 implement this with conversion impl
+    pub fn to_vec(&self, count: usize) -> Vec<usize> {
+        match self {
+            Index::None => (0..count).collect(),
+            Index::Vec(vec) => vec.to_vec(),
+            Index::NDArrayBool(nd_array_bool) => {
+                // !!!cmk later check that bool_index.len() == iid_count
+                // !!!cmk 0 use enumerate() instead of zip
+                (0..count)
+                    .zip(nd_array_bool)
+                    .filter(|(_, b)| **b)
+                    .map(|(i, _)| i)
+                    .collect()
+            }
+            // !!!cmk later can we implement this without two allocations?
+            Index::NDSliceInfo(nd_slice_info) => {
+                let full_array: nd::Array1<usize> = (0..count).collect();
+                let array = full_array.slice(nd_slice_info);
+                array.to_vec()
+            }
+            Index::Range(range) => range.clone().collect(),
+            Index::NDArray(nd_array) => nd_array.to_vec(),
+            Index::One(one) => vec![*one],
+            Index::VecBool(vec_bool) => {
+                // !!!cmk later similar code elsewhere
+                // !!!cmk later check that vec_bool.len() == iid_count
+                // !!!cmk 0 use enumerate() instead of zip
+                (0..count)
+                    .zip(vec_bool)
+                    .filter(|(_, b)| **b)
+                    .map(|(i, _)| i)
+                    .collect()
+            }
         }
     }
 }
@@ -315,6 +317,8 @@ pub fn to_vec(index: Index, count: usize) -> Vec<usize> {
 pub(crate) type SliceInfo1 =
     nd::SliceInfo<[nd::SliceInfoElem; 1], nd::Dim<[usize; 1]>, nd::Dim<[usize; 1]>>;
 
+// Could implement an enumerator, but it is complex and requires a 'match' on each next()
+//     https://stackoverflow.com/questions/65272613/how-to-implement-intoiterator-for-an-enum-of-iterable-variants
 // !!!cmk later add docs to type typedbuilder stuff: https://docs.rs/typed-builder/latest/typed_builder/derive.TypedBuilder.html#customisation-with-attributes
 #[derive(Debug, Clone)]
 pub enum Index {

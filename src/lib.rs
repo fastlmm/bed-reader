@@ -141,6 +141,7 @@ fn read_no_alloc<
     }
     match bytes_vector[2] {
         0 => {
+            // We swap 'iid' and 'sid' and then reverse the axes.
             let mut val_t = val.view_mut().reversed_axes();
             internal_read_no_alloc(
                 buf_reader,

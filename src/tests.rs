@@ -613,6 +613,7 @@ fn read_errors() {
     };
 }
 
+// !!!cmk 0 fix read mode 0 test
 #[test]
 fn read_modes() {
     let filename = "bed_reader/tests/data/small.bed";
