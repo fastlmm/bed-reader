@@ -291,7 +291,7 @@ impl Index {
                     .map(|(i, _)| i)
                     .collect()
             }
-            // !!!cmk later can we implement this without two allocations?
+            // !!!cmk 0 can we implement this without two allocations?
             Index::NDSliceInfo(nd_slice_info) => {
                 let full_array: nd::Array1<usize> = (0..count).collect();
                 let array = full_array.slice(nd_slice_info);

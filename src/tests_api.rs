@@ -131,7 +131,6 @@ fn readme_examples() -> Result<(), BedErrorPlus> {
 
     let file_name2 = "bed_reader/tests/data/some_missing.bed";
     let mut bed2 = Bed::new(file_name2)?;
-    // !!!cmk ask can we do this without the into?
     let val2 = ReadOptions::<f64>::builder()
         .iid_index(s![..;2].into())
         .sid_index((20..30).into())
@@ -156,10 +155,10 @@ fn readme_examples() -> Result<(), BedErrorPlus> {
     let mut bed3 = Bed::new(file_name2)?;
     println!("{:?}", bed3.get_iid()?.slice(s![5..]));
     println!("{:?}", bed3.get_sid()?.slice(s![5..]));
-    let unique: HashSet<_> = bed3.get_chromosome()?.iter().collect();
+    let unique = bed3.get_chromosome()?.iter().collect::<HashSet<_>>();
     println!("{:?}", unique);
-    // !!!cmk later it's weird that indexes are vectors, but properties are Array1
-    let is_5 = bed3.get_chromosome()?.mapv(|elem| elem == "5");
+    // let is_5 = bed3.get_chromosome()?.map(|elem| elem == "5");
+    let is_5 = nd::Zip::from(bed3.get_chromosome()?).par_map_collect(|elem| elem == "5");
     let val3 = ReadOptions::<f64>::builder()
         .sid_index(is_5.into())
         .read(&mut bed3)?;
