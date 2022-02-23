@@ -291,10 +291,11 @@ impl Index {
                     .map(|(i, _)| i)
                     .collect()
             }
-            // !!!cmk 0 can we implement this without two allocations?
+            // !!!cmk later can we implement this without two allocations?
             Index::NDSliceInfo(nd_slice_info) => {
-                let full_array: nd::Array1<usize> = (0..count).collect();
-                let array = full_array.slice(nd_slice_info);
+                // https://docs.rs/ndarray/0.15.4/ndarray/struct.ArrayBase.html#slicing
+                let mut array: nd::Array1<usize> = (0..count).collect();
+                array.slice_collapse(nd_slice_info);
                 array.to_vec()
             }
             Index::Range(range) => range.clone().collect(),
