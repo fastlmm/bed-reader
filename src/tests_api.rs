@@ -153,8 +153,8 @@ fn readme_examples() -> Result<(), BedErrorPlus> {
     // (100, 6)
 
     let mut bed3 = Bed::new(file_name2)?;
-    println!("{:?}", bed3.get_iid()?.slice(s![5..]));
-    println!("{:?}", bed3.get_sid()?.slice(s![5..]));
+    println!("{:?}", bed3.get_iid()?.slice(s![..5]));
+    println!("{:?}", bed3.get_sid()?.slice(s![..5]));
     let unique = bed3.get_chromosome()?.iter().collect::<HashSet<_>>();
     println!("{:?}", unique);
     // let is_5 = bed3.get_chromosome()?.map(|elem| elem == "5");
@@ -162,12 +162,10 @@ fn readme_examples() -> Result<(), BedErrorPlus> {
     let val3 = ReadOptions::<f64>::builder()
         .sid_index(is_5.into())
         .read(&mut bed3)?;
-
-    // !!!cmk ask could a macro likes be nice?
-    // let val3: nd::Array2<f64> = bed_read!(bed3, sid_index(is_5.into()))?;
-    // let val5: nd::Array2<f64> = bed_read!(bed3)?;
     println!("{:?}", val3.shape());
+    // ["iid_0", "iid_1", "iid_2", "iid_3", "iid_4"], shape=[5], strides=[1], layout=CFcf (0xf), const ndim=1
+    // ["sid_0", "sid_1", "sid_2", "sid_3", "sid_4"], shape=[5], strides=[1], layout=CFcf (0xf), const ndim=1
+    // {"10", "11", "4", "21", "22", "14", "3", "12", "20", "15", "19", "8", "6", "18", "9", "2", "16", "13", "17", "1", "7", "5"}
     // [100, 6]
-
     Ok(())
 }

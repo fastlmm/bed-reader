@@ -278,6 +278,8 @@ impl Bed {
 impl Index {
     // !!!cmk later test every case
     // We can't define a 'From' because we want to add count at the last moment.
+    // Would be nice to not always allocate a new vec, maybe with Rc<[T]>?
+    // Even better would be to support an iterator from Index (an enum with fields).
     pub fn to_vec(&self, count: usize) -> Vec<usize> {
         match self {
             Index::None => (0..count).collect(),
