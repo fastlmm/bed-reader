@@ -7,6 +7,8 @@
 // !!!cmk later To enforce that every public API item is documented, use #![deny(missing_docs)].
 // !!!cmk later conventions for formatting Rust documentation https://deterministic.space/machine-readable-inline-markdown-code-cocumentation.html
 
+// !!!cmk later document and add issue that File(s) are not held, incorrectly allowing for the file to be changed between reads.
+
 use core::fmt::Debug;
 use nd::ShapeBuilder;
 use ndarray as nd;
@@ -43,6 +45,10 @@ pub struct Bed {
     #[builder(default = "true")]
     count_a1: bool,
 
+    // !!!cmk 0 play with having an enum and extra set methods
+    #[builder(default = "false")]
+    skip_format_check: bool,
+
     #[builder(default, setter(strip_option))]
     iid_count: Option<usize>,
 
@@ -74,6 +80,7 @@ impl BedBuilder {
         Self {
             path: Some(path.as_ref().into()),
             count_a1: None,
+            skip_format_check: None,
             iid_count: None,
             sid_count: None,
             iid: None,
@@ -86,12 +93,16 @@ impl BedBuilder {
     pub fn build(&self) -> Result<Bed, BedErrorPlus> {
         let bed = self.build_no_file_check()?;
 
-        // !!!cmk later similar code elsewhere
-        let mut buf_reader = BufReader::new(File::open(&bed.path)?);
-        let mut bytes_vector: Vec<u8> = vec![0; CB_HEADER_USIZE];
-        buf_reader.read_exact(&mut bytes_vector)?;
-        if (BED_FILE_MAGIC1 != bytes_vector[0]) || (BED_FILE_MAGIC2 != bytes_vector[1]) {
-            return Err(BedError::IllFormed(PathBuf::from(&bed.path).display().to_string()).into());
+        if !bed.skip_format_check {
+            // !!!cmk later similar code elsewhere
+            let mut buf_reader = BufReader::new(File::open(&bed.path)?);
+            let mut bytes_vector: Vec<u8> = vec![0; CB_HEADER_USIZE];
+            buf_reader.read_exact(&mut bytes_vector)?;
+            if (BED_FILE_MAGIC1 != bytes_vector[0]) || (BED_FILE_MAGIC2 != bytes_vector[1]) {
+                return Err(
+                    BedError::IllFormed(PathBuf::from(&bed.path).display().to_string()).into(),
+                );
+            }
         }
 
         Result::Ok(bed)
