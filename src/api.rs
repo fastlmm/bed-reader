@@ -3,6 +3,10 @@
 // https://rust-lang.github.io/api-guidelines/
 // https://ricardomartins.cc/2016/08/03/convenient_and_idiomatic_conversions_in_rust
 
+// !!!cmk later write doc tests (see https://deterministic.space/elegant-apis-in-rust.html#what-makes-an-api-elegant)
+// !!!cmk later To enforce that every public API item is documented, use #![deny(missing_docs)].
+// !!!cmk later conventions for formatting Rust documentation https://deterministic.space/machine-readable-inline-markdown-code-cocumentation.html
+
 use core::fmt::Debug;
 use nd::ShapeBuilder;
 use ndarray as nd;
@@ -31,6 +35,7 @@ pub struct Bed {
     // https://stackoverflow.com/questions/32730714/what-is-the-right-way-to-store-an-immutable-path-in-a-struct
     pub path: PathBuf, // !!!cmk later always clone?
 
+    // !!!cmk 0 play with having an enum and extra set methods
     #[builder(default = "true")]
     count_a1: bool,
 
@@ -73,6 +78,7 @@ impl BedBuilder {
         }
     }
 
+    // !!!cmk later play with aliasing this as bed_reader::Result<T>
     pub fn build(&self) -> Result<Bed, BedErrorPlus> {
         let bed = Bed {
             path: match self.path {
@@ -403,6 +409,7 @@ pub struct ReadOptions<TOut: Copy + Default + From<i8> + Debug + Sync + Send + M
     #[builder(setter(into))]
     sid_index: Index,
 
+    // !!!cmk 0 play with having an enum and extra set methods
     #[builder(default = "true")]
     output_is_orderf: bool, // !!!cmk later use enum or .f()
 
