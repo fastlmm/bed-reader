@@ -26,27 +26,29 @@ use crate::{
 // Somehow ndarray can do this: 	Array::zeros((3, 4, 5).f())
 //       see https://docs.rs/ndarray/latest/ndarray/doc/ndarray_for_numpy_users/index.html
 #[derive(Builder)]
-#[builder(build_fn(skip))]
+#[builder(build_fn(private, name = "build_no_file_check", error = "BedErrorPlus"))]
 pub struct Bed {
     // https://stackoverflow.com/questions/32730714/what-is-the-right-way-to-store-an-immutable-path-in-a-struct
+    // don't emit a setter, but keep the field declaration on the builder
+    #[builder(setter(custom))]
     pub path: PathBuf, // !!!cmk later always clone?
 
     #[builder(default = "true")]
     count_a1: bool,
 
-    #[builder(default = "None", setter(strip_option))]
+    #[builder(default, setter(strip_option))]
     iid_count: Option<usize>,
 
-    #[builder(default = "None", setter(strip_option))]
+    #[builder(default, setter(strip_option))]
     sid_count: Option<usize>,
 
-    #[builder(default = "None", setter(strip_option))]
+    #[builder(default, setter(strip_option))]
     iid: Option<nd::Array1<String>>,
 
-    #[builder(default = "None", setter(strip_option))]
+    #[builder(default, setter(strip_option))]
     sid: Option<nd::Array1<String>>,
 
-    #[builder(default = "None", setter(strip_option))]
+    #[builder(default, setter(strip_option))]
     chromosome: Option<nd::Array1<String>>,
 }
 
@@ -63,8 +65,8 @@ impl Bed {
 impl BedBuilder {
     pub fn new<P: AsRef<Path>>(path: P) -> Self {
         Self {
-            path: Some(PathBuf::from(path.as_ref())),
-            count_a1: Some(true),
+            path: Some(path.as_ref().into()),
+            count_a1: None,
             iid_count: None,
             sid_count: None,
             iid: None,
@@ -74,40 +76,7 @@ impl BedBuilder {
     }
 
     pub fn build(&self) -> Result<Bed, BedErrorPlus> {
-        let bed = Bed {
-            path: match self.path {
-                Some(ref value) => Clone::clone(value),
-                None => {
-                    return Err(BedErrorPlus::UninitializedFieldError(
-                        ::derive_builder::UninitializedFieldError::from("path"),
-                    ))
-                }
-            },
-            count_a1: match self.count_a1 {
-                Some(ref value) => Clone::clone(value),
-                None => true,
-            },
-            iid_count: match self.iid_count {
-                Some(ref value) => Clone::clone(value),
-                None => None,
-            },
-            sid_count: match self.sid_count {
-                Some(ref value) => Clone::clone(value),
-                None => None,
-            },
-            iid: match self.iid {
-                Some(ref value) => Clone::clone(value),
-                None => None,
-            },
-            sid: match self.sid {
-                Some(ref value) => Clone::clone(value),
-                None => None,
-            },
-            chromosome: match self.chromosome {
-                Some(ref value) => Clone::clone(value),
-                None => None,
-            },
-        };
+        let bed = self.build_no_file_check()?;
 
         // !!!cmk later similar code elsewhere
         let mut buf_reader = BufReader::new(File::open(&bed.path)?);
