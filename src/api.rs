@@ -131,7 +131,7 @@ impl Bed {
 
     // !!!cmk later is this how you do lazy accessors?
     // !!!cmk later should this be "try_get_..." or just "iid_count" or as is
-    pub fn get_iid_count(&mut self) -> Result<usize, BedErrorPlus> {
+    pub fn iid_count(&mut self) -> Result<usize, BedErrorPlus> {
         if let Some(iid_count) = self.iid_count {
             Ok(iid_count)
         } else {
@@ -141,7 +141,7 @@ impl Bed {
             Ok(iid_count)
         }
     }
-    pub fn get_sid_count(&mut self) -> Result<usize, BedErrorPlus> {
+    pub fn sid_count(&mut self) -> Result<usize, BedErrorPlus> {
         if let Some(sid_count) = self.sid_count {
             Ok(sid_count)
         } else {
@@ -200,7 +200,7 @@ impl Bed {
         Ok(array)
     }
 
-    pub fn get_iid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
+    pub fn iid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         if let Some(ref iid) = self.iid {
             Ok(iid)
         } else {
@@ -211,7 +211,7 @@ impl Bed {
         }
     }
 
-    pub fn get_sid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
+    pub fn sid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         if let Some(ref sid) = self.sid {
             Ok(sid)
         } else {
@@ -222,7 +222,7 @@ impl Bed {
         }
     }
 
-    pub fn get_chromosome(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
+    pub fn chromosome(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         if let Some(ref chromosome) = self.chromosome {
             Ok(chromosome)
         } else {
@@ -246,8 +246,8 @@ impl Bed {
         &mut self,
         read_options: ReadOptions<TOut>,
     ) -> Result<nd::Array2<TOut>, BedErrorPlus> {
-        let iid_count = self.get_iid_count()?;
-        let sid_count = self.get_sid_count()?;
+        let iid_count = self.iid_count()?;
+        let sid_count = self.sid_count()?;
 
         // !!!cmk later do something with read_options.num_threads
 
@@ -396,9 +396,11 @@ pub struct ReadOptions<TOut: Copy + Default + From<i8> + Debug + Sync + Send + M
     missing_value: TOut,
 
     #[builder(default = "Index::None")]
+    #[builder(setter(into))]
     iid_index: Index,
 
     #[builder(default = "Index::None")]
+    #[builder(setter(into))]
     sid_index: Index,
 
     #[builder(default = "true")]

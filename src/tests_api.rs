@@ -36,10 +36,10 @@ fn rusty_bed2() -> Result<(), BedErrorPlus> {
 
     let val: nd::Array2<i8> = ReadOptions::builder()
         // [0].as_ref() or [0].as_slice() or [0][..]
-        .iid_index(0.into())
-        .sid_index(nd::array![0].into())
-        // .iid_index([0].to_vec().as_ref().into())
-        // .sid_index([1].into())
+        .iid_index(0)
+        .sid_index(nd::array![0])
+        // .iid_index([0].to_vec().as_ref())
+        // .sid_index([1])
         .read(&mut bed)?;
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     println!("{:?}", mean);
@@ -65,16 +65,12 @@ fn rusty_bed3() -> Result<(), BedErrorPlus> {
     // !!!cmk later also show mixing bool and full and none
     let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
     let mut bed = Bed::new(file)?;
-    let iid_bool: nd::Array1<bool> = (0..bed.get_iid_count()?)
-        .map(|elem| (elem % 2) != 0)
-        .collect();
-    let sid_bool: nd::Array1<bool> = (0..bed.get_sid_count()?)
-        .map(|elem| (elem % 8) != 0)
-        .collect();
+    let iid_bool: nd::Array1<bool> = (0..bed.iid_count()?).map(|elem| (elem % 2) != 0).collect();
+    let sid_bool: nd::Array1<bool> = (0..bed.sid_count()?).map(|elem| (elem % 8) != 0).collect();
     let val = ReadOptions::builder()
         .missing_value(-127)
-        .iid_index(iid_bool.into())
-        .sid_index(sid_bool.into())
+        .iid_index(iid_bool)
+        .sid_index(sid_bool)
         .read(&mut bed)?;
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     println!("{:?}", mean);
@@ -132,8 +128,8 @@ fn readme_examples() -> Result<(), BedErrorPlus> {
     let file_name2 = "bed_reader/tests/data/some_missing.bed";
     let mut bed2 = Bed::new(file_name2)?;
     let val2 = ReadOptions::<f64>::builder()
-        .iid_index(s![..;2].into())
-        .sid_index((20..30).into())
+        .iid_index(s![..;2])
+        .sid_index(20..30)
         .read(&mut bed2)?;
     println!("{:?}", val2.shape());
     // [50, 10]
@@ -153,14 +149,14 @@ fn readme_examples() -> Result<(), BedErrorPlus> {
     // (100, 6)
 
     let mut bed3 = Bed::new(file_name2)?;
-    println!("{:?}", bed3.get_iid()?.slice(s![..5]));
-    println!("{:?}", bed3.get_sid()?.slice(s![..5]));
-    let unique = bed3.get_chromosome()?.iter().collect::<HashSet<_>>();
+    println!("{:?}", bed3.iid()?.slice(s![..5]));
+    println!("{:?}", bed3.sid()?.slice(s![..5]));
+    let unique = bed3.chromosome()?.iter().collect::<HashSet<_>>();
     println!("{:?}", unique);
     // let is_5 = bed3.get_chromosome()?.map(|elem| elem == "5");
-    let is_5 = nd::Zip::from(bed3.get_chromosome()?).par_map_collect(|elem| elem == "5");
+    let is_5 = nd::Zip::from(bed3.chromosome()?).par_map_collect(|elem| elem == "5");
     let val3 = ReadOptions::<f64>::builder()
-        .sid_index(is_5.into())
+        .sid_index(is_5)
         .read(&mut bed3)?;
     println!("{:?}", val3.shape());
     // ["iid_0", "iid_1", "iid_2", "iid_3", "iid_4"], shape=[5], strides=[1], layout=CFcf (0xf), const ndim=1
