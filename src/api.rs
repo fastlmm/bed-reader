@@ -31,6 +31,8 @@ use crate::{
 //       see https://docs.rs/ndarray/latest/ndarray/doc/ndarray_for_numpy_users/index.html
 #[derive(Builder)]
 #[builder(build_fn(private, name = "build_no_file_check", error = "BedErrorPlus"))]
+#[derive(Clone, Debug, Default)]
+
 pub struct Bed {
     // https://stackoverflow.com/questions/32730714/what-is-the-right-way-to-store-an-immutable-path-in-a-struct
     // don't emit a setter, but keep the field declaration on the builder
@@ -365,7 +367,7 @@ impl From<()> for Index {
 }
 
 // See https://nullderef.com/blog/rust-parameters/
-#[derive(Builder)]
+#[derive(Debug, Clone, Builder)]
 pub struct ReadOptions<TOut: Copy + Default + From<i8> + Debug + Sync + Send + Missing> {
     #[builder(default = "TOut::missing()")]
     missing_value: TOut,
@@ -402,7 +404,7 @@ impl<TOut: Copy + Default + From<i8> + Debug + Sync + Send + Missing + Clone>
     }
 }
 
-// !!!cmk ask could a macro likes be nice?
+// !!!cmk later could a macro likes be nice?
 // #[macro_export]
 // macro_rules! read {
 //     ($bed:expr) => {
