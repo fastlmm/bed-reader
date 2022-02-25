@@ -12,6 +12,8 @@ license="Apache 2.0"
 keywords=["bioinformatics", "plink", "genomics", "genetics", "file-format", "reader", "genotype", "bed-format", "writer", "python", "snps"]
 edition = "2021"
 
+# !!!cmk later https://rust-lang.github.io/api-guidelines/necessities.html
+
 [package.metadata.maturin]
 requires-python = ">=3.7"
 classifiers=[

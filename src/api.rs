@@ -27,14 +27,18 @@ use crate::{
     CB_HEADER_USIZE,
 };
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Allele {
+    A1,
+    A2,
+}
+
 // https://crates.io/crates/typed-builder
 // (or https://docs.rs/derive_builder/latest/derive_builder/)
 // Somehow ndarray can do this: 	Array::zeros((3, 4, 5).f())
 //       see https://docs.rs/ndarray/latest/ndarray/doc/ndarray_for_numpy_users/index.html
-#[derive(Builder)]
+#[derive(Clone, Debug, Builder)]
 #[builder(build_fn(private, name = "build_no_file_check", error = "BedErrorPlus"))]
-#[derive(Clone, Debug, Default)]
-
 pub struct Bed {
     // https://stackoverflow.com/questions/32730714/what-is-the-right-way-to-store-an-immutable-path-in-a-struct
     // don't emit a setter, but keep the field declaration on the builder
@@ -42,12 +46,12 @@ pub struct Bed {
     pub path: PathBuf, // !!!cmk later always clone?
 
     // !!!cmk 0 play with having an enum and extra set methods
-    #[builder(default = "true")]
-    count_a1: bool,
+    #[builder(default = "Allele::A1")]
+    allele_to_count: Allele,
 
     // !!!cmk 0 play with having an enum and extra set methods
-    #[builder(default = "false")]
-    skip_format_check: bool,
+    #[builder(default = "true")]
+    do_format_check: bool,
 
     #[builder(default, setter(strip_option))]
     iid_count: Option<usize>,
@@ -79,8 +83,8 @@ impl BedBuilder {
     pub fn new<P: AsRef<Path>>(path: P) -> Self {
         Self {
             path: Some(path.as_ref().into()),
-            count_a1: None,
-            skip_format_check: None,
+            allele_to_count: None,
+            do_format_check: None,
             iid_count: None,
             sid_count: None,
             iid: None,
@@ -93,7 +97,7 @@ impl BedBuilder {
     pub fn build(&self) -> Result<Bed, BedErrorPlus> {
         let bed = self.build_no_file_check()?;
 
-        if !bed.skip_format_check {
+        if bed.do_format_check {
             // !!!cmk later similar code elsewhere
             let mut buf_reader = BufReader::new(File::open(&bed.path)?);
             let mut bytes_vector: Vec<u8> = vec![0; CB_HEADER_USIZE];
@@ -105,7 +109,12 @@ impl BedBuilder {
             }
         }
 
-        Result::Ok(bed)
+        Ok(bed)
+    }
+
+    pub fn skip_format_check(&mut self) -> &Self {
+        self.do_format_check = Some(false);
+        self
     }
 }
 
@@ -242,17 +251,14 @@ impl Bed {
         let iid_index = read_options.iid_index.to_vec(iid_count);
         let sid_index = read_options.sid_index.to_vec(sid_count);
 
-        let shape = ShapeBuilder::set_f(
-            (iid_index.len(), sid_index.len()),
-            read_options.output_is_orderf,
-        );
+        let shape = ShapeBuilder::set_f((iid_index.len(), sid_index.len()), read_options.is_f);
         let mut val = nd::Array2::<TOut>::default(shape);
 
         read_no_alloc(
             &self.path,
             iid_count,
             sid_count,
-            self.count_a1,
+            self.allele_to_count == Allele::A1,
             &iid_index,
             &sid_index,
             read_options.missing_value,
@@ -393,7 +399,7 @@ pub struct ReadOptions<TOut: Copy + Default + From<i8> + Debug + Sync + Send + M
 
     // !!!cmk 0 play with having an enum and extra set methods
     #[builder(default = "true")]
-    output_is_orderf: bool, // !!!cmk later use enum or .f()
+    is_f: bool, // !!!cmk later use enum or .f()
 
     #[builder(default, setter(strip_option))]
     pub num_threads: Option<usize>,
@@ -406,12 +412,36 @@ impl<TOut: Copy + Default + From<i8> + Debug + Sync + Send + Missing + Clone> Re
     }
 }
 
+// !!!cmk 0 alias "Copy + Default + From<i8> + Debug + Sync + Send + Missing + Clone"?
 impl<TOut: Copy + Default + From<i8> + Debug + Sync + Send + Missing + Clone>
     ReadOptionsBuilder<TOut>
 {
     pub fn read(&self, bed: &mut Bed) -> Result<nd::Array2<TOut>, BedErrorPlus> {
         let read_option = self.build()?;
         bed.read_with_options(read_option)
+    }
+
+    pub fn c(&mut self) -> &Self {
+        self.is_f(false);
+        self
+    }
+}
+
+impl ReadOptionsBuilder<i8> {
+    pub fn i8(&self) -> &Self {
+        self
+    }
+}
+
+impl ReadOptionsBuilder<f32> {
+    pub fn f32(&self) -> &Self {
+        self
+    }
+}
+
+impl ReadOptionsBuilder<f64> {
+    pub fn f64(&self) -> &Self {
+        self
     }
 }
 

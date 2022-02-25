@@ -1,4 +1,6 @@
 #[cfg(test)]
+use crate::api::Allele;
+#[cfg(test)]
 use crate::api::Bed;
 #[cfg(test)]
 use crate::api::ReadOptions;
@@ -21,7 +23,7 @@ fn rusty_bed1() -> Result<(), BedErrorPlus> {
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     assert!(mean == -13.142); // really shouldn't do mean on data where -127 represents missing
 
-    let mut bed = Bed::builder(file).count_a1(false).build()?;
+    let mut bed = Bed::builder(file).allele_to_count(Allele::A2).build()?;
     let val = bed.read::<i8>()?;
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     assert!(mean == -13.274); // really shouldn't do mean on data where -127 represents missing
@@ -34,12 +36,10 @@ fn rusty_bed2() -> Result<(), BedErrorPlus> {
     let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
     let mut bed = Bed::new(file)?;
 
-    let val: nd::Array2<i8> = ReadOptions::builder()
-        // [0].as_ref() or [0].as_slice() or [0][..]
+    let val = ReadOptions::builder()
         .iid_index(0)
-        .sid_index(nd::array![0])
-        // .iid_index([0].to_vec().as_ref())
-        // .sid_index([1])
+        .sid_index(vec![1])
+        .i8()
         .read(&mut bed)?;
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     println!("{:?}", mean);
@@ -80,14 +80,45 @@ fn rusty_bed3() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn bad_header() {
+fn rusty_bed_allele() -> Result<(), BedErrorPlus> {
+    let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
+    let mut bed = Bed::builder(file).allele_to_count(Allele::A2).build()?;
+    let val: nd::Array2<i8> = bed.read()?;
+
+    let mean = val.mapv(|elem| elem as f64).mean().unwrap();
+    println!("{:?}", mean);
+    assert!(mean == -13.274); // really shouldn't do mean on data where -127 represents missing
+
+    Ok(())
+}
+
+#[test]
+fn rusty_bed_order() -> Result<(), BedErrorPlus> {
+    let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
+    let mut bed = Bed::new(file)?;
+    let val = ReadOptions::builder().c().i8().read(&mut bed)?;
+
+    let mean = val.mapv(|elem| elem as f64).mean().unwrap();
+    println!("{:?}", mean);
+    assert!(mean == -13.142); // really shouldn't do mean on data where -127 represents missing
+
+    Ok(())
+}
+
+#[test]
+fn bad_header() -> Result<(), BedErrorPlus> {
     let filename = "bed_reader/tests/data/badfile.bed";
+
+    let _ = Bed::builder(filename).skip_format_check().build()?;
+
     let result = Bed::new(filename);
 
     match result {
         Err(BedErrorPlus::BedError(BedError::IllFormed(_))) => (),
         _ => panic!("test failure"),
     };
+
+    Ok(())
 }
 
 #[test]
@@ -155,8 +186,9 @@ fn readme_examples() -> Result<(), BedErrorPlus> {
     println!("{:?}", unique);
     // let is_5 = bed3.get_chromosome()?.map(|elem| elem == "5");
     let is_5 = nd::Zip::from(bed3.chromosome()?).par_map_collect(|elem| elem == "5");
-    let val3 = ReadOptions::<f64>::builder()
+    let val3 = ReadOptions::builder()
         .sid_index(is_5)
+        .f64()
         .read(&mut bed3)?;
     println!("{:?}", val3.shape());
     // ["iid_0", "iid_1", "iid_2", "iid_3", "iid_4"], shape=[5], strides=[1], layout=CFcf (0xf), const ndim=1
