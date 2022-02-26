@@ -122,6 +122,97 @@ fn bad_header() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
+fn open_examples() -> Result<(), BedErrorPlus> {
+    //     >>> from bed_reader import open_bed, sample_file
+    //     >>>
+    //     >>> file_name = sample_file("small.bed")
+    //     >>> bed = open_bed(file_name)
+    //     >>> print(bed.iid)
+    //     ['iid1' 'iid2' 'iid3']
+    //     >>> print(bed.sid)
+    //     ['sid1' 'sid2' 'sid3' 'sid4']
+    //     >>> print(bed.read())
+    //     [[ 1.  0. nan  0.]
+    //      [ 2.  0. nan  2.]
+    //      [ 0.  1.  2.  0.]]
+    //     >>> del bed  # optional: delete bed object
+
+    let file_name = "bed_reader/tests/data/small.bed";
+    let mut bed = Bed::new(file_name)?;
+    println!("{:?}", bed.iid()?);
+    println!("{:?}", bed.sid()?);
+    println!("{:?}", bed.read::<f64>()?);
+
+    // ["iid1", "iid2", "iid3"], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
+    // ["sid1", "sid2", "sid3", "sid4"], shape=[4], strides=[1], layout=CFcf (0xf), const ndim=1
+    // [[1.0, 0.0, NaN, 0.0],
+    //  [2.0, 0.0, NaN, 2.0],
+    //  [0.0, 1.0, 2.0, 0.0]], shape=[3, 4], strides=[1, 3], layout=Ff (0xa), const ndim=2
+
+    // Open the file and read data for one SNP (variant)
+    // at index position 2.
+
+    // .. doctest::
+
+    //     >>> import numpy as np
+    //     >>> with open_bed(file_name) as bed:
+    //     ...     print(bed.read(np.s_[:,2]))
+    //     [[nan]
+    //      [nan]
+    //      [ 2.]]
+
+    let mut bed = Bed::new(file_name)?;
+    println!(
+        "{:?}",
+        ReadOptions::builder().sid_index(2).f64().read(&mut bed)?
+    );
+
+    // [[NaN],
+    //  [NaN],
+    //  [2.0]], shape=[3, 1], strides=[1, 3], layout=CFcf (0xf), const ndim=2
+
+    // Replace :attr:`iid`.
+
+    //     >>> bed = open_bed(file_name, properties={"iid":["sample1","sample2","sample3"]})
+    //     >>> print(bed.iid) # replaced
+    //     ['sample1' 'sample2' 'sample3']
+    //     >>> print(bed.sid) # same as before
+    //     ['sid1' 'sid2' 'sid3' 'sid4']
+
+    // // https://stackoverflow.com/questions/38183551/concisely-initializing-a-vector-of-strings
+    // let iid: nd::Array1<String> = nd::array![
+    //     "sample1".to_string(),
+    //     "sample2".to_string(),
+    //     "sample3".to_string()
+    // ];
+    // let iid: nd::Array1<String> = nd::array!["sample1", "sample2", "sample3"].clone();
+    // let mut bed = Bed::builder(file_name).iid(iid).build()?;
+    // println!("{:?}", bed.iid()?);
+    // println!("{:?}", bed.sid()?);
+
+    // Give the number of individuals (samples) and SNPs (variants) so that the .fam and
+    // .bim files need never be opened.
+
+    //     >>> with open_bed(file_name, iid_count=3, sid_count=4) as bed:
+    //     ...     print(bed.read())
+    //     [[ 1.  0. nan  0.]
+    //      [ 2.  0. nan  2.]
+    //      [ 0.  1.  2.  0.]]
+
+    // Mark some properties as "don’t read or offer".
+
+    //     >>> bed = open_bed(file_name, properties={
+    //     ...    "father" : None, "mother" : None, "sex" : None, "pheno" : None,
+    //     ...    "allele_1" : None, "allele_2":None })
+    //     >>> print(bed.iid)        # read from file
+    //     ['iid1' 'iid2' 'iid3']
+    //     >>> print(bed.allele_2)   # not read and not offered
+    //     None
+
+    Ok(())
+}
+
+#[test]
 fn readme_examples() -> Result<(), BedErrorPlus> {
     // Read genomic data from a .bed file.
 
