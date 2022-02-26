@@ -119,10 +119,10 @@ impl BedBuilder {
 }
 
 impl Bed {
-    // !!!cmk later
+    // !!!cmk 0 find an example of Python properties and create a test for it.
     // properties: Mapping[str, List[Any]] = {},
+    // !!!cmk later
     // num_threads: Optional[int] = None,
-    // skip_format_check: bool = False,
     // fam_filepath: Union[str, Path] = None,
     // bim_filepath: Union[str, Path] = None,
 
