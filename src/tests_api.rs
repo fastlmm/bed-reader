@@ -183,15 +183,24 @@ fn open_examples() -> Result<(), BedErrorPlus> {
 
     // These don't work:
     // let iid = nd::array!["sample1", "sample2", "sample3"];
+    let iid = nd::array![
+        "sample1".to_string(),
+        "sample2".to_string(),
+        "sample3".to_string()
+    ];
     // let iid = vec!["sample1", "sample2", "sample3"];
     // let iid = vec![
     //     "sample1".to_string(),
     //     "sample2".to_string(),
     //     "sample3".to_string(),
     // ];
+    // let iid = ["sample1", "sample2", "sample3"];
     // This is OK
-    let iid = nd::array!["sample1".into(), "sample2".into(), "sample3".into()];
-    let mut bed = Bed::builder(file_name).iid(iid).build()?;
+    //let iid = nd::array!["sample1", "sample2", "sample3"];
+    // let iid2 = iid.as_slice().unwrap();
+    let mut bed = Bed::builder(file_name)
+        .iid(iid.as_slice().unwrap())
+        .build()?;
     println!("{:?}", bed.iid()?);
     println!("{:?}", bed.sid()?);
 

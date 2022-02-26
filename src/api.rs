@@ -59,7 +59,7 @@ pub struct Bed {
     #[builder(default, setter(strip_option))]
     sid_count: Option<usize>,
 
-    #[builder(default, setter(strip_option, into))]
+    #[builder(default, setter(strip_option, custom))]
     iid: Option<nd::Array1<String>>,
 
     #[builder(default, setter(strip_option))]
@@ -114,6 +114,13 @@ impl BedBuilder {
 
     pub fn skip_format_check(&mut self) -> &Self {
         self.do_format_check = Some(false);
+        self
+    }
+
+    // https://stackoverflow.com/questions/38183551/concisely-initializing-a-vector-of-strings
+    pub fn iid<T: AsRef<str>>(&mut self, iid: &[T]) -> &Self {
+        let iid2: nd::Array1<String> = iid.iter().map(|s| s.as_ref().to_string()).collect();
+        self.iid = Some(Some(iid2));
         self
     }
 }
