@@ -118,8 +118,13 @@ impl BedBuilder {
     }
 
     // https://stackoverflow.com/questions/38183551/concisely-initializing-a-vector-of-strings
-    pub fn iid<T: AsRef<str>>(&mut self, iid: &[T]) -> &Self {
-        let iid2: nd::Array1<String> = iid.iter().map(|s| s.as_ref().to_string()).collect();
+    // https://stackoverflow.com/questions/65250496/how-to-convert-intoiteratoritem-asrefstr-to-iteratoritem-str-in-rust
+    pub fn iid<I, T>(&mut self, iid: I) -> &Self
+    where
+        I: IntoIterator<Item = T>,
+        T: AsRef<str>,
+    {
+        let iid2: nd::Array1<String> = iid.into_iter().map(|s| s.as_ref().to_string()).collect();
         self.iid = Some(Some(iid2));
         self
     }

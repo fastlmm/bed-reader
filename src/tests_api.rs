@@ -182,24 +182,24 @@ fn open_examples() -> Result<(), BedErrorPlus> {
     // https://stackoverflow.com/questions/38183551/concisely-initializing-a-vector-of-strings
 
     // These don't work:
-    // let iid = nd::array!["sample1", "sample2", "sample3"];
+    let iid = nd::array!["sample1", "sample2", "sample3"];
+    let mut _bed = Bed::builder(file_name).iid(iid).build()?;
     let iid = nd::array![
         "sample1".to_string(),
         "sample2".to_string(),
         "sample3".to_string()
     ];
-    // let iid = vec!["sample1", "sample2", "sample3"];
-    // let iid = vec![
-    //     "sample1".to_string(),
-    //     "sample2".to_string(),
-    //     "sample3".to_string(),
-    // ];
-    // let iid = ["sample1", "sample2", "sample3"];
-    // This is OK
-    //let iid = nd::array!["sample1", "sample2", "sample3"];
-    // let iid2 = iid.as_slice().unwrap();
+    let mut _bed = Bed::builder(file_name).iid(iid).build()?;
+    let iid = vec!["sample1", "sample2", "sample3"];
+    let mut _bed = Bed::builder(file_name).iid(iid).build()?;
+    let iid = vec![
+        "sample1".to_string(),
+        "sample2".to_string(),
+        "sample3".to_string(),
+    ];
+    let mut _bed = Bed::builder(file_name).iid(iid).build()?;
     let mut bed = Bed::builder(file_name)
-        .iid(iid.as_slice().unwrap())
+        .iid(["sample1", "sample2", "sample3"])
         .build()?;
     println!("{:?}", bed.iid()?);
     println!("{:?}", bed.sid()?);
