@@ -179,16 +179,24 @@ fn open_examples() -> Result<(), BedErrorPlus> {
     //     >>> print(bed.sid) # same as before
     //     ['sid1' 'sid2' 'sid3' 'sid4']
 
-    // // https://stackoverflow.com/questions/38183551/concisely-initializing-a-vector-of-strings
-    // let iid: nd::Array1<String> = nd::array![
+    // https://stackoverflow.com/questions/38183551/concisely-initializing-a-vector-of-strings
+
+    // These don't work:
+    // let iid = nd::array!["sample1", "sample2", "sample3"];
+    // let iid = vec!["sample1", "sample2", "sample3"];
+    // let iid = vec![
     //     "sample1".to_string(),
     //     "sample2".to_string(),
-    //     "sample3".to_string()
+    //     "sample3".to_string(),
     // ];
-    // let iid: nd::Array1<String> = nd::array!["sample1", "sample2", "sample3"].clone();
-    // let mut bed = Bed::builder(file_name).iid(iid).build()?;
-    // println!("{:?}", bed.iid()?);
-    // println!("{:?}", bed.sid()?);
+    // This is OK
+    let iid = nd::array!["sample1".into(), "sample2".into(), "sample3".into()];
+    let mut bed = Bed::builder(file_name).iid(iid).build()?;
+    println!("{:?}", bed.iid()?);
+    println!("{:?}", bed.sid()?);
+
+    // ["sample1", "sample2", "sample3"], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
+    // ["sid1", "sid2", "sid3", "sid4"], shape=[4], strides=[1], layout=CFcf (0xf), const ndim=
 
     // Give the number of individuals (samples) and SNPs (variants) so that the .fam and
     // .bim files need never be opened.

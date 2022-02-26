@@ -59,7 +59,7 @@ pub struct Bed {
     #[builder(default, setter(strip_option))]
     sid_count: Option<usize>,
 
-    #[builder(default, setter(strip_option))]
+    #[builder(default, setter(strip_option, into))]
     iid: Option<nd::Array1<String>>,
 
     #[builder(default, setter(strip_option))]
