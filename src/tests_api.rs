@@ -233,10 +233,10 @@ fn open_examples() -> Result<(), BedErrorPlus> {
     //     None
 
     // !!! cmk 0 to match Python example, should be allele_2
-    let mut bed = Bed::builder(file_name).sid_skip().build()?;
+    let mut bed = Bed::builder(file_name).allele_2_skip().build()?;
     println!("{:?}", bed.iid()?);
 
-    let result = bed.sid();
+    let result = bed.allele_2();
     match result {
         Err(BedErrorPlus::BedError(BedError::PropertySkipped(_))) => (),
         _ => panic!("test failure"),

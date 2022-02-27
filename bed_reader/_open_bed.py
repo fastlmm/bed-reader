@@ -59,6 +59,7 @@ _meta_meta = {
     "sid": _MetaMeta("bim", 1, np.str_, None, _sequence),
     "cm_position": _MetaMeta("bim", 2, np.float32, 0, _all_same),
     "bp_position": _MetaMeta("bim", 3, np.int32, 0, _all_same),
+    # !!!cmk 0 what do these defaults like A1 mean?
     "allele_1": _MetaMeta("bim", 4, np.str_, "A1", _all_same),
     "allele_2": _MetaMeta("bim", 5, np.str_, "A2", _all_same),
 }

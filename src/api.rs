@@ -83,15 +83,25 @@ pub struct Bed {
     #[builder(default, setter(strip_option))]
     sid_count: Option<usize>,
 
-    #[builder(default, setter(strip_option, custom))]
-    iid: Option<nd::Array1<String>>,
+    #[builder(setter(custom))]
+    #[builder(default = "OptionOrSkip::None")]
+    iid: OptionOrSkip<nd::Array1<String>>,
 
     #[builder(setter(custom))]
     #[builder(default = "OptionOrSkip::None")]
     sid: OptionOrSkip<nd::Array1<String>>,
 
-    #[builder(default, setter(strip_option, custom))]
-    chromosome: Option<nd::Array1<String>>,
+    #[builder(setter(custom))]
+    #[builder(default = "OptionOrSkip::None")]
+    chromosome: OptionOrSkip<nd::Array1<String>>,
+
+    #[builder(setter(custom))]
+    #[builder(default = "OptionOrSkip::None")]
+    allele_1: OptionOrSkip<nd::Array1<String>>,
+
+    #[builder(setter(custom))]
+    #[builder(default = "OptionOrSkip::None")]
+    allele_2: OptionOrSkip<nd::Array1<String>>,
 }
 
 impl Bed {
@@ -115,6 +125,8 @@ impl BedBuilder {
             iid: None,
             sid: None,
             chromosome: None,
+            allele_1: None,
+            allele_2: None,
         }
     }
 
@@ -137,13 +149,34 @@ impl BedBuilder {
         Ok(bed)
     }
 
+    // !!!cmk 0 is it confusing to use 'skip' for both format_check and metadata?
     pub fn skip_format_check(&mut self) -> &Self {
         self.do_format_check = Some(false);
         self
     }
 
+    pub fn iid_skip(&mut self) -> &Self {
+        self.iid = Some(OptionOrSkip::Skip);
+        self
+    }
+
     pub fn sid_skip(&mut self) -> &Self {
         self.sid = Some(OptionOrSkip::Skip);
+        self
+    }
+
+    pub fn chromosome_skip(&mut self) -> &Self {
+        self.chromosome = Some(OptionOrSkip::Skip);
+        self
+    }
+
+    pub fn allele_1_skip(&mut self) -> &Self {
+        self.allele_1 = Some(OptionOrSkip::Skip);
+        self
+    }
+
+    pub fn allele_2_skip(&mut self) -> &Self {
+        self.allele_2 = Some(OptionOrSkip::Skip);
         self
     }
 
@@ -156,7 +189,7 @@ impl BedBuilder {
     {
         let new_string_array: nd::Array1<String> =
             iid.into_iter().map(|s| s.as_ref().to_string()).collect();
-        self.iid = Some(Some(new_string_array));
+        self.iid = Some(OptionOrSkip::Some(new_string_array));
         self
     }
 
@@ -180,7 +213,7 @@ impl BedBuilder {
             .into_iter()
             .map(|s| s.as_ref().to_string())
             .collect();
-        self.chromosome = Some(Some(new_string_array));
+        self.chromosome = Some(OptionOrSkip::Some(new_string_array));
         self
     }
 }
@@ -265,13 +298,15 @@ impl Bed {
     }
 
     pub fn iid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        if let Some(ref iid) = self.iid {
-            Ok(iid)
-        } else {
-            let iid = self.read_fam_or_bim("fam", 1)?;
-            self.iid = Some(iid);
-            // This unwrap is safe because we just created 'Some'
-            Ok(self.iid.as_ref().unwrap())
+        match self.iid {
+            OptionOrSkip::Some(ref iid) => Ok(iid),
+            OptionOrSkip::None => {
+                let iid = self.read_fam_or_bim("fam", 1)?;
+                self.iid = OptionOrSkip::Some(iid);
+                // This unwrap is safe because we just created 'Some'
+                Ok(self.iid.as_ref().unwrap())
+            }
+            OptionOrSkip::Skip => Err(BedError::PropertySkipped("iid".to_string()).into()),
         }
     }
 
@@ -289,13 +324,41 @@ impl Bed {
     }
 
     pub fn chromosome(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        if let Some(ref chromosome) = self.chromosome {
-            Ok(chromosome)
-        } else {
-            let chromosome = self.read_fam_or_bim("bim", 0)?;
-            self.chromosome = Some(chromosome);
-            // This unwrap is safe because we just created 'Some'
-            Ok(self.chromosome.as_ref().unwrap())
+        match self.chromosome {
+            OptionOrSkip::Some(ref chromosome) => Ok(chromosome),
+            OptionOrSkip::None => {
+                let chromosome = self.read_fam_or_bim("bim", 0)?;
+                self.chromosome = OptionOrSkip::Some(chromosome);
+                // This unwrap is safe because we just created 'Some'
+                Ok(self.chromosome.as_ref().unwrap())
+            }
+            OptionOrSkip::Skip => Err(BedError::PropertySkipped("chromosome".to_string()).into()),
+        }
+    }
+
+    pub fn allele_1(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
+        match self.allele_1 {
+            OptionOrSkip::Some(ref allele_1) => Ok(allele_1),
+            OptionOrSkip::None => {
+                let allele_1 = self.read_fam_or_bim("bim", 4)?;
+                self.allele_1 = OptionOrSkip::Some(allele_1);
+                // This unwrap is safe because we just created 'Some'
+                Ok(self.allele_1.as_ref().unwrap())
+            }
+            OptionOrSkip::Skip => Err(BedError::PropertySkipped("allele_1".to_string()).into()),
+        }
+    }
+
+    pub fn allele_2(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
+        match self.allele_2 {
+            OptionOrSkip::Some(ref allele_2) => Ok(allele_2),
+            OptionOrSkip::None => {
+                let allele_2 = self.read_fam_or_bim("bim", 5)?;
+                self.allele_2 = OptionOrSkip::Some(allele_2);
+                // This unwrap is safe because we just created 'Some'
+                Ok(self.allele_2.as_ref().unwrap())
+            }
+            OptionOrSkip::Skip => Err(BedError::PropertySkipped("allele_2".to_string()).into()),
         }
     }
 

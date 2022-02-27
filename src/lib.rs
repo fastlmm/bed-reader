@@ -113,6 +113,7 @@ pub enum BedError {
     #[error("Cannot open metadata file. '{0}'")]
     CannotOpenFamOrBim(String),
 
+    // !!!cmk 0 would this be better ask Metadata skipped?
     #[error("Property '{0}' Skipped")]
     PropertySkipped(String),
 }
