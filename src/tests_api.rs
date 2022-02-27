@@ -246,6 +246,18 @@ fn open_examples() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
+fn metadata_sex() -> Result<(), BedErrorPlus> {
+    // >>> file_name = sample_file("small.bed")
+    // >>> with open_bed(file_name) as bed:
+    // ...     print(bed.sex)
+    // [1 2 0]
+    let mut bed = Bed::new("bed_reader/tests/data/small.bed")?;
+    println!("{:?}", bed.sex()?);
+    // [1, 2, 0], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
+    Ok(())
+}
+
+#[test]
 fn readme_examples() -> Result<(), BedErrorPlus> {
     // Read genomic data from a .bed file.
 

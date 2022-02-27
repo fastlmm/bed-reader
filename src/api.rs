@@ -102,6 +102,10 @@ pub struct Bed {
     #[builder(setter(custom))]
     #[builder(default = "OptionOrSkip::None")]
     allele_2: OptionOrSkip<nd::Array1<String>>,
+
+    #[builder(setter(custom))]
+    #[builder(default = "OptionOrSkip::None")]
+    sex: OptionOrSkip<nd::Array1<i32>>,
 }
 
 impl Bed {
@@ -127,6 +131,7 @@ impl BedBuilder {
             chromosome: None,
             allele_1: None,
             allele_2: None,
+            sex: None,
         }
     }
 
@@ -177,6 +182,11 @@ impl BedBuilder {
 
     pub fn allele_2_skip(&mut self) -> &Self {
         self.allele_2 = Some(OptionOrSkip::Skip);
+        self
+    }
+
+    pub fn sex_skip(&mut self) -> &Self {
+        self.sex = Some(OptionOrSkip::Skip);
         self
     }
 
@@ -362,6 +372,28 @@ impl Bed {
         }
     }
 
+    pub fn sex(&mut self) -> Result<&nd::Array1<i32>, BedErrorPlus> {
+        match self.sex {
+            OptionOrSkip::Some(ref sex) => Ok(sex),
+            OptionOrSkip::None => {
+                let sex: Result<nd::Array1<i32>, _> = self
+                    .read_fam_or_bim("fam", 4)?
+                    .into_iter()
+                    .map(|s| match s.parse::<i32>() {
+                        Err(_) => Err(BedErrorPlus::BedError(BedError::CannotOpenFamOrBim(
+                            "!!!cmk0".to_string(),
+                        ))),
+                        Ok(i) => Ok(i),
+                    })
+                    .collect();
+                let sex2 = sex?;
+                self.sex = OptionOrSkip::Some(sex2);
+                // This unwrap is safe because we just created 'Some'
+                Ok(self.sex.as_ref().unwrap())
+            }
+            OptionOrSkip::Skip => Err(BedError::PropertySkipped("sex".to_string()).into()),
+        }
+    }
     pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send + Missing>(
         &mut self,
     ) -> Result<nd::Array2<TOut>, BedErrorPlus> {
