@@ -246,7 +246,7 @@ fn open_examples() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn metadata_sex() -> Result<(), BedErrorPlus> {
+fn metadata_sex_etc() -> Result<(), BedErrorPlus> {
     // >>> file_name = sample_file("small.bed")
     // >>> with open_bed(file_name) as bed:
     // ...     print(bed.sex)
@@ -254,6 +254,23 @@ fn metadata_sex() -> Result<(), BedErrorPlus> {
     let mut bed = Bed::new("bed_reader/tests/data/small.bed")?;
     println!("{:?}", bed.sex()?);
     // [1, 2, 0], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
+
+    println!("{:?}", bed.cm_position()?);
+    // [100.4, 2000.5, 4000.7, 7000.9], shape=[4], strides=[1], layout=CFcf (0xf), const ndim=1
+
+    println!("{:?}", bed.bp_position()?);
+    // [1, 100, 1000, 1004], shape=[4], strides=[1], layout=CFcf (0xf), const ndim=1
+
+    // println!("{:?}", bed.fid()?);
+    // ["fid1", "fid1", "fid2"], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
+
+    println!("{:?}", bed.father()?);
+    // ["iid23", "iid23", "iid22"], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
+        
+    println!("{:?}", bed.mother()?);
+    // ["iid34", "iid34", "iid33"], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
+
+
     Ok(())
 }
 

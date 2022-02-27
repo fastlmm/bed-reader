@@ -106,6 +106,26 @@ pub struct Bed {
     #[builder(setter(custom))]
     #[builder(default = "OptionOrSkip::None")]
     sex: OptionOrSkip<nd::Array1<i32>>,
+    
+    #[builder(setter(custom))]
+    #[builder(default = "OptionOrSkip::None")]
+    fid: OptionOrSkip<nd::Array1<String>>,
+
+    #[builder(setter(custom))]
+    #[builder(default = "OptionOrSkip::None")]
+    father: OptionOrSkip<nd::Array1<String>>,
+
+    #[builder(setter(custom))]
+    #[builder(default = "OptionOrSkip::None")]
+    mother: OptionOrSkip<nd::Array1<String>>,
+
+    #[builder(setter(custom))]
+    #[builder(default = "OptionOrSkip::None")]
+    cm_position: OptionOrSkip<nd::Array1<f32>>,
+
+    #[builder(setter(custom))]
+    #[builder(default = "OptionOrSkip::None")]
+    bp_position: OptionOrSkip<nd::Array1<i32>>,
 }
 
 impl Bed {
@@ -126,12 +146,17 @@ impl BedBuilder {
             do_format_check: None,
             iid_count: None,
             sid_count: None,
+            fid: None,
             iid: None,
+            father: None,
+            mother: None,
             sid: None,
             chromosome: None,
             allele_1: None,
             allele_2: None,
             sex: None,
+            cm_position: None,
+            bp_position: None,
         }
     }
 
@@ -185,8 +210,32 @@ impl BedBuilder {
         self
     }
 
+    pub fn fid_skip(&mut self) -> &Self {
+        self.fid = Some(OptionOrSkip::Skip);
+        self
+    }
+    pub fn father_skip(&mut self) -> &Self {
+        self.father = Some(OptionOrSkip::Skip);
+        self
+    }
+    pub fn mother_skip(&mut self) -> &Self {
+        self.mother = Some(OptionOrSkip::Skip);
+        self
+    }
+
+
     pub fn sex_skip(&mut self) -> &Self {
         self.sex = Some(OptionOrSkip::Skip);
+        self
+    }
+
+    pub fn cm_position_skip(&mut self) -> &Self {
+        self.cm_position = Some(OptionOrSkip::Skip);
+        self
+    }
+
+    pub fn bp_position_skip(&mut self) -> &Self {
+        self.bp_position = Some(OptionOrSkip::Skip);
         self
     }
 
@@ -372,6 +421,46 @@ impl Bed {
         }
     }
 
+    pub fn fid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
+        match self.fid {
+            OptionOrSkip::Some(ref fid) => Ok(fid),
+            OptionOrSkip::None => {
+                let fid = self.read_fam_or_bim("fam", 0)?;
+                self.fid = OptionOrSkip::Some(fid);
+                // This unwrap is safe because we just created 'Some'
+                Ok(self.fid.as_ref().unwrap())
+            }
+            OptionOrSkip::Skip => Err(BedError::PropertySkipped("fid".to_string()).into()),
+        }
+    }
+
+    pub fn father(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
+        match self.father {
+            OptionOrSkip::Some(ref father) => Ok(father),
+            OptionOrSkip::None => {
+                let father = self.read_fam_or_bim("fam", 2)?;
+                self.father = OptionOrSkip::Some(father);
+                // This unwrap is safe because we just created 'Some'
+                Ok(self.father.as_ref().unwrap())
+            }
+            OptionOrSkip::Skip => Err(BedError::PropertySkipped("father".to_string()).into()),
+        }
+    }
+
+    pub fn mother(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
+        match self.mother {
+            OptionOrSkip::Some(ref mother) => Ok(mother),
+            OptionOrSkip::None => {
+                let mother = self.read_fam_or_bim("fam", 3)?;
+                self.mother = OptionOrSkip::Some(mother);
+                // This unwrap is safe because we just created 'Some'
+                Ok(self.mother.as_ref().unwrap())
+            }
+            OptionOrSkip::Skip => Err(BedError::PropertySkipped("mother".to_string()).into()),
+        }
+    }
+
+
     pub fn sex(&mut self) -> Result<&nd::Array1<i32>, BedErrorPlus> {
         match self.sex {
             OptionOrSkip::Some(ref sex) => Ok(sex),
@@ -394,6 +483,56 @@ impl Bed {
             OptionOrSkip::Skip => Err(BedError::PropertySkipped("sex".to_string()).into()),
         }
     }
+
+    pub fn cm_position(&mut self) -> Result<&nd::Array1<f32>, BedErrorPlus> {
+        match self.cm_position {
+            OptionOrSkip::Some(ref cm_position) => Ok(cm_position),
+            OptionOrSkip::None => {
+                let cm_position: Result<nd::Array1<f32>, _> = self
+                    .read_fam_or_bim("bim", 2)?
+                    .into_iter()
+                    .map(|s| match s.parse::<f32>() {
+                        Err(err) => {
+                            println!("!!!cmk{}", s);
+                            Err(BedErrorPlus::BedError(BedError::CannotOpenFamOrBim(
+                                err.to_string(),
+                            )))
+                        }
+                        Ok(i) => Ok(i),
+                    })
+                    .collect();
+                let cm_position2 = cm_position?;
+                self.cm_position = OptionOrSkip::Some(cm_position2);
+                // This unwrap is safe because we just created 'Some'
+                Ok(self.cm_position.as_ref().unwrap())
+            }
+            OptionOrSkip::Skip => Err(BedError::PropertySkipped("cm_position".to_string()).into()),
+        }
+    }
+
+    pub fn bp_position(&mut self) -> Result<&nd::Array1<i32>, BedErrorPlus> {
+        match self.bp_position {
+            OptionOrSkip::Some(ref bp_position) => Ok(bp_position),
+            OptionOrSkip::None => {
+                let bp_position: Result<nd::Array1<i32>, _> = self
+                    .read_fam_or_bim("bim", 3)?
+                    .into_iter()
+                    .map(|s| match s.parse::<i32>() {
+                        Err(_) => Err(BedErrorPlus::BedError(BedError::CannotOpenFamOrBim(
+                            "!!!cmk0".to_string(),
+                        ))),
+                        Ok(i) => Ok(i),
+                    })
+                    .collect();
+                let bp_position2 = bp_position?;
+                self.bp_position = OptionOrSkip::Some(bp_position2);
+                // This unwrap is safe because we just created 'Some'
+                Ok(self.bp_position.as_ref().unwrap())
+            }
+            OptionOrSkip::Skip => Err(BedError::PropertySkipped("bp_position".to_string()).into()),
+        }
+    }
+
     pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send + Missing>(
         &mut self,
     ) -> Result<nd::Array2<TOut>, BedErrorPlus> {
