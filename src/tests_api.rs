@@ -233,6 +233,8 @@ fn open_examples() -> Result<(), BedErrorPlus> {
     //     None
 
     // !!! cmk 0 to match Python example, should be allele_2
+    // !!! cmk later document that if you skip and then give default value, its the last that matters.
+    // !!! cmk later test that sid_count/iid_count will raise an error if any metadata gives a different count
     let mut bed = Bed::builder(file_name).allele_2_skip().build()?;
     println!("{:?}", bed.iid()?);
 
@@ -261,15 +263,14 @@ fn metadata_sex_etc() -> Result<(), BedErrorPlus> {
     println!("{:?}", bed.bp_position()?);
     // [1, 100, 1000, 1004], shape=[4], strides=[1], layout=CFcf (0xf), const ndim=1
 
-    // println!("{:?}", bed.fid()?);
+    println!("{:?}", bed.fid()?);
     // ["fid1", "fid1", "fid2"], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
 
     println!("{:?}", bed.father()?);
     // ["iid23", "iid23", "iid22"], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
-        
+
     println!("{:?}", bed.mother()?);
     // ["iid34", "iid34", "iid33"], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
-
 
     Ok(())
 }
