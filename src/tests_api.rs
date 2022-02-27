@@ -179,9 +179,16 @@ fn open_examples() -> Result<(), BedErrorPlus> {
     //     >>> print(bed.sid) # same as before
     //     ['sid1' 'sid2' 'sid3' 'sid4']
 
-    // https://stackoverflow.com/questions/38183551/concisely-initializing-a-vector-of-strings
+    let mut bed = Bed::builder(file_name)
+        .iid(["sample1", "sample2", "sample3"])
+        .build()?;
+    println!("{:?}", bed.iid()?);
+    println!("{:?}", bed.sid()?);
 
-    // These don't work:
+    // ["sample1", "sample2", "sample3"], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
+    // ["sid1", "sid2", "sid3", "sid4"], shape=[4], strides=[1], layout=CFcf (0xf), const ndim=
+
+    // Do more testing of Rust
     let iid = nd::array!["sample1", "sample2", "sample3"];
     let mut _bed = Bed::builder(file_name).iid(iid).build()?;
     let iid = nd::array![
@@ -198,14 +205,6 @@ fn open_examples() -> Result<(), BedErrorPlus> {
         "sample3".to_string(),
     ];
     let mut _bed = Bed::builder(file_name).iid(iid).build()?;
-    let mut bed = Bed::builder(file_name)
-        .iid(["sample1", "sample2", "sample3"])
-        .build()?;
-    println!("{:?}", bed.iid()?);
-    println!("{:?}", bed.sid()?);
-
-    // ["sample1", "sample2", "sample3"], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
-    // ["sid1", "sid2", "sid3", "sid4"], shape=[4], strides=[1], layout=CFcf (0xf), const ndim=
 
     // Give the number of individuals (samples) and SNPs (variants) so that the .fam and
     // .bim files need never be opened.
@@ -216,6 +215,13 @@ fn open_examples() -> Result<(), BedErrorPlus> {
     //      [ 2.  0. nan  2.]
     //      [ 0.  1.  2.  0.]]
 
+    let mut bed = Bed::builder(file_name).iid_count(3).sid_count(4).build()?;
+    println!("{:?}", bed.read::<f64>()?);
+
+    //  [[1.0, 0.0, NaN, 0.0],
+    //   [2.0, 0.0, NaN, 2.0],
+    //   [0.0, 1.0, 2.0, 0.0]], shape=[3, 4], strides=[1, 3], layout=Ff (0xa), const ndim=2
+
     // Mark some properties as "don’t read or offer".
 
     //     >>> bed = open_bed(file_name, properties={
@@ -225,6 +231,16 @@ fn open_examples() -> Result<(), BedErrorPlus> {
     //     ['iid1' 'iid2' 'iid3']
     //     >>> print(bed.allele_2)   # not read and not offered
     //     None
+
+    // !!! cmk 0 to match Python example, should be allele_2
+    let mut bed = Bed::builder(file_name).sid_skip().build()?;
+    println!("{:?}", bed.iid()?);
+
+    let result = bed.sid();
+    match result {
+        Err(BedErrorPlus::BedError(BedError::PropertySkipped(_))) => (),
+        _ => panic!("test failure"),
+    };
 
     Ok(())
 }

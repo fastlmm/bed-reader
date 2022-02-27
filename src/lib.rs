@@ -113,8 +113,8 @@ pub enum BedError {
     #[error("Cannot open metadata file. '{0}'")]
     CannotOpenFamOrBim(String),
 
-    #[error("start, count, and/or output matrix size are illegal.")]
-    IllegalStartCountOutput,
+    #[error("Property '{0}' Skipped")]
+    PropertySkipped(String),
 }
 
 //#!!!cmk later hide this from the docs

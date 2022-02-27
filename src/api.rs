@@ -33,6 +33,30 @@ pub enum Allele {
     A2,
 }
 
+#[derive(Debug, Clone)]
+pub enum OptionOrSkip<T> {
+    None,
+    Some(T),
+    Skip,
+}
+
+impl<T> OptionOrSkip<T> {
+    pub const fn as_ref(&self) -> OptionOrSkip<&T> {
+        match *self {
+            OptionOrSkip::Some(ref x) => OptionOrSkip::Some(x),
+            OptionOrSkip::None => OptionOrSkip::None,
+            OptionOrSkip::Skip => OptionOrSkip::Skip,
+        }
+    }
+    pub fn unwrap(self) -> T {
+        match self {
+            OptionOrSkip::Some(val) => val,
+            OptionOrSkip::None => panic!("called `OptionOrSkip::::unwrap()` on a `None` value"),
+            OptionOrSkip::Skip => panic!("called `OptionOrSkip::::unwrap()` on a `Skip` value"),
+        }
+    }
+}
+
 // https://crates.io/crates/typed-builder
 // (or https://docs.rs/derive_builder/latest/derive_builder/)
 // Somehow ndarray can do this: 	Array::zeros((3, 4, 5).f())
@@ -62,10 +86,11 @@ pub struct Bed {
     #[builder(default, setter(strip_option, custom))]
     iid: Option<nd::Array1<String>>,
 
-    #[builder(default, setter(strip_option))]
-    sid: Option<nd::Array1<String>>,
+    #[builder(setter(custom))]
+    #[builder(default = "OptionOrSkip::None")]
+    sid: OptionOrSkip<nd::Array1<String>>,
 
-    #[builder(default, setter(strip_option))]
+    #[builder(default, setter(strip_option, custom))]
     chromosome: Option<nd::Array1<String>>,
 }
 
@@ -117,6 +142,11 @@ impl BedBuilder {
         self
     }
 
+    pub fn sid_skip(&mut self) -> &Self {
+        self.sid = Some(OptionOrSkip::Skip);
+        self
+    }
+
     // https://stackoverflow.com/questions/38183551/concisely-initializing-a-vector-of-strings
     // https://stackoverflow.com/questions/65250496/how-to-convert-intoiteratoritem-asrefstr-to-iteratoritem-str-in-rust
     pub fn iid<I, T>(&mut self, iid: I) -> &Self
@@ -124,8 +154,33 @@ impl BedBuilder {
         I: IntoIterator<Item = T>,
         T: AsRef<str>,
     {
-        let iid2: nd::Array1<String> = iid.into_iter().map(|s| s.as_ref().to_string()).collect();
-        self.iid = Some(Some(iid2));
+        let new_string_array: nd::Array1<String> =
+            iid.into_iter().map(|s| s.as_ref().to_string()).collect();
+        self.iid = Some(Some(new_string_array));
+        self
+    }
+
+    pub fn sid<I, T>(&mut self, sid: I) -> &Self
+    where
+        I: IntoIterator<Item = T>,
+        T: AsRef<str>,
+    {
+        let new_string_array: nd::Array1<String> =
+            sid.into_iter().map(|s| s.as_ref().to_string()).collect();
+        self.sid = Some(OptionOrSkip::Some(new_string_array));
+        self
+    }
+
+    pub fn chromosome<I, T>(&mut self, chromosome: I) -> &Self
+    where
+        I: IntoIterator<Item = T>,
+        T: AsRef<str>,
+    {
+        let new_string_array: nd::Array1<String> = chromosome
+            .into_iter()
+            .map(|s| s.as_ref().to_string())
+            .collect();
+        self.chromosome = Some(Some(new_string_array));
         self
     }
 }
@@ -221,13 +276,15 @@ impl Bed {
     }
 
     pub fn sid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        if let Some(ref sid) = self.sid {
-            Ok(sid)
-        } else {
-            let sid = self.read_fam_or_bim("bim", 1)?;
-            self.sid = Some(sid);
-            // This unwrap is safe because we just created 'Some'
-            Ok(self.sid.as_ref().unwrap())
+        match self.sid {
+            OptionOrSkip::Some(ref sid) => Ok(sid),
+            OptionOrSkip::None => {
+                let sid = self.read_fam_or_bim("bim", 2)?;
+                self.sid = OptionOrSkip::Some(sid);
+                // This unwrap is safe because we just created 'Some'
+                Ok(self.sid.as_ref().unwrap())
+            }
+            OptionOrSkip::Skip => Err(BedError::PropertySkipped("sid".to_string()).into()),
         }
     }
 
