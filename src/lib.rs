@@ -118,6 +118,16 @@ pub enum BedError {
     PropertySkipped(String),
 }
 
+pub fn create_pool(num_threads: usize) -> Result<rayon::ThreadPool, BedErrorPlus> {
+    match rayon::ThreadPoolBuilder::new()
+        .num_threads(num_threads)
+        .build()
+    {
+        Err(e) => Err(e.into()),
+        Ok(pool) => Ok(pool),
+    }
+}
+
 //#!!!cmk later hide this from the docs
 #[allow(clippy::too_many_arguments)]
 fn read_no_alloc<
@@ -131,44 +141,49 @@ fn read_no_alloc<
     iid_index: &[usize],
     sid_index: &[usize],
     missing_value: TOut,
+    num_threads: usize,
     val: &mut nd::ArrayViewMut2<'_, TOut>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
 ) -> Result<(), BedErrorPlus> {
     let path_buf = PathBuf::from(path.as_ref());
-    let mut buf_reader = BufReader::new(File::open(path)?);
-    let mut bytes_vector: Vec<u8> = vec![0; CB_HEADER_USIZE];
-    buf_reader.read_exact(&mut bytes_vector)?;
-    if (BED_FILE_MAGIC1 != bytes_vector[0]) || (BED_FILE_MAGIC2 != bytes_vector[1]) {
-        return Err(BedError::IllFormed(path_buf.display().to_string()).into());
-    }
-    match bytes_vector[2] {
-        0 => {
-            // We swap 'iid' and 'sid' and then reverse the axes.
-            let mut val_t = val.view_mut().reversed_axes();
-            internal_read_no_alloc(
+
+    create_pool(num_threads)?.install(|| {
+        let mut buf_reader = BufReader::new(File::open(&path_buf)?);
+        let mut bytes_vector: Vec<u8> = vec![0; CB_HEADER_USIZE];
+        buf_reader.read_exact(&mut bytes_vector)?;
+        if (BED_FILE_MAGIC1 != bytes_vector[0]) || (BED_FILE_MAGIC2 != bytes_vector[1]) {
+            return Err(BedError::IllFormed(path_buf.display().to_string()).into());
+        }
+        match bytes_vector[2] {
+            0 => {
+                // We swap 'iid' and 'sid' and then reverse the axes.
+                let mut val_t = val.view_mut().reversed_axes();
+                internal_read_no_alloc(
+                    buf_reader,
+                    path_buf,
+                    sid_count,
+                    iid_count,
+                    count_a1,
+                    sid_index,
+                    iid_index,
+                    missing_value,
+                    &mut val_t,
+                )
+            }
+            1 => internal_read_no_alloc(
                 buf_reader,
                 path_buf,
-                sid_count,
                 iid_count,
+                sid_count,
                 count_a1,
-                sid_index,
                 iid_index,
+                sid_index,
                 missing_value,
-                &mut val_t,
-            )
+                val,
+            ),
+            _ => Err(BedError::BadMode(path_buf.display().to_string()).into()),
         }
-        1 => internal_read_no_alloc(
-            buf_reader,
-            path_buf,
-            iid_count,
-            sid_count,
-            count_a1,
-            iid_index,
-            sid_index,
-            missing_value,
-            val,
-        ),
-        _ => Err(BedError::BadMode(path_buf.display().to_string()).into()),
-    }
+    })?;
+    Ok(())
 }
 
 trait Max {
@@ -347,6 +362,7 @@ pub fn read_with_indexes<
     output_is_orderf: bool,
     count_a1: bool,
     missing_value: TOut,
+    num_threads: usize,
 ) -> Result<nd::Array2<TOut>, BedErrorPlus> {
     let (iid_count, sid_count) = counts(&path)?;
 
@@ -361,6 +377,7 @@ pub fn read_with_indexes<
         iid_index,
         sid_index,
         missing_value,
+        num_threads,
         &mut val.view_mut(),
     )?;
 
@@ -372,6 +389,7 @@ pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send + Missing, P: 
     output_is_orderf: bool,
     count_a1: bool,
     missing_value: TOut,
+    num_threads: usize,
 ) -> Result<nd::Array2<TOut>, BedErrorPlus> {
     let (iid_count, sid_count) = counts(path.as_ref())?;
 
@@ -389,6 +407,7 @@ pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send + Missing, P: 
         &iid_index,
         &sid_index,
         missing_value,
+        num_threads,
         &mut val.view_mut(),
     )?;
 
@@ -791,16 +810,6 @@ fn _process_all_iids<
         });
     }
     Ok(())
-}
-
-pub fn create_pool(num_threads: usize) -> Result<rayon::ThreadPool, BedErrorPlus> {
-    match rayon::ThreadPoolBuilder::new()
-        .num_threads(num_threads)
-        .build()
-    {
-        Err(e) => Err(e.into()),
-        Ok(pool) => Ok(pool),
-    }
 }
 
 fn file_b_less_aatbx<P: AsRef<Path>>(

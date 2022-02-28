@@ -106,7 +106,7 @@ pub struct Bed {
     #[builder(setter(custom))]
     #[builder(default = "OptionOrSkip::None")]
     sex: OptionOrSkip<nd::Array1<i32>>,
-    
+
     #[builder(setter(custom))]
     #[builder(default = "OptionOrSkip::None")]
     fid: OptionOrSkip<nd::Array1<String>>,
@@ -223,7 +223,6 @@ impl BedBuilder {
         self
     }
 
-
     pub fn sex_skip(&mut self) -> &Self {
         self.sex = Some(OptionOrSkip::Skip);
         self
@@ -278,8 +277,6 @@ impl BedBuilder {
 }
 
 impl Bed {
-    // !!!cmk 0 find an example of Python properties and create a test for it.
-    // properties: Mapping[str, List[Any]] = {},
     // !!!cmk later
     // num_threads: Optional[int] = None,
     // fam_filepath: Union[str, Path] = None,
@@ -460,7 +457,6 @@ impl Bed {
         }
     }
 
-
     pub fn sex(&mut self) -> Result<&nd::Array1<i32>, BedErrorPlus> {
         match self.sex {
             OptionOrSkip::Some(ref sex) => Ok(sex),
@@ -549,6 +545,8 @@ impl Bed {
         let iid_count = self.iid_count()?;
         let sid_count = self.sid_count()?;
 
+        let num_threads = read_options.num_threads.unwrap_or(1); // !!!cmk 0 improve
+
         // !!!cmk later do something with read_options.num_threads
 
         let iid_index = read_options.iid_index.to_vec(iid_count);
@@ -565,6 +563,7 @@ impl Bed {
             &iid_index,
             &sid_index,
             read_options.missing_value,
+            num_threads,
             &mut val.view_mut(),
         )?;
 
@@ -706,7 +705,6 @@ pub struct ReadOptions<TOut: Copy + Default + From<i8> + Debug + Sync + Send + M
 
     #[builder(default, setter(strip_option))]
     pub num_threads: Option<usize>,
-    // num_threads=None,
 }
 
 impl<TOut: Copy + Default + From<i8> + Debug + Sync + Send + Missing + Clone> ReadOptions<TOut> {

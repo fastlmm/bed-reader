@@ -60,18 +60,17 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let ii = &iid_index.as_slice()?;
         let si = &sid_index.as_slice()?;
 
-        create_pool(num_threads)?.install(|| {
-            read_no_alloc(
-                filename,
-                iid_count,
-                sid_count,
-                count_a1,
-                ii,
-                si,
-                f64::NAN,
-                &mut val,
-            )
-        })?;
+        read_no_alloc(
+            filename,
+            iid_count,
+            sid_count,
+            count_a1,
+            ii,
+            si,
+            f64::NAN,
+            num_threads,
+            &mut val,
+        )?;
 
         Ok(())
     }
@@ -96,18 +95,17 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let ii = &iid_index.as_slice()?;
         let si = &sid_index.as_slice()?;
 
-        create_pool(num_threads)?.install(|| {
-            read_no_alloc(
-                filename,
-                iid_count,
-                sid_count,
-                count_a1,
-                ii,
-                si,
-                f32::NAN,
-                &mut val,
-            )
-        })?;
+        read_no_alloc(
+            filename,
+            iid_count,
+            sid_count,
+            count_a1,
+            ii,
+            si,
+            f32::NAN,
+            num_threads,
+            &mut val,
+        )?;
 
         Ok(())
     }
@@ -132,11 +130,17 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let ii = &iid_index.as_slice()?;
         let si = &sid_index.as_slice()?;
 
-        create_pool(num_threads)?.install(|| {
-            read_no_alloc(
-                filename, iid_count, sid_count, count_a1, ii, si, -127i8, &mut val,
-            )
-        })?;
+        read_no_alloc(
+            filename,
+            iid_count,
+            sid_count,
+            count_a1,
+            ii,
+            si,
+            -127i8,
+            num_threads,
+            &mut val,
+        )?;
 
         Ok(())
     }
