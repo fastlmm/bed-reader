@@ -47,7 +47,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         filename: &str,
         iid_count: usize,
         sid_count: usize,
-        count_a1: bool,
+        is_a1_counted: bool,
         iid_index: &PyArray1<usize>,
         sid_index: &PyArray1<usize>,
         val: &PyArray2<f64>,
@@ -64,7 +64,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
             filename,
             iid_count,
             sid_count,
-            count_a1,
+            is_a1_counted,
             ii,
             si,
             f64::NAN,
@@ -82,7 +82,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         filename: &str,
         iid_count: usize,
         sid_count: usize,
-        count_a1: bool,
+        is_a1_counted: bool,
         iid_index: &PyArray1<usize>,
         sid_index: &PyArray1<usize>,
         val: &PyArray2<f32>,
@@ -99,7 +99,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
             filename,
             iid_count,
             sid_count,
-            count_a1,
+            is_a1_counted,
             ii,
             si,
             f32::NAN,
@@ -117,7 +117,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         filename: &str,
         iid_count: usize,
         sid_count: usize,
-        count_a1: bool,
+        is_a1_counted: bool,
         iid_index: &PyArray1<usize>,
         sid_index: &PyArray1<usize>,
         val: &PyArray2<i8>,
@@ -134,7 +134,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
             filename,
             iid_count,
             sid_count,
-            count_a1,
+            is_a1_counted,
             ii,
             si,
             -127i8,
@@ -149,13 +149,13 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[pyo3(name = "write_f64")]
     fn write_f64(
         filename: &str,
-        count_a1: bool,
+        is_a1_counted: bool,
         val: &PyArray2<f64>,
         num_threads: usize,
     ) -> Result<(), PyErr> {
         let val = unsafe { val.as_array() };
 
-        write(filename, &val, count_a1, f64::NAN, num_threads)?;
+        write(filename, &val, is_a1_counted, f64::NAN, num_threads)?;
 
         Ok(())
     }
@@ -164,13 +164,13 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[pyo3(name = "write_f32")]
     fn write_f32(
         filename: &str,
-        count_a1: bool,
+        is_a1_counted: bool,
         val: &PyArray2<f32>,
         num_threads: usize,
     ) -> Result<(), PyErr> {
         let val = unsafe { val.as_array() };
 
-        write(filename, &val, count_a1, f32::NAN, num_threads)?;
+        write(filename, &val, is_a1_counted, f32::NAN, num_threads)?;
 
         Ok(())
     }
@@ -179,13 +179,13 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[pyo3(name = "write_i8")]
     fn write_i8(
         filename: &str,
-        count_a1: bool,
+        is_a1_counted: bool,
         val: &PyArray2<i8>,
         num_threads: usize,
     ) -> Result<(), PyErr> {
         let val = unsafe { val.as_array() };
 
-        write(filename, &val, count_a1, -127, num_threads)?;
+        write(filename, &val, is_a1_counted, -127, num_threads)?;
 
         Ok(())
     }

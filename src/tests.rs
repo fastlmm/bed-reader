@@ -48,15 +48,15 @@ fn best_int8() {
     let filename = "bed_reader/tests/data/some_missing.bed";
 
     for output_order_is_f in [true, false].iter() {
-        let val = read(filename, *output_order_is_f, true, -127, 1).unwrap();
+        let val = read(filename, *output_order_is_f, true, -127, 0).unwrap();
         let ref_val_i8 = reference_val_i8(true);
         assert_eq!(val, ref_val_i8);
     }
 }
 
 #[cfg(test)]
-fn reference_val_i8(count_a1: bool) -> nd::Array2<i8> {
-    let ref_val = reference_val(count_a1);
+fn reference_val_i8(is_a1_counted: bool) -> nd::Array2<i8> {
+    let ref_val = reference_val(is_a1_counted);
 
     let (row_count, col_count) = ref_val.dim();
     let mut ref_val_i8 = nd::Array2::<i8>::zeros((row_count, col_count));
@@ -104,22 +104,22 @@ fn rest_reader_bed() {
     let ref_val = reference_val(count_a1);
     let ref_val_i8 = reference_val_i8(count_a1);
 
-    let val = read(file, true, count_a1, f32::NAN, 1).unwrap();
+    let val = read(file, true, count_a1, f32::NAN, 0).unwrap();
     assert!(allclose(&ref_val.view(), &val.view(), 1e-08, true));
 
-    let val_f64 = read(file, true, count_a1, f64::NAN, 1).unwrap();
+    let val_f64 = read(file, true, count_a1, f64::NAN, 0).unwrap();
     assert!(allclose(&ref_val.view(), &val_f64.view(), 1e-08, true));
 
-    let val2 = read(file, true, count_a1, -127, 1).unwrap();
+    let val2 = read(file, true, count_a1, -127, 0).unwrap();
     assert_eq!(val2, ref_val_i8);
 }
 
 #[cfg(test)]
-fn reference_val(count_a1: bool) -> nd::Array2<f64> {
+fn reference_val(is_a1_counted: bool) -> nd::Array2<f64> {
     let file = "bed_reader/tests/data/some_missing.val.npy";
 
     let mut val: nd::Array2<f64> = read_npy(file).unwrap();
-    if !count_a1 {
+    if !is_a1_counted {
         val = val * -1.0 + 2.0;
     }
 
@@ -171,10 +171,10 @@ fn index() {
     let iid_index_full = (0..iid_count).collect::<Vec<usize>>();
     let ref_val_float = reference_val(true);
 
-    let val = read(filename, true, true, f32::NAN, 1).unwrap();
+    let val = read(filename, true, true, f32::NAN, 0).unwrap();
     assert!(allclose(&ref_val_float.view(), &val.view(), 1e-08, true));
 
-    let val = read_with_indexes(filename, &iid_index_full, &[2], true, true, f32::NAN, 1).unwrap();
+    let val = read_with_indexes(filename, &iid_index_full, &[2], true, true, f32::NAN, 0).unwrap();
     assert!(allclose(
         &(ref_val_float.slice(nd::s![.., 2..3])),
         &val.view(),
@@ -182,7 +182,7 @@ fn index() {
         true
     ));
 
-    let val = read_with_indexes(filename, &[1usize], &[2usize], true, true, f32::NAN, 1).unwrap();
+    let val = read_with_indexes(filename, &[1usize], &[2usize], true, true, f32::NAN, 0).unwrap();
     assert!(allclose(
         &ref_val_float.slice(nd::s![1..2, 2..3]),
         &val.view(),
@@ -207,7 +207,7 @@ fn index() {
     let expected = nd::stack![nd::Axis(1), col0, col1];
     assert!(allclose(&expected.view(), &val.view(), 1e-08, true));
 
-    let result = read_with_indexes(filename, &[usize::MAX], &[2], true, true, f32::NAN, 1);
+    let result = read_with_indexes(filename, &[usize::MAX], &[2], true, true, f32::NAN, 0);
     match result {
         Err(BedErrorPlus::BedError(BedError::IidIndexTooBig(_))) => (),
         _ => panic!("test failure"),
@@ -241,7 +241,7 @@ fn index() {
         _ => panic!("test failure"),
     };
 
-    let result = read_with_indexes(filename, &[2], &[usize::MAX], true, true, f32::NAN, 1);
+    let result = read_with_indexes(filename, &[2], &[usize::MAX], true, true, f32::NAN, 0);
     match result {
         Err(BedErrorPlus::BedError(BedError::SidIndexTooBig(_))) => (),
         _ => panic!("test failure"),
@@ -284,42 +284,42 @@ fn index() {
 fn writer() {
     let path = Path::new("bed_reader/tests/data/some_missing.bed");
 
-    let val = read(path, false, true, -127, 1).unwrap();
+    let val = read(path, false, true, -127, 0).unwrap();
 
     let temp = TempDir::default();
     let path2 = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_test.bed");
 
-    write(&path2, &val.view(), true, -127, 1).unwrap();
+    write(&path2, &val.view(), true, -127, 0).unwrap();
     for ext in ["fam", "bim"].iter() {
         let from = path.with_extension(ext);
         let to = path2.with_extension(ext);
         std::fs::copy(from, to).unwrap();
     }
 
-    let val2 = read(path2, false, true, -127, 1).unwrap();
+    let val2 = read(path2, false, true, -127, 0).unwrap();
     assert!(allclose(&val.view(), &val2.view(), 0, true));
 
-    let val = read(path, false, true, f64::NAN, 1).unwrap();
+    let val = read(path, false, true, f64::NAN, 0).unwrap();
 
     let path2 = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64.bed");
 
-    write(&path2, &val.view(), true, f64::NAN, 1).unwrap();
+    write(&path2, &val.view(), true, f64::NAN, 0).unwrap();
     for ext in ["fam", "bim"].iter() {
         let from = path.with_extension(ext);
         let to = path2.with_extension(ext);
         std::fs::copy(from, to).unwrap();
     }
 
-    let val2 = read(path2, false, true, f64::NAN, 1).unwrap();
+    let val2 = read(path2, false, true, f64::NAN, 0).unwrap();
 
     assert!(allclose(&val.view(), &val2.view(), 1e-8, true));
 
-    let mut val = read(path, false, true, f64::NAN, 1).unwrap();
+    let mut val = read(path, false, true, f64::NAN, 0).unwrap();
     val[(0, 0)] = 5.0;
     let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_5.bed");
 
     if let Err(BedErrorPlus::BedError(BedError::BadValue(_))) =
-        write(&path, &val.view(), true, f64::NAN, 1)
+        write(&path, &val.view(), true, f64::NAN, 0)
     {
         assert!(!path.exists(), "file should not exist");
     } else {
@@ -328,11 +328,11 @@ fn writer() {
 
     let val = nd::Array2::zeros((0, 0));
     let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_0s.bed");
-    write(&path, &val.view(), true, f64::NAN, 1).unwrap();
+    write(&path, &val.view(), true, f64::NAN, 0).unwrap();
 
     let val: nd::Array2<i8> = nd::Array2::zeros((3, 0));
     let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_3_0.bed");
-    write(&path, &val.view(), true, -127, 1).unwrap();
+    write(&path, &val.view(), true, -127, 0).unwrap();
 }
 
 #[test]
@@ -396,7 +396,7 @@ fn fill_in() {
     let filename = "bed_reader/tests/data/some_missing.bed";
 
     for output_is_orderf_ptr in [false, true].iter() {
-        let mut val = read(filename, *output_is_orderf_ptr, true, f64::NAN, 1).unwrap();
+        let mut val = read(filename, *output_is_orderf_ptr, true, f64::NAN, 0).unwrap();
         let mut stats = nd::Array2::<f64>::zeros((val.dim().1, 2));
 
         impute_and_zero_mean_snps(
@@ -422,7 +422,7 @@ fn fill_in() {
             _ => panic!("test failure"),
         }
 
-        let mut val = read(filename, *output_is_orderf_ptr, true, f64::NAN, 1).unwrap();
+        let mut val = read(filename, *output_is_orderf_ptr, true, f64::NAN, 0).unwrap();
         let result = impute_and_zero_mean_snps(
             &mut val.view_mut(),
             Dist::Beta { a: -10.0, b: 0.0 },
@@ -717,18 +717,18 @@ fn zeros() {
     let ref_val_float = reference_val(true);
 
     // Test read on zero length indexes
-    let val = read(filename, true, true, f32::NAN, 1).unwrap();
+    let val = read(filename, true, true, f32::NAN, 0).unwrap();
     assert!(allclose(&ref_val_float.view(), &val.view(), 1e-08, true));
 
     let out_val10 =
-        read_with_indexes(filename, &iid_index_full, &[], true, true, f64::NAN, 1).unwrap();
+        read_with_indexes(filename, &iid_index_full, &[], true, true, f64::NAN, 0).unwrap();
     assert!(out_val10.shape() == [iid_count, 0]);
 
     let out_val01 =
-        read_with_indexes(filename, &[], &sid_index_full, true, true, f64::NAN, 1).unwrap();
+        read_with_indexes(filename, &[], &sid_index_full, true, true, f64::NAN, 0).unwrap();
     assert!(out_val01.shape() == [0, sid_count]);
 
-    let out_val00 = read_with_indexes(filename, &[], &[], true, true, f64::NAN, 1).unwrap();
+    let out_val00 = read_with_indexes(filename, &[], &[], true, true, f64::NAN, 0).unwrap();
     assert!(out_val00.shape() == [0, 0]);
 
     // Test subset on zero length indexes
@@ -761,22 +761,22 @@ fn zeros() {
     let temp = TempDir::default();
     let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_zeros.bed");
 
-    write(&path, &out_val01.view(), true, f64::NAN, 1).unwrap();
+    write(&path, &out_val01.view(), true, f64::NAN, 0).unwrap();
     write_fake_metadata(&path, 0, sid_count);
-    let result = read(&path, true, true, f64::NAN, 1);
+    let result = read(&path, true, true, f64::NAN, 0);
     let in_val01 = result.unwrap();
     assert!(in_val01.shape() == [0, sid_count]);
     assert!(allclose(&in_val01.view(), &out_val01.view(), 1e-08, true));
 
-    write(&path, &out_val10.view(), true, f64::NAN, 1).unwrap();
+    write(&path, &out_val10.view(), true, f64::NAN, 0).unwrap();
     write_fake_metadata(&path, iid_count, 0);
-    let in_val10 = read(&path, true, true, f64::NAN, 1).unwrap();
+    let in_val10 = read(&path, true, true, f64::NAN, 0).unwrap();
     assert!(in_val10.shape() == [iid_count, 0]);
     assert!(allclose(&in_val10.view(), &out_val10.view(), 1e-08, true));
 
-    write(&path, &out_val00.view(), true, f64::NAN, 1).unwrap();
+    write(&path, &out_val00.view(), true, f64::NAN, 0).unwrap();
     write_fake_metadata(&path, 0, 0);
-    let in_val00 = read(&path, true, true, f64::NAN, 1).unwrap();
+    let in_val00 = read(&path, true, true, f64::NAN, 0).unwrap();
     assert!(in_val00.shape() == [0, 0]);
     assert!(allclose(&in_val00.view(), &out_val00.view(), 1e-08, true));
 }

@@ -7,7 +7,8 @@ from bed_reader._open_bed import get_num_threads, open_bed  # noqa
 from bed_reader._sample_data import sample_file, tmp_path  # noqa
 from bed_reader._to_bed import to_bed  # noqa
 
-from .bed_reader import (  # noqa
+# type: ignore
+from .bed_reader import (  # type: ignore # noqa
     file_aat_piece_f32_orderf,
     file_aat_piece_f64_orderf,
     file_ata_piece_f32_orderf,

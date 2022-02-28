@@ -7,7 +7,7 @@ import numpy as np
 
 from bed_reader import get_num_threads, open_bed
 
-from .bed_reader import write_f32, write_f64, write_i8
+from .bed_reader import write_f32, write_f64, write_i8  # type: ignore
 
 
 def to_bed(
@@ -135,21 +135,21 @@ def to_bed(
             if val.dtype == np.float64:
                 write_f64(
                     str(filepath),
-                    count_a1=count_A1,
+                    is_a1_counted=count_A1,
                     val=val,
                     num_threads=num_threads,
                 )
             elif val.dtype == np.float32:
                 write_f32(
                     str(filepath),
-                    count_a1=count_A1,
+                    is_a1_counted=count_A1,
                     val=val,
                     num_threads=num_threads,
                 )
             elif val.dtype == np.int8:
                 write_i8(
                     str(filepath),
-                    count_a1=count_A1,
+                    is_a1_counted=count_A1,
                     val=val,
                     num_threads=num_threads,
                 )

@@ -230,7 +230,6 @@ fn open_examples() -> Result<(), BedErrorPlus> {
     //     >>> print(bed.allele_2)   # not read and not offered
     //     None
 
-    // !!! cmk 0 to match Python example, should be allele_2
     // !!! cmk later document that if you skip and then give default value, its the last that matters.
     // !!! cmk later test that sid_count/iid_count will raise an error if any metadata gives a different count
     let mut bed = Bed::builder(file_name).skip_allele_2().build()?;
@@ -238,7 +237,7 @@ fn open_examples() -> Result<(), BedErrorPlus> {
 
     let result = bed.allele_2();
     match result {
-        Err(BedErrorPlus::BedError(BedError::PropertySkipped(_))) => (),
+        Err(BedErrorPlus::BedError(BedError::CannotUseSkippedMetadata(_))) => (),
         _ => panic!("test failure"),
     };
 
@@ -246,7 +245,7 @@ fn open_examples() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn metadata_sex_etc() -> Result<(), BedErrorPlus> {
+fn metadata_etc() -> Result<(), BedErrorPlus> {
     // >>> file_name = sample_file("small.bed")
     // >>> with open_bed(file_name) as bed:
     // ...     print(bed.sex)

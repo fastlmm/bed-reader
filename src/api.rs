@@ -440,7 +440,7 @@ impl Bed {
                 // This unwrap is safe because we just created 'Some'
                 Ok(self.iid.as_ref().unwrap())
             }
-            OptionOrSkip::Skip => Err(BedError::PropertySkipped("iid".to_string()).into()),
+            OptionOrSkip::Skip => Err(BedError::CannotUseSkippedMetadata("iid".to_string()).into()),
         }
     }
 
@@ -453,7 +453,7 @@ impl Bed {
                 // This unwrap is safe because we just created 'Some'
                 Ok(self.sid.as_ref().unwrap())
             }
-            OptionOrSkip::Skip => Err(BedError::PropertySkipped("sid".to_string()).into()),
+            OptionOrSkip::Skip => Err(BedError::CannotUseSkippedMetadata("sid".to_string()).into()),
         }
     }
 
@@ -466,7 +466,9 @@ impl Bed {
                 // This unwrap is safe because we just created 'Some'
                 Ok(self.chromosome.as_ref().unwrap())
             }
-            OptionOrSkip::Skip => Err(BedError::PropertySkipped("chromosome".to_string()).into()),
+            OptionOrSkip::Skip => {
+                Err(BedError::CannotUseSkippedMetadata("chromosome".to_string()).into())
+            }
         }
     }
 
@@ -479,7 +481,9 @@ impl Bed {
                 // This unwrap is safe because we just created 'Some'
                 Ok(self.allele_1.as_ref().unwrap())
             }
-            OptionOrSkip::Skip => Err(BedError::PropertySkipped("allele_1".to_string()).into()),
+            OptionOrSkip::Skip => {
+                Err(BedError::CannotUseSkippedMetadata("allele_1".to_string()).into())
+            }
         }
     }
 
@@ -492,7 +496,9 @@ impl Bed {
                 // This unwrap is safe because we just created 'Some'
                 Ok(self.allele_2.as_ref().unwrap())
             }
-            OptionOrSkip::Skip => Err(BedError::PropertySkipped("allele_2".to_string()).into()),
+            OptionOrSkip::Skip => {
+                Err(BedError::CannotUseSkippedMetadata("allele_2".to_string()).into())
+            }
         }
     }
 
@@ -505,7 +511,7 @@ impl Bed {
                 // This unwrap is safe because we just created 'Some'
                 Ok(self.fid.as_ref().unwrap())
             }
-            OptionOrSkip::Skip => Err(BedError::PropertySkipped("fid".to_string()).into()),
+            OptionOrSkip::Skip => Err(BedError::CannotUseSkippedMetadata("fid".to_string()).into()),
         }
     }
 
@@ -518,7 +524,9 @@ impl Bed {
                 // This unwrap is safe because we just created 'Some'
                 Ok(self.father.as_ref().unwrap())
             }
-            OptionOrSkip::Skip => Err(BedError::PropertySkipped("father".to_string()).into()),
+            OptionOrSkip::Skip => {
+                Err(BedError::CannotUseSkippedMetadata("father".to_string()).into())
+            }
         }
     }
 
@@ -531,7 +539,9 @@ impl Bed {
                 // This unwrap is safe because we just created 'Some'
                 Ok(self.mother.as_ref().unwrap())
             }
-            OptionOrSkip::Skip => Err(BedError::PropertySkipped("mother".to_string()).into()),
+            OptionOrSkip::Skip => {
+                Err(BedError::CannotUseSkippedMetadata("mother".to_string()).into())
+            }
         }
     }
 
@@ -554,7 +564,7 @@ impl Bed {
                 // This unwrap is safe because we just created 'Some'
                 Ok(self.sex.as_ref().unwrap())
             }
-            OptionOrSkip::Skip => Err(BedError::PropertySkipped("sex".to_string()).into()),
+            OptionOrSkip::Skip => Err(BedError::CannotUseSkippedMetadata("sex".to_string()).into()),
         }
     }
 
@@ -580,7 +590,9 @@ impl Bed {
                 // This unwrap is safe because we just created 'Some'
                 Ok(self.cm_position.as_ref().unwrap())
             }
-            OptionOrSkip::Skip => Err(BedError::PropertySkipped("cm_position".to_string()).into()),
+            OptionOrSkip::Skip => {
+                Err(BedError::CannotUseSkippedMetadata("cm_position".to_string()).into())
+            }
         }
     }
 
@@ -603,7 +615,9 @@ impl Bed {
                 // This unwrap is safe because we just created 'Some'
                 Ok(self.bp_position.as_ref().unwrap())
             }
-            OptionOrSkip::Skip => Err(BedError::PropertySkipped("bp_position".to_string()).into()),
+            OptionOrSkip::Skip => {
+                Err(BedError::CannotUseSkippedMetadata("bp_position".to_string()).into())
+            }
         }
     }
 

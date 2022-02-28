@@ -117,9 +117,8 @@ pub enum BedError {
     #[error("Cannot open metadata file. '{0}'")]
     CannotOpenFamOrBim(String),
 
-    // !!!cmk 0 would this be better called Metadata skipped?
-    #[error("Property '{0}' Skipped")]
-    PropertySkipped(String),
+    #[error("Cannot use skipped metadata '{0}'")]
+    CannotUseSkippedMetadata(String),
 }
 
 // Trait alias
@@ -142,7 +141,7 @@ fn read_no_alloc<TOut: BedVal, P: AsRef<Path>>(
     path: P,
     iid_count: usize,
     sid_count: usize,
-    count_a1: bool, // !!!cmk 0 call is_a1_counted
+    is_a1_counted: bool,
     iid_index: &[usize],
     sid_index: &[usize],
     missing_value: TOut,
@@ -167,7 +166,7 @@ fn read_no_alloc<TOut: BedVal, P: AsRef<Path>>(
                     path_buf,
                     sid_count,
                     iid_count,
-                    count_a1,
+                    is_a1_counted,
                     sid_index,
                     iid_index,
                     missing_value,
@@ -179,7 +178,7 @@ fn read_no_alloc<TOut: BedVal, P: AsRef<Path>>(
                 path_buf,
                 iid_count,
                 sid_count,
-                count_a1,
+                is_a1_counted,
                 iid_index,
                 sid_index,
                 missing_value,
@@ -265,7 +264,7 @@ fn internal_read_no_alloc<TOut: BedVal, P: AsRef<Path>>(
     path: P,
     in_iid_count: usize,
     in_sid_count: usize,
-    count_a1: bool,
+    is_a1_counted: bool,
     iid_index: &[usize],
     sid_index: &[usize],
     missing_value: TOut,
@@ -281,7 +280,7 @@ fn internal_read_no_alloc<TOut: BedVal, P: AsRef<Path>>(
     let (in_iid_count_div4, in_iid_count_div4_u64) =
         try_div_4(in_iid_count, in_sid_count, CB_HEADER_U64)?;
 
-    let from_two_bits_to_value = set_up_two_bits_to_value(count_a1, missing_value);
+    let from_two_bits_to_value = set_up_two_bits_to_value(is_a1_counted, missing_value);
 
     // "as" and math is safe because of early checks
     if buf_reader.seek(SeekFrom::End(0))?
@@ -359,7 +358,7 @@ pub fn read_with_indexes<TOut: BedVal, P: AsRef<Path>>(
     iid_index: &[usize],
     sid_index: &[usize],
     output_is_orderf: bool,
-    count_a1: bool,
+    is_a1_counted: bool,
     missing_value: TOut,
     num_threads: usize,
 ) -> Result<nd::Array2<TOut>, BedErrorPlus> {
@@ -372,7 +371,7 @@ pub fn read_with_indexes<TOut: BedVal, P: AsRef<Path>>(
         path,
         iid_count,
         sid_count,
-        count_a1,
+        is_a1_counted,
         iid_index,
         sid_index,
         missing_value,
@@ -386,7 +385,7 @@ pub fn read_with_indexes<TOut: BedVal, P: AsRef<Path>>(
 pub fn read<TOut: BedVal, P: AsRef<Path>>(
     path: P,
     output_is_orderf: bool,
-    count_a1: bool,
+    is_a1_counted: bool,
     missing_value: TOut,
     num_threads: usize,
 ) -> Result<nd::Array2<TOut>, BedErrorPlus> {
@@ -402,7 +401,7 @@ pub fn read<TOut: BedVal, P: AsRef<Path>>(
         path,
         iid_count,
         sid_count,
-        count_a1,
+        is_a1_counted,
         &iid_index,
         &sid_index,
         missing_value,
@@ -418,7 +417,7 @@ pub fn read<TOut: BedVal, P: AsRef<Path>>(
 pub fn write<T: BedVal, P: AsRef<Path>>(
     path: P,
     val: &nd::ArrayView2<'_, T>,
-    count_a1: bool,
+    is_a1_counted: bool,
     missing: T,
     num_threads: usize,
 ) -> Result<(), BedErrorPlus> {
@@ -429,7 +428,14 @@ pub fn write<T: BedVal, P: AsRef<Path>>(
 
     // We create and write to a file.
     // If there is an error, we will delete it.
-    if let Err(e) = write_internal(&path, iid_count_div4, val, count_a1, missing, num_threads) {
+    if let Err(e) = write_internal(
+        &path,
+        iid_count_div4,
+        val,
+        is_a1_counted,
+        missing,
+        num_threads,
+    ) {
         // Clean up the file
         let _ = fs::remove_file(path);
         Err(e)
@@ -442,7 +448,7 @@ fn write_internal<T: BedVal, P: AsRef<Path>>(
     path: P,
     iid_count_div4: usize,
     val: &nd::ArrayView2<'_, T>,
-    count_a1: bool,
+    is_a1_counted: bool,
     missing: T,
     num_threads: usize,
 ) -> Result<(), BedErrorPlus> {
@@ -451,8 +457,8 @@ fn write_internal<T: BedVal, P: AsRef<Path>>(
 
     #[allow(clippy::eq_op)]
     let use_nan = missing != missing; // generic NAN test
-    let zero_code = if count_a1 { 3u8 } else { 0u8 };
-    let two_code = if count_a1 { 0u8 } else { 3u8 };
+    let zero_code = if is_a1_counted { 3u8 } else { 0u8 };
+    let two_code = if is_a1_counted { 0u8 } else { 3u8 };
 
     let homozygous_primary_allele = T::from(0); // Major Allele
     let heterozygous_allele = T::from(1);
