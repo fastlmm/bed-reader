@@ -289,6 +289,21 @@ fn num_threads() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
+fn fam_and_bim() -> Result<(), BedErrorPlus> {
+    let mut bed = Bed::builder("bed_reader/tests/data/small.deb")
+        .fam_path("bed_reader/tests/data/small.deb.maf")
+        .bim_path("bed_reader/tests/data/small.deb.mib")
+        .build()?;
+
+    let val: nd::Array2<i8> = bed.read()?;
+    let mean = val.mapv(|elem| elem as f64).mean().unwrap();
+    println!("{:?}", mean);
+    assert!(mean == -20.5); // really shouldn't do mean on data where -127 represents missing
+
+    Ok(())
+}
+
+#[test]
 fn readme_examples() -> Result<(), BedErrorPlus> {
     // Read genomic data from a .bed file.
 

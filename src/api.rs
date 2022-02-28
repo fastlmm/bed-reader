@@ -127,6 +127,14 @@ pub struct Bed {
     #[builder(setter(custom))]
     #[builder(default = "OptionOrSkip::None")]
     bp_position: OptionOrSkip<nd::Array1<i32>>,
+
+    #[builder(setter(custom))]
+    #[builder(default = "None")]
+    fam_path: Option<PathBuf>,
+
+    #[builder(setter(custom))]
+    #[builder(default = "None")]
+    bim_path: Option<PathBuf>,
 }
 
 impl Bed {
@@ -158,6 +166,8 @@ impl BedBuilder {
             sex: None,
             cm_position: None,
             bp_position: None,
+            fam_path: None,
+            bim_path: None,
         }
     }
 
@@ -181,67 +191,67 @@ impl BedBuilder {
     }
 
     // !!!cmk 0 is it confusing to use 'skip' for both format_check and metadata?
-    pub fn skip_format_check(&mut self) -> &Self {
+    pub fn skip_format_check(mut self) -> Self {
         self.do_format_check = Some(false);
         self
     }
 
-    pub fn iid_skip(&mut self) -> &Self {
+    pub fn iid_skip(mut self) -> Self {
         self.iid = Some(OptionOrSkip::Skip);
         self
     }
 
-    pub fn sid_skip(&mut self) -> &Self {
+    pub fn sid_skip(mut self) -> Self {
         self.sid = Some(OptionOrSkip::Skip);
         self
     }
 
-    pub fn chromosome_skip(&mut self) -> &Self {
+    pub fn chromosome_skip(mut self) -> Self {
         self.chromosome = Some(OptionOrSkip::Skip);
         self
     }
 
-    pub fn allele_1_skip(&mut self) -> &Self {
+    pub fn allele_1_skip(mut self) -> Self {
         self.allele_1 = Some(OptionOrSkip::Skip);
         self
     }
 
-    pub fn allele_2_skip(&mut self) -> &Self {
+    pub fn allele_2_skip(mut self) -> Self {
         self.allele_2 = Some(OptionOrSkip::Skip);
         self
     }
 
-    pub fn fid_skip(&mut self) -> &Self {
+    pub fn fid_skip(mut self) -> Self {
         self.fid = Some(OptionOrSkip::Skip);
         self
     }
-    pub fn father_skip(&mut self) -> &Self {
+    pub fn father_skip(mut self) -> Self {
         self.father = Some(OptionOrSkip::Skip);
         self
     }
-    pub fn mother_skip(&mut self) -> &Self {
+    pub fn mother_skip(mut self) -> Self {
         self.mother = Some(OptionOrSkip::Skip);
         self
     }
 
-    pub fn sex_skip(&mut self) -> &Self {
+    pub fn sex_skip(mut self) -> Self {
         self.sex = Some(OptionOrSkip::Skip);
         self
     }
 
-    pub fn cm_position_skip(&mut self) -> &Self {
+    pub fn cm_position_skip(mut self) -> Self {
         self.cm_position = Some(OptionOrSkip::Skip);
         self
     }
 
-    pub fn bp_position_skip(&mut self) -> &Self {
+    pub fn bp_position_skip(mut self) -> Self {
         self.bp_position = Some(OptionOrSkip::Skip);
         self
     }
 
     // https://stackoverflow.com/questions/38183551/concisely-initializing-a-vector-of-strings
     // https://stackoverflow.com/questions/65250496/how-to-convert-intoiteratoritem-asrefstr-to-iteratoritem-str-in-rust
-    pub fn iid<I, T>(&mut self, iid: I) -> &Self
+    pub fn iid<I, T>(mut self, iid: I) -> Self
     where
         I: IntoIterator<Item = T>,
         T: AsRef<str>,
@@ -252,7 +262,7 @@ impl BedBuilder {
         self
     }
 
-    pub fn sid<I, T>(&mut self, sid: I) -> &Self
+    pub fn sid<I, T>(mut self, sid: I) -> Self
     where
         I: IntoIterator<Item = T>,
         T: AsRef<str>,
@@ -263,7 +273,8 @@ impl BedBuilder {
         self
     }
 
-    pub fn chromosome<I, T>(&mut self, chromosome: I) -> &Self
+    // !!!cmk 0 can we set new fathers, etc and skip them?
+    pub fn chromosome<I, T>(mut self, chromosome: I) -> Self
     where
         I: IntoIterator<Item = T>,
         T: AsRef<str>,
@@ -275,6 +286,21 @@ impl BedBuilder {
         self.chromosome = Some(OptionOrSkip::Some(new_string_array));
         self
     }
+
+    pub fn fam_path<P: AsRef<Path>>(mut self, path: P) -> Self {
+        self.fam_path = Some(Some(path.as_ref().into()));
+        self
+    }
+
+    pub fn bim_path<P: AsRef<Path>>(mut self, path: P) -> Self {
+        self.bim_path = Some(Some(path.as_ref().into()));
+        self
+    }
+}
+
+enum FamOrBim {
+    Fam,
+    Bim,
 }
 
 impl Bed {
@@ -308,11 +334,26 @@ impl Bed {
     /// !!!cmk later don't re-read for every column
     fn read_fam_or_bim(
         &self,
-        suffix: &str,
+        fam_or_bim: FamOrBim,
         field_index: usize,
     ) -> Result<nd::Array1<String>, BedErrorPlus> {
-        // !!!cmk later allow fam file to be specified.
-        let path_buf = self.path.with_extension(suffix);
+        let path_buf = match fam_or_bim {
+            FamOrBim::Fam => {
+                if let Some(fam_path) = &self.fam_path {
+                    fam_path.clone()
+                } else {
+                    self.path.with_extension("fam")
+                }
+            }
+            FamOrBim::Bim => {
+                if let Some(bim_path) = &self.bim_path {
+                    bim_path.clone()
+                } else {
+                    self.path.with_extension("bim")
+                }
+            }
+        };
+
         let file = if let Ok(file) = File::open(&path_buf) {
             file
         } else {
@@ -357,7 +398,7 @@ impl Bed {
         match self.iid {
             OptionOrSkip::Some(ref iid) => Ok(iid),
             OptionOrSkip::None => {
-                let iid = self.read_fam_or_bim("fam", 1)?;
+                let iid = self.read_fam_or_bim(FamOrBim::Fam, 1)?;
                 self.iid = OptionOrSkip::Some(iid);
                 // This unwrap is safe because we just created 'Some'
                 Ok(self.iid.as_ref().unwrap())
@@ -370,7 +411,7 @@ impl Bed {
         match self.sid {
             OptionOrSkip::Some(ref sid) => Ok(sid),
             OptionOrSkip::None => {
-                let sid = self.read_fam_or_bim("bim", 2)?;
+                let sid = self.read_fam_or_bim(FamOrBim::Bim, 2)?;
                 self.sid = OptionOrSkip::Some(sid);
                 // This unwrap is safe because we just created 'Some'
                 Ok(self.sid.as_ref().unwrap())
@@ -383,7 +424,7 @@ impl Bed {
         match self.chromosome {
             OptionOrSkip::Some(ref chromosome) => Ok(chromosome),
             OptionOrSkip::None => {
-                let chromosome = self.read_fam_or_bim("bim", 0)?;
+                let chromosome = self.read_fam_or_bim(FamOrBim::Bim, 0)?;
                 self.chromosome = OptionOrSkip::Some(chromosome);
                 // This unwrap is safe because we just created 'Some'
                 Ok(self.chromosome.as_ref().unwrap())
@@ -396,7 +437,7 @@ impl Bed {
         match self.allele_1 {
             OptionOrSkip::Some(ref allele_1) => Ok(allele_1),
             OptionOrSkip::None => {
-                let allele_1 = self.read_fam_or_bim("bim", 4)?;
+                let allele_1 = self.read_fam_or_bim(FamOrBim::Bim, 4)?;
                 self.allele_1 = OptionOrSkip::Some(allele_1);
                 // This unwrap is safe because we just created 'Some'
                 Ok(self.allele_1.as_ref().unwrap())
@@ -409,7 +450,7 @@ impl Bed {
         match self.allele_2 {
             OptionOrSkip::Some(ref allele_2) => Ok(allele_2),
             OptionOrSkip::None => {
-                let allele_2 = self.read_fam_or_bim("bim", 5)?;
+                let allele_2 = self.read_fam_or_bim(FamOrBim::Bim, 5)?;
                 self.allele_2 = OptionOrSkip::Some(allele_2);
                 // This unwrap is safe because we just created 'Some'
                 Ok(self.allele_2.as_ref().unwrap())
@@ -422,7 +463,7 @@ impl Bed {
         match self.fid {
             OptionOrSkip::Some(ref fid) => Ok(fid),
             OptionOrSkip::None => {
-                let fid = self.read_fam_or_bim("fam", 0)?;
+                let fid = self.read_fam_or_bim(FamOrBim::Fam, 0)?;
                 self.fid = OptionOrSkip::Some(fid);
                 // This unwrap is safe because we just created 'Some'
                 Ok(self.fid.as_ref().unwrap())
@@ -435,7 +476,7 @@ impl Bed {
         match self.father {
             OptionOrSkip::Some(ref father) => Ok(father),
             OptionOrSkip::None => {
-                let father = self.read_fam_or_bim("fam", 2)?;
+                let father = self.read_fam_or_bim(FamOrBim::Fam, 2)?;
                 self.father = OptionOrSkip::Some(father);
                 // This unwrap is safe because we just created 'Some'
                 Ok(self.father.as_ref().unwrap())
@@ -448,7 +489,7 @@ impl Bed {
         match self.mother {
             OptionOrSkip::Some(ref mother) => Ok(mother),
             OptionOrSkip::None => {
-                let mother = self.read_fam_or_bim("fam", 3)?;
+                let mother = self.read_fam_or_bim(FamOrBim::Fam, 3)?;
                 self.mother = OptionOrSkip::Some(mother);
                 // This unwrap is safe because we just created 'Some'
                 Ok(self.mother.as_ref().unwrap())
@@ -462,7 +503,7 @@ impl Bed {
             OptionOrSkip::Some(ref sex) => Ok(sex),
             OptionOrSkip::None => {
                 let sex: Result<nd::Array1<i32>, _> = self
-                    .read_fam_or_bim("fam", 4)?
+                    .read_fam_or_bim(FamOrBim::Fam, 4)?
                     .into_iter()
                     .map(|s| match s.parse::<i32>() {
                         Err(_) => Err(BedErrorPlus::BedError(BedError::CannotOpenFamOrBim(
@@ -485,7 +526,7 @@ impl Bed {
             OptionOrSkip::Some(ref cm_position) => Ok(cm_position),
             OptionOrSkip::None => {
                 let cm_position: Result<nd::Array1<f32>, _> = self
-                    .read_fam_or_bim("bim", 2)?
+                    .read_fam_or_bim(FamOrBim::Bim, 2)?
                     .into_iter()
                     .map(|s| match s.parse::<f32>() {
                         Err(err) => {
@@ -511,7 +552,7 @@ impl Bed {
             OptionOrSkip::Some(ref bp_position) => Ok(bp_position),
             OptionOrSkip::None => {
                 let bp_position: Result<nd::Array1<i32>, _> = self
-                    .read_fam_or_bim("bim", 3)?
+                    .read_fam_or_bim(FamOrBim::Bim, 3)?
                     .into_iter()
                     .map(|s| match s.parse::<i32>() {
                         Err(_) => Err(BedErrorPlus::BedError(BedError::CannotOpenFamOrBim(
