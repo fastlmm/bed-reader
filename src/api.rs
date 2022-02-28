@@ -13,6 +13,7 @@ use core::fmt::Debug;
 use nd::ShapeBuilder;
 use ndarray as nd;
 use std::{
+    env,
     fs::File,
     io::{BufRead, BufReader, Read},
     ops::Range,
@@ -278,7 +279,6 @@ impl BedBuilder {
 
 impl Bed {
     // !!!cmk later
-    // num_threads: Optional[int] = None,
     // fam_filepath: Union[str, Path] = None,
     // bim_filepath: Union[str, Path] = None,
 
@@ -545,9 +545,17 @@ impl Bed {
         let iid_count = self.iid_count()?;
         let sid_count = self.sid_count()?;
 
-        let num_threads = read_options.num_threads.unwrap_or(1); // !!!cmk 0 improve
-
-        // !!!cmk later do something with read_options.num_threads
+        let num_threads = if let Some(num_threads) = read_options.num_threads {
+            num_threads
+        } else {
+            if let Ok(num_threads) = env::var("BED_READER_NUM_THREADS") {
+                num_threads.parse::<usize>()?
+            } else if let Ok(num_threads) = env::var("NUM_THREADS") {
+                num_threads.parse::<usize>()?
+            } else {
+                0
+            }
+        };
 
         let iid_index = read_options.iid_index.to_vec(iid_count);
         let sid_index = read_options.sid_index.to_vec(sid_count);

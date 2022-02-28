@@ -276,6 +276,19 @@ fn metadata_sex_etc() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
+fn num_threads() -> Result<(), BedErrorPlus> {
+    let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
+    let mut bed = Bed::new(file)?;
+
+    let val = ReadOptions::builder().num_threads(4).i8().read(&mut bed)?;
+    let mean = val.mapv(|elem| elem as f64).mean().unwrap();
+    println!("{:?}", mean);
+    assert!(mean == -13.142); // really shouldn't do mean on data where -127 represents missing
+
+    Ok(())
+}
+
+#[test]
 fn readme_examples() -> Result<(), BedErrorPlus> {
     // Read genomic data from a .bed file.
 

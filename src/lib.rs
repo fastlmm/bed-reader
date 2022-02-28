@@ -20,6 +20,7 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use rayon::{iter::ParallelBridge, ThreadPoolBuildError};
 use statrs::distribution::{Beta, Continuous};
 use std::fs::{self};
+use std::num::ParseIntError;
 use std::ops::AddAssign;
 use std::ops::{Div, Sub};
 use std::{
@@ -59,6 +60,9 @@ pub enum BedErrorPlus {
 
     #[error(transparent)]
     ThreadPoolError(#[from] ThreadPoolBuildError),
+
+    #[error(transparent)]
+    ParseIntError(#[from] ParseIntError),
 
     #[error(transparent)]
     ReadOptionsBuilderError(#[from] ReadOptionsBuilderError),
