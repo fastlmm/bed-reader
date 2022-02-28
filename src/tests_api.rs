@@ -276,6 +276,19 @@ fn metadata_sex_etc() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
+fn hello_father() -> Result<(), BedErrorPlus> {
+    let mut bed = Bed::builder("bed_reader/tests/data/small.bed")
+        .father(["f1", "f2", "f3"])
+        .mother_skip()
+        .build()?;
+    println!("{:?}", bed.father()?);
+    // ["f1", "f2", "f3"], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
+    bed.mother().unwrap_err();
+
+    Ok(())
+}
+
+#[test]
 fn num_threads() -> Result<(), BedErrorPlus> {
     let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
     let mut bed = Bed::new(file)?;

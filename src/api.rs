@@ -229,6 +229,8 @@ impl BedBuilder {
         self.father = Some(OptionOrSkip::Skip);
         self
     }
+
+    // !!!cmk 0 shouild it be "skip_mother"?
     pub fn mother_skip(mut self) -> Self {
         self.mother = Some(OptionOrSkip::Skip);
         self
@@ -286,6 +288,38 @@ impl BedBuilder {
         self.chromosome = Some(OptionOrSkip::Some(new_string_array));
         self
     }
+
+    pub fn fid<I, T>(mut self, fid: I) -> Self
+    where
+        I: IntoIterator<Item = T>,
+        T: AsRef<str>,
+    {
+        let new_string_array: nd::Array1<String> =
+            fid.into_iter().map(|s| s.as_ref().to_string()).collect();
+        self.fid = Some(OptionOrSkip::Some(new_string_array));
+        self
+    }
+    pub fn father<I, T>(mut self, father: I) -> Self
+    where
+        I: IntoIterator<Item = T>,
+        T: AsRef<str>,
+    {
+        let new_string_array: nd::Array1<String> =
+            father.into_iter().map(|s| s.as_ref().to_string()).collect();
+        self.father = Some(OptionOrSkip::Some(new_string_array));
+        self
+    }
+    pub fn mother<I, T>(mut self, mother: I) -> Self
+    where
+        I: IntoIterator<Item = T>,
+        T: AsRef<str>,
+    {
+        let new_string_array: nd::Array1<String> =
+            mother.into_iter().map(|s| s.as_ref().to_string()).collect();
+        self.mother = Some(OptionOrSkip::Some(new_string_array));
+        self
+    }
+
 
     pub fn fam_path<P: AsRef<Path>>(mut self, path: P) -> Self {
         self.fam_path = Some(Some(path.as_ref().into()));
