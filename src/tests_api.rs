@@ -1,6 +1,4 @@
 #[cfg(test)]
-use crate::api::Allele;
-#[cfg(test)]
 use crate::api::Bed;
 #[cfg(test)]
 use crate::api::ReadOptions;
@@ -23,7 +21,7 @@ fn rusty_bed1() -> Result<(), BedErrorPlus> {
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     assert!(mean == -13.142); // really shouldn't do mean on data where -127 represents missing
 
-    let mut bed = Bed::builder(file).allele_to_count(Allele::A2).build()?;
+    let mut bed = Bed::builder(file).count_a2().build()?;
     let val = bed.read::<i8>()?;
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     assert!(mean == -13.274); // really shouldn't do mean on data where -127 represents missing
@@ -82,7 +80,7 @@ fn rusty_bed3() -> Result<(), BedErrorPlus> {
 #[test]
 fn rusty_bed_allele() -> Result<(), BedErrorPlus> {
     let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
-    let mut bed = Bed::builder(file).allele_to_count(Allele::A2).build()?;
+    let mut bed = Bed::builder(file).count_a2().build()?;
     let val: nd::Array2<i8> = bed.read()?;
 
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
@@ -109,7 +107,7 @@ fn rusty_bed_order() -> Result<(), BedErrorPlus> {
 fn bad_header() -> Result<(), BedErrorPlus> {
     let filename = "bed_reader/tests/data/badfile.bed";
 
-    let _ = Bed::builder(filename).skip_format_check().build()?;
+    let _ = Bed::builder(filename).skip_early_check().build()?;
 
     let result = Bed::new(filename);
 
@@ -235,7 +233,7 @@ fn open_examples() -> Result<(), BedErrorPlus> {
     // !!! cmk 0 to match Python example, should be allele_2
     // !!! cmk later document that if you skip and then give default value, its the last that matters.
     // !!! cmk later test that sid_count/iid_count will raise an error if any metadata gives a different count
-    let mut bed = Bed::builder(file_name).allele_2_skip().build()?;
+    let mut bed = Bed::builder(file_name).skip_allele_2().build()?;
     println!("{:?}", bed.iid()?);
 
     let result = bed.allele_2();
@@ -279,7 +277,7 @@ fn metadata_sex_etc() -> Result<(), BedErrorPlus> {
 fn hello_father() -> Result<(), BedErrorPlus> {
     let mut bed = Bed::builder("bed_reader/tests/data/small.bed")
         .father(["f1", "f2", "f3"])
-        .mother_skip()
+        .skip_mother()
         .build()?;
     println!("{:?}", bed.father()?);
     // ["f1", "f2", "f3"], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1

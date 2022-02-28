@@ -117,10 +117,14 @@ pub enum BedError {
     #[error("Cannot open metadata file. '{0}'")]
     CannotOpenFamOrBim(String),
 
-    // !!!cmk 0 would this be better ask Metadata skipped?
+    // !!!cmk 0 would this be better called Metadata skipped?
     #[error("Property '{0}' Skipped")]
     PropertySkipped(String),
 }
+
+// Trait alias
+pub trait BedVal: Copy + Default + From<i8> + Debug + Sync + Send + Missing + PartialEq {}
+impl<T> BedVal for T where T: Copy + Default + From<i8> + Debug + Sync + Send + Missing + PartialEq {}
 
 pub fn create_pool(num_threads: usize) -> Result<rayon::ThreadPool, BedErrorPlus> {
     match rayon::ThreadPoolBuilder::new()
@@ -134,14 +138,11 @@ pub fn create_pool(num_threads: usize) -> Result<rayon::ThreadPool, BedErrorPlus
 
 //#!!!cmk later hide this from the docs
 #[allow(clippy::too_many_arguments)]
-fn read_no_alloc<
-    TOut: Copy + Default + From<i8> + Debug + Sync + Send + Missing,
-    P: AsRef<Path>,
->(
+fn read_no_alloc<TOut: BedVal, P: AsRef<Path>>(
     path: P,
     iid_count: usize,
     sid_count: usize,
-    count_a1: bool,
+    count_a1: bool, // !!!cmk 0 call is_a1_counted
     iid_index: &[usize],
     sid_index: &[usize],
     missing_value: TOut,
@@ -259,10 +260,7 @@ fn try_div_4<T: Max + TryFrom<usize> + Sub<Output = T> + Div<Output = T> + Ord>(
 
 // !!!cmk later could iid_index and sid_index be ExpectSizeIterator<Item=usize>?
 #[allow(clippy::too_many_arguments)]
-fn internal_read_no_alloc<
-    TOut: Copy + Default + From<i8> + Debug + Sync + Send + Missing,
-    P: AsRef<Path>,
->(
+fn internal_read_no_alloc<TOut: BedVal, P: AsRef<Path>>(
     mut buf_reader: BufReader<File>,
     path: P,
     in_iid_count: usize,
@@ -356,10 +354,7 @@ fn set_up_two_bits_to_value<TOut: From<i8>>(count_a1: bool, missing_value: TOut)
 }
 
 // could make count_a1, etc. optional
-pub fn read_with_indexes<
-    TOut: From<i8> + Default + Copy + Debug + Sync + Send + Missing,
-    P: AsRef<Path>,
->(
+pub fn read_with_indexes<TOut: BedVal, P: AsRef<Path>>(
     path: P,
     iid_index: &[usize],
     sid_index: &[usize],
@@ -388,7 +383,7 @@ pub fn read_with_indexes<
     Ok(val)
 }
 
-pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send + Missing, P: AsRef<Path>>(
+pub fn read<TOut: BedVal, P: AsRef<Path>>(
     path: P,
     output_is_orderf: bool,
     count_a1: bool,
@@ -420,7 +415,7 @@ pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send + Missing, P: 
 
 // Thanks to Dawid for his dpc-pariter library that makes this function scale.
 // https://dpc.pw/adding-parallelism-to-your-rust-iterators
-pub fn write<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq, P: AsRef<Path>>(
+pub fn write<T: BedVal, P: AsRef<Path>>(
     path: P,
     val: &nd::ArrayView2<'_, T>,
     count_a1: bool,
@@ -443,10 +438,7 @@ pub fn write<T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq, P: 
     }
 }
 
-fn write_internal<
-    T: From<i8> + Default + Copy + Debug + Sync + Send + PartialEq,
-    P: AsRef<Path>,
->(
+fn write_internal<T: BedVal, P: AsRef<Path>>(
     path: P,
     iid_count_div4: usize,
     val: &nd::ArrayView2<'_, T>,

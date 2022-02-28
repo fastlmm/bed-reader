@@ -24,7 +24,7 @@ use derive_builder::Builder;
 // !!! might want to use this instead use typed_builder::TypedBuilder;
 
 use crate::{
-    counts, read_no_alloc, BedError, BedErrorPlus, Missing, BED_FILE_MAGIC1, BED_FILE_MAGIC2,
+    counts, read_no_alloc, BedError, BedErrorPlus, BedVal, BED_FILE_MAGIC1, BED_FILE_MAGIC2,
     CB_HEADER_USIZE,
 };
 
@@ -70,13 +70,11 @@ pub struct Bed {
     #[builder(setter(custom))]
     pub path: PathBuf, // !!!cmk later always clone?
 
-    // !!!cmk 0 play with having an enum and extra set methods
-    #[builder(default = "Allele::A1")]
-    allele_to_count: Allele,
-
-    // !!!cmk 0 play with having an enum and extra set methods
     #[builder(default = "true")]
-    do_format_check: bool,
+    is_a1_counted: bool,
+
+    #[builder(default = "true")]
+    is_checked_early: bool,
 
     #[builder(default, setter(strip_option))]
     iid_count: Option<usize>,
@@ -151,8 +149,8 @@ impl BedBuilder {
     pub fn new<P: AsRef<Path>>(path: P) -> Self {
         Self {
             path: Some(path.as_ref().into()),
-            allele_to_count: None,
-            do_format_check: None,
+            is_a1_counted: None,
+            is_checked_early: None,
             iid_count: None,
             sid_count: None,
             fid: None,
@@ -175,7 +173,7 @@ impl BedBuilder {
     pub fn build(&self) -> Result<Bed, BedErrorPlus> {
         let bed = self.build_no_file_check()?;
 
-        if bed.do_format_check {
+        if bed.is_checked_early {
             // !!!cmk later similar code elsewhere
             let mut buf_reader = BufReader::new(File::open(&bed.path)?);
             let mut bytes_vector: Vec<u8> = vec![0; CB_HEADER_USIZE];
@@ -190,63 +188,70 @@ impl BedBuilder {
         Ok(bed)
     }
 
-    // !!!cmk 0 is it confusing to use 'skip' for both format_check and metadata?
-    pub fn skip_format_check(mut self) -> Self {
-        self.do_format_check = Some(false);
+    pub fn count_a1(&mut self) -> &mut Self {
+        self.is_a1_counted = Some(true);
         self
     }
 
-    pub fn iid_skip(mut self) -> Self {
+    pub fn count_a2(&mut self) -> &mut Self {
+        self.is_a1_counted = Some(false);
+        self
+    }
+    pub fn skip_early_check(mut self) -> Self {
+        self.is_checked_early = Some(false);
+        self
+    }
+
+    pub fn skip_iid(mut self) -> Self {
         self.iid = Some(OptionOrSkip::Skip);
         self
     }
 
-    pub fn sid_skip(mut self) -> Self {
+    pub fn skip_sid(mut self) -> Self {
         self.sid = Some(OptionOrSkip::Skip);
         self
     }
 
-    pub fn chromosome_skip(mut self) -> Self {
+    pub fn skip_chromosome(mut self) -> Self {
         self.chromosome = Some(OptionOrSkip::Skip);
         self
     }
 
-    pub fn allele_1_skip(mut self) -> Self {
+    pub fn skip_allele_1(mut self) -> Self {
         self.allele_1 = Some(OptionOrSkip::Skip);
         self
     }
 
-    pub fn allele_2_skip(mut self) -> Self {
+    pub fn skip_allele_2(mut self) -> Self {
         self.allele_2 = Some(OptionOrSkip::Skip);
         self
     }
 
-    pub fn fid_skip(mut self) -> Self {
+    pub fn skip_fid(mut self) -> Self {
         self.fid = Some(OptionOrSkip::Skip);
         self
     }
-    pub fn father_skip(mut self) -> Self {
+    pub fn skip_father(mut self) -> Self {
         self.father = Some(OptionOrSkip::Skip);
         self
     }
 
-    // !!!cmk 0 shouild it be "skip_mother"?
-    pub fn mother_skip(mut self) -> Self {
+    pub fn skip_mother(mut self) -> Self {
         self.mother = Some(OptionOrSkip::Skip);
         self
     }
 
-    pub fn sex_skip(mut self) -> Self {
+    pub fn skip_sex(mut self) -> Self {
         self.sex = Some(OptionOrSkip::Skip);
         self
     }
 
-    pub fn cm_position_skip(mut self) -> Self {
+    pub fn skip_cm_position(mut self) -> Self {
         self.cm_position = Some(OptionOrSkip::Skip);
         self
     }
 
-    pub fn bp_position_skip(mut self) -> Self {
+    pub fn skip_bp_position(mut self) -> Self {
         self.bp_position = Some(OptionOrSkip::Skip);
         self
     }
@@ -275,7 +280,6 @@ impl BedBuilder {
         self
     }
 
-    // !!!cmk 0 can we set new fathers, etc and skip them?
     pub fn chromosome<I, T>(mut self, chromosome: I) -> Self
     where
         I: IntoIterator<Item = T>,
@@ -319,7 +323,6 @@ impl BedBuilder {
         self.mother = Some(OptionOrSkip::Some(new_string_array));
         self
     }
-
 
     pub fn fam_path<P: AsRef<Path>>(mut self, path: P) -> Self {
         self.fam_path = Some(Some(path.as_ref().into()));
@@ -604,16 +607,12 @@ impl Bed {
         }
     }
 
-    pub fn read<TOut: From<i8> + Default + Copy + Debug + Sync + Send + Missing>(
-        &mut self,
-    ) -> Result<nd::Array2<TOut>, BedErrorPlus> {
+    pub fn read<TOut: BedVal>(&mut self) -> Result<nd::Array2<TOut>, BedErrorPlus> {
         let read_options = ReadOptions::<TOut>::builder().build()?;
         self.read_with_options(read_options)
     }
 
-    pub(crate) fn read_with_options<
-        TOut: From<i8> + Default + Copy + Debug + Sync + Send + Missing,
-    >(
+    pub(crate) fn read_with_options<TOut: BedVal>(
         &mut self,
         read_options: ReadOptions<TOut>,
     ) -> Result<nd::Array2<TOut>, BedErrorPlus> {
@@ -642,7 +641,7 @@ impl Bed {
             &self.path,
             iid_count,
             sid_count,
-            self.allele_to_count == Allele::A1,
+            self.is_a1_counted,
             &iid_index,
             &sid_index,
             read_options.missing_value,
@@ -770,7 +769,7 @@ impl From<()> for Index {
 
 // See https://nullderef.com/blog/rust-parameters/
 #[derive(Debug, Clone, Builder)]
-pub struct ReadOptions<TOut: Copy + Default + From<i8> + Debug + Sync + Send + Missing> {
+pub struct ReadOptions<TOut: BedVal> {
     #[builder(default = "TOut::missing()")]
     missing_value: TOut,
 
@@ -782,27 +781,28 @@ pub struct ReadOptions<TOut: Copy + Default + From<i8> + Debug + Sync + Send + M
     #[builder(setter(into))]
     sid_index: Index,
 
-    // !!!cmk 0 play with having an enum and extra set methods
     #[builder(default = "true")]
-    is_f: bool, // !!!cmk later use enum or .f()
+    is_f: bool,
 
     #[builder(default, setter(strip_option))]
     pub num_threads: Option<usize>,
 }
 
-impl<TOut: Copy + Default + From<i8> + Debug + Sync + Send + Missing + Clone> ReadOptions<TOut> {
+impl<TOut: BedVal> ReadOptions<TOut> {
     pub fn builder() -> ReadOptionsBuilder<TOut> {
         ReadOptionsBuilder::default()
     }
 }
 
-// !!!cmk 0 alias "Copy + Default + From<i8> + Debug + Sync + Send + Missing + Clone"?
-impl<TOut: Copy + Default + From<i8> + Debug + Sync + Send + Missing + Clone>
-    ReadOptionsBuilder<TOut>
-{
+impl<TOut: BedVal> ReadOptionsBuilder<TOut> {
     pub fn read(&self, bed: &mut Bed) -> Result<nd::Array2<TOut>, BedErrorPlus> {
         let read_option = self.build()?;
         bed.read_with_options(read_option)
+    }
+
+    pub fn f(&mut self) -> &Self {
+        self.is_f(true);
+        self
     }
 
     pub fn c(&mut self) -> &Self {
