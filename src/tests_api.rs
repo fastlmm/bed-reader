@@ -1,7 +1,11 @@
 #[cfg(test)]
+use crate::api::to_bed_with_options;
+#[cfg(test)]
 use crate::api::Bed;
 #[cfg(test)]
 use crate::api::ReadOptions;
+#[cfg(test)]
+use crate::api::WriteOptions;
 #[cfg(test)]
 use crate::BedError;
 #[cfg(test)]
@@ -12,6 +16,8 @@ use crate::BedErrorPlus;
 use ndarray as nd;
 #[cfg(test)]
 use ndarray::s;
+#[cfg(test)]
+use temp_testdir::TempDir;
 
 #[test]
 fn rusty_bed1() -> Result<(), BedErrorPlus> {
@@ -57,6 +63,8 @@ fn rusty_bed2() -> Result<(), BedErrorPlus> {
 
 #[cfg(test)]
 use std::collections::HashSet;
+#[cfg(test)]
+use std::path::PathBuf;
 
 #[test]
 fn rusty_bed3() -> Result<(), BedErrorPlus> {
@@ -387,5 +395,132 @@ fn readme_examples() -> Result<(), BedErrorPlus> {
     // ["sid_0", "sid_1", "sid_2", "sid_3", "sid_4"], shape=[5], strides=[1], layout=CFcf (0xf), const ndim=1
     // {"10", "11", "4", "21", "22", "14", "3", "12", "20", "15", "19", "8", "6", "18", "9", "2", "16", "13", "17", "1", "7", "5"}
     // [100, 6]
+    Ok(())
+}
+
+#[test]
+fn write_docs() -> Result<(), BedErrorPlus> {
+    // In this example, all properties are given.
+
+    //     >>> from bed_reader import to_bed, tmp_path
+    //     >>>
+    //     >>> output_file = tmp_path() / "small.bed"
+    //     >>> val = [[1.0, 0.0, np.nan, 0.0],
+    //     ...        [2.0, 0.0, np.nan, 2.0],
+    //     ...        [0.0, 1.0, 2.0, 0.0]]
+    //     >>> properties = {
+    //     ...    "fid": ["fid1", "fid1", "fid2"],
+    //     ...    "iid": ["iid1", "iid2", "iid3"],
+    //     ...    "father": ["iid23", "iid23", "iid22"],
+    //     ...    "mother": ["iid34", "iid34", "iid33"],
+    //     ...    "sex": [1, 2, 0],
+    //     ...    "pheno": ["red", "red", "blue"],
+    //     ...    "chromosome": ["1", "1", "5", "Y"],
+    //     ...    "sid": ["sid1", "sid2", "sid3", "sid4"],
+    //     ...    "cm_position": [100.4, 2000.5, 4000.7, 7000.9],
+    //     ...    "bp_position": [1, 100, 1000, 1004],
+    //     ...    "allele_1": ["A", "T", "A", "T"],
+    //     ...    "allele_2": ["A", "C", "C", "G"],
+    //     ... }
+    //     >>> to_bed(output_file, val, properties=properties)
+
+    let output_path = PathBuf::from(TempDir::default().as_ref());
+
+    let output_file = output_path.join("small.bed");
+    let val = nd::array![
+        [1.0, 0.0, f64::NAN, 0.0],
+        [2.0, 0.0, f64::NAN, 2.0],
+        [0.0, 1.0, 2.0, 0.0]
+    ];
+    // !!!cmk 0 could write_options and read_options be the same?
+    // !!!cmk 0 why is output_file given early and val given late? (should be same? should match reader?)
+    // !!!cmk later re-write python_module.rs to use the new Rust API (may need .fill() and .fill_with_defaults())
+    // !!!cmk 00
+    // let write_options = WriteOptions::builder()
+    //     .count_a2()
+    //     // .missing_value(f64::NAN)
+    //     // fam_filepath: Union[str, Path] = None,
+    //     // bim_filepath: Union[str, Path] = None,
+    //     // num_threads=None,
+    //     .iid(["iid1", "iid2", "iid3"])
+    //     .sid(["sid1", "sid2", "sid3", "sid4"])
+    //     .write(&output_file, &val)?;
+
+    // Here, no properties are given, so default values are assigned.
+    // If we then read the new file and list the chromosome property,
+    // it is an array of '0's, the default chromosome value.
+
+    //     >>> output_file2 = tmp_path() / "small2.bed"
+    //     >>> val = [[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]]
+    //     >>> to_bed(output_file2, val)
+    //     >>>
+    //     >>> from bed_reader import open_bed
+    //     >>> with open_bed(output_file2) as bed2:
+    //     ...     print(bed2.chromosome)
+    //     ['0' '0' '0' '0']
+    let output_file2 = output_path.join("small2.bed");
+    let val = nd::array![[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]];
+    // !!!cmk 00
+    // write_bed(&output_file2, &val)?;
+    // let mut bed2 = Bed::new(&output_file2)?;
+    // println!("{:?}", bed2.chromosome()?);
+    // ['0' '0' '0' '0']
+
+    Ok(())
+}
+
+#[test]
+fn read_write() -> Result<(), BedErrorPlus> {
+    // with open_bed(shared_datadir / "small.bed") as bed:
+    // val = bed.read()
+    // properties = bed.properties
+
+    let file_name = "bed_reader/tests/data/small.bed";
+    let mut bed = Bed::new(file_name)?;
+    let val = bed.read::<f64>()?;
+    let metadata = bed.metadata()?;
+
+    // output_file = tmp_path / "small.deb"
+    // fam_file = tmp_path / "small.maf"
+    // bim_file = tmp_path / "small.mib"
+
+    let output_path = PathBuf::from(TempDir::default().as_ref());
+    let output_file = output_path.join("small.deb");
+    let fam_file = output_path.join("small.maf");
+    let bim_file = output_path.join("small.mib");
+
+    // to_bed(
+    // output_file,
+    // val,
+    // properties=properties,
+    // fam_filepath=fam_file,
+    // bim_filepath=bim_file,
+    // )
+
+    let write_options = WriteOptions::builder(output_path) //&output_file)
+        //.metadata(metadata)
+        .fam_path(&fam_file)
+        .bim_path(&bim_file)
+        .build()?;
+    to_bed_with_options(&write_options, &val)?;
+
+    // // assert output_file.exists() and fam_file.exists() and bim_file.exists()
+    // assert!(output_file.exists() & fam_file.exists() & bim_file.exists());
+
+    // with open_bed(output_file, fam_filepath=fam_file, bim_filepath=bim_file) as deb:
+    // val2 = deb.read()
+    // properties2 = deb.properties
+    let mut deb = Bed::builder(&output_file)
+        .fam_path(&fam_file)
+        .bim_path(&bim_file)
+        .build()?;
+    let val2 = deb.read::<f64>()?;
+    let metadata2 = deb.metadata()?;
+
+    // assert np.allclose(val, val2, equal_nan=True)
+    // !!!cmk 00
+    // assert!(val.allclose(&val2, equal_nan = true));
+    // assert!(metadata == metadata2);
+
     Ok(())
 }

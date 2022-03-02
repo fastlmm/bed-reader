@@ -24,19 +24,20 @@ use derive_builder::Builder;
 // !!! might want to use this instead use typed_builder::TypedBuilder;
 
 use crate::{
-    counts, read_no_alloc, BedError, BedErrorPlus, BedVal, BED_FILE_MAGIC1, BED_FILE_MAGIC2,
+    counts, read_no_alloc, write, BedError, BedErrorPlus, BedVal, BED_FILE_MAGIC1, BED_FILE_MAGIC2,
     CB_HEADER_USIZE,
 };
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Allele {
-    A1,
-    A2,
-}
-
+// !!!cmk 0 replace this with Option<Skippable>
 #[derive(Debug, Clone)]
 pub enum OptionOrSkip<T> {
     None,
+    Some(T),
+    Skip,
+}
+
+#[derive(Debug, Clone)]
+pub enum Skippable<T> {
     Some(T),
     Skip,
 }
@@ -56,6 +57,28 @@ impl<T> OptionOrSkip<T> {
             OptionOrSkip::Skip => panic!("called `OptionOrSkip::::unwrap()` on a `Skip` value"),
         }
     }
+}
+
+// impl<T> Skippable<T> {
+//     pub const fn as_ref(&self) -> Skippable<&T> {
+//         match *self {
+//             Skippable::Some(ref x) => Skippable::Some(x),
+//             Skippable::Skip => Skippable::Skip,
+//         }
+//     }
+//     pub fn unwrap(self) -> T {
+//         match self {
+//             Skippable::Some(val) => val,
+//             Skippable::Skip => panic!("called `Skippable::::unwrap()` on a `Skip` value"),
+//         }
+//     }
+// }
+
+#[derive(Clone, Debug, Default)]
+pub struct Metadata {
+    pub iid: Option<nd::Array1<String>>,
+
+    pub sid: Option<nd::Array1<String>>,
 }
 
 // https://crates.io/crates/typed-builder
@@ -135,16 +158,6 @@ pub struct Bed {
     bim_path: Option<PathBuf>,
 }
 
-impl Bed {
-    pub fn builder<P: AsRef<Path>>(path: P) -> BedBuilder {
-        BedBuilder::new(path)
-    }
-
-    pub fn new<P: AsRef<Path>>(path: P) -> Result<Self, BedErrorPlus> {
-        Bed::builder(path).build()
-    }
-}
-
 impl BedBuilder {
     pub fn new<P: AsRef<Path>>(path: P) -> Self {
         Self {
@@ -155,9 +168,9 @@ impl BedBuilder {
             sid_count: None,
             fid: None,
             iid: None,
+            sid: None,
             father: None,
             mother: None,
-            sid: None,
             chromosome: None,
             allele_1: None,
             allele_2: None,
@@ -340,10 +353,50 @@ enum FamOrBim {
     Bim,
 }
 
+fn to_metadata_path(
+    bed_path: &PathBuf,
+    metadata_path: &Option<PathBuf>,
+    extension: &str,
+) -> PathBuf {
+    if let Some(metadata_path) = metadata_path {
+        metadata_path.clone()
+    } else {
+        bed_path.with_extension(extension)
+    }
+}
+
+fn skip_to_none(
+    result: Result<&nd::Array1<String>, BedErrorPlus>,
+) -> Result<Option<nd::Array1<String>>, BedErrorPlus> {
+    match result {
+        // !!!cmk 0 understand to_owned. Is there a copy?
+        Ok(array) => Ok(Some(array.to_owned())),
+        Err(BedErrorPlus::BedError(BedError::CannotUseSkippedMetadata(_))) => Ok(None),
+        Err(e) => Err(e),
+    }
+}
+
 impl Bed {
-    // !!!cmk later
-    // fam_filepath: Union[str, Path] = None,
-    // bim_filepath: Union[str, Path] = None,
+    pub fn builder<P: AsRef<Path>>(path: P) -> BedBuilder {
+        BedBuilder::new(path)
+    }
+
+    pub fn new<P: AsRef<Path>>(path: P) -> Result<Self, BedErrorPlus> {
+        Bed::builder(path).build()
+    }
+
+    pub fn metadata(&mut self) -> Result<Metadata, BedErrorPlus> {
+        Ok(Metadata {
+            iid: skip_to_none(self.iid())?,
+            sid: skip_to_none(self.sid())?,
+            // chromosome: &self.chromosome,
+            // allele_1: &self.allele_1,
+            // allele_2: &self.allele_2,
+            // fid: &self.fid,
+            // father: &self.father,
+            // mother: &self.mother,
+        })
+    }
 
     // !!!cmk later is this how you do lazy accessors?
     // !!!cmk later should this be "try_get_..." or just "iid_count" or as is
@@ -367,7 +420,6 @@ impl Bed {
             Ok(sid_count)
         }
     }
-
     /// !!!cmk later don't re-read for every column
     fn read_fam_or_bim(
         &self,
@@ -375,20 +427,8 @@ impl Bed {
         field_index: usize,
     ) -> Result<nd::Array1<String>, BedErrorPlus> {
         let path_buf = match fam_or_bim {
-            FamOrBim::Fam => {
-                if let Some(fam_path) = &self.fam_path {
-                    fam_path.clone()
-                } else {
-                    self.path.with_extension("fam")
-                }
-            }
-            FamOrBim::Bim => {
-                if let Some(bim_path) = &self.bim_path {
-                    bim_path.clone()
-                } else {
-                    self.path.with_extension("bim")
-                }
-            }
+            FamOrBim::Fam => to_metadata_path(&self.path, &self.fam_path, "fam"),
+            FamOrBim::Bim => to_metadata_path(&self.path, &self.bim_path, "bim"),
         };
 
         let file = if let Ok(file) = File::open(&path_buf) {
@@ -456,6 +496,10 @@ impl Bed {
             OptionOrSkip::Skip => Err(BedError::CannotUseSkippedMetadata("sid".to_string()).into()),
         }
     }
+
+    // pub fn metadata(&mut self) -> Result<&Metadata, BedErrorPlus> {
+    //     Ok(&self.metadata)
+    // }
 
     pub fn chromosome(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         match self.chromosome {
@@ -621,6 +665,7 @@ impl Bed {
         }
     }
 
+    // !!!cmk later rename TOut to TVal
     pub fn read<TOut: BedVal>(&mut self) -> Result<nd::Array2<TOut>, BedErrorPlus> {
         let read_options = ReadOptions::<TOut>::builder().build()?;
         self.read_with_options(read_options)
@@ -843,13 +888,103 @@ impl ReadOptionsBuilder<f64> {
     }
 }
 
-// !!!cmk later could a macro likes be nice?
-// #[macro_export]
-// macro_rules! read {
-//     ($bed:expr) => {
-//         $bed.read()
-//     };
-//     ($bed:expr, $option: expr) => {
-//         ReadOptions::builder().$option.read($bed)
-//     };
-// }
+#[derive(Clone, Debug, Builder)]
+#[builder(build_fn(private, name = "write_no_file_check", error = "BedErrorPlus"))]
+pub struct WriteOptions {
+    #[builder(setter(custom))]
+    pub path: PathBuf, // !!!cmk later always clone?
+
+    #[builder(setter(custom))]
+    #[builder(default = "None")]
+    fam_path: Option<PathBuf>,
+
+    #[builder(setter(custom))]
+    #[builder(default = "None")]
+    bim_path: Option<PathBuf>,
+
+    #[builder(setter(custom))]
+    #[builder(default = "None")]
+    iid: Option<nd::Array1<String>>,
+
+    #[builder(setter(custom))]
+    #[builder(default = "None")]
+    sid: Option<nd::Array1<String>>,
+}
+
+impl WriteOptions {
+    pub fn builder<P: AsRef<Path>>(path: P) -> WriteOptionsBuilder {
+        WriteOptionsBuilder::new(path)
+    }
+}
+
+impl WriteOptionsBuilder {
+    pub fn build(&self) -> Result<WriteOptions, BedErrorPlus> {
+        let write_options = self.write_no_file_check()?;
+
+        Ok(write_options)
+    }
+
+    pub fn new<P: AsRef<Path>>(path: P) -> Self {
+        Self {
+            path: Some(path.as_ref().into()),
+            fam_path: None,
+            bim_path: None,
+            iid: None,
+            sid: None,
+        }
+    }
+
+    pub fn fam_path<P: AsRef<Path>>(mut self, path: P) -> Self {
+        self.fam_path = Some(Some(path.as_ref().into()));
+        self
+    }
+
+    pub fn bim_path<P: AsRef<Path>>(mut self, path: P) -> Self {
+        self.bim_path = Some(Some(path.as_ref().into()));
+        self
+    }
+
+    pub fn iid<I, T>(mut self, iid: I) -> Self
+    where
+        I: IntoIterator<Item = T>,
+        T: AsRef<str>,
+    {
+        let new_string_array: nd::Array1<String> =
+            iid.into_iter().map(|s| s.as_ref().to_string()).collect();
+        self.iid = Some(Some(new_string_array));
+        self
+    }
+
+    pub fn sid<I, T>(mut self, sid: I) -> Self
+    where
+        I: IntoIterator<Item = T>,
+        T: AsRef<str>,
+    {
+        let new_string_array: nd::Array1<String> =
+            sid.into_iter().map(|s| s.as_ref().to_string()).collect();
+        self.sid = Some(Some(new_string_array));
+        self
+    }
+}
+
+pub fn to_bed_with_options<TVal: BedVal>(
+    write_options: &WriteOptions,
+    val: &nd::Array2<TVal>,
+) -> Result<(), BedErrorPlus> {
+    // !!!cmk later if something goes wrong, clean up the files?
+    let path = &write_options.path;
+
+    // !!!cmk 0 use fam/bim
+    // !!!cmk 0 set is_a1_count
+    // !!!cmk 0 set missing
+    // !!!cmk set num_threads
+    write(path, &val.view(), true, TVal::missing(), 0)?;
+
+    let fam_path = to_metadata_path(path, &write_options.fam_path, "fam");
+    let bim_path = to_metadata_path(path, &write_options.bim_path, "bim");
+
+    let iid = &write_options.iid;
+    let sid = &write_options.sid;
+
+    Ok(())
+}
