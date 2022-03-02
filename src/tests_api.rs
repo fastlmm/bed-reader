@@ -1,5 +1,5 @@
 #[cfg(test)]
-use crate::api::to_bed_with_options;
+use crate::api::write_with_options;
 #[cfg(test)]
 use crate::api::Bed;
 #[cfg(test)]
@@ -435,16 +435,15 @@ fn write_docs() -> Result<(), BedErrorPlus> {
     // !!!cmk 0 could write_options and read_options be the same?
     // !!!cmk 0 why is output_file given early and val given late? (should be same? should match reader?)
     // !!!cmk later re-write python_module.rs to use the new Rust API (may need .fill() and .fill_with_defaults())
-    // !!!cmk 00
-    // let write_options = WriteOptions::builder()
-    //     .count_a2()
-    //     // .missing_value(f64::NAN)
-    //     // fam_filepath: Union[str, Path] = None,
-    //     // bim_filepath: Union[str, Path] = None,
-    //     // num_threads=None,
-    //     .iid(["iid1", "iid2", "iid3"])
-    //     .sid(["sid1", "sid2", "sid3", "sid4"])
-    //     .write(&output_file, &val)?;
+    let write_options = WriteOptions::builder(output_file)
+        // .count_a2()
+        // .missing_value(f64::NAN)
+        // fam_filepath: Union[str, Path] = None,
+        // bim_filepath: Union[str, Path] = None,
+        // num_threads=None,
+        .iid(["iid1", "iid2", "iid3"])
+        .sid(["sid1", "sid2", "sid3", "sid4"])
+        .write(&val)?;
 
     // Here, no properties are given, so default values are assigned.
     // If we then read the new file and list the chromosome property,
@@ -498,12 +497,13 @@ fn read_write() -> Result<(), BedErrorPlus> {
     // bim_filepath=bim_file,
     // )
 
+    // !!!cmk 0 think about metadata.copy()
     let write_options = WriteOptions::builder(output_path) //&output_file)
-        //.metadata(metadata)
+        .metadata(metadata.clone())
         .fam_path(&fam_file)
         .bim_path(&bim_file)
         .build()?;
-    to_bed_with_options(&write_options, &val)?;
+    write_with_options(&val, &write_options)?;
 
     // // assert output_file.exists() and fam_file.exists() and bim_file.exists()
     // assert!(output_file.exists() & fam_file.exists() & bim_file.exists());

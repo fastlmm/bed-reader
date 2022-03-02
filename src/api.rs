@@ -918,6 +918,7 @@ pub struct WriteOptions {
     #[builder(default = "None")]
     bim_path: Option<PathBuf>,
 
+    #[builder(setter(custom))]
     metadata: Metadata,
 }
 
@@ -952,10 +953,18 @@ impl WriteOptions {
 }
 
 impl WriteOptionsBuilder {
+    // !!! cmk later just use the default builder?
     pub fn build(&self) -> Result<WriteOptions, BedErrorPlus> {
         let write_options = self.write_no_file_check()?;
 
         Ok(write_options)
+    }
+
+    pub fn write<TVal: BedVal>(&self, val: &nd::Array2<TVal>) -> Result<(), BedErrorPlus> {
+        let write_options = self.build()?;
+        write_with_options(val, &write_options)?;
+
+        Ok(())
     }
 
     pub fn new<P: AsRef<Path>>(path: P) -> Self {
@@ -974,6 +983,17 @@ impl WriteOptionsBuilder {
 
     pub fn bim_path<P: AsRef<Path>>(mut self, path: P) -> Self {
         self.bim_path = Some(Some(path.as_ref().into()));
+        self
+    }
+
+    pub fn metadata(mut self, metadata: Metadata) -> Self {
+        // !!!cmk later check that no metadata is still 'Lazy'
+        if let LazyOrSkip::Some(iid) = &metadata.iid {
+            self = self.iid(iid);
+        }
+        if let LazyOrSkip::Some(sid) = &metadata.sid {
+            self = self.sid(sid);
+        }
         self
     }
 
@@ -1000,9 +1020,9 @@ impl WriteOptionsBuilder {
     }
 }
 
-pub fn to_bed_with_options<TVal: BedVal>(
-    write_options: &WriteOptions,
+pub fn write_with_options<TVal: BedVal>(
     val: &nd::Array2<TVal>,
+    write_options: &WriteOptions,
 ) -> Result<(), BedErrorPlus> {
     // !!!cmk later if something goes wrong, clean up the files?
     let path = &write_options.path;
@@ -1013,11 +1033,13 @@ pub fn to_bed_with_options<TVal: BedVal>(
     // !!!cmk set num_threads
     write(path, &val.view(), true, TVal::missing(), 0)?;
 
-    let fam_path = to_metadata_path(path, &write_options.fam_path, "fam");
-    let bim_path = to_metadata_path(path, &write_options.bim_path, "bim");
+    let _fam_path = to_metadata_path(path, &write_options.fam_path, "fam");
+    let _bim_path = to_metadata_path(path, &write_options.bim_path, "bim");
 
-    let iid = write_options.iid()?;
-    let sid = write_options.sid()?;
+    let _iid = write_options.iid()?;
+    let _sid = write_options.sid()?;
 
-    Ok(())
+    todo!("!!!cmk 0 write metadata");
+
+    // Ok(())
 }
