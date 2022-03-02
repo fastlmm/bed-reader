@@ -478,7 +478,8 @@ fn read_write() -> Result<(), BedErrorPlus> {
     let file_name = "bed_reader/tests/data/small.bed";
     let mut bed = Bed::new(file_name)?;
     let val = bed.read::<f64>()?;
-    // let metadata = bed.metadata()?;
+    let iid = bed.iid()?;
+    let metadata = bed.metadata()?;
 
     // output_file = tmp_path / "small.deb"
     // fam_file = tmp_path / "small.maf"

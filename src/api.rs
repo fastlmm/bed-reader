@@ -481,6 +481,12 @@ impl Bed {
         Ok(array)
     }
 
+    pub fn metadata(&mut self) -> Result<&Metadata, BedErrorPlus> {
+        self.iid()?;
+        self.sid()?;
+        Ok(&self.metadata)
+    }
+
     pub fn iid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         match self.metadata.iid {
             LazyOrSkip::Some(ref iid) => Ok(iid),
