@@ -10,7 +10,7 @@ use pyo3::{
 use crate::{
     BedError, BedErrorPlus, Dist, _file_ata_piece_internal, create_pool, file_aat_piece,
     file_ata_piece, file_b_less_aatbx, impute_and_zero_mean_snps, matrix_subset_no_alloc,
-    read_into_f32, read_into_f64, read_no_alloc, write,
+    read_into_f32, read_into_f64, read_no_alloc, write_val,
 };
 
 #[pymodule]
@@ -155,7 +155,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     ) -> Result<(), PyErr> {
         let val = unsafe { val.as_array() };
 
-        write(filename, &val, is_a1_counted, f64::NAN, num_threads)?;
+        write_val(filename, &val, is_a1_counted, f64::NAN, num_threads)?;
 
         Ok(())
     }
@@ -170,7 +170,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     ) -> Result<(), PyErr> {
         let val = unsafe { val.as_array() };
 
-        write(filename, &val, is_a1_counted, f32::NAN, num_threads)?;
+        write_val(filename, &val, is_a1_counted, f32::NAN, num_threads)?;
 
         Ok(())
     }
@@ -185,7 +185,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     ) -> Result<(), PyErr> {
         let val = unsafe { val.as_array() };
 
-        write(filename, &val, is_a1_counted, -127, num_threads)?;
+        write_val(filename, &val, is_a1_counted, -127, num_threads)?;
 
         Ok(())
     }

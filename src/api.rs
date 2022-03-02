@@ -24,8 +24,8 @@ use derive_builder::Builder;
 // !!! might want to use this instead use typed_builder::TypedBuilder;
 
 use crate::{
-    counts, read_no_alloc, write, BedError, BedErrorPlus, BedVal, BED_FILE_MAGIC1, BED_FILE_MAGIC2,
-    CB_HEADER_USIZE,
+    counts, read_no_alloc, write_val, BedError, BedErrorPlus, BedVal, BED_FILE_MAGIC1,
+    BED_FILE_MAGIC2, CB_HEADER_USIZE,
 };
 
 // !!!cmk 0 replace this with Option<Skippable>
@@ -986,7 +986,7 @@ impl WriteOptionsBuilder {
         self
     }
 
-    pub fn metadata(mut self, metadata: Metadata) -> Self {
+    pub fn metadata(mut self, metadata: &Metadata) -> Self {
         // !!!cmk later check that no metadata is still 'Lazy'
         if let LazyOrSkip::Some(iid) = &metadata.iid {
             self = self.iid(iid);
@@ -1020,6 +1020,10 @@ impl WriteOptionsBuilder {
     }
 }
 
+pub fn write<TVal: BedVal>(val: &nd::Array2<TVal>, path: &Path) -> Result<(), BedErrorPlus> {
+    WriteOptions::builder(path).write(val)
+}
+
 pub fn write_with_options<TVal: BedVal>(
     val: &nd::Array2<TVal>,
     write_options: &WriteOptions,
@@ -1031,7 +1035,7 @@ pub fn write_with_options<TVal: BedVal>(
     // !!!cmk 0 set is_a1_count
     // !!!cmk 0 set missing
     // !!!cmk set num_threads
-    write(path, &val.view(), true, TVal::missing(), 0)?;
+    write_val(path, &val.view(), true, TVal::missing(), 0)?;
 
     let _fam_path = to_metadata_path(path, &write_options.fam_path, "fam");
     let _bim_path = to_metadata_path(path, &write_options.bim_path, "bim");

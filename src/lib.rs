@@ -414,7 +414,7 @@ pub fn read<TOut: BedVal, P: AsRef<Path>>(
 
 // Thanks to Dawid for his dpc-pariter library that makes this function scale.
 // https://dpc.pw/adding-parallelism-to-your-rust-iterators
-pub fn write<T: BedVal, P: AsRef<Path>>(
+pub fn write_val<T: BedVal, P: AsRef<Path>>(
     path: P,
     val: &nd::ArrayView2<'_, T>,
     is_a1_counted: bool,

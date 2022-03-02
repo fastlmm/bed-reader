@@ -14,7 +14,7 @@ use crate::try_div_4;
 use crate::Dist;
 #[cfg(test)]
 use crate::{
-    counts, impute_and_zero_mean_snps, matrix_subset_no_alloc, read, read_with_indexes, write,
+    counts, impute_and_zero_mean_snps, matrix_subset_no_alloc, read, read_with_indexes, write_val,
 };
 #[cfg(test)]
 use crate::{internal_read_no_alloc, read_no_alloc, BedError, BedErrorPlus};
@@ -289,7 +289,7 @@ fn writer() {
     let temp = TempDir::default();
     let path2 = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_test.bed");
 
-    write(&path2, &val.view(), true, -127, 0).unwrap();
+    write_val(&path2, &val.view(), true, -127, 0).unwrap();
     for ext in ["fam", "bim"].iter() {
         let from = path.with_extension(ext);
         let to = path2.with_extension(ext);
@@ -303,7 +303,7 @@ fn writer() {
 
     let path2 = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64.bed");
 
-    write(&path2, &val.view(), true, f64::NAN, 0).unwrap();
+    write_val(&path2, &val.view(), true, f64::NAN, 0).unwrap();
     for ext in ["fam", "bim"].iter() {
         let from = path.with_extension(ext);
         let to = path2.with_extension(ext);
@@ -319,7 +319,7 @@ fn writer() {
     let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_5.bed");
 
     if let Err(BedErrorPlus::BedError(BedError::BadValue(_))) =
-        write(&path, &val.view(), true, f64::NAN, 0)
+        write_val(&path, &val.view(), true, f64::NAN, 0)
     {
         assert!(!path.exists(), "file should not exist");
     } else {
@@ -328,11 +328,11 @@ fn writer() {
 
     let val = nd::Array2::zeros((0, 0));
     let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_0s.bed");
-    write(&path, &val.view(), true, f64::NAN, 0).unwrap();
+    write_val(&path, &val.view(), true, f64::NAN, 0).unwrap();
 
     let val: nd::Array2<i8> = nd::Array2::zeros((3, 0));
     let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_3_0.bed");
-    write(&path, &val.view(), true, -127, 0).unwrap();
+    write_val(&path, &val.view(), true, -127, 0).unwrap();
 }
 
 #[test]
@@ -761,20 +761,20 @@ fn zeros() {
     let temp = TempDir::default();
     let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_zeros.bed");
 
-    write(&path, &out_val01.view(), true, f64::NAN, 0).unwrap();
+    write_val(&path, &out_val01.view(), true, f64::NAN, 0).unwrap();
     write_fake_metadata(&path, 0, sid_count);
     let result = read(&path, true, true, f64::NAN, 0);
     let in_val01 = result.unwrap();
     assert!(in_val01.shape() == [0, sid_count]);
     assert!(allclose(&in_val01.view(), &out_val01.view(), 1e-08, true));
 
-    write(&path, &out_val10.view(), true, f64::NAN, 0).unwrap();
+    write_val(&path, &out_val10.view(), true, f64::NAN, 0).unwrap();
     write_fake_metadata(&path, iid_count, 0);
     let in_val10 = read(&path, true, true, f64::NAN, 0).unwrap();
     assert!(in_val10.shape() == [iid_count, 0]);
     assert!(allclose(&in_val10.view(), &out_val10.view(), 1e-08, true));
 
-    write(&path, &out_val00.view(), true, f64::NAN, 0).unwrap();
+    write_val(&path, &out_val00.view(), true, f64::NAN, 0).unwrap();
     write_fake_metadata(&path, 0, 0);
     let in_val00 = read(&path, true, true, f64::NAN, 0).unwrap();
     assert!(in_val00.shape() == [0, 0]);

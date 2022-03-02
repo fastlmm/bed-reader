@@ -1,5 +1,5 @@
 #[cfg(test)]
-use crate::api::write_with_options;
+use crate::api::write;
 #[cfg(test)]
 use crate::api::Bed;
 #[cfg(test)]
@@ -435,12 +435,13 @@ fn write_docs() -> Result<(), BedErrorPlus> {
     // !!!cmk 0 could write_options and read_options be the same?
     // !!!cmk 0 why is output_file given early and val given late? (should be same? should match reader?)
     // !!!cmk later re-write python_module.rs to use the new Rust API (may need .fill() and .fill_with_defaults())
-    let write_options = WriteOptions::builder(output_file)
-        // .count_a2()
-        // .missing_value(f64::NAN)
-        // fam_filepath: Union[str, Path] = None,
-        // bim_filepath: Union[str, Path] = None,
-        // num_threads=None,
+    // !!!cmk 0 more options
+    // .count_a2()
+    // .missing_value(f64::NAN)
+    // fam_filepath: Union[str, Path] = None,
+    // bim_filepath: Union[str, Path] = None,
+    // num_threads=None,
+    WriteOptions::builder(output_file)
         .iid(["iid1", "iid2", "iid3"])
         .sid(["sid1", "sid2", "sid3", "sid4"])
         .write(&val)?;
@@ -459,10 +460,10 @@ fn write_docs() -> Result<(), BedErrorPlus> {
     //     ['0' '0' '0' '0']
     let output_file2 = output_path.join("small2.bed");
     let val = nd::array![[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]];
-    // !!!cmk 00
-    // write_bed(&output_file2, &val)?;
-    // let mut bed2 = Bed::new(&output_file2)?;
+    write(&val, &output_file2)?;
+    let mut bed2 = Bed::new(&output_file2)?;
     // println!("{:?}", bed2.chromosome()?);
+    println!("{:?}", bed2.sid()?);
     // ['0' '0' '0' '0']
 
     Ok(())
@@ -477,17 +478,16 @@ fn read_write() -> Result<(), BedErrorPlus> {
     let file_name = "bed_reader/tests/data/small.bed";
     let mut bed = Bed::new(file_name)?;
     let val = bed.read::<f64>()?;
-    let iid = bed.iid()?;
     let metadata = bed.metadata()?;
 
     // output_file = tmp_path / "small.deb"
     // fam_file = tmp_path / "small.maf"
     // bim_file = tmp_path / "small.mib"
 
-    let output_path = PathBuf::from(TempDir::default().as_ref());
-    let output_file = output_path.join("small.deb");
-    let fam_file = output_path.join("small.maf");
-    let bim_file = output_path.join("small.mib");
+    let temp_out = PathBuf::from(TempDir::default().as_ref());
+    let output_file = temp_out.join("small.deb");
+    let fam_file = temp_out.join("small.maf");
+    let bim_file = temp_out.join("small.mib");
 
     // to_bed(
     // output_file,
@@ -498,12 +498,11 @@ fn read_write() -> Result<(), BedErrorPlus> {
     // )
 
     // !!!cmk 0 think about metadata.copy()
-    let write_options = WriteOptions::builder(output_path) //&output_file)
-        .metadata(metadata.clone())
+    WriteOptions::builder(temp_out)
+        .metadata(metadata)
         .fam_path(&fam_file)
         .bim_path(&bim_file)
-        .build()?;
-    write_with_options(&val, &write_options)?;
+        .write(&val)?;
 
     // // assert output_file.exists() and fam_file.exists() and bim_file.exists()
     // assert!(output_file.exists() & fam_file.exists() & bim_file.exists());
@@ -516,7 +515,7 @@ fn read_write() -> Result<(), BedErrorPlus> {
         .bim_path(&bim_file)
         .build()?;
     let val2 = deb.read::<f64>()?;
-    // let metadata2 = deb.metadata()?;
+    let metadata2 = deb.metadata()?;
 
     // assert np.allclose(val, val2, equal_nan=True)
     // !!!cmk 00
