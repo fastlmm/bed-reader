@@ -30,10 +30,10 @@ use crate::{
 
 // !!!cmk 0 replace this with Option<Skippable>
 #[derive(Debug, Clone)]
-pub enum OptionOrSkip<T> {
-    None,
-    Some(T),
+pub enum LazyOrSkip<T> {
+    Lazy,
     Skip,
+    Some(T),
 }
 
 #[derive(Debug, Clone)]
@@ -42,19 +42,19 @@ pub enum Skippable<T> {
     Skip,
 }
 
-impl<T> OptionOrSkip<T> {
-    pub const fn as_ref(&self) -> OptionOrSkip<&T> {
+impl<T> LazyOrSkip<T> {
+    pub const fn as_ref(&self) -> LazyOrSkip<&T> {
         match *self {
-            OptionOrSkip::Some(ref x) => OptionOrSkip::Some(x),
-            OptionOrSkip::None => OptionOrSkip::None,
-            OptionOrSkip::Skip => OptionOrSkip::Skip,
+            LazyOrSkip::Some(ref x) => LazyOrSkip::Some(x),
+            LazyOrSkip::Lazy => LazyOrSkip::Lazy,
+            LazyOrSkip::Skip => LazyOrSkip::Skip,
         }
     }
     pub fn unwrap(self) -> T {
         match self {
-            OptionOrSkip::Some(val) => val,
-            OptionOrSkip::None => panic!("called `OptionOrSkip::::unwrap()` on a `None` value"),
-            OptionOrSkip::Skip => panic!("called `OptionOrSkip::::unwrap()` on a `Skip` value"),
+            LazyOrSkip::Some(val) => val,
+            LazyOrSkip::Lazy => panic!("called `LazyOrSkip::::unwrap()` on a `Lazy` value"),
+            LazyOrSkip::Skip => panic!("called `LazyOrSkip::::unwrap()` on a `Skip` value"),
         }
     }
 }
@@ -74,11 +74,20 @@ impl<T> OptionOrSkip<T> {
 //     }
 // }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct Metadata {
-    pub iid: Option<nd::Array1<String>>,
+    pub iid: LazyOrSkip<nd::Array1<String>>,
 
-    pub sid: Option<nd::Array1<String>>,
+    pub sid: LazyOrSkip<nd::Array1<String>>,
+}
+
+impl Default for Metadata {
+    fn default() -> Self {
+        Self {
+            iid: LazyOrSkip::Lazy,
+            sid: LazyOrSkip::Lazy,
+        }
+    }
 }
 
 // https://crates.io/crates/typed-builder
@@ -106,48 +115,48 @@ pub struct Bed {
     sid_count: Option<usize>,
 
     #[builder(setter(custom))]
-    #[builder(default = "OptionOrSkip::None")]
-    iid: OptionOrSkip<nd::Array1<String>>,
+    #[builder(default = "LazyOrSkip::Lazy")]
+    iid: LazyOrSkip<nd::Array1<String>>,
 
     #[builder(setter(custom))]
-    #[builder(default = "OptionOrSkip::None")]
-    sid: OptionOrSkip<nd::Array1<String>>,
+    #[builder(default = "LazyOrSkip::Lazy")]
+    sid: LazyOrSkip<nd::Array1<String>>,
 
     #[builder(setter(custom))]
-    #[builder(default = "OptionOrSkip::None")]
-    chromosome: OptionOrSkip<nd::Array1<String>>,
+    #[builder(default = "LazyOrSkip::Lazy")]
+    chromosome: LazyOrSkip<nd::Array1<String>>,
 
     #[builder(setter(custom))]
-    #[builder(default = "OptionOrSkip::None")]
-    allele_1: OptionOrSkip<nd::Array1<String>>,
+    #[builder(default = "LazyOrSkip::Lazy")]
+    allele_1: LazyOrSkip<nd::Array1<String>>,
 
     #[builder(setter(custom))]
-    #[builder(default = "OptionOrSkip::None")]
-    allele_2: OptionOrSkip<nd::Array1<String>>,
+    #[builder(default = "LazyOrSkip::Lazy")]
+    allele_2: LazyOrSkip<nd::Array1<String>>,
 
     #[builder(setter(custom))]
-    #[builder(default = "OptionOrSkip::None")]
-    sex: OptionOrSkip<nd::Array1<i32>>,
+    #[builder(default = "LazyOrSkip::Lazy")]
+    sex: LazyOrSkip<nd::Array1<i32>>,
 
     #[builder(setter(custom))]
-    #[builder(default = "OptionOrSkip::None")]
-    fid: OptionOrSkip<nd::Array1<String>>,
+    #[builder(default = "LazyOrSkip::Lazy")]
+    fid: LazyOrSkip<nd::Array1<String>>,
 
     #[builder(setter(custom))]
-    #[builder(default = "OptionOrSkip::None")]
-    father: OptionOrSkip<nd::Array1<String>>,
+    #[builder(default = "LazyOrSkip::Lazy")]
+    father: LazyOrSkip<nd::Array1<String>>,
 
     #[builder(setter(custom))]
-    #[builder(default = "OptionOrSkip::None")]
-    mother: OptionOrSkip<nd::Array1<String>>,
+    #[builder(default = "LazyOrSkip::Lazy")]
+    mother: LazyOrSkip<nd::Array1<String>>,
 
     #[builder(setter(custom))]
-    #[builder(default = "OptionOrSkip::None")]
-    cm_position: OptionOrSkip<nd::Array1<f32>>,
+    #[builder(default = "LazyOrSkip::Lazy")]
+    cm_position: LazyOrSkip<nd::Array1<f32>>,
 
     #[builder(setter(custom))]
-    #[builder(default = "OptionOrSkip::None")]
-    bp_position: OptionOrSkip<nd::Array1<i32>>,
+    #[builder(default = "LazyOrSkip::Lazy")]
+    bp_position: LazyOrSkip<nd::Array1<i32>>,
 
     #[builder(setter(custom))]
     #[builder(default = "None")]
@@ -216,56 +225,56 @@ impl BedBuilder {
     }
 
     pub fn skip_iid(mut self) -> Self {
-        self.iid = Some(OptionOrSkip::Skip);
+        self.iid = Some(LazyOrSkip::Skip);
         self
     }
 
     pub fn skip_sid(mut self) -> Self {
-        self.sid = Some(OptionOrSkip::Skip);
+        self.sid = Some(LazyOrSkip::Skip);
         self
     }
 
     pub fn skip_chromosome(mut self) -> Self {
-        self.chromosome = Some(OptionOrSkip::Skip);
+        self.chromosome = Some(LazyOrSkip::Skip);
         self
     }
 
     pub fn skip_allele_1(mut self) -> Self {
-        self.allele_1 = Some(OptionOrSkip::Skip);
+        self.allele_1 = Some(LazyOrSkip::Skip);
         self
     }
 
     pub fn skip_allele_2(mut self) -> Self {
-        self.allele_2 = Some(OptionOrSkip::Skip);
+        self.allele_2 = Some(LazyOrSkip::Skip);
         self
     }
 
     pub fn skip_fid(mut self) -> Self {
-        self.fid = Some(OptionOrSkip::Skip);
+        self.fid = Some(LazyOrSkip::Skip);
         self
     }
     pub fn skip_father(mut self) -> Self {
-        self.father = Some(OptionOrSkip::Skip);
+        self.father = Some(LazyOrSkip::Skip);
         self
     }
 
     pub fn skip_mother(mut self) -> Self {
-        self.mother = Some(OptionOrSkip::Skip);
+        self.mother = Some(LazyOrSkip::Skip);
         self
     }
 
     pub fn skip_sex(mut self) -> Self {
-        self.sex = Some(OptionOrSkip::Skip);
+        self.sex = Some(LazyOrSkip::Skip);
         self
     }
 
     pub fn skip_cm_position(mut self) -> Self {
-        self.cm_position = Some(OptionOrSkip::Skip);
+        self.cm_position = Some(LazyOrSkip::Skip);
         self
     }
 
     pub fn skip_bp_position(mut self) -> Self {
-        self.bp_position = Some(OptionOrSkip::Skip);
+        self.bp_position = Some(LazyOrSkip::Skip);
         self
     }
 
@@ -278,7 +287,7 @@ impl BedBuilder {
     {
         let new_string_array: nd::Array1<String> =
             iid.into_iter().map(|s| s.as_ref().to_string()).collect();
-        self.iid = Some(OptionOrSkip::Some(new_string_array));
+        self.iid = Some(LazyOrSkip::Some(new_string_array));
         self
     }
 
@@ -289,7 +298,7 @@ impl BedBuilder {
     {
         let new_string_array: nd::Array1<String> =
             sid.into_iter().map(|s| s.as_ref().to_string()).collect();
-        self.sid = Some(OptionOrSkip::Some(new_string_array));
+        self.sid = Some(LazyOrSkip::Some(new_string_array));
         self
     }
 
@@ -302,7 +311,7 @@ impl BedBuilder {
             .into_iter()
             .map(|s| s.as_ref().to_string())
             .collect();
-        self.chromosome = Some(OptionOrSkip::Some(new_string_array));
+        self.chromosome = Some(LazyOrSkip::Some(new_string_array));
         self
     }
 
@@ -313,7 +322,7 @@ impl BedBuilder {
     {
         let new_string_array: nd::Array1<String> =
             fid.into_iter().map(|s| s.as_ref().to_string()).collect();
-        self.fid = Some(OptionOrSkip::Some(new_string_array));
+        self.fid = Some(LazyOrSkip::Some(new_string_array));
         self
     }
     pub fn father<I, T>(mut self, father: I) -> Self
@@ -323,7 +332,7 @@ impl BedBuilder {
     {
         let new_string_array: nd::Array1<String> =
             father.into_iter().map(|s| s.as_ref().to_string()).collect();
-        self.father = Some(OptionOrSkip::Some(new_string_array));
+        self.father = Some(LazyOrSkip::Some(new_string_array));
         self
     }
     pub fn mother<I, T>(mut self, mother: I) -> Self
@@ -333,7 +342,7 @@ impl BedBuilder {
     {
         let new_string_array: nd::Array1<String> =
             mother.into_iter().map(|s| s.as_ref().to_string()).collect();
-        self.mother = Some(OptionOrSkip::Some(new_string_array));
+        self.mother = Some(LazyOrSkip::Some(new_string_array));
         self
     }
 
@@ -365,16 +374,16 @@ fn to_metadata_path(
     }
 }
 
-fn skip_to_none(
-    result: Result<&nd::Array1<String>, BedErrorPlus>,
-) -> Result<Option<nd::Array1<String>>, BedErrorPlus> {
-    match result {
-        // !!!cmk 0 understand to_owned. Is there a copy?
-        Ok(array) => Ok(Some(array.to_owned())),
-        Err(BedErrorPlus::BedError(BedError::CannotUseSkippedMetadata(_))) => Ok(None),
-        Err(e) => Err(e),
-    }
-}
+// fn skip_to_none(
+//     result: Result<&nd::Array1<String>, BedErrorPlus>,
+// ) -> Result<Option<nd::Array1<String>>, BedErrorPlus> {
+//     match result {
+//         // !!!cmk 0 understand to_owned. Is there a copy?
+//         Ok(array) => Ok(Some(array.to_owned())),
+//         Err(BedErrorPlus::BedError(BedError::CannotUseSkippedMetadata(_))) => Ok(None),
+//         Err(e) => Err(e),
+//     }
+// }
 
 impl Bed {
     pub fn builder<P: AsRef<Path>>(path: P) -> BedBuilder {
@@ -385,18 +394,18 @@ impl Bed {
         Bed::builder(path).build()
     }
 
-    pub fn metadata(&mut self) -> Result<Metadata, BedErrorPlus> {
-        Ok(Metadata {
-            iid: skip_to_none(self.iid())?,
-            sid: skip_to_none(self.sid())?,
-            // chromosome: &self.chromosome,
-            // allele_1: &self.allele_1,
-            // allele_2: &self.allele_2,
-            // fid: &self.fid,
-            // father: &self.father,
-            // mother: &self.mother,
-        })
-    }
+    // pub fn metadata(&mut self) -> Result<Metadata, BedErrorPlus> {
+    //     Ok(Metadata {
+    //         iid: skip_to_none(self.iid())?,
+    //         sid: skip_to_none(self.sid())?,
+    //         // chromosome: &self.chromosome,
+    //         // allele_1: &self.allele_1,
+    //         // allele_2: &self.allele_2,
+    //         // fid: &self.fid,
+    //         // father: &self.father,
+    //         // mother: &self.mother,
+    //     })
+    // }
 
     // !!!cmk later is this how you do lazy accessors?
     // !!!cmk later should this be "try_get_..." or just "iid_count" or as is
@@ -473,27 +482,27 @@ impl Bed {
 
     pub fn iid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         match self.iid {
-            OptionOrSkip::Some(ref iid) => Ok(iid),
-            OptionOrSkip::None => {
+            LazyOrSkip::Some(ref iid) => Ok(iid),
+            LazyOrSkip::Lazy => {
                 let iid = self.read_fam_or_bim(FamOrBim::Fam, 1)?;
-                self.iid = OptionOrSkip::Some(iid);
+                self.iid = LazyOrSkip::Some(iid);
                 // This unwrap is safe because we just created 'Some'
                 Ok(self.iid.as_ref().unwrap())
             }
-            OptionOrSkip::Skip => Err(BedError::CannotUseSkippedMetadata("iid".to_string()).into()),
+            LazyOrSkip::Skip => Err(BedError::CannotUseSkippedMetadata("iid".to_string()).into()),
         }
     }
 
     pub fn sid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         match self.sid {
-            OptionOrSkip::Some(ref sid) => Ok(sid),
-            OptionOrSkip::None => {
+            LazyOrSkip::Some(ref sid) => Ok(sid),
+            LazyOrSkip::Lazy => {
                 let sid = self.read_fam_or_bim(FamOrBim::Bim, 2)?;
-                self.sid = OptionOrSkip::Some(sid);
+                self.sid = LazyOrSkip::Some(sid);
                 // This unwrap is safe because we just created 'Some'
                 Ok(self.sid.as_ref().unwrap())
             }
-            OptionOrSkip::Skip => Err(BedError::CannotUseSkippedMetadata("sid".to_string()).into()),
+            LazyOrSkip::Skip => Err(BedError::CannotUseSkippedMetadata("sid".to_string()).into()),
         }
     }
 
@@ -503,14 +512,14 @@ impl Bed {
 
     pub fn chromosome(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         match self.chromosome {
-            OptionOrSkip::Some(ref chromosome) => Ok(chromosome),
-            OptionOrSkip::None => {
+            LazyOrSkip::Some(ref chromosome) => Ok(chromosome),
+            LazyOrSkip::Lazy => {
                 let chromosome = self.read_fam_or_bim(FamOrBim::Bim, 0)?;
-                self.chromosome = OptionOrSkip::Some(chromosome);
+                self.chromosome = LazyOrSkip::Some(chromosome);
                 // This unwrap is safe because we just created 'Some'
                 Ok(self.chromosome.as_ref().unwrap())
             }
-            OptionOrSkip::Skip => {
+            LazyOrSkip::Skip => {
                 Err(BedError::CannotUseSkippedMetadata("chromosome".to_string()).into())
             }
         }
@@ -518,14 +527,14 @@ impl Bed {
 
     pub fn allele_1(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         match self.allele_1 {
-            OptionOrSkip::Some(ref allele_1) => Ok(allele_1),
-            OptionOrSkip::None => {
+            LazyOrSkip::Some(ref allele_1) => Ok(allele_1),
+            LazyOrSkip::Lazy => {
                 let allele_1 = self.read_fam_or_bim(FamOrBim::Bim, 4)?;
-                self.allele_1 = OptionOrSkip::Some(allele_1);
+                self.allele_1 = LazyOrSkip::Some(allele_1);
                 // This unwrap is safe because we just created 'Some'
                 Ok(self.allele_1.as_ref().unwrap())
             }
-            OptionOrSkip::Skip => {
+            LazyOrSkip::Skip => {
                 Err(BedError::CannotUseSkippedMetadata("allele_1".to_string()).into())
             }
         }
@@ -533,14 +542,14 @@ impl Bed {
 
     pub fn allele_2(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         match self.allele_2 {
-            OptionOrSkip::Some(ref allele_2) => Ok(allele_2),
-            OptionOrSkip::None => {
+            LazyOrSkip::Some(ref allele_2) => Ok(allele_2),
+            LazyOrSkip::Lazy => {
                 let allele_2 = self.read_fam_or_bim(FamOrBim::Bim, 5)?;
-                self.allele_2 = OptionOrSkip::Some(allele_2);
+                self.allele_2 = LazyOrSkip::Some(allele_2);
                 // This unwrap is safe because we just created 'Some'
                 Ok(self.allele_2.as_ref().unwrap())
             }
-            OptionOrSkip::Skip => {
+            LazyOrSkip::Skip => {
                 Err(BedError::CannotUseSkippedMetadata("allele_2".to_string()).into())
             }
         }
@@ -548,27 +557,27 @@ impl Bed {
 
     pub fn fid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         match self.fid {
-            OptionOrSkip::Some(ref fid) => Ok(fid),
-            OptionOrSkip::None => {
+            LazyOrSkip::Some(ref fid) => Ok(fid),
+            LazyOrSkip::Lazy => {
                 let fid = self.read_fam_or_bim(FamOrBim::Fam, 0)?;
-                self.fid = OptionOrSkip::Some(fid);
+                self.fid = LazyOrSkip::Some(fid);
                 // This unwrap is safe because we just created 'Some'
                 Ok(self.fid.as_ref().unwrap())
             }
-            OptionOrSkip::Skip => Err(BedError::CannotUseSkippedMetadata("fid".to_string()).into()),
+            LazyOrSkip::Skip => Err(BedError::CannotUseSkippedMetadata("fid".to_string()).into()),
         }
     }
 
     pub fn father(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         match self.father {
-            OptionOrSkip::Some(ref father) => Ok(father),
-            OptionOrSkip::None => {
+            LazyOrSkip::Some(ref father) => Ok(father),
+            LazyOrSkip::Lazy => {
                 let father = self.read_fam_or_bim(FamOrBim::Fam, 2)?;
-                self.father = OptionOrSkip::Some(father);
+                self.father = LazyOrSkip::Some(father);
                 // This unwrap is safe because we just created 'Some'
                 Ok(self.father.as_ref().unwrap())
             }
-            OptionOrSkip::Skip => {
+            LazyOrSkip::Skip => {
                 Err(BedError::CannotUseSkippedMetadata("father".to_string()).into())
             }
         }
@@ -576,14 +585,14 @@ impl Bed {
 
     pub fn mother(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         match self.mother {
-            OptionOrSkip::Some(ref mother) => Ok(mother),
-            OptionOrSkip::None => {
+            LazyOrSkip::Some(ref mother) => Ok(mother),
+            LazyOrSkip::Lazy => {
                 let mother = self.read_fam_or_bim(FamOrBim::Fam, 3)?;
-                self.mother = OptionOrSkip::Some(mother);
+                self.mother = LazyOrSkip::Some(mother);
                 // This unwrap is safe because we just created 'Some'
                 Ok(self.mother.as_ref().unwrap())
             }
-            OptionOrSkip::Skip => {
+            LazyOrSkip::Skip => {
                 Err(BedError::CannotUseSkippedMetadata("mother".to_string()).into())
             }
         }
@@ -591,8 +600,8 @@ impl Bed {
 
     pub fn sex(&mut self) -> Result<&nd::Array1<i32>, BedErrorPlus> {
         match self.sex {
-            OptionOrSkip::Some(ref sex) => Ok(sex),
-            OptionOrSkip::None => {
+            LazyOrSkip::Some(ref sex) => Ok(sex),
+            LazyOrSkip::Lazy => {
                 let sex: Result<nd::Array1<i32>, _> = self
                     .read_fam_or_bim(FamOrBim::Fam, 4)?
                     .into_iter()
@@ -604,18 +613,18 @@ impl Bed {
                     })
                     .collect();
                 let sex2 = sex?;
-                self.sex = OptionOrSkip::Some(sex2);
+                self.sex = LazyOrSkip::Some(sex2);
                 // This unwrap is safe because we just created 'Some'
                 Ok(self.sex.as_ref().unwrap())
             }
-            OptionOrSkip::Skip => Err(BedError::CannotUseSkippedMetadata("sex".to_string()).into()),
+            LazyOrSkip::Skip => Err(BedError::CannotUseSkippedMetadata("sex".to_string()).into()),
         }
     }
 
     pub fn cm_position(&mut self) -> Result<&nd::Array1<f32>, BedErrorPlus> {
         match self.cm_position {
-            OptionOrSkip::Some(ref cm_position) => Ok(cm_position),
-            OptionOrSkip::None => {
+            LazyOrSkip::Some(ref cm_position) => Ok(cm_position),
+            LazyOrSkip::Lazy => {
                 let cm_position: Result<nd::Array1<f32>, _> = self
                     .read_fam_or_bim(FamOrBim::Bim, 2)?
                     .into_iter()
@@ -630,11 +639,11 @@ impl Bed {
                     })
                     .collect();
                 let cm_position2 = cm_position?;
-                self.cm_position = OptionOrSkip::Some(cm_position2);
+                self.cm_position = LazyOrSkip::Some(cm_position2);
                 // This unwrap is safe because we just created 'Some'
                 Ok(self.cm_position.as_ref().unwrap())
             }
-            OptionOrSkip::Skip => {
+            LazyOrSkip::Skip => {
                 Err(BedError::CannotUseSkippedMetadata("cm_position".to_string()).into())
             }
         }
@@ -642,8 +651,8 @@ impl Bed {
 
     pub fn bp_position(&mut self) -> Result<&nd::Array1<i32>, BedErrorPlus> {
         match self.bp_position {
-            OptionOrSkip::Some(ref bp_position) => Ok(bp_position),
-            OptionOrSkip::None => {
+            LazyOrSkip::Some(ref bp_position) => Ok(bp_position),
+            LazyOrSkip::Lazy => {
                 let bp_position: Result<nd::Array1<i32>, _> = self
                     .read_fam_or_bim(FamOrBim::Bim, 3)?
                     .into_iter()
@@ -655,11 +664,11 @@ impl Bed {
                     })
                     .collect();
                 let bp_position2 = bp_position?;
-                self.bp_position = OptionOrSkip::Some(bp_position2);
+                self.bp_position = LazyOrSkip::Some(bp_position2);
                 // This unwrap is safe because we just created 'Some'
                 Ok(self.bp_position.as_ref().unwrap())
             }
-            OptionOrSkip::Skip => {
+            LazyOrSkip::Skip => {
                 Err(BedError::CannotUseSkippedMetadata("bp_position".to_string()).into())
             }
         }

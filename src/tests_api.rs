@@ -478,7 +478,7 @@ fn read_write() -> Result<(), BedErrorPlus> {
     let file_name = "bed_reader/tests/data/small.bed";
     let mut bed = Bed::new(file_name)?;
     let val = bed.read::<f64>()?;
-    let metadata = bed.metadata()?;
+    // let metadata = bed.metadata()?;
 
     // output_file = tmp_path / "small.deb"
     // fam_file = tmp_path / "small.maf"
@@ -515,7 +515,7 @@ fn read_write() -> Result<(), BedErrorPlus> {
         .bim_path(&bim_file)
         .build()?;
     let val2 = deb.read::<f64>()?;
-    let metadata2 = deb.metadata()?;
+    // let metadata2 = deb.metadata()?;
 
     // assert np.allclose(val, val2, equal_nan=True)
     // !!!cmk 00
