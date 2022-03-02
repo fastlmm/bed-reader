@@ -114,14 +114,15 @@ pub struct Bed {
     #[builder(default, setter(strip_option))]
     sid_count: Option<usize>,
 
-    #[builder(setter(custom))]
-    #[builder(default = "LazyOrSkip::Lazy")]
-    iid: LazyOrSkip<nd::Array1<String>>,
+    metadata: Metadata,
 
-    #[builder(setter(custom))]
-    #[builder(default = "LazyOrSkip::Lazy")]
-    sid: LazyOrSkip<nd::Array1<String>>,
+    // #[builder(setter(custom))]
+    // #[builder(default = "LazyOrSkip::Lazy")]
+    // iid: LazyOrSkip<nd::Array1<String>>,
 
+    // #[builder(setter(custom))]
+    // #[builder(default = "LazyOrSkip::Lazy")]
+    // sid: LazyOrSkip<nd::Array1<String>>,
     #[builder(setter(custom))]
     #[builder(default = "LazyOrSkip::Lazy")]
     chromosome: LazyOrSkip<nd::Array1<String>>,
@@ -176,8 +177,7 @@ impl BedBuilder {
             iid_count: None,
             sid_count: None,
             fid: None,
-            iid: None,
-            sid: None,
+            metadata: Some(Metadata::default()),
             father: None,
             mother: None,
             chromosome: None,
@@ -224,13 +224,14 @@ impl BedBuilder {
         self
     }
 
-    pub fn skip_iid(mut self) -> Self {
-        self.iid = Some(LazyOrSkip::Skip);
+    pub fn skip_iid(&mut self) -> &Self {
+        // !!!cmk 0 is that unwrap safe?
+        self.metadata.as_mut().unwrap().iid = LazyOrSkip::Skip;
         self
     }
 
     pub fn skip_sid(mut self) -> Self {
-        self.sid = Some(LazyOrSkip::Skip);
+        self.metadata.as_mut().unwrap().sid = LazyOrSkip::Skip;
         self
     }
 
@@ -287,7 +288,7 @@ impl BedBuilder {
     {
         let new_string_array: nd::Array1<String> =
             iid.into_iter().map(|s| s.as_ref().to_string()).collect();
-        self.iid = Some(LazyOrSkip::Some(new_string_array));
+        self.metadata.as_mut().unwrap().iid = LazyOrSkip::Some(new_string_array);
         self
     }
 
@@ -298,7 +299,7 @@ impl BedBuilder {
     {
         let new_string_array: nd::Array1<String> =
             sid.into_iter().map(|s| s.as_ref().to_string()).collect();
-        self.sid = Some(LazyOrSkip::Some(new_string_array));
+        self.metadata.as_mut().unwrap().sid = LazyOrSkip::Some(new_string_array);
         self
     }
 
@@ -481,26 +482,26 @@ impl Bed {
     }
 
     pub fn iid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        match self.iid {
+        match self.metadata.iid {
             LazyOrSkip::Some(ref iid) => Ok(iid),
             LazyOrSkip::Lazy => {
                 let iid = self.read_fam_or_bim(FamOrBim::Fam, 1)?;
-                self.iid = LazyOrSkip::Some(iid);
+                self.metadata.iid = LazyOrSkip::Some(iid);
                 // This unwrap is safe because we just created 'Some'
-                Ok(self.iid.as_ref().unwrap())
+                Ok(self.metadata.iid.as_ref().unwrap())
             }
             LazyOrSkip::Skip => Err(BedError::CannotUseSkippedMetadata("iid".to_string()).into()),
         }
     }
 
     pub fn sid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        match self.sid {
+        match self.metadata.sid {
             LazyOrSkip::Some(ref sid) => Ok(sid),
             LazyOrSkip::Lazy => {
                 let sid = self.read_fam_or_bim(FamOrBim::Bim, 2)?;
-                self.sid = LazyOrSkip::Some(sid);
+                self.metadata.sid = LazyOrSkip::Some(sid);
                 // This unwrap is safe because we just created 'Some'
-                Ok(self.sid.as_ref().unwrap())
+                Ok(self.metadata.sid.as_ref().unwrap())
             }
             LazyOrSkip::Skip => Err(BedError::CannotUseSkippedMetadata("sid".to_string()).into()),
         }
