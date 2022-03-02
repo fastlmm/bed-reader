@@ -912,18 +912,36 @@ pub struct WriteOptions {
     #[builder(default = "None")]
     bim_path: Option<PathBuf>,
 
-    #[builder(setter(custom))]
-    #[builder(default = "None")]
-    iid: Option<nd::Array1<String>>,
-
-    #[builder(setter(custom))]
-    #[builder(default = "None")]
-    sid: Option<nd::Array1<String>>,
+    metadata: Metadata,
 }
 
 impl WriteOptions {
     pub fn builder<P: AsRef<Path>>(path: P) -> WriteOptionsBuilder {
         WriteOptionsBuilder::new(path)
+    }
+
+    pub fn iid(&self) -> Result<&nd::Array1<String>, BedErrorPlus> {
+        match self.metadata.iid {
+            LazyOrSkip::Some(ref iid) => Ok(iid),
+            LazyOrSkip::Lazy => {
+                panic!("!!!cmk 0 raise error here");
+            }
+            LazyOrSkip::Skip => {
+                panic!("!!!cmk 0 maybe return default value");
+            }
+        }
+    }
+
+    pub fn sid(&self) -> Result<&nd::Array1<String>, BedErrorPlus> {
+        match self.metadata.sid {
+            LazyOrSkip::Some(ref iid) => Ok(iid),
+            LazyOrSkip::Lazy => {
+                panic!("!!!cmk 0 raise error here");
+            }
+            LazyOrSkip::Skip => {
+                panic!("!!!cmk 0 maybe return default value");
+            }
+        }
     }
 }
 
@@ -939,8 +957,7 @@ impl WriteOptionsBuilder {
             path: Some(path.as_ref().into()),
             fam_path: None,
             bim_path: None,
-            iid: None,
-            sid: None,
+            metadata: Some(Metadata::default()),
         }
     }
 
@@ -961,7 +978,7 @@ impl WriteOptionsBuilder {
     {
         let new_string_array: nd::Array1<String> =
             iid.into_iter().map(|s| s.as_ref().to_string()).collect();
-        self.iid = Some(Some(new_string_array));
+        self.metadata.as_mut().unwrap().iid = LazyOrSkip::Some(new_string_array);
         self
     }
 
@@ -972,7 +989,7 @@ impl WriteOptionsBuilder {
     {
         let new_string_array: nd::Array1<String> =
             sid.into_iter().map(|s| s.as_ref().to_string()).collect();
-        self.sid = Some(Some(new_string_array));
+        self.metadata.as_mut().unwrap().sid = LazyOrSkip::Some(new_string_array);
         self
     }
 }
@@ -993,8 +1010,8 @@ pub fn to_bed_with_options<TVal: BedVal>(
     let fam_path = to_metadata_path(path, &write_options.fam_path, "fam");
     let bim_path = to_metadata_path(path, &write_options.bim_path, "bim");
 
-    let iid = &write_options.iid;
-    let sid = &write_options.sid;
+    let iid = write_options.iid()?;
+    let sid = write_options.sid()?;
 
     Ok(())
 }
