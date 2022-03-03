@@ -42,6 +42,17 @@ pub enum Skippable<T> {
     Skip,
 }
 
+impl<T> Skippable<T> {
+    pub fn unwrap(self) -> T {
+        match self {
+            Skippable::Some(some) => some,
+            Skippable::Skip => {
+                todo!("Skippable::Skip")
+            }
+        }
+    }
+}
+
 impl<T> LazyOrSkip<T> {
     pub const fn as_ref(&self) -> LazyOrSkip<&T> {
         match *self {
@@ -76,18 +87,8 @@ impl<T> LazyOrSkip<T> {
 
 #[derive(Clone, Debug)]
 pub struct Metadata {
-    pub iid: LazyOrSkip<nd::Array1<String>>,
-
-    pub sid: LazyOrSkip<nd::Array1<String>>,
-}
-
-impl Default for Metadata {
-    fn default() -> Self {
-        Self {
-            iid: LazyOrSkip::Lazy,
-            sid: LazyOrSkip::Lazy,
-        }
-    }
+    iid: Skippable<nd::Array1<String>>,
+    sid: Skippable<nd::Array1<String>>,
 }
 
 // https://crates.io/crates/typed-builder
@@ -114,15 +115,14 @@ pub struct Bed {
     #[builder(default, setter(strip_option))]
     sid_count: Option<usize>,
 
-    metadata: Metadata,
+    #[builder(setter(custom))]
+    #[builder(default = "LazyOrSkip::Lazy")]
+    iid: LazyOrSkip<nd::Array1<String>>,
 
-    // #[builder(setter(custom))]
-    // #[builder(default = "LazyOrSkip::Lazy")]
-    // iid: LazyOrSkip<nd::Array1<String>>,
+    #[builder(setter(custom))]
+    #[builder(default = "LazyOrSkip::Lazy")]
+    sid: LazyOrSkip<nd::Array1<String>>,
 
-    // #[builder(setter(custom))]
-    // #[builder(default = "LazyOrSkip::Lazy")]
-    // sid: LazyOrSkip<nd::Array1<String>>,
     #[builder(setter(custom))]
     #[builder(default = "LazyOrSkip::Lazy")]
     chromosome: LazyOrSkip<nd::Array1<String>>,
@@ -177,7 +177,8 @@ impl BedBuilder {
             iid_count: None,
             sid_count: None,
             fid: None,
-            metadata: Some(Metadata::default()),
+            iid: None,
+            sid: None,
             father: None,
             mother: None,
             chromosome: None,
@@ -225,13 +226,12 @@ impl BedBuilder {
     }
 
     pub fn skip_iid(&mut self) -> &Self {
-        // !!!cmk 0 is that unwrap safe?
-        self.metadata.as_mut().unwrap().iid = LazyOrSkip::Skip;
+        self.iid = Some(LazyOrSkip::Skip);
         self
     }
 
     pub fn skip_sid(mut self) -> Self {
-        self.metadata.as_mut().unwrap().sid = LazyOrSkip::Skip;
+        self.sid = Some(LazyOrSkip::Skip);
         self
     }
 
@@ -288,7 +288,7 @@ impl BedBuilder {
     {
         let new_string_array: nd::Array1<String> =
             iid.into_iter().map(|s| s.as_ref().to_string()).collect();
-        self.metadata.as_mut().unwrap().iid = LazyOrSkip::Some(new_string_array);
+        self.iid = Some(LazyOrSkip::Some(new_string_array));
         self
     }
 
@@ -299,7 +299,7 @@ impl BedBuilder {
     {
         let new_string_array: nd::Array1<String> =
             sid.into_iter().map(|s| s.as_ref().to_string()).collect();
-        self.metadata.as_mut().unwrap().sid = LazyOrSkip::Some(new_string_array);
+        self.sid = Some(LazyOrSkip::Some(new_string_array));
         self
     }
 
@@ -386,6 +386,16 @@ fn to_metadata_path(
 //     }
 // }
 
+fn to_skippable<T: Clone>(lazy_or_skip: &LazyOrSkip<T>) -> Skippable<T> {
+    match lazy_or_skip {
+        LazyOrSkip::Lazy => {
+            todo!("!!!cmk later")
+        }
+        LazyOrSkip::Skip => Skippable::Skip,
+        LazyOrSkip::Some(some) => Skippable::Some(some.clone()),
+    }
+}
+
 impl Bed {
     pub fn builder<P: AsRef<Path>>(path: P) -> BedBuilder {
         BedBuilder::new(path)
@@ -430,6 +440,7 @@ impl Bed {
             Ok(sid_count)
         }
     }
+
     /// !!!cmk later don't re-read for every column
     fn read_fam_or_bim(
         &self,
@@ -481,41 +492,41 @@ impl Bed {
         Ok(array)
     }
 
-    pub fn metadata(&mut self) -> Result<&Metadata, BedErrorPlus> {
-        self.iid()?;
-        self.sid()?;
-        Ok(&self.metadata)
+    pub fn metadata(&mut self) -> Result<Metadata, BedErrorPlus> {
+        let _ = self.iid();
+        let _ = self.sid();
+        let metadata = Metadata {
+            iid: to_skippable(&self.iid),
+            sid: to_skippable(&self.sid),
+        };
+        Ok(metadata)
     }
 
     pub fn iid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        match self.metadata.iid {
+        match self.iid {
             LazyOrSkip::Some(ref iid) => Ok(iid),
             LazyOrSkip::Lazy => {
-                let iid = self.read_fam_or_bim(FamOrBim::Fam, 1)?;
-                self.metadata.iid = LazyOrSkip::Some(iid);
+                let iid = self.read_fam_or_bim(FamOrBim::Bim, 0)?;
+                self.iid = LazyOrSkip::Some(iid);
                 // This unwrap is safe because we just created 'Some'
-                Ok(self.metadata.iid.as_ref().unwrap())
+                Ok(self.iid.as_ref().unwrap())
             }
             LazyOrSkip::Skip => Err(BedError::CannotUseSkippedMetadata("iid".to_string()).into()),
         }
     }
 
     pub fn sid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        match self.metadata.sid {
+        match self.sid {
             LazyOrSkip::Some(ref sid) => Ok(sid),
             LazyOrSkip::Lazy => {
-                let sid = self.read_fam_or_bim(FamOrBim::Bim, 2)?;
-                self.metadata.sid = LazyOrSkip::Some(sid);
+                let sid = self.read_fam_or_bim(FamOrBim::Bim, 0)?;
+                self.sid = LazyOrSkip::Some(sid);
                 // This unwrap is safe because we just created 'Some'
-                Ok(self.metadata.sid.as_ref().unwrap())
+                Ok(self.sid.as_ref().unwrap())
             }
             LazyOrSkip::Skip => Err(BedError::CannotUseSkippedMetadata("sid".to_string()).into()),
         }
     }
-
-    // pub fn metadata(&mut self) -> Result<&Metadata, BedErrorPlus> {
-    //     Ok(&self.metadata)
-    // }
 
     pub fn chromosome(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         match self.chromosome {
@@ -919,7 +930,12 @@ pub struct WriteOptions {
     bim_path: Option<PathBuf>,
 
     #[builder(setter(custom))]
-    metadata: Metadata,
+    #[builder(default = "Skippable::Skip")]
+    iid: Skippable<nd::Array1<String>>,
+
+    #[builder(setter(custom))]
+    #[builder(default = "Skippable::Skip")]
+    sid: Skippable<nd::Array1<String>>,
 }
 
 impl WriteOptions {
@@ -928,26 +944,16 @@ impl WriteOptions {
     }
 
     pub fn iid(&self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        match self.metadata.iid {
-            LazyOrSkip::Some(ref iid) => Ok(iid),
-            LazyOrSkip::Lazy => {
-                panic!("!!!cmk 0 raise error here");
-            }
-            LazyOrSkip::Skip => {
-                panic!("!!!cmk 0 maybe return default value");
-            }
+        match self.iid {
+            Skippable::Some(ref iid) => Ok(iid),
+            Skippable::Skip => Err(BedError::CannotUseSkippedMetadata("iid".to_string()).into()),
         }
     }
 
     pub fn sid(&self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        match self.metadata.sid {
-            LazyOrSkip::Some(ref iid) => Ok(iid),
-            LazyOrSkip::Lazy => {
-                panic!("!!!cmk 0 raise error here");
-            }
-            LazyOrSkip::Skip => {
-                panic!("!!!cmk 0 maybe return default value");
-            }
+        match self.sid {
+            Skippable::Some(ref sid) => Ok(sid),
+            Skippable::Skip => Err(BedError::CannotUseSkippedMetadata("sid".to_string()).into()),
         }
     }
 }
@@ -960,6 +966,8 @@ impl WriteOptionsBuilder {
         Ok(write_options)
     }
 
+    // !!!cmk later should check that metadata agrees with val size
+    // !!!cmk later maybe use the default builder?
     pub fn write<TVal: BedVal>(&self, val: &nd::Array2<TVal>) -> Result<(), BedErrorPlus> {
         let write_options = self.build()?;
         write_with_options(val, &write_options)?;
@@ -972,7 +980,8 @@ impl WriteOptionsBuilder {
             path: Some(path.as_ref().into()),
             fam_path: None,
             bim_path: None,
-            metadata: Some(Metadata::default()),
+            iid: None,
+            sid: None,
         }
     }
 
@@ -987,13 +996,8 @@ impl WriteOptionsBuilder {
     }
 
     pub fn metadata(mut self, metadata: &Metadata) -> Self {
-        // !!!cmk later check that no metadata is still 'Lazy'
-        if let LazyOrSkip::Some(iid) = &metadata.iid {
-            self = self.iid(iid);
-        }
-        if let LazyOrSkip::Some(sid) = &metadata.sid {
-            self = self.sid(sid);
-        }
+        self.iid = Some(metadata.iid.clone());
+        self.iid = Some(metadata.sid.clone());
         self
     }
 
@@ -1004,7 +1008,7 @@ impl WriteOptionsBuilder {
     {
         let new_string_array: nd::Array1<String> =
             iid.into_iter().map(|s| s.as_ref().to_string()).collect();
-        self.metadata.as_mut().unwrap().iid = LazyOrSkip::Some(new_string_array);
+        self.iid = Some(Skippable::Some(new_string_array));
         self
     }
 
@@ -1015,7 +1019,7 @@ impl WriteOptionsBuilder {
     {
         let new_string_array: nd::Array1<String> =
             sid.into_iter().map(|s| s.as_ref().to_string()).collect();
-        self.metadata.as_mut().unwrap().sid = LazyOrSkip::Some(new_string_array);
+        self.sid = Some(Skippable::Some(new_string_array));
         self
     }
 }
@@ -1040,8 +1044,8 @@ pub fn write_with_options<TVal: BedVal>(
     let _fam_path = to_metadata_path(path, &write_options.fam_path, "fam");
     let _bim_path = to_metadata_path(path, &write_options.bim_path, "bim");
 
-    let _iid = write_options.iid()?;
-    let _sid = write_options.sid()?;
+    let _iid = write_options.iid();
+    let _sid = write_options.sid();
 
     todo!("!!!cmk 0 write metadata");
 
