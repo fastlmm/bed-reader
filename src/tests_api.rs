@@ -497,7 +497,6 @@ fn read_write() -> Result<(), BedErrorPlus> {
     // bim_filepath=bim_file,
     // )
 
-    // !!!cmk 0 think about metadata.copy()
     WriteOptions::builder(temp_out)
         .metadata(&metadata)
         .fam_path(&fam_file)

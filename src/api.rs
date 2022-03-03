@@ -12,10 +12,11 @@
 use core::fmt::Debug;
 use nd::ShapeBuilder;
 use ndarray as nd;
+use std::io::Write;
 use std::{
     env,
     fs::File,
-    io::{BufRead, BufReader, Read},
+    io::{BufRead, BufReader, BufWriter, Read},
     ops::Range,
     path::{Path, PathBuf},
 };
@@ -996,8 +997,12 @@ impl WriteOptionsBuilder {
     }
 
     pub fn metadata(mut self, metadata: &Metadata) -> Self {
-        self.iid = Some(metadata.iid.clone());
-        self.iid = Some(metadata.sid.clone());
+        if let Skippable::Some(iid) = &metadata.iid {
+            self.iid = Some(Skippable::Some(iid.clone()));
+        }
+        if let Skippable::Some(sid) = &metadata.sid {
+            self.sid = Some(Skippable::Some(sid.clone()));
+        }
         self
     }
 
@@ -1032,6 +1037,10 @@ pub fn write_with_options<TVal: BedVal>(
     val: &nd::Array2<TVal>,
     write_options: &WriteOptions,
 ) -> Result<(), BedErrorPlus> {
+    // !!!cmk later can this be done in one step??
+    let shape = val.shape();
+    let iid_count = shape[0];
+    let sid_count = shape[1];
     // !!!cmk later if something goes wrong, clean up the files?
     let path = &write_options.path;
 
@@ -1041,13 +1050,64 @@ pub fn write_with_options<TVal: BedVal>(
     // !!!cmk set num_threads
     write_val(path, &val.view(), true, TVal::missing(), 0)?;
 
-    let _fam_path = to_metadata_path(path, &write_options.fam_path, "fam");
-    let _bim_path = to_metadata_path(path, &write_options.bim_path, "bim");
+    let fam_path = to_metadata_path(path, &write_options.fam_path, "fam");
+    let bim_path = to_metadata_path(path, &write_options.bim_path, "bim");
 
-    let _iid = write_options.iid();
-    let _sid = write_options.sid();
+    // !!!cmk later can we avoid always allocating the default, maybe with cow?
+    let iid_default: nd::Array1<String> = (0..iid_count).map(|i| format!("iid{}", i + 1)).collect();
+    let iid = match write_options.iid {
+        // !!!cmk later check that length agrees with shape
+        Skippable::Some(ref iid) => iid,
+        Skippable::Skip => &iid_default,
+    };
 
-    todo!("!!!cmk 0 write metadata");
+    // !!!cmk later can we avoid always allocating the default, maybe with cow?
+    let sid_default: nd::Array1<String> = (0..sid_count).map(|i| format!("sid{}", i + 1)).collect();
+    let sid = match write_options.sid {
+        Skippable::Some(ref sid) => sid,
+        Skippable::Skip => &sid_default,
+    };
 
-    // Ok(())
+    let iid_zeros = nd::Array1::from_elem(iid_count, "0");
+
+    let file = File::create(fam_path)?;
+    let mut writer = BufWriter::new(file);
+    nd::azip!(&iid_zeros)
+        .and(iid)
+        .and(&iid_zeros)
+        .and(&iid_zeros)
+        .and(&iid_zeros)
+        .and(&iid_zeros)
+        .for_each(|fid, iid, father, mother, sex, pheno| {
+            writeln!(
+                writer,
+                "{}\t{}\t{}\t{}\t{}\t{}",
+                *fid, *iid, *father, *mother, *sex, *pheno
+            )
+            .unwrap(); // !!!cmk later throw error
+        });
+
+    let sid_zeros = nd::Array1::from_elem(sid_count, "0");
+    let allele_1_default = nd::Array1::from_elem(sid_count, "A1");
+    let allele_2_default = nd::Array1::from_elem(sid_count, "A2");
+
+    let file = File::create(bim_path)?;
+    let mut writer = BufWriter::new(file);
+    nd::azip!(&sid_zeros)
+        .and(sid)
+        .and(&sid_zeros)
+        .and(&sid_zeros)
+        .and(&allele_1_default)
+        .and(&allele_2_default)
+        .for_each(
+            |chromosome, sid, cm_position, bp_position, allele_1, allele_2| {
+                writeln!(
+                    writer,
+                    "{}\t{}\t{}\t{}\t{}\t{}",
+                    *chromosome, *sid, *cm_position, *bp_position, *allele_1, *allele_2
+                )
+                .unwrap(); // !!!cmk later throw error
+            },
+        );
+    Ok(())
 }
