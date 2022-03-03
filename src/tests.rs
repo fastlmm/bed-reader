@@ -1,5 +1,6 @@
 // https://stackoverflow.com/questions/32900809/how-to-suppress-function-is-never-used-warning-for-a-function-used-by-tests
-
+#[cfg(test)]
+use crate::count_lines;
 #[cfg(test)]
 use crate::file_aat_piece;
 #[cfg(test)]
@@ -11,11 +12,11 @@ use crate::read_into_f64;
 #[cfg(test)]
 use crate::try_div_4;
 #[cfg(test)]
+use crate::BedVal;
+#[cfg(test)]
 use crate::Dist;
 #[cfg(test)]
-use crate::{
-    counts, impute_and_zero_mean_snps, matrix_subset_no_alloc, read, read_with_indexes, write_val,
-};
+use crate::{impute_and_zero_mean_snps, matrix_subset_no_alloc, write_val};
 #[cfg(test)]
 use crate::{internal_read_no_alloc, read_no_alloc, BedError, BedErrorPlus};
 #[cfg(test)]
@@ -126,8 +127,77 @@ fn reference_val(is_a1_counted: bool) -> nd::Array2<f64> {
     val
 }
 
+// could make count_a1, etc. optional
 #[cfg(test)]
-fn allclose<
+pub fn read_with_indexes<TOut: BedVal, P: AsRef<Path>>(
+    path: P,
+    iid_index: &[usize],
+    sid_index: &[usize],
+    output_is_orderf: bool,
+    is_a1_counted: bool,
+    missing_value: TOut,
+    num_threads: usize,
+) -> Result<nd::Array2<TOut>, BedErrorPlus> {
+    let (iid_count, sid_count) = counts(&path)?;
+
+    let shape = ShapeBuilder::set_f((iid_index.len(), sid_index.len()), output_is_orderf);
+    let mut val = nd::Array2::<TOut>::default(shape);
+
+    read_no_alloc(
+        path,
+        iid_count,
+        sid_count,
+        is_a1_counted,
+        iid_index,
+        sid_index,
+        missing_value,
+        num_threads,
+        &mut val.view_mut(),
+    )?;
+
+    Ok(val)
+}
+
+#[cfg(test)]
+pub fn counts<P: AsRef<Path>>(path: P) -> Result<(usize, usize), BedErrorPlus> {
+    let iid_count = count_lines(path.as_ref().with_extension("fam"))?;
+    let sid_count = count_lines(path.as_ref().with_extension("bim"))?;
+    Ok((iid_count, sid_count))
+}
+
+#[cfg(test)]
+pub fn read<TOut: BedVal, P: AsRef<Path>>(
+    path: P,
+    output_is_orderf: bool,
+    is_a1_counted: bool,
+    missing_value: TOut,
+    num_threads: usize,
+) -> Result<nd::Array2<TOut>, BedErrorPlus> {
+    let (iid_count, sid_count) = counts(path.as_ref())?;
+
+    let iid_index: Vec<usize> = (0..iid_count).collect();
+    let sid_index: Vec<usize> = (0..sid_count).collect();
+
+    let shape = ShapeBuilder::set_f((iid_count, sid_count), output_is_orderf);
+    let mut val = nd::Array2::<TOut>::default(shape);
+
+    read_no_alloc(
+        path,
+        iid_count,
+        sid_count,
+        is_a1_counted,
+        &iid_index,
+        &sid_index,
+        missing_value,
+        num_threads,
+        &mut val.view_mut(),
+    )?;
+
+    Ok(val)
+}
+
+#[cfg(test)]
+pub fn allclose<
     T1: 'static + Copy + PartialEq + PartialOrd + Signed,
     T2: 'static + Copy + PartialEq + PartialOrd + Signed + Into<T1>,
 >(

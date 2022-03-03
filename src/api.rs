@@ -25,11 +25,10 @@ use derive_builder::Builder;
 // !!! might want to use this instead use typed_builder::TypedBuilder;
 
 use crate::{
-    counts, read_no_alloc, write_val, BedError, BedErrorPlus, BedVal, BED_FILE_MAGIC1,
+    count_lines, read_no_alloc, write_val, BedError, BedErrorPlus, BedVal, BED_FILE_MAGIC1,
     BED_FILE_MAGIC2, CB_HEADER_USIZE,
 };
 
-// !!!cmk 0 replace this with Option<Skippable>
 #[derive(Debug, Clone)]
 pub enum LazyOrSkip<T> {
     Lazy,
@@ -37,7 +36,7 @@ pub enum LazyOrSkip<T> {
     Some(T),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Skippable<T> {
     Some(T),
     Skip,
@@ -86,10 +85,10 @@ impl<T> LazyOrSkip<T> {
 //     }
 // }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Metadata {
-    iid: Skippable<nd::Array1<String>>,
-    sid: Skippable<nd::Array1<String>>,
+    pub iid: Skippable<nd::Array1<String>>,
+    pub sid: Skippable<nd::Array1<String>>,
 }
 
 // https://crates.io/crates/typed-builder
@@ -425,9 +424,8 @@ impl Bed {
         if let Some(iid_count) = self.iid_count {
             Ok(iid_count)
         } else {
-            let (iid_count, sid_count) = counts(&self.path)?;
+            let iid_count = count_lines(&self.fam_file())?;
             self.iid_count = Some(iid_count);
-            self.sid_count = Some(sid_count);
             Ok(iid_count)
         }
     }
@@ -435,11 +433,18 @@ impl Bed {
         if let Some(sid_count) = self.sid_count {
             Ok(sid_count)
         } else {
-            let (iid_count, sid_count) = counts(&self.path)?;
-            self.iid_count = Some(iid_count);
+            let sid_count = count_lines(&self.bim_file())?;
             self.sid_count = Some(sid_count);
             Ok(sid_count)
         }
+    }
+
+    fn fam_file(&self) -> PathBuf {
+        to_metadata_path(&self.path, &self.fam_path, "fam")
+    }
+
+    fn bim_file(&self) -> PathBuf {
+        to_metadata_path(&self.path, &self.bim_path, "bim")
     }
 
     /// !!!cmk later don't re-read for every column
@@ -449,8 +454,8 @@ impl Bed {
         field_index: usize,
     ) -> Result<nd::Array1<String>, BedErrorPlus> {
         let path_buf = match fam_or_bim {
-            FamOrBim::Fam => to_metadata_path(&self.path, &self.fam_path, "fam"),
-            FamOrBim::Bim => to_metadata_path(&self.path, &self.bim_path, "bim"),
+            FamOrBim::Fam => self.fam_file(),
+            FamOrBim::Bim => self.bim_file(),
         };
 
         let file = if let Ok(file) = File::open(&path_buf) {
@@ -507,7 +512,7 @@ impl Bed {
         match self.iid {
             LazyOrSkip::Some(ref iid) => Ok(iid),
             LazyOrSkip::Lazy => {
-                let iid = self.read_fam_or_bim(FamOrBim::Bim, 0)?;
+                let iid = self.read_fam_or_bim(FamOrBim::Fam, 1)?;
                 self.iid = LazyOrSkip::Some(iid);
                 // This unwrap is safe because we just created 'Some'
                 Ok(self.iid.as_ref().unwrap())
@@ -520,7 +525,7 @@ impl Bed {
         match self.sid {
             LazyOrSkip::Some(ref sid) => Ok(sid),
             LazyOrSkip::Lazy => {
-                let sid = self.read_fam_or_bim(FamOrBim::Bim, 0)?;
+                let sid = self.read_fam_or_bim(FamOrBim::Bim, 1)?;
                 self.sid = LazyOrSkip::Some(sid);
                 // This unwrap is safe because we just created 'Some'
                 Ok(self.sid.as_ref().unwrap())
@@ -1044,10 +1049,10 @@ pub fn write_with_options<TVal: BedVal>(
     // !!!cmk later if something goes wrong, clean up the files?
     let path = &write_options.path;
 
-    // !!!cmk 0 use fam/bim
     // !!!cmk 0 set is_a1_count
     // !!!cmk 0 set missing
     // !!!cmk set num_threads
+    println!("!!!cmk 0 writing {:?}", path);
     write_val(path, &val.view(), true, TVal::missing(), 0)?;
 
     let fam_path = to_metadata_path(path, &write_options.fam_path, "fam");
@@ -1068,10 +1073,19 @@ pub fn write_with_options<TVal: BedVal>(
         Skippable::Skip => &sid_default,
     };
 
+    println!("{:?}", iid);
+    for ix in iid {
+        println!("{:?}", ix);
+    }
+
     let iid_zeros = nd::Array1::from_elem(iid_count, "0");
+    let sid_zero = nd::Array1::from_elem(sid_count, "0");
 
     let file = File::create(fam_path)?;
     let mut writer = BufWriter::new(file);
+    nd::azip!(iid).for_each(|iid_zero_x| {
+        println!("{:?}", *iid_zero_x);
+    });
     nd::azip!(&iid_zeros)
         .and(iid)
         .and(&iid_zeros)

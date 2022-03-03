@@ -14,7 +14,6 @@ use byteorder::{LittleEndian, ReadBytesExt};
 use core::fmt::Debug;
 use dpc_pariter::{scope, IteratorExt};
 use ndarray as nd;
-use ndarray::ShapeBuilder;
 use num_traits::{Float, FromPrimitive, ToPrimitive};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use rayon::{iter::ParallelBridge, ThreadPoolBuildError};
@@ -352,66 +351,6 @@ fn set_up_two_bits_to_value<TOut: From<i8>>(count_a1: bool, missing_value: TOut)
     from_two_bits_to_value
 }
 
-// could make count_a1, etc. optional
-pub fn read_with_indexes<TOut: BedVal, P: AsRef<Path>>(
-    path: P,
-    iid_index: &[usize],
-    sid_index: &[usize],
-    output_is_orderf: bool,
-    is_a1_counted: bool,
-    missing_value: TOut,
-    num_threads: usize,
-) -> Result<nd::Array2<TOut>, BedErrorPlus> {
-    let (iid_count, sid_count) = counts(&path)?;
-
-    let shape = ShapeBuilder::set_f((iid_index.len(), sid_index.len()), output_is_orderf);
-    let mut val = nd::Array2::<TOut>::default(shape);
-
-    read_no_alloc(
-        path,
-        iid_count,
-        sid_count,
-        is_a1_counted,
-        iid_index,
-        sid_index,
-        missing_value,
-        num_threads,
-        &mut val.view_mut(),
-    )?;
-
-    Ok(val)
-}
-
-pub fn read<TOut: BedVal, P: AsRef<Path>>(
-    path: P,
-    output_is_orderf: bool,
-    is_a1_counted: bool,
-    missing_value: TOut,
-    num_threads: usize,
-) -> Result<nd::Array2<TOut>, BedErrorPlus> {
-    let (iid_count, sid_count) = counts(path.as_ref())?;
-
-    let iid_index: Vec<usize> = (0..iid_count).collect();
-    let sid_index: Vec<usize> = (0..sid_count).collect();
-
-    let shape = ShapeBuilder::set_f((iid_count, sid_count), output_is_orderf);
-    let mut val = nd::Array2::<TOut>::default(shape);
-
-    read_no_alloc(
-        path,
-        iid_count,
-        sid_count,
-        is_a1_counted,
-        &iid_index,
-        &sid_index,
-        missing_value,
-        num_threads,
-        &mut val.view_mut(),
-    )?;
-
-    Ok(val)
-}
-
 // Thanks to Dawid for his dpc-pariter library that makes this function scale.
 // https://dpc.pw/adding-parallelism-to-your-rust-iterators
 pub fn write_val<T: BedVal, P: AsRef<Path>>(
@@ -514,11 +453,6 @@ fn count_lines<P: AsRef<Path>>(path: P) -> Result<usize, BedErrorPlus> {
     let reader = BufReader::new(file);
     let count = reader.lines().count();
     Ok(count)
-}
-pub fn counts<P: AsRef<Path>>(path: P) -> Result<(usize, usize), BedErrorPlus> {
-    let iid_count = count_lines(path.as_ref().with_extension("fam"))?;
-    let sid_count = count_lines(path.as_ref().with_extension("bim"))?;
-    Ok((iid_count, sid_count))
 }
 
 pub fn matrix_subset_no_alloc<

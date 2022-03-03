@@ -13,6 +13,8 @@ use crate::BedErrorPlus;
 // !!!cmk later use read_all or new macros to make reading all easier.
 // !!!cmk later is there a way to set default value based on the result type (if given)
 #[cfg(test)]
+use crate::tests::allclose;
+#[cfg(test)]
 use ndarray as nd;
 #[cfg(test)]
 use ndarray::s;
@@ -63,6 +65,8 @@ fn rusty_bed2() -> Result<(), BedErrorPlus> {
 
 #[cfg(test)]
 use std::collections::HashSet;
+#[cfg(test)]
+use std::fs;
 #[cfg(test)]
 use std::path::PathBuf;
 
@@ -309,8 +313,8 @@ fn num_threads() -> Result<(), BedErrorPlus> {
 #[test]
 fn fam_and_bim() -> Result<(), BedErrorPlus> {
     let mut bed = Bed::builder("bed_reader/tests/data/small.deb")
-        .fam_path("bed_reader/tests/data/small.deb.maf")
-        .bim_path("bed_reader/tests/data/small.deb.mib")
+        .fam_path("bed_reader/tests/data/small.maf")
+        .bim_path("bed_reader/tests/data/small.mib")
         .build()?;
 
     let val: nd::Array2<i8> = bed.read()?;
@@ -424,7 +428,9 @@ fn write_docs() -> Result<(), BedErrorPlus> {
     //     ... }
     //     >>> to_bed(output_file, val, properties=properties)
 
+    // !!!cmk 0 make this a function
     let output_path = PathBuf::from(TempDir::default().as_ref());
+    fs::create_dir(&output_path)?;
 
     let output_file = output_path.join("small.bed");
     let val = nd::array![
@@ -432,14 +438,10 @@ fn write_docs() -> Result<(), BedErrorPlus> {
         [2.0, 0.0, f64::NAN, 2.0],
         [0.0, 1.0, 2.0, 0.0]
     ];
-    // !!!cmk 0 could write_options and read_options be the same?
-    // !!!cmk 0 why is output_file given early and val given late? (should be same? should match reader?)
     // !!!cmk later re-write python_module.rs to use the new Rust API (may need .fill() and .fill_with_defaults())
     // !!!cmk 0 more options
     // .count_a2()
     // .missing_value(f64::NAN)
-    // fam_filepath: Union[str, Path] = None,
-    // bim_filepath: Union[str, Path] = None,
     // num_threads=None,
     WriteOptions::builder(output_file)
         .iid(["iid1", "iid2", "iid3"])
@@ -479,13 +481,16 @@ fn read_write() -> Result<(), BedErrorPlus> {
     let mut bed = Bed::new(file_name)?;
     let val = bed.read::<f64>()?;
     let metadata = bed.metadata()?;
+    println!("{:?}", metadata);
 
     // output_file = tmp_path / "small.deb"
     // fam_file = tmp_path / "small.maf"
     // bim_file = tmp_path / "small.mib"
 
     let temp_out = PathBuf::from(TempDir::default().as_ref());
+    fs::create_dir(&temp_out)?;
     let output_file = temp_out.join("small.deb");
+    println!("{:?}", &output_file);
     let fam_file = temp_out.join("small.maf");
     let bim_file = temp_out.join("small.mib");
 
@@ -497,14 +502,17 @@ fn read_write() -> Result<(), BedErrorPlus> {
     // bim_filepath=bim_file,
     // )
 
-    WriteOptions::builder(temp_out)
+    WriteOptions::builder(&output_file)
         .metadata(&metadata)
         .fam_path(&fam_file)
         .bim_path(&bim_file)
         .write(&val)?;
 
     // // assert output_file.exists() and fam_file.exists() and bim_file.exists()
-    // assert!(output_file.exists() & fam_file.exists() & bim_file.exists());
+    assert!(
+        output_file.exists() & fam_file.exists() & bim_file.exists(),
+        "don't exist"
+    );
 
     // with open_bed(output_file, fam_filepath=fam_file, bim_filepath=bim_file) as deb:
     // val2 = deb.read()
@@ -517,9 +525,13 @@ fn read_write() -> Result<(), BedErrorPlus> {
     let metadata2 = deb.metadata()?;
 
     // assert np.allclose(val, val2, equal_nan=True)
-    // !!!cmk 00
-    // assert!(val.allclose(&val2, equal_nan = true));
-    // assert!(metadata == metadata2);
+    assert!(
+        allclose(&val.view(), &val2.view(), 1e-08, true),
+        "not close"
+    );
+    println!("{:?}", metadata);
+    println!("{:?}", metadata2);
+    assert!(metadata == metadata2, "meta not equal");
 
     Ok(())
 }
