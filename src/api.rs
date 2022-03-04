@@ -167,12 +167,23 @@ pub struct Bed {
     #[builder(setter(custom))]
     #[builder(default = "LazyOrSkip::Lazy")]
     allele_2: LazyOrSkip<nd::Array1<String>>,
+
+    #[builder(private)]
+    fam_file: PathBuf,
+
+    #[builder(private)]
+    bim_file: PathBuf,
 }
 
 impl BedBuilder {
     pub fn new<P: AsRef<Path>>(path: P) -> Self {
+        let path: PathBuf = path.as_ref().into();
+
+        let fam_file = to_metadata_path(&path, &None, "fam");
+        let bim_file = to_metadata_path(&path, &None, "bim");
+
         Self {
-            path: Some(path.as_ref().into()),
+            path: Some(path),
             fam_path: None,
             bim_path: None,
 
@@ -194,12 +205,19 @@ impl BedBuilder {
             bp_position: None,
             allele_1: None,
             allele_2: None,
+
+            // !!!cmk later give better name
+            fam_file: Some(fam_file),
+            bim_file: Some(bim_file),
         }
     }
 
     // !!!cmk later play with aliasing this as bed_reader::Result<T>
     pub fn build(&self) -> Result<Bed, BedErrorPlus> {
-        let bed = self.build_no_file_check()?;
+        let mut bed = self.build_no_file_check()?;
+
+        bed.fam_file = to_metadata_path(&bed.path, &bed.fam_path, "fam");
+        bed.bim_file = to_metadata_path(&bed.path, &bed.bim_path, "bim");
 
         if bed.is_checked_early {
             // !!!cmk later similar code elsewhere
@@ -440,7 +458,7 @@ impl Bed {
         if let Some(iid_count) = self.iid_count {
             Ok(iid_count)
         } else {
-            let iid_count = count_lines(&self.fam_file())?;
+            let iid_count = count_lines(&self.fam_file)?;
             self.iid_count = Some(iid_count);
             Ok(iid_count)
         }
@@ -449,27 +467,29 @@ impl Bed {
         if let Some(sid_count) = self.sid_count {
             Ok(sid_count)
         } else {
-            let sid_count = count_lines(&self.bim_file())?;
+            let sid_count = count_lines(&self.bim_file)?;
             self.sid_count = Some(sid_count);
             Ok(sid_count)
         }
-    }
-
-    fn fam_file(&self) -> PathBuf {
-        to_metadata_path(&self.path, &self.fam_path, "fam")
-    }
-
-    fn bim_file(&self) -> PathBuf {
-        to_metadata_path(&self.path, &self.bim_path, "bim")
     }
 
     /// !!!cmk later don't re-read for every column
 
     pub fn metadata(&mut self) -> Result<Metadata, BedErrorPlus> {
         let _ = self.fid();
-        // !!!cmk 0
-        // let _ = self.iid();
-        // let _ = self.sid();
+        let _ = self.iid();
+        let _ = self.father();
+        let _ = self.mother();
+        let _ = self.sex();
+        let _ = self.pheno();
+
+        let _ = self.chromosome();
+        let _ = self.sid();
+        let _ = self.cm_position();
+        let _ = self.bp_position();
+        let _ = self.allele_1();
+        let _ = self.allele_2();
+
         let metadata = Metadata {
             fid: to_skippable(&self.fid),
             iid: to_skippable(&self.iid),
@@ -489,53 +509,41 @@ impl Bed {
     }
 
     pub fn fid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        let path_buf = self.fam_file();
-        unlazy(&mut self.fid, &path_buf, 0, "fid")
+        unlazy(&mut self.fid, &self.fam_file, 0, "fid")
     }
     pub fn iid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        let path_buf = self.fam_file();
-        unlazy(&mut self.iid, &path_buf, 1, "iid")
+        unlazy(&mut self.iid, &self.fam_file, 1, "iid")
     }
     pub fn father(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        let path_buf = self.fam_file();
-        unlazy(&mut self.father, &path_buf, 2, "father")
+        unlazy(&mut self.father, &self.fam_file, 2, "father")
     }
     pub fn mother(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        let path_buf = self.fam_file();
-        unlazy(&mut self.mother, &path_buf, 3, "mother")
+        unlazy(&mut self.mother, &self.fam_file, 3, "mother")
     }
     pub fn sex(&mut self) -> Result<&nd::Array1<i32>, BedErrorPlus> {
-        let path_buf = self.fam_file();
-        unlazy(&mut self.sex, &path_buf, 4, "sex")
+        unlazy(&mut self.sex, &self.fam_file, 4, "sex")
     }
     pub fn pheno(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        let path_buf = self.fam_file();
-        unlazy(&mut self.pheno, &path_buf, 5, "pheno")
+        unlazy(&mut self.pheno, &self.fam_file, 5, "pheno")
     }
 
     pub fn chromosome(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        let path_buf = self.bim_file();
-        unlazy(&mut self.chromosome, &path_buf, 0, "chromosome")
+        unlazy(&mut self.chromosome, &self.bim_file, 0, "chromosome")
     }
     pub fn sid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        let path_buf = self.bim_file();
-        unlazy(&mut self.sid, &path_buf, 1, "sid")
+        unlazy(&mut self.sid, &self.bim_file, 1, "sid")
     }
     pub fn cm_position(&mut self) -> Result<&nd::Array1<f32>, BedErrorPlus> {
-        let path_buf = self.bim_file();
-        unlazy(&mut self.cm_position, &path_buf, 2, "cm_position")
+        unlazy(&mut self.cm_position, &self.bim_file, 2, "cm_position")
     }
     pub fn bp_position(&mut self) -> Result<&nd::Array1<i32>, BedErrorPlus> {
-        let path_buf = self.bim_file();
-        unlazy(&mut self.bp_position, &path_buf, 3, "bp_position")
+        unlazy(&mut self.bp_position, &self.bim_file, 3, "bp_position")
     }
     pub fn allele_1(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        let path_buf = self.bim_file();
-        unlazy(&mut self.allele_1, &path_buf, 4, "allele_1")
+        unlazy(&mut self.allele_1, &self.bim_file, 4, "allele_1")
     }
     pub fn allele_2(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        let path_buf = self.bim_file();
-        unlazy(&mut self.allele_2, &path_buf, 5, "allele_2")
+        unlazy(&mut self.allele_2, &self.bim_file, 5, "allele_2")
     }
 
     // !!!cmk later rename TOut to TVal
@@ -1227,11 +1235,6 @@ fn unlazy<'a, T: FromStringArray<T>>(
         LazyOrSkip::Skip => Err(BedError::CannotUseSkippedMetadata(name.to_string()).into()),
     }
 }
-
-// let path_buf = match fam_or_bim {
-//     FamOrBim::Fam => self.fam_file(),
-//     FamOrBim::Bim => self.bim_file(),
-// };
 
 fn read_fam_or_bim(
     path_buf: &PathBuf,
