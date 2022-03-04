@@ -70,7 +70,6 @@ impl<T> LazyOrSkip<T> {
     }
 }
 
-// !!!cmk 0 add more fields
 #[derive(Clone, Debug, PartialEq)]
 pub struct Metadata {
     pub fid: Skippable<nd::Array1<String>>,
@@ -1103,7 +1102,6 @@ pub fn write_with_options<TVal: BedVal>(
     // !!!cmk 0 set is_a1_count
     // !!!cmk 0 set missing
     // !!!cmk set num_threads
-    println!("!!!cmk 0 writing {:?}", path);
     write_val(path, &val.view(), true, TVal::missing(), 0)?;
 
     let fam_path = to_metadata_path(path, &write_options.fam_path, "fam");
@@ -1129,6 +1127,7 @@ pub fn write_with_options<TVal: BedVal>(
         println!("{:?}", ix);
     }
 
+    // !!!cmk 0 finish this code
     let iid_zeros = nd::Array1::from_elem(iid_count, "0");
     let sid_zero = nd::Array1::from_elem(sid_count, "0");
 
