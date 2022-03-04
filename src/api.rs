@@ -972,11 +972,42 @@ impl WriteOptionsBuilder {
     }
 
     pub fn metadata(mut self, metadata: &Metadata) -> Self {
+        if let Skippable::Some(fid) = &metadata.fid {
+            self.fid = Some(Skippable::Some(fid.clone()));
+        }
         if let Skippable::Some(iid) = &metadata.iid {
             self.iid = Some(Skippable::Some(iid.clone()));
         }
+        if let Skippable::Some(father) = &metadata.father {
+            self.father = Some(Skippable::Some(father.clone()));
+        }
+        if let Skippable::Some(mother) = &metadata.mother {
+            self.mother = Some(Skippable::Some(mother.clone()));
+        }
+        if let Skippable::Some(sex) = &metadata.sex {
+            self.sex = Some(Skippable::Some(sex.clone()));
+        }
+        if let Skippable::Some(pheno) = &metadata.pheno {
+            self.pheno = Some(Skippable::Some(pheno.clone()));
+        }
+
+        if let Skippable::Some(chromosome) = &metadata.chromosome {
+            self.chromosome = Some(Skippable::Some(chromosome.clone()));
+        }
         if let Skippable::Some(sid) = &metadata.sid {
             self.sid = Some(Skippable::Some(sid.clone()));
+        }
+        if let Skippable::Some(cm_position) = &metadata.cm_position {
+            self.cm_position = Some(Skippable::Some(cm_position.clone()));
+        }
+        if let Skippable::Some(bp_position) = &metadata.bp_position {
+            self.bp_position = Some(Skippable::Some(bp_position.clone()));
+        }
+        if let Skippable::Some(allele_1) = &metadata.allele_1 {
+            self.allele_1 = Some(Skippable::Some(allele_1.clone()));
+        }
+        if let Skippable::Some(allele_2) = &metadata.allele_2 {
+            self.allele_2 = Some(Skippable::Some(allele_2.clone()));
         }
         self
     }
@@ -1088,6 +1119,19 @@ pub fn write<TVal: BedVal>(val: &nd::Array2<TVal>, path: &Path) -> Result<(), Be
     WriteOptions::builder(path).write(val)
 }
 
+// !!!cmk later rename
+// !!!cmk later do this without a "clone"
+fn xfx<T, F>(field: &Skippable<nd::Array1<T>>, count: usize, lambda: F) -> nd::Array1<T>
+where
+    T: Clone + Default + Debug,
+    F: Fn(usize) -> T,
+{
+    match field {
+        Skippable::Some(array) => array.clone(),
+        Skippable::Skip => (0..count).map(|_| lambda(0)).collect::<nd::Array1<T>>(),
+    }
+}
+
 pub fn write_with_options<TVal: BedVal>(
     val: &nd::Array2<TVal>,
     write_options: &WriteOptions,
@@ -1107,41 +1151,28 @@ pub fn write_with_options<TVal: BedVal>(
     let fam_path = to_metadata_path(path, &write_options.fam_path, "fam");
     let bim_path = to_metadata_path(path, &write_options.bim_path, "bim");
 
-    // !!!cmk later can we avoid always allocating the default, maybe with cow?
-    let iid_default: nd::Array1<String> = (0..iid_count).map(|i| format!("iid{}", i + 1)).collect();
-    let iid = match write_options.iid {
-        // !!!cmk later check that length agrees with shape
-        Skippable::Some(ref iid) => iid,
-        Skippable::Skip => &iid_default,
-    };
+    let fid = xfx(&write_options.fid, iid_count, |_| "0".to_string());
+    let iid = xfx(&write_options.iid, iid_count, |i| format!("iid{}", i + 1));
+    let father = xfx(&write_options.father, iid_count, |_| "0".to_string());
+    let mother = xfx(&write_options.mother, iid_count, |_| "0".to_string());
+    let sex = xfx(&write_options.sex, iid_count, |_| 0);
+    let pheno = xfx(&write_options.pheno, iid_count, |_| "0".to_string());
 
-    // !!!cmk later can we avoid always allocating the default, maybe with cow?
-    let sid_default: nd::Array1<String> = (0..sid_count).map(|i| format!("sid{}", i + 1)).collect();
-    let sid = match write_options.sid {
-        Skippable::Some(ref sid) => sid,
-        Skippable::Skip => &sid_default,
-    };
-
-    println!("{:?}", iid);
-    for ix in iid {
-        println!("{:?}", ix);
-    }
-
-    // !!!cmk 0 finish this code
-    let iid_zeros = nd::Array1::from_elem(iid_count, "0");
-    let sid_zero = nd::Array1::from_elem(sid_count, "0");
+    let chromosome = xfx(&write_options.chromosome, sid_count, |_| "0".to_string());
+    let sid = xfx(&write_options.sid, sid_count, |i| format!("sid{}", i + 1));
+    let cm_position = xfx(&write_options.cm_position, sid_count, |_| 0.0);
+    let bp_position = xfx(&write_options.bp_position, sid_count, |_| 0);
+    let allele_1 = xfx(&write_options.allele_1, sid_count, |_| "A1".to_string());
+    let allele_2 = xfx(&write_options.allele_2, sid_count, |_| "A2".to_string());
 
     let file = File::create(fam_path)?;
     let mut writer = BufWriter::new(file);
-    nd::azip!(iid).for_each(|iid_zero_x| {
-        println!("{:?}", *iid_zero_x);
-    });
-    nd::azip!(&iid_zeros)
-        .and(iid)
-        .and(&iid_zeros)
-        .and(&iid_zeros)
-        .and(&iid_zeros)
-        .and(&iid_zeros)
+    nd::azip!(&fid)
+        .and(&iid)
+        .and(&father)
+        .and(&mother)
+        .and(&sex)
+        .and(&pheno)
         .for_each(|fid, iid, father, mother, sex, pheno| {
             writeln!(
                 writer,
@@ -1151,18 +1182,14 @@ pub fn write_with_options<TVal: BedVal>(
             .unwrap(); // !!!cmk later throw error
         });
 
-    let sid_zeros = nd::Array1::from_elem(sid_count, "0");
-    let allele_1_default = nd::Array1::from_elem(sid_count, "A1");
-    let allele_2_default = nd::Array1::from_elem(sid_count, "A2");
-
     let file = File::create(bim_path)?;
     let mut writer = BufWriter::new(file);
-    nd::azip!(&sid_zeros)
-        .and(sid)
-        .and(&sid_zeros)
-        .and(&sid_zeros)
-        .and(&allele_1_default)
-        .and(&allele_2_default)
+    nd::azip!(&chromosome)
+        .and(&sid)
+        .and(&cm_position)
+        .and(&bp_position)
+        .and(&allele_1)
+        .and(&allele_2)
         .for_each(
             |chromosome, sid, cm_position, bp_position, allele_1, allele_2| {
                 writeln!(
