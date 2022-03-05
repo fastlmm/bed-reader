@@ -402,6 +402,12 @@ fn readme_examples() -> Result<(), BedErrorPlus> {
     Ok(())
 }
 
+// !!!cmk later re-write python_module.rs to use the new Rust API (may need .fill() and .fill_with_defaults())
+// !!!cmk 0 more options
+// .count_a2()
+// .missing_value(f64::NAN)
+// num_threads=None,
+
 #[test]
 fn write_docs() -> Result<(), BedErrorPlus> {
     // In this example, all properties are given.
@@ -429,23 +435,27 @@ fn write_docs() -> Result<(), BedErrorPlus> {
     //     >>> to_bed(output_file, val, properties=properties)
 
     // !!!cmk 0 make this a function
-    let output_path = PathBuf::from(TempDir::default().as_ref());
-    fs::create_dir(&output_path)?;
+    let output_folder = tmp_path()?;
 
-    let output_file = output_path.join("small.bed");
+    let output_file = output_folder.join("small.bed");
     let val = nd::array![
         [1.0, 0.0, f64::NAN, 0.0],
         [2.0, 0.0, f64::NAN, 2.0],
         [0.0, 1.0, 2.0, 0.0]
     ];
-    // !!!cmk later re-write python_module.rs to use the new Rust API (may need .fill() and .fill_with_defaults())
-    // !!!cmk 0 more options
-    // .count_a2()
-    // .missing_value(f64::NAN)
-    // num_threads=None,
     WriteOptions::builder(output_file)
+        .fid(["fid1", "fid1", "fid2"])
         .iid(["iid1", "iid2", "iid3"])
+        .father(["iid23", "iid23", "iid22"])
+        .mother(["iid34", "iid34", "iid33"])
+        .sex([1, 2, 0])
+        .pheno(["red", "red", "blue"])
+        .chromosome(["1", "1", "5", "Y"])
         .sid(["sid1", "sid2", "sid3", "sid4"])
+        .cm_position([100.4, 2000.5, 4000.7, 7000.9])
+        .bp_position([1, 100, 1000, 1004])
+        .allele_1(["A", "T", "A", "T"])
+        .allele_2(["A", "C", "C", "G"])
         .write(&val)?;
 
     // Here, no properties are given, so default values are assigned.
@@ -460,7 +470,7 @@ fn write_docs() -> Result<(), BedErrorPlus> {
     //     >>> with open_bed(output_file2) as bed2:
     //     ...     print(bed2.chromosome)
     //     ['0' '0' '0' '0']
-    let output_file2 = output_path.join("small2.bed");
+    let output_file2 = output_folder.join("small2.bed");
     let val = nd::array![[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]];
     write(&val, &output_file2)?;
     let mut bed2 = Bed::new(&output_file2)?;
@@ -469,6 +479,13 @@ fn write_docs() -> Result<(), BedErrorPlus> {
     // ['0' '0' '0' '0']
 
     Ok(())
+}
+
+#[cfg(test)]
+fn tmp_path() -> Result<PathBuf, BedErrorPlus> {
+    let output_path = PathBuf::from(TempDir::default().as_ref());
+    fs::create_dir(&output_path)?;
+    Ok(output_path)
 }
 
 #[test]
@@ -487,10 +504,8 @@ fn read_write() -> Result<(), BedErrorPlus> {
     // fam_file = tmp_path / "small.maf"
     // bim_file = tmp_path / "small.mib"
 
-    let temp_out = PathBuf::from(TempDir::default().as_ref());
-    fs::create_dir(&temp_out)?;
+    let temp_out = tmp_path()?;
     let output_file = temp_out.join("small.deb");
-    println!("{:?}", &output_file);
     let fam_file = temp_out.join("small.maf");
     let bim_file = temp_out.join("small.mib");
 
