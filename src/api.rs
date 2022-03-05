@@ -71,9 +71,9 @@ impl<T> LazyOrSkip<T> {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Metadata {
+pub struct Metadata<'a> {
     pub fid: Skippable<nd::Array1<String>>,
-    pub iid: Skippable<nd::Array1<String>>,
+    pub iid: Skippable<&'a nd::Array1<String>>,
     pub father: Skippable<nd::Array1<String>>,
     pub mother: Skippable<nd::Array1<String>>,
     pub sex: Skippable<nd::Array1<i32>>,
@@ -442,6 +442,16 @@ fn to_skippable<T: Clone>(lazy_or_skip: &LazyOrSkip<T>) -> Skippable<T> {
     }
 }
 
+fn to_skippable2<'a, T>(lazy_or_skip: &'a LazyOrSkip<T>) -> Skippable<&'a T> {
+    match lazy_or_skip {
+        LazyOrSkip::Lazy => {
+            todo!("!!!cmk later")
+        }
+        LazyOrSkip::Skip => Skippable::Skip,
+        LazyOrSkip::Some(some) => Skippable::Some(some),
+    }
+}
+
 impl Bed {
     pub fn builder<P: AsRef<Path>>(path: P) -> BedBuilder {
         BedBuilder::new(path)
@@ -491,7 +501,7 @@ impl Bed {
 
         let metadata = Metadata {
             fid: to_skippable(&self.fid),
-            iid: to_skippable(&self.iid),
+            iid: to_skippable2(&self.iid),
             father: to_skippable(&self.father),
             mother: to_skippable(&self.mother),
             sex: to_skippable(&self.sex),
@@ -975,9 +985,10 @@ impl WriteOptionsBuilder {
         if let Skippable::Some(fid) = &metadata.fid {
             self.fid = Some(Skippable::Some(fid.clone()));
         }
-        if let Skippable::Some(iid) = &metadata.iid {
-            self.iid = Some(Skippable::Some(iid.clone()));
-        }
+        // !!!cmk 0
+        // if let Skippable::Some(iid) = &metadata.iid {
+        //     self.iid = Some(Skippable::Some(iid.clone()));
+        // }
         if let Skippable::Some(father) = &metadata.father {
             self.father = Some(Skippable::Some(father.clone()));
         }
