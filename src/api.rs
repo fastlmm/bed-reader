@@ -72,19 +72,19 @@ impl<T> LazyOrSkip<T> {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Metadata<'a> {
-    pub fid: Skippable<nd::Array1<String>>,
+    pub fid: Skippable<&'a nd::Array1<String>>,
     pub iid: Skippable<&'a nd::Array1<String>>,
-    pub father: Skippable<nd::Array1<String>>,
-    pub mother: Skippable<nd::Array1<String>>,
-    pub sex: Skippable<nd::Array1<i32>>,
-    pub pheno: Skippable<nd::Array1<String>>,
+    pub father: Skippable<&'a nd::Array1<String>>,
+    pub mother: Skippable<&'a nd::Array1<String>>,
+    pub sex: Skippable<&'a nd::Array1<i32>>,
+    pub pheno: Skippable<&'a nd::Array1<String>>,
 
-    pub chromosome: Skippable<nd::Array1<String>>,
-    pub sid: Skippable<nd::Array1<String>>,
-    pub cm_position: Skippable<nd::Array1<f32>>,
-    pub bp_position: Skippable<nd::Array1<i32>>,
-    pub allele_1: Skippable<nd::Array1<String>>,
-    pub allele_2: Skippable<nd::Array1<String>>,
+    pub chromosome: Skippable<&'a nd::Array1<String>>,
+    pub sid: Skippable<&'a nd::Array1<String>>,
+    pub cm_position: Skippable<&'a nd::Array1<f32>>,
+    pub bp_position: Skippable<&'a nd::Array1<i32>>,
+    pub allele_1: Skippable<&'a nd::Array1<String>>,
+    pub allele_2: Skippable<&'a nd::Array1<String>>,
 }
 
 // https://crates.io/crates/typed-builder
@@ -432,17 +432,17 @@ fn to_metadata_path(
     }
 }
 
-fn to_skippable<T: Clone>(lazy_or_skip: &LazyOrSkip<T>) -> Skippable<T> {
-    match lazy_or_skip {
-        LazyOrSkip::Lazy => {
-            todo!("!!!cmk later")
-        }
-        LazyOrSkip::Skip => Skippable::Skip,
-        LazyOrSkip::Some(some) => Skippable::Some(some.clone()),
-    }
-}
+// fn to_skippable<T: Clone>(lazy_or_skip: &LazyOrSkip<T>) -> Skippable<T> {
+//     match lazy_or_skip {
+//         LazyOrSkip::Lazy => {
+//             todo!("!!!cmk later")
+//         }
+//         LazyOrSkip::Skip => Skippable::Skip,
+//         LazyOrSkip::Some(some) => Skippable::Some(some.clone()),
+//     }
+// }
 
-fn to_skippable2<'a, T>(lazy_or_skip: &'a LazyOrSkip<T>) -> Skippable<&'a T> {
+fn to_skippable<'a, T>(lazy_or_skip: &'a LazyOrSkip<T>) -> Skippable<&'a T> {
     match lazy_or_skip {
         LazyOrSkip::Lazy => {
             todo!("!!!cmk later")
@@ -501,7 +501,7 @@ impl Bed {
 
         let metadata = Metadata {
             fid: to_skippable(&self.fid),
-            iid: to_skippable2(&self.iid),
+            iid: to_skippable(&self.iid),
             father: to_skippable(&self.father),
             mother: to_skippable(&self.mother),
             sex: to_skippable(&self.sex),
@@ -981,44 +981,44 @@ impl WriteOptionsBuilder {
         self
     }
 
+    // !!!cmk 0 can we also extract a metadata property from write options?
     pub fn metadata(mut self, metadata: &Metadata) -> Self {
         if let Skippable::Some(fid) = &metadata.fid {
-            self.fid = Some(Skippable::Some(fid.clone()));
+            self.fid = Some(Skippable::Some((*fid).clone()));
         }
-        // !!!cmk 0
-        // if let Skippable::Some(iid) = &metadata.iid {
-        //     self.iid = Some(Skippable::Some(iid.clone()));
-        // }
+        if let Skippable::Some(iid) = &metadata.iid {
+            self.iid = Some(Skippable::Some((*iid).clone()));
+        }
         if let Skippable::Some(father) = &metadata.father {
-            self.father = Some(Skippable::Some(father.clone()));
+            self.father = Some(Skippable::Some((*father).clone()));
         }
         if let Skippable::Some(mother) = &metadata.mother {
-            self.mother = Some(Skippable::Some(mother.clone()));
+            self.mother = Some(Skippable::Some((*mother).clone()));
         }
         if let Skippable::Some(sex) = &metadata.sex {
-            self.sex = Some(Skippable::Some(sex.clone()));
+            self.sex = Some(Skippable::Some((*sex).clone()));
         }
         if let Skippable::Some(pheno) = &metadata.pheno {
-            self.pheno = Some(Skippable::Some(pheno.clone()));
+            self.pheno = Some(Skippable::Some((*pheno).clone()));
         }
 
         if let Skippable::Some(chromosome) = &metadata.chromosome {
-            self.chromosome = Some(Skippable::Some(chromosome.clone()));
+            self.chromosome = Some(Skippable::Some((*chromosome).clone()));
         }
         if let Skippable::Some(sid) = &metadata.sid {
-            self.sid = Some(Skippable::Some(sid.clone()));
+            self.sid = Some(Skippable::Some((*sid).clone()));
         }
         if let Skippable::Some(cm_position) = &metadata.cm_position {
-            self.cm_position = Some(Skippable::Some(cm_position.clone()));
+            self.cm_position = Some(Skippable::Some((*cm_position).clone()));
         }
         if let Skippable::Some(bp_position) = &metadata.bp_position {
-            self.bp_position = Some(Skippable::Some(bp_position.clone()));
+            self.bp_position = Some(Skippable::Some((*bp_position).clone()));
         }
         if let Skippable::Some(allele_1) = &metadata.allele_1 {
-            self.allele_1 = Some(Skippable::Some(allele_1.clone()));
+            self.allele_1 = Some(Skippable::Some((*allele_1).clone()));
         }
         if let Skippable::Some(allele_2) = &metadata.allele_2 {
-            self.allele_2 = Some(Skippable::Some(allele_2.clone()));
+            self.allele_2 = Some(Skippable::Some((*allele_2).clone()));
         }
         self
     }
