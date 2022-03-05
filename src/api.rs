@@ -70,6 +70,7 @@ impl<T> LazyOrSkip<T> {
     }
 }
 
+// !!! cmk later what happens if I try to modify the array values, the field values?
 #[derive(Clone, Debug, PartialEq)]
 pub struct Metadata<'a> {
     pub fid: Skippable<&'a nd::Array1<String>>,
@@ -1144,8 +1145,10 @@ pub fn write_with_options<TVal: BedVal>(
     // !!!cmk later if something goes wrong, clean up the files?
     let path = &write_options.path;
 
-    // !!!cmk 0 set is_a1_count
-    // !!!cmk 0 set missing
+    // !!!cmk 0 more options
+    // !!!cmk set is_a1_count
+    // .count_a2()
+    // !!!cmk set missing
     // !!!cmk set num_threads
     write_val(path, &val.view(), true, TVal::missing(), 0)?;
 
@@ -1221,27 +1224,36 @@ impl FromStringArray<String> for String {
 }
 
 // !!!cmk 0 fix these so they return any errors
-impl FromStringArray<f64> for f64 {
-    fn from_string_array(
-        string_array: nd::Array1<String>,
-    ) -> Result<nd::Array1<f64>, BedErrorPlus> {
-        Ok(string_array.map(|s| s.parse::<f64>().unwrap()))
-    }
-}
+
 impl FromStringArray<f32> for f32 {
     fn from_string_array(
         string_array: nd::Array1<String>,
     ) -> Result<nd::Array1<f32>, BedErrorPlus> {
-        Ok(string_array.map(|s| s.parse::<f32>().unwrap()))
+        let result = string_array
+            .iter()
+            .map(|s| s.parse::<f32>())
+            .collect::<Result<nd::Array1<f32>, _>>();
+        match result {
+            Ok(array) => Ok(array),
+            Err(e) => Err(BedErrorPlus::ParseFloatError(e)),
+        }
     }
 }
 impl FromStringArray<i32> for i32 {
     fn from_string_array(
         string_array: nd::Array1<String>,
     ) -> Result<nd::Array1<i32>, BedErrorPlus> {
-        Ok(string_array.map(|s| s.parse::<i32>().unwrap()))
+        let result = string_array
+            .iter()
+            .map(|s| s.parse::<i32>())
+            .collect::<Result<nd::Array1<i32>, _>>();
+        match result {
+            Ok(array) => Ok(array),
+            Err(e) => Err(BedErrorPlus::ParseIntError(e)),
+        }
     }
 }
+
 fn unlazy<'a, T: FromStringArray<T>>(
     field: &'a mut LazyOrSkip<nd::Array1<T>>,
     path_buf: &PathBuf,

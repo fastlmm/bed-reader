@@ -118,8 +118,8 @@ fn rusty_bed_order() -> Result<(), BedErrorPlus> {
 #[test]
 fn bad_header() -> Result<(), BedErrorPlus> {
     let filename = "bed_reader/tests/data/badfile.bed";
-
-    let _ = Bed::builder(filename).skip_early_check().build()?;
+    let bed = Bed::builder(filename).skip_early_check().build()?;
+    println!("{:?}", bed.path);
 
     let result = Bed::new(filename);
 
@@ -403,10 +403,6 @@ fn readme_examples() -> Result<(), BedErrorPlus> {
 }
 
 // !!!cmk later re-write python_module.rs to use the new Rust API (may need .fill() and .fill_with_defaults())
-// !!!cmk 0 more options
-// .count_a2()
-// .missing_value(f64::NAN)
-// num_threads=None,
 
 #[test]
 fn write_docs() -> Result<(), BedErrorPlus> {
@@ -434,7 +430,6 @@ fn write_docs() -> Result<(), BedErrorPlus> {
     //     ... }
     //     >>> to_bed(output_file, val, properties=properties)
 
-    // !!!cmk 0 make this a function
     let output_folder = tmp_path()?;
 
     let output_file = output_folder.join("small.bed");

@@ -19,7 +19,7 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use rayon::{iter::ParallelBridge, ThreadPoolBuildError};
 use statrs::distribution::{Beta, Continuous};
 use std::fs::{self};
-use std::num::ParseIntError;
+use std::num::{ParseFloatError, ParseIntError};
 use std::ops::AddAssign;
 use std::ops::{Div, Sub};
 use std::{
@@ -68,6 +68,9 @@ pub enum BedErrorPlus {
 
     #[error(transparent)]
     UninitializedFieldError(#[from] ::derive_builder::UninitializedFieldError),
+
+    #[error(transparent)]
+    ParseFloatError(#[from] ParseFloatError),
 }
 // https://docs.rs/thiserror/1.0.23/thiserror/
 #[derive(Error, Debug, Clone)]
