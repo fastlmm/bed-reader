@@ -1039,12 +1039,8 @@ impl WriteOptionsBuilder {
     }
 
     // !!!cmk later fix the unwraps
-    pub fn sex<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, sex: I) -> Self {
-        self.sex = Some(Skippable::Some(
-            sex.into_iter()
-                .map(|s| s.as_ref().parse().unwrap())
-                .collect(),
-        ));
+    pub fn sex<I: IntoIterator<Item = i32>>(mut self, sex: I) -> Self {
+        self.sex = Some(Skippable::Some(sex.into_iter().map(|i| i).collect()));
         self
     }
 
@@ -1073,23 +1069,17 @@ impl WriteOptionsBuilder {
     }
 
     // !!!cmk later fix the unwraps
-    pub fn cm_position<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, cm_position: I) -> Self {
+    pub fn cm_position<I: IntoIterator<Item = f32>>(mut self, cm_position: I) -> Self {
         self.cm_position = Some(Skippable::Some(
-            cm_position
-                .into_iter()
-                .map(|s| s.as_ref().parse().unwrap())
-                .collect(),
+            cm_position.into_iter().map(|s| s).collect(),
         ));
         self
     }
 
     // !!!cmk later fix the unwraps
-    pub fn bp_position<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, bp_position: I) -> Self {
+    pub fn bp_position<I: IntoIterator<Item = i32>>(mut self, bp_position: I) -> Self {
         self.bp_position = Some(Skippable::Some(
-            bp_position
-                .into_iter()
-                .map(|s| s.as_ref().parse().unwrap())
-                .collect(),
+            bp_position.into_iter().map(|s| s).collect(),
         ));
         self
     }

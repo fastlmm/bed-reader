@@ -474,9 +474,8 @@ fn write_docs() -> Result<(), BedErrorPlus> {
     let val = nd::array![[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]];
     write(&val, &output_file2)?;
     let mut bed2 = Bed::new(&output_file2)?;
-    // println!("{:?}", bed2.chromosome()?);
-    println!("{:?}", bed2.sid()?);
-    // ['0' '0' '0' '0']
+    println!("{:?}", bed2.chromosome()?);
+    // ["0", "0", "0", "0"], shape=[4], strides=[1], layout=CFcf (0xf), const ndim=1
 
     Ok(())
 }
