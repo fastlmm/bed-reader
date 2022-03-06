@@ -12,7 +12,7 @@
 use core::fmt::Debug;
 use nd::ShapeBuilder;
 use ndarray as nd;
-use std::io::Write;
+use std::io::{self, Write};
 use std::{
     env,
     fs::File,
@@ -344,13 +344,8 @@ impl BedBuilder {
         self
     }
 
-    // !!!cmk later fix the unwraps
-    pub fn sex<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, sex: I) -> Self {
-        self.sex = Some(LazyOrSkip::Some(
-            sex.into_iter()
-                .map(|s| s.as_ref().parse().unwrap())
-                .collect(),
-        ));
+    pub fn sex<I: IntoIterator<Item = i32>>(mut self, sex: I) -> Self {
+        self.sex = Some(LazyOrSkip::Some(sex.into_iter().map(|s| s).collect()));
         self
     }
 
@@ -378,24 +373,16 @@ impl BedBuilder {
         self
     }
 
-    // !!!cmk later fix the unwraps
-    pub fn cm_position<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, cm_position: I) -> Self {
+    pub fn cm_position<I: IntoIterator<Item = f32>>(mut self, cm_position: I) -> Self {
         self.cm_position = Some(LazyOrSkip::Some(
-            cm_position
-                .into_iter()
-                .map(|s| s.as_ref().parse().unwrap())
-                .collect(),
+            cm_position.into_iter().map(|s| s).collect(),
         ));
         self
     }
 
-    // !!!cmk later fix the unwraps
-    pub fn bp_position<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, bp_position: I) -> Self {
+    pub fn bp_position<I: IntoIterator<Item = i32>>(mut self, bp_position: I) -> Self {
         self.bp_position = Some(LazyOrSkip::Some(
-            bp_position
-                .into_iter()
-                .map(|s| s.as_ref().parse().unwrap())
-                .collect(),
+            bp_position.into_iter().map(|s| s).collect(),
         ));
         self
     }
@@ -982,6 +969,8 @@ impl WriteOptionsBuilder {
         self
     }
 
+    // !!!cmk 0 what happens when you try to change metadata in place?
+    // !!!cmk 0 could we require a .clone() to use metadata in new class
     // !!!cmk 0 can we also extract a metadata property from write options?
     pub fn metadata(mut self, metadata: &Metadata) -> Self {
         if let Skippable::Some(fid) = &metadata.fid {
@@ -1050,7 +1039,6 @@ impl WriteOptionsBuilder {
         self
     }
 
-    // !!!cmk later fix the unwraps
     pub fn sex<I: IntoIterator<Item = i32>>(mut self, sex: I) -> Self {
         self.sex = Some(Skippable::Some(sex.into_iter().map(|i| i).collect()));
         self
@@ -1080,7 +1068,6 @@ impl WriteOptionsBuilder {
         self
     }
 
-    // !!!cmk later fix the unwraps
     pub fn cm_position<I: IntoIterator<Item = f32>>(mut self, cm_position: I) -> Self {
         self.cm_position = Some(Skippable::Some(
             cm_position.into_iter().map(|s| s).collect(),
@@ -1088,7 +1075,6 @@ impl WriteOptionsBuilder {
         self
     }
 
-    // !!!cmk later fix the unwraps
     pub fn bp_position<I: IntoIterator<Item = i32>>(mut self, bp_position: I) -> Self {
         self.bp_position = Some(Skippable::Some(
             bp_position.into_iter().map(|s| s).collect(),
@@ -1171,39 +1157,38 @@ pub fn write_with_options<TVal: BedVal>(
 
     let file = File::create(fam_path)?;
     let mut writer = BufWriter::new(file);
-    nd::azip!(&fid)
-        .and(&iid)
-        .and(&father)
-        .and(&mother)
-        .and(&sex)
-        .and(&pheno)
-        .for_each(|fid, iid, father, mother, sex, pheno| {
-            writeln!(
-                writer,
-                "{}\t{}\t{}\t{}\t{}\t{}",
-                *fid, *iid, *father, *mother, *sex, *pheno
-            )
-            .unwrap(); // !!!cmk later throw error
-        });
+    let mut result: Result<(), BedErrorPlus> = Ok(());
+    nd::azip!((fid in &fid, iid in &iid, father in &father, mother in &mother, sex in &sex, pheno in &pheno)
+    {
+        if result.is_ok() {
+            if let Err(e) = writeln!(
+            writer,
+            "{}\t{}\t{}\t{}\t{}\t{}",
+            *fid, *iid, *father, *mother, *sex, *pheno
+        )
+        {
+         result = Err(BedErrorPlus::IOError(e)); // !!!cmk later test this
+        }
+     }});
+    result?;
 
     let file = File::create(bim_path)?;
     let mut writer = BufWriter::new(file);
-    nd::azip!(&chromosome)
-        .and(&sid)
-        .and(&cm_position)
-        .and(&bp_position)
-        .and(&allele_1)
-        .and(&allele_2)
-        .for_each(
-            |chromosome, sid, cm_position, bp_position, allele_1, allele_2| {
-                writeln!(
-                    writer,
-                    "{}\t{}\t{}\t{}\t{}\t{}",
-                    *chromosome, *sid, *cm_position, *bp_position, *allele_1, *allele_2
-                )
-                .unwrap(); // !!!cmk later throw error
-            },
-        );
+    let mut result: Result<(), BedErrorPlus> = Ok(());
+    nd::azip!((chromosome in &chromosome, sid in &sid, cm_position in &cm_position, bp_position in &bp_position, allele_1 in &allele_1, allele_2 in &allele_2)
+    {
+        if result.is_ok() {
+            if let Err(e) = writeln!(
+            writer,
+            "{}\t{}\t{}\t{}\t{}\t{}",
+            *chromosome, *sid, *cm_position, *bp_position, *allele_1, *allele_2
+        )
+        {
+         result = Err(BedErrorPlus::IOError(e)); // !!!cmk later test this
+        }
+     }});
+    result?;
+
     Ok(())
 }
 
@@ -1223,8 +1208,7 @@ impl FromStringArray<String> for String {
     }
 }
 
-// !!!cmk 0 fix these so they return any errors
-
+// !!!cmk later test these
 impl FromStringArray<f32> for f32 {
     fn from_string_array(
         string_array: nd::Array1<String>,
