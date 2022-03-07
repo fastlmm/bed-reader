@@ -33,12 +33,12 @@ dependencies = [
  "approx 0.5.0",
  "byteorder",
  "derive_builder",
- "dpc-pariter",
  "either",
  "ndarray",
  "ndarray-npy",
  "num-traits",
  "numpy",
+ "pariter",
  "pyo3",
  "rayon",
  "statrs",
@@ -232,17 +232,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f3d0c8c8752312f9713efd397ff63acb9f85585afbf179282e720e7704954dd5"
 dependencies = [
  "generic-array",
-]
-
-[[package]]
-name = "dpc-pariter"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d71c06d807e6d996714ba51ecde62908e64a3d4721886480cc603da757fb905e"
-dependencies = [
- "crossbeam",
- "crossbeam-channel",
- "num_cpus",
 ]
 
 [[package]]
@@ -508,6 +497,17 @@ name = "opaque-debug"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2839e79665f131bdb5782e51f2c6c9599c133c6098982a54c794358bf432529c"
+
+[[package]]
+name = "pariter"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "324a62b9e7b5f270c0acc92a2040f8028bb643f959f9c068f11a7864f327e3d9"
+dependencies = [
+ "crossbeam",
+ "crossbeam-channel",
+ "num_cpus",
+]
 
 [[package]]
 name = "parking_lot"
