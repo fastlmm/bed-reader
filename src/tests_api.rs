@@ -432,8 +432,7 @@ fn write_docs() -> Result<(), BedErrorPlus> {
 
     let output_folder = tmp_path()?;
 
-    //let output_file = output_folder.join("small.bed");
-    let output_file = r"h:\del.bed";
+    let output_file = output_folder.join("small.bed");
     let val = nd::array![
         [1.0, 0.0, f64::NAN, 0.0],
         [2.0, 0.0, f64::NAN, 2.0],

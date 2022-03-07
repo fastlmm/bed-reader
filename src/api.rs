@@ -12,7 +12,7 @@
 use core::fmt::Debug;
 use nd::ShapeBuilder;
 use ndarray as nd;
-use std::io::{self, Write};
+use std::io::Write;
 use std::{
     env,
     fs::File,
@@ -1302,3 +1302,124 @@ fn read_fam_or_bim(
 
     Ok(array)
 }
+
+// // https://stackoverflow.com/questions/54709076/how-can-i-implement-an-iterator-over-an-enum-which-contains-slice-values-of-diff
+// // https://stackoverflow.com/q/29760668/155423
+// // https://stackoverflow.com/questions/27535289/what-is-the-correct-way-to-return-an-iterator-or-any-other-trait
+// // https://stackoverflow.com/questions/29760668/conditionally-iterate-over-one-of-several-possible-iterators
+
+// pub fn index_cmk_count(index: Index, max_count: usize) -> usize {
+//     match index {
+//         Index::None => counter_val_cmk(0..max_count),
+//         Index::One(one) => counter_val_cmk([one].into_iter()),
+//         Index::Vec(vec) => counter_val_cmk(vec.into_iter()),
+//         Index::NDArray(array) => counter_val_cmk(array.into_iter()),
+//         Index::VecBool(vec_bool) => {
+//             counter_val_cmk(vec_bool.iter().enumerate().filter_map(|(i, b)| match b {
+//                 true => Some(i),
+//                 false => None,
+//             }))
+//         }
+//         Index::NDArrayBool(array_bool) => {
+//             counter_val_cmk(array_bool.iter().enumerate().filter_map(|(i, b)| match b {
+//                 true => Some(i),
+//                 false => None,
+//             }))
+//         }
+//         // Index::NDSliceInfo(slice_info) => cmk_counter2(slice_info.iter()),
+//         // Index::Range(range) => cmk_counter2(range.iter()),
+//         _ => panic!("impossible"),
+//     }
+// }
+
+// // pub fn counter_ref_cmk<'a, I: IntoIterator<Item = &'a usize>>(iter: I) -> usize {
+// //     let mut count = 0;
+// //     for _ in iter {
+// //         count += 1;
+// //     }
+// //     count
+// // }
+
+// pub fn counter_val_cmk<I: IntoIterator<Item = usize>>(iter: I) -> usize {
+//     let mut count = 0;
+//     for _ in iter {
+//         count += 1;
+//     }
+//     count
+// }
+
+// use either::Either;
+
+// //pub fn slice_info_1_iter(slice_info_1: SliceInfo1) -> impl Iterator<Item = usize> {}
+
+// pub fn index_iter(index: &Index, max_count: usize) {
+//     let mut slice: Option<&[usize]> = None;
+//     let mut slice_bool: Option<&[bool]> = None;
+//     let mut nd_slice: Option<&SliceInfo1> = None;
+
+//     let mut internal_vec = Vec::<usize>::new();
+
+//     match index {
+//         Index::None => todo!(),
+//         Index::One(one) => {
+//             internal_vec.push(*one);
+//             slice = Some(internal_vec.as_slice())
+//         }
+//         Index::Vec(vec) => {
+//             slice = Some(vec.as_slice());
+//         }
+//         Index::NDArray(array) => {
+//             slice = Some(array.as_slice().unwrap());
+//         }
+//         Index::VecBool(vec_bool) => {
+//             slice_bool = Some(vec_bool.as_slice());
+//         }
+//         Index::NDArrayBool(array_bool) => {
+//             slice_bool = Some(array_bool.as_slice().unwrap());
+//         }
+//         Index::NDSliceInfo(nd_slice_0) => {
+//             nd_slice = Some(nd_slice_0);
+//         }
+//         // Index::Range(_) => todo!(),
+//         _ => panic!("impossible"),
+//     }
+
+//     let either = if let Some(slice) = slice {
+//         Either::Left(slice.into_iter().map(|&i| i))
+//     } else if let Some(slice_bool) = slice_bool {
+//         Either::Right(
+//             slice_bool
+//                 .into_iter()
+//                 .enumerate()
+//                 .filter_map(|(i, b)| match b {
+//                     true => Some(i),
+//                     false => None,
+//                 }),
+//         )
+//     } else {
+//         panic!("impossible");
+//     };
+
+//     // let either = match index {
+//     //     Index::None => Either::Left(0..max_count),
+//     //     Index::One(_) => todo!(),
+//     //     Index::Vec(vec) => Either::Right(vec.as_slice().into_iter().map(|&i| i)),
+//     //     Index::NDArray(_) => todo!(),
+//     //     // Index::VecBool(vec_bool) => {
+//     //     //     Either::Left(vec_bool.iter().enumerate().filter_map(|(i, b)| match b {
+//     //     //         true => Some(i),
+//     //     //         false => None,
+//     //     //     }))
+//     //     // }
+//     //     Index::NDArrayBool(_) => todo!(),
+//     //     Index::NDSliceInfo(_) => todo!(),
+//     //     Index::Range(_) => todo!(),
+//     //     _ => panic!("impossible"),
+//     // };
+
+//     for i in either {
+//         println!("{}", i);
+//     }
+
+//     // either
+// }

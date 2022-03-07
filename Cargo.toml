@@ -8,26 +8,38 @@ repository = "https://github.com/fastlmm/bed-reader"
 description = "Read and write the PLINK BED format, simply and efficiently."
 exclude = ["tests/*", "doc/*", "docs/*"]
 readme = "README.md"
-license="Apache 2.0"
-keywords=["bioinformatics", "plink", "genomics", "genetics", "file-format", "reader", "genotype", "bed-format", "writer", "python", "snps"]
+license = "Apache 2.0"
+keywords = [
+    "bioinformatics",
+    "plink",
+    "genomics",
+    "genetics",
+    "file-format",
+    "reader",
+    "genotype",
+    "bed-format",
+    "writer",
+    "python",
+    "snps",
+]
 edition = "2021"
 
 # !!!cmk later https://rust-lang.github.io/api-guidelines/necessities.html
 
 [package.metadata.maturin]
 requires-python = ">=3.7"
-classifiers=[
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
-        "Programming Language :: Python :: 3.10",
-        "Programming Language :: Python :: 3",
-        "Programming Language :: Python",
-    ]
+classifiers = [
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python",
+]
 requires-dist = ["numpy>=1.13.3", "pandas>=0.25.1", "pooch>=1.1.1"]
 
 [package.metadata.maturin.project-url]
-Homepage= "https://fastlmm.github.io"
+Homepage = "https://fastlmm.github.io"
 "Source Code" = "https://github.com/fastlmm/bed-reader"
 "Bug Tracker" = "https://github.com/fastlmm/bed-reader/issues"
 Documentation = "http://fastlmm.github.io/bed-reader"
@@ -41,14 +53,15 @@ thiserror = "1.0.30"
 num-traits = "0.2.14"
 ndarray-npy = { version = "0.8.1", default-features = false }
 rayon = "1.5.1"
-numpy = "0.15.0"
+numpy = "0.16.0"
 ndarray = { version = "0.15.4", features = ["approx", "rayon"] }
 approx = "0.5.0"
 statrs = "0.15.0"
 byteorder = { version = "1.4.3", default-features = false }
-pyo3 = { version = "0.15.1", features = ["extension-module"] }
-dpc-pariter = "0.3.1"
+pyo3 = { version = "0.16.1", features = ["extension-module"] }
+dpc-pariter = "0.3.1"                                            # // cmk dpc-pariter = "0.5.1"
 derive_builder = "0.10.2"
+either = "1.6.1"
 
 [dev-dependencies]
 temp_testdir = "0.2.3"
