@@ -36,6 +36,15 @@ pub enum LazyOrSkip<T> {
     Some(T),
 }
 
+impl<T> LazyOrSkip<T> {
+    pub fn is_lazy(&self) -> bool {
+        match self {
+            LazyOrSkip::Lazy => true,
+            _ => false,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Skippable<T> {
     Some(T),
@@ -505,23 +514,132 @@ impl Bed {
         Ok(metadata)
     }
 
-    pub fn fid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        unlazy(&mut self.fid, &self.fam_file, 0, "fid")
+    fn fam(&mut self) -> Result<(), BedErrorPlus> {
+        let mut field_vec: Vec<usize> = Vec::new();
+        if let LazyOrSkip::Lazy = &self.fid {
+            field_vec.push(0);
+        }
+        if let LazyOrSkip::Lazy = &self.iid {
+            field_vec.push(1);
+        }
+        if let LazyOrSkip::Lazy = &self.father {
+            field_vec.push(2);
+        }
+        if let LazyOrSkip::Lazy = &self.mother {
+            field_vec.push(3);
+        }
+        if let LazyOrSkip::Lazy = &self.sex {
+            field_vec.push(4);
+        }
+        if let LazyOrSkip::Lazy = &self.pheno {
+            field_vec.push(5);
+        }
+
+        let mut vec_of_vec = self.read_fam_or_bim(&field_vec, &self.fam_file)?;
+
+        // unwraps are safe because we pop once for every push
+        if self.pheno.is_lazy() {
+            self.pheno = LazyOrSkip::Some(nd::Array::from_vec(vec_of_vec.pop().unwrap()));
+        }
+        if self.sex.is_lazy() {
+            let vec = vec_of_vec.pop().unwrap();
+            let array = vec
+                .iter()
+                .map(|s| s.parse::<i32>())
+                .collect::<Result<nd::Array1<i32>, _>>()?; // !!!cmk later test this error
+            self.sex = LazyOrSkip::Some(array);
+        }
+        if self.mother.is_lazy() {
+            self.mother = LazyOrSkip::Some(nd::Array::from_vec(vec_of_vec.pop().unwrap()));
+        }
+        if self.father.is_lazy() {
+            self.father = LazyOrSkip::Some(nd::Array::from_vec(vec_of_vec.pop().unwrap()));
+        }
+        if self.iid.is_lazy() {
+            self.iid = LazyOrSkip::Some(nd::Array::from_vec(vec_of_vec.pop().unwrap()));
+        }
+        if self.fid.is_lazy() {
+            self.fid = LazyOrSkip::Some(nd::Array::from_vec(vec_of_vec.pop().unwrap()));
+        }
+
+        Ok(())
     }
+
+    fn read_fam_or_bim(
+        &self,
+        field_vec: &Vec<usize>,
+        path_buf: &PathBuf,
+    ) -> Result<Vec<Vec<String>>, BedErrorPlus> {
+        let mut vec_of_vec = vec![vec![]; field_vec.len()];
+
+        let file = if let Ok(file) = File::open(&path_buf) {
+            file
+        } else {
+            return Err(BedError::CannotOpenFamOrBim(path_buf.display().to_string()).into());
+            // !!!cmk later just return the IO error?
+        };
+
+        let reader = BufReader::new(file);
+        for line in reader.lines() {
+            let line = line?;
+            let field = line.split_whitespace();
+            // !!!cmk later assert if not enough fields
+
+            let mut ii = 0;
+            for (i, field) in field.enumerate() {
+                if field_vec.contains(&i) {
+                    vec_of_vec[ii].push(field.to_string());
+                    ii += 1;
+                }
+            }
+        }
+
+        Ok(vec_of_vec)
+    }
+
+    fn unlazy2<T: FromStringArray<T>>(&mut self, is_lazy: bool) -> Result<(), BedErrorPlus> {
+        if is_lazy {
+            self.fam()?
+        }
+        Ok(())
+    }
+
+    fn unlazy3<'a, T: FromStringArray<T>>(
+        &'a self,
+        field: &'a LazyOrSkip<nd::Array1<T>>,
+        name: &str,
+    ) -> Result<&'a nd::Array1<T>, BedErrorPlus> {
+        match field {
+            LazyOrSkip::Some(fid) => Ok(fid),
+            LazyOrSkip::Skip => Err(BedError::CannotUseSkippedMetadata(name.to_string()).into()),
+            LazyOrSkip::Lazy => panic!("impossible"),
+        }
+    }
+
+    pub fn fid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
+        self.unlazy2::<String>(self.fid.is_lazy())?;
+        self.unlazy3(&self.fid, "fid")
+    }
+
     pub fn iid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        unlazy(&mut self.iid, &self.fam_file, 1, "iid")
+        self.unlazy2::<String>(self.iid.is_lazy())?;
+        self.unlazy3(&self.iid, "iid")
     }
     pub fn father(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        unlazy(&mut self.father, &self.fam_file, 2, "father")
+        self.unlazy2::<String>(self.father.is_lazy())?;
+        self.unlazy3(&self.father, "father")
     }
     pub fn mother(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        unlazy(&mut self.mother, &self.fam_file, 3, "mother")
+        self.unlazy2::<String>(self.mother.is_lazy())?;
+        self.unlazy3(&self.mother, "mother")
     }
     pub fn sex(&mut self) -> Result<&nd::Array1<i32>, BedErrorPlus> {
-        unlazy(&mut self.sex, &self.fam_file, 4, "sex")
+        self.unlazy2::<String>(self.sex.is_lazy())?;
+        self.unlazy3(&self.sex, "sex")
     }
     pub fn pheno(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        unlazy(&mut self.pheno, &self.fam_file, 5, "pheno")
+        self.unlazy2::<String>(self.pheno.is_lazy())?;
+        self.unlazy3(&self.pheno, "pheno")
     }
 
     pub fn chromosome(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
@@ -969,9 +1087,7 @@ impl WriteOptionsBuilder {
         self
     }
 
-    // !!!cmk 0 what happens when you try to change metadata in place?
-    // !!!cmk 0 could we require a .clone() to use metadata in new class
-    // !!!cmk 0 can we also extract a metadata property from write options?
+    // !!!cmk later can we also extract a metadata property from write options?
     pub fn metadata(mut self, metadata: &Metadata) -> Self {
         if let Skippable::Some(fid) = &metadata.fid {
             self.fid = Some(Skippable::Some((*fid).clone()));
@@ -1279,7 +1395,7 @@ fn read_fam_or_bim(
     //     delim_whitespace = False
 
     let reader = BufReader::new(file);
-    let mut line_vec = Vec::<String>::new();
+    let mut line_vec = vec![];
     for line in reader.lines() {
         let line = line?;
         let field = line.split_whitespace().nth(field_index);
@@ -1302,124 +1418,3 @@ fn read_fam_or_bim(
 
     Ok(array)
 }
-
-// // https://stackoverflow.com/questions/54709076/how-can-i-implement-an-iterator-over-an-enum-which-contains-slice-values-of-diff
-// // https://stackoverflow.com/q/29760668/155423
-// // https://stackoverflow.com/questions/27535289/what-is-the-correct-way-to-return-an-iterator-or-any-other-trait
-// // https://stackoverflow.com/questions/29760668/conditionally-iterate-over-one-of-several-possible-iterators
-
-// pub fn index_cmk_count(index: Index, max_count: usize) -> usize {
-//     match index {
-//         Index::None => counter_val_cmk(0..max_count),
-//         Index::One(one) => counter_val_cmk([one].into_iter()),
-//         Index::Vec(vec) => counter_val_cmk(vec.into_iter()),
-//         Index::NDArray(array) => counter_val_cmk(array.into_iter()),
-//         Index::VecBool(vec_bool) => {
-//             counter_val_cmk(vec_bool.iter().enumerate().filter_map(|(i, b)| match b {
-//                 true => Some(i),
-//                 false => None,
-//             }))
-//         }
-//         Index::NDArrayBool(array_bool) => {
-//             counter_val_cmk(array_bool.iter().enumerate().filter_map(|(i, b)| match b {
-//                 true => Some(i),
-//                 false => None,
-//             }))
-//         }
-//         // Index::NDSliceInfo(slice_info) => cmk_counter2(slice_info.iter()),
-//         // Index::Range(range) => cmk_counter2(range.iter()),
-//         _ => panic!("impossible"),
-//     }
-// }
-
-// // pub fn counter_ref_cmk<'a, I: IntoIterator<Item = &'a usize>>(iter: I) -> usize {
-// //     let mut count = 0;
-// //     for _ in iter {
-// //         count += 1;
-// //     }
-// //     count
-// // }
-
-// pub fn counter_val_cmk<I: IntoIterator<Item = usize>>(iter: I) -> usize {
-//     let mut count = 0;
-//     for _ in iter {
-//         count += 1;
-//     }
-//     count
-// }
-
-// use either::Either;
-
-// //pub fn slice_info_1_iter(slice_info_1: SliceInfo1) -> impl Iterator<Item = usize> {}
-
-// pub fn index_iter(index: &Index, max_count: usize) {
-//     let mut slice: Option<&[usize]> = None;
-//     let mut slice_bool: Option<&[bool]> = None;
-//     let mut nd_slice: Option<&SliceInfo1> = None;
-
-//     let mut internal_vec = Vec::<usize>::new();
-
-//     match index {
-//         Index::None => todo!(),
-//         Index::One(one) => {
-//             internal_vec.push(*one);
-//             slice = Some(internal_vec.as_slice())
-//         }
-//         Index::Vec(vec) => {
-//             slice = Some(vec.as_slice());
-//         }
-//         Index::NDArray(array) => {
-//             slice = Some(array.as_slice().unwrap());
-//         }
-//         Index::VecBool(vec_bool) => {
-//             slice_bool = Some(vec_bool.as_slice());
-//         }
-//         Index::NDArrayBool(array_bool) => {
-//             slice_bool = Some(array_bool.as_slice().unwrap());
-//         }
-//         Index::NDSliceInfo(nd_slice_0) => {
-//             nd_slice = Some(nd_slice_0);
-//         }
-//         // Index::Range(_) => todo!(),
-//         _ => panic!("impossible"),
-//     }
-
-//     let either = if let Some(slice) = slice {
-//         Either::Left(slice.into_iter().map(|&i| i))
-//     } else if let Some(slice_bool) = slice_bool {
-//         Either::Right(
-//             slice_bool
-//                 .into_iter()
-//                 .enumerate()
-//                 .filter_map(|(i, b)| match b {
-//                     true => Some(i),
-//                     false => None,
-//                 }),
-//         )
-//     } else {
-//         panic!("impossible");
-//     };
-
-//     // let either = match index {
-//     //     Index::None => Either::Left(0..max_count),
-//     //     Index::One(_) => todo!(),
-//     //     Index::Vec(vec) => Either::Right(vec.as_slice().into_iter().map(|&i| i)),
-//     //     Index::NDArray(_) => todo!(),
-//     //     // Index::VecBool(vec_bool) => {
-//     //     //     Either::Left(vec_bool.iter().enumerate().filter_map(|(i, b)| match b {
-//     //     //         true => Some(i),
-//     //     //         false => None,
-//     //     //     }))
-//     //     // }
-//     //     Index::NDArrayBool(_) => todo!(),
-//     //     Index::NDSliceInfo(_) => todo!(),
-//     //     Index::Range(_) => todo!(),
-//     //     _ => panic!("impossible"),
-//     // };
-
-//     for i in either {
-//         println!("{}", i);
-//     }
-
-//     // either
-// }

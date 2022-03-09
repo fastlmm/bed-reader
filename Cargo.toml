@@ -59,7 +59,7 @@ approx = "0.5.0"
 statrs = "0.15.0"
 byteorder = { version = "1.4.3", default-features = false }
 pyo3 = { version = "0.16.1", features = ["extension-module"] }
-pariter = "0.4.0"                                                # // cmk dpc-pariter = "0.5.1"
+dpc-pariter = "0.4.0"                                            # // cmk pariter = "0.5.1"
 derive_builder = "0.10.2"
 either = "1.6.1"
 
