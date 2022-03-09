@@ -482,19 +482,8 @@ impl Bed {
     /// !!!cmk later don't re-read for every column
 
     pub fn metadata(&mut self) -> Result<Metadata, BedErrorPlus> {
-        let _ = self.fid();
-        let _ = self.iid();
-        let _ = self.father();
-        let _ = self.mother();
-        let _ = self.sex();
-        let _ = self.pheno();
-
-        let _ = self.chromosome();
-        let _ = self.sid();
-        let _ = self.cm_position();
-        let _ = self.bp_position();
-        let _ = self.allele_1();
-        let _ = self.allele_2();
+        self.fam()?;
+        self.bim()?;
 
         let metadata = Metadata {
             fid: to_skippable(&self.fid),
@@ -516,22 +505,22 @@ impl Bed {
 
     fn fam(&mut self) -> Result<(), BedErrorPlus> {
         let mut field_vec: Vec<usize> = Vec::new();
-        if let LazyOrSkip::Lazy = &self.fid {
+        if self.fid.is_lazy() {
             field_vec.push(0);
         }
-        if let LazyOrSkip::Lazy = &self.iid {
+        if self.iid.is_lazy() {
             field_vec.push(1);
         }
-        if let LazyOrSkip::Lazy = &self.father {
+        if self.father.is_lazy() {
             field_vec.push(2);
         }
-        if let LazyOrSkip::Lazy = &self.mother {
+        if self.mother.is_lazy() {
             field_vec.push(3);
         }
-        if let LazyOrSkip::Lazy = &self.sex {
+        if self.sex.is_lazy() {
             field_vec.push(4);
         }
-        if let LazyOrSkip::Lazy = &self.pheno {
+        if self.pheno.is_lazy() {
             field_vec.push(5);
         }
 
@@ -560,6 +549,62 @@ impl Bed {
         }
         if self.fid.is_lazy() {
             self.fid = LazyOrSkip::Some(nd::Array::from_vec(vec_of_vec.pop().unwrap()));
+        }
+
+        Ok(())
+    }
+    fn bim(&mut self) -> Result<(), BedErrorPlus> {
+        let mut field_vec: Vec<usize> = Vec::new();
+        if self.chromosome.is_lazy() {
+            field_vec.push(0);
+        }
+        if self.sid.is_lazy() {
+            field_vec.push(1);
+        }
+        if self.cm_position.is_lazy() {
+            field_vec.push(2);
+        }
+        if self.bp_position.is_lazy() {
+            field_vec.push(3);
+        }
+        if self.allele_1.is_lazy() {
+            field_vec.push(4);
+        }
+        if self.allele_2.is_lazy() {
+            field_vec.push(5);
+        }
+
+        let mut vec_of_vec = self.read_fam_or_bim(&field_vec, &self.bim_file)?;
+
+        // unwraps are safe because we pop once for every push
+        if self.allele_2.is_lazy() {
+            self.allele_2 = LazyOrSkip::Some(nd::Array::from_vec(vec_of_vec.pop().unwrap()));
+        }
+        if self.allele_1.is_lazy() {
+            self.allele_1 = LazyOrSkip::Some(nd::Array::from_vec(vec_of_vec.pop().unwrap()));
+        }
+        if self.bp_position.is_lazy() {
+            let vec = vec_of_vec.pop().unwrap();
+            let array = vec
+                .iter()
+                .map(|s| s.parse::<i32>())
+                .collect::<Result<nd::Array1<i32>, _>>()?; // !!!cmk later test this error
+            self.bp_position = LazyOrSkip::Some(array);
+        }
+        if self.cm_position.is_lazy() {
+            let vec = vec_of_vec.pop().unwrap();
+            let array = vec
+                .iter()
+                .map(|s| s.parse::<f32>())
+                .collect::<Result<nd::Array1<f32>, _>>()?; // !!!cmk later test this error
+            self.cm_position = LazyOrSkip::Some(array);
+        }
+
+        if self.sid.is_lazy() {
+            self.sid = LazyOrSkip::Some(nd::Array::from_vec(vec_of_vec.pop().unwrap()));
+        }
+        if self.chromosome.is_lazy() {
+            self.chromosome = LazyOrSkip::Some(nd::Array::from_vec(vec_of_vec.pop().unwrap()));
         }
 
         Ok(())
@@ -597,14 +642,20 @@ impl Bed {
         Ok(vec_of_vec)
     }
 
-    fn unlazy2<T: FromStringArray<T>>(&mut self, is_lazy: bool) -> Result<(), BedErrorPlus> {
+    fn unlazy_fam<T: FromStringArray<T>>(&mut self, is_lazy: bool) -> Result<(), BedErrorPlus> {
         if is_lazy {
             self.fam()?
         }
         Ok(())
     }
+    fn unlazy_bim<T: FromStringArray<T>>(&mut self, is_lazy: bool) -> Result<(), BedErrorPlus> {
+        if is_lazy {
+            self.bim()?
+        }
+        Ok(())
+    }
 
-    fn unlazy3<'a, T: FromStringArray<T>>(
+    fn get_some_field<'a, T: FromStringArray<T>>(
         &'a self,
         field: &'a LazyOrSkip<nd::Array1<T>>,
         name: &str,
@@ -617,48 +668,54 @@ impl Bed {
     }
 
     pub fn fid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        self.unlazy2::<String>(self.fid.is_lazy())?;
-        self.unlazy3(&self.fid, "fid")
+        self.unlazy_fam::<String>(self.fid.is_lazy())?;
+        self.get_some_field(&self.fid, "fid")
     }
 
     pub fn iid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        self.unlazy2::<String>(self.iid.is_lazy())?;
-        self.unlazy3(&self.iid, "iid")
+        self.unlazy_fam::<String>(self.iid.is_lazy())?;
+        self.get_some_field(&self.iid, "iid")
     }
     pub fn father(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        self.unlazy2::<String>(self.father.is_lazy())?;
-        self.unlazy3(&self.father, "father")
+        self.unlazy_fam::<String>(self.father.is_lazy())?;
+        self.get_some_field(&self.father, "father")
     }
     pub fn mother(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        self.unlazy2::<String>(self.mother.is_lazy())?;
-        self.unlazy3(&self.mother, "mother")
+        self.unlazy_fam::<String>(self.mother.is_lazy())?;
+        self.get_some_field(&self.mother, "mother")
     }
     pub fn sex(&mut self) -> Result<&nd::Array1<i32>, BedErrorPlus> {
-        self.unlazy2::<String>(self.sex.is_lazy())?;
-        self.unlazy3(&self.sex, "sex")
+        self.unlazy_fam::<String>(self.sex.is_lazy())?;
+        self.get_some_field(&self.sex, "sex")
     }
     pub fn pheno(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        self.unlazy2::<String>(self.pheno.is_lazy())?;
-        self.unlazy3(&self.pheno, "pheno")
+        self.unlazy_fam::<String>(self.pheno.is_lazy())?;
+        self.get_some_field(&self.pheno, "pheno")
     }
 
     pub fn chromosome(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        unlazy(&mut self.chromosome, &self.bim_file, 0, "chromosome")
+        self.unlazy_bim::<String>(self.chromosome.is_lazy())?;
+        self.get_some_field(&self.chromosome, "chromosome")
     }
     pub fn sid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        unlazy(&mut self.sid, &self.bim_file, 1, "sid")
+        self.unlazy_bim::<String>(self.sid.is_lazy())?;
+        self.get_some_field(&self.sid, "sid")
     }
     pub fn cm_position(&mut self) -> Result<&nd::Array1<f32>, BedErrorPlus> {
-        unlazy(&mut self.cm_position, &self.bim_file, 2, "cm_position")
+        self.unlazy_bim::<String>(self.cm_position.is_lazy())?;
+        self.get_some_field(&self.cm_position, "cm_position")
     }
     pub fn bp_position(&mut self) -> Result<&nd::Array1<i32>, BedErrorPlus> {
-        unlazy(&mut self.bp_position, &self.bim_file, 3, "bp_position")
+        self.unlazy_bim::<String>(self.bp_position.is_lazy())?;
+        self.get_some_field(&self.bp_position, "bp_position")
     }
     pub fn allele_1(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        unlazy(&mut self.allele_1, &self.bim_file, 4, "allele_1")
+        self.unlazy_bim::<String>(self.allele_1.is_lazy())?;
+        self.get_some_field(&self.allele_1, "allele_1")
     }
     pub fn allele_2(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        unlazy(&mut self.allele_2, &self.bim_file, 5, "allele_2")
+        self.unlazy_bim::<String>(self.allele_2.is_lazy())?;
+        self.get_some_field(&self.allele_2, "allele_2")
     }
 
     // !!!cmk later rename TOut to TVal
@@ -1352,69 +1409,4 @@ impl FromStringArray<i32> for i32 {
             Err(e) => Err(BedErrorPlus::ParseIntError(e)),
         }
     }
-}
-
-fn unlazy<'a, T: FromStringArray<T>>(
-    field: &'a mut LazyOrSkip<nd::Array1<T>>,
-    path_buf: &PathBuf,
-    field_index: usize,
-    name: &str,
-) -> Result<&'a nd::Array1<T>, BedErrorPlus> {
-    match field {
-        LazyOrSkip::Some(ref array) => Ok(array),
-        LazyOrSkip::Lazy => {
-            let array: nd::Array1<T> =
-                T::from_string_array(read_fam_or_bim(path_buf, field_index)?)?;
-            *field = LazyOrSkip::Some(array);
-            match field {
-                LazyOrSkip::Some(ref array) => Ok(array),
-                _ => panic!("impossible"),
-            }
-        }
-        LazyOrSkip::Skip => Err(BedError::CannotUseSkippedMetadata(name.to_string()).into()),
-    }
-}
-
-fn read_fam_or_bim(
-    path_buf: &PathBuf,
-    field_index: usize,
-) -> Result<nd::Array1<String>, BedErrorPlus> {
-    let file = if let Ok(file) = File::open(&path_buf) {
-        file
-    } else {
-        return Err(BedError::CannotOpenFamOrBim(path_buf.display().to_string()).into());
-    };
-
-    // !!!cmk later use the correct delimiters (here is the Python spec:)
-    // count = self._counts[suffix]
-    // delimiter = _delimiters[suffix]
-    // if delimiter in {r"\s+"}:
-    //     delimiter = None
-    //     delim_whitespace = True
-    // else:
-    //     delim_whitespace = False
-
-    let reader = BufReader::new(file);
-    let mut line_vec = vec![];
-    for line in reader.lines() {
-        let line = line?;
-        let field = line.split_whitespace().nth(field_index);
-        if let Some(field) = field {
-            line_vec.push(field.to_string());
-        } else {
-            // !!!cmk later update to more specific error message
-            return Err(BedError::CannotOpenFamOrBim(path_buf.display().to_string()).into());
-        }
-    }
-
-    let array = match nd::Array1::from_shape_vec(line_vec.len(), line_vec) {
-        Ok(array) => array,
-        Err(_error) => {
-            // !!!cmk later update to more specific error message
-            return Err(BedError::CannotOpenFamOrBim(path_buf.display().to_string()).into());
-            // return Err(error).into();
-        }
-    };
-
-    Ok(array)
 }
