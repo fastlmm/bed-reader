@@ -136,16 +136,16 @@ pub fn create_pool(num_threads: usize) -> Result<rayon::ThreadPool, BedErrorPlus
 
 //#!!!cmk later hide this from the docs
 #[allow(clippy::too_many_arguments)]
-fn read_no_alloc<TOut: BedVal, P: AsRef<Path>>(
+fn read_no_alloc<TVal: BedVal, P: AsRef<Path>>(
     path: P,
     iid_count: usize,
     sid_count: usize,
     is_a1_counted: bool,
     iid_index: &[usize],
     sid_index: &[usize],
-    missing_value: TOut,
+    missing_value: TVal,
     num_threads: usize,
-    val: &mut nd::ArrayViewMut2<'_, TOut>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
+    val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
 ) -> Result<(), BedErrorPlus> {
     let path_buf = PathBuf::from(path.as_ref());
 
@@ -258,7 +258,7 @@ fn try_div_4<T: Max + TryFrom<usize> + Sub<Output = T> + Div<Output = T> + Ord>(
 
 // !!!cmk later could iid_index and sid_index be ExpectSizeIterator<Item=usize>?
 #[allow(clippy::too_many_arguments)]
-fn internal_read_no_alloc<TOut: BedVal, P: AsRef<Path>>(
+fn internal_read_no_alloc<TVal: BedVal, P: AsRef<Path>>(
     mut buf_reader: BufReader<File>,
     path: P,
     in_iid_count: usize,
@@ -266,8 +266,8 @@ fn internal_read_no_alloc<TOut: BedVal, P: AsRef<Path>>(
     is_a1_counted: bool,
     iid_index: &[usize],
     sid_index: &[usize],
-    missing_value: TOut,
-    out_val: &mut nd::ArrayViewMut2<'_, TOut>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
+    missing_value: TVal,
+    out_val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
 ) -> Result<(), BedErrorPlus> {
     // Find the largest in_iid_i (if any) and check its size.
     if let Some(in_max_iid_i) = iid_index.iter().max() {
@@ -327,10 +327,10 @@ fn internal_read_no_alloc<TOut: BedVal, P: AsRef<Path>>(
     Ok(())
 }
 
-fn set_up_two_bits_to_value<TOut: From<i8>>(count_a1: bool, missing_value: TOut) -> [TOut; 4] {
-    let homozygous_primary_allele = TOut::from(0); // Major Allele
-    let heterozygous_allele = TOut::from(1);
-    let homozygous_secondary_allele = TOut::from(2); // Minor Allele
+fn set_up_two_bits_to_value<TVal: From<i8>>(count_a1: bool, missing_value: TVal) -> [TVal; 4] {
+    let homozygous_primary_allele = TVal::from(0); // Major Allele
+    let heterozygous_allele = TVal::from(1);
+    let homozygous_secondary_allele = TVal::from(2); // Minor Allele
 
     let from_two_bits_to_value;
     if count_a1 {

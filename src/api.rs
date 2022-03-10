@@ -221,7 +221,6 @@ impl BedBuilder {
         }
     }
 
-    // !!!cmk later play with aliasing this as bed_reader::Result<T>
     pub fn build(&self) -> Result<Bed, BedErrorPlus> {
         let mut bed = self.build_no_file_check()?;
 
@@ -431,9 +430,7 @@ fn to_metadata_path(
 
 fn to_skippable<'a, T>(lazy_or_skip: &'a LazyOrSkip<T>) -> Skippable<&'a T> {
     match lazy_or_skip {
-        LazyOrSkip::Lazy => {
-            todo!("!!!cmk later")
-        }
+        LazyOrSkip::Lazy => panic!("assert: impossible"),
         LazyOrSkip::Skip => Skippable::Skip,
         LazyOrSkip::Some(some) => Skippable::Some(some),
     }
@@ -701,16 +698,15 @@ impl Bed {
         self.get_some_field(&self.allele_2, "allele_2")
     }
 
-    // !!!cmk later rename TOut to TVal
-    pub fn read<TOut: BedVal>(&mut self) -> Result<nd::Array2<TOut>, BedErrorPlus> {
-        let read_options = ReadOptions::<TOut>::builder().build()?;
+    pub fn read<TVal: BedVal>(&mut self) -> Result<nd::Array2<TVal>, BedErrorPlus> {
+        let read_options = ReadOptions::<TVal>::builder().build()?;
         self.read_with_options(read_options)
     }
 
-    pub(crate) fn read_with_options<TOut: BedVal>(
+    pub(crate) fn read_with_options<TVal: BedVal>(
         &mut self,
-        read_options: ReadOptions<TOut>,
-    ) -> Result<nd::Array2<TOut>, BedErrorPlus> {
+        read_options: ReadOptions<TVal>,
+    ) -> Result<nd::Array2<TVal>, BedErrorPlus> {
         let iid_count = self.iid_count()?;
         let sid_count = self.sid_count()?;
 
@@ -730,7 +726,7 @@ impl Bed {
         let sid_index = read_options.sid_index.to_vec(sid_count);
 
         let shape = ShapeBuilder::set_f((iid_index.len(), sid_index.len()), read_options.is_f);
-        let mut val = nd::Array2::<TOut>::default(shape);
+        let mut val = nd::Array2::<TVal>::default(shape);
 
         read_no_alloc(
             &self.path,
@@ -864,9 +860,9 @@ impl From<()> for Index {
 
 // See https://nullderef.com/blog/rust-parameters/
 #[derive(Debug, Clone, Builder)]
-pub struct ReadOptions<TOut: BedVal> {
-    #[builder(default = "TOut::missing()")]
-    missing_value: TOut,
+pub struct ReadOptions<TVal: BedVal> {
+    #[builder(default = "TVal::missing()")]
+    missing_value: TVal,
 
     #[builder(default = "Index::None")]
     #[builder(setter(into))]
@@ -883,14 +879,14 @@ pub struct ReadOptions<TOut: BedVal> {
     pub num_threads: Option<usize>,
 }
 
-impl<TOut: BedVal> ReadOptions<TOut> {
-    pub fn builder() -> ReadOptionsBuilder<TOut> {
+impl<TVal: BedVal> ReadOptions<TVal> {
+    pub fn builder() -> ReadOptionsBuilder<TVal> {
         ReadOptionsBuilder::default()
     }
 }
 
-impl<TOut: BedVal> ReadOptionsBuilder<TOut> {
-    pub fn read(&self, bed: &mut Bed) -> Result<nd::Array2<TOut>, BedErrorPlus> {
+impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
+    pub fn read(&self, bed: &mut Bed) -> Result<nd::Array2<TVal>, BedErrorPlus> {
         let read_option = self.build()?;
         bed.read_with_options(read_option)
     }

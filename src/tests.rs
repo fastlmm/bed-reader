@@ -129,19 +129,19 @@ fn reference_val(is_a1_counted: bool) -> nd::Array2<f64> {
 
 // could make count_a1, etc. optional
 #[cfg(test)]
-pub fn read_with_indexes<TOut: BedVal, P: AsRef<Path>>(
+pub fn read_with_indexes<TVal: BedVal, P: AsRef<Path>>(
     path: P,
     iid_index: &[usize],
     sid_index: &[usize],
     output_is_orderf: bool,
     is_a1_counted: bool,
-    missing_value: TOut,
+    missing_value: TVal,
     num_threads: usize,
-) -> Result<nd::Array2<TOut>, BedErrorPlus> {
+) -> Result<nd::Array2<TVal>, BedErrorPlus> {
     let (iid_count, sid_count) = counts(&path)?;
 
     let shape = ShapeBuilder::set_f((iid_index.len(), sid_index.len()), output_is_orderf);
-    let mut val = nd::Array2::<TOut>::default(shape);
+    let mut val = nd::Array2::<TVal>::default(shape);
 
     read_no_alloc(
         path,
@@ -166,20 +166,20 @@ pub fn counts<P: AsRef<Path>>(path: P) -> Result<(usize, usize), BedErrorPlus> {
 }
 
 #[cfg(test)]
-pub fn read<TOut: BedVal, P: AsRef<Path>>(
+pub fn read<TVal: BedVal, P: AsRef<Path>>(
     path: P,
     output_is_orderf: bool,
     is_a1_counted: bool,
-    missing_value: TOut,
+    missing_value: TVal,
     num_threads: usize,
-) -> Result<nd::Array2<TOut>, BedErrorPlus> {
+) -> Result<nd::Array2<TVal>, BedErrorPlus> {
     let (iid_count, sid_count) = counts(path.as_ref())?;
 
     let iid_index: Vec<usize> = (0..iid_count).collect();
     let sid_index: Vec<usize> = (0..sid_count).collect();
 
     let shape = ShapeBuilder::set_f((iid_count, sid_count), output_is_orderf);
-    let mut val = nd::Array2::<TOut>::default(shape);
+    let mut val = nd::Array2::<TVal>::default(shape);
 
     read_no_alloc(
         path,
