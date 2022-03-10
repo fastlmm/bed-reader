@@ -79,7 +79,6 @@ impl<T> LazyOrSkip<T> {
     }
 }
 
-// !!! cmk later what happens if I try to modify the array values, the field values?
 #[derive(Clone, Debug, PartialEq)]
 pub struct Metadata<'a> {
     pub fid: Skippable<&'a nd::Array1<String>>,
@@ -165,6 +164,7 @@ pub struct Bed {
     #[builder(default = "LazyOrSkip::Lazy")]
     cm_position: LazyOrSkip<nd::Array1<f32>>,
 
+    // i32 based on https://www.cog-genomics.org/plink2/formats#bim
     #[builder(setter(custom))]
     #[builder(default = "LazyOrSkip::Lazy")]
     bp_position: LazyOrSkip<nd::Array1<i32>>,
@@ -429,16 +429,6 @@ fn to_metadata_path(
     }
 }
 
-// fn to_skippable<T: Clone>(lazy_or_skip: &LazyOrSkip<T>) -> Skippable<T> {
-//     match lazy_or_skip {
-//         LazyOrSkip::Lazy => {
-//             todo!("!!!cmk later")
-//         }
-//         LazyOrSkip::Skip => Skippable::Skip,
-//         LazyOrSkip::Some(some) => Skippable::Some(some.clone()),
-//     }
-// }
-
 fn to_skippable<'a, T>(lazy_or_skip: &'a LazyOrSkip<T>) -> Skippable<&'a T> {
     match lazy_or_skip {
         LazyOrSkip::Lazy => {
@@ -478,8 +468,6 @@ impl Bed {
             Ok(sid_count)
         }
     }
-
-    /// !!!cmk later don't re-read for every column
 
     pub fn metadata(&mut self) -> Result<Metadata, BedErrorPlus> {
         self.fam()?;
@@ -617,12 +605,7 @@ impl Bed {
     ) -> Result<Vec<Vec<String>>, BedErrorPlus> {
         let mut vec_of_vec = vec![vec![]; field_vec.len()];
 
-        let file = if let Ok(file) = File::open(&path_buf) {
-            file
-        } else {
-            return Err(BedError::CannotOpenFamOrBim(path_buf.display().to_string()).into());
-            // !!!cmk later just return the IO error?
-        };
+        let file = File::open(&path_buf)?;
 
         let reader = BufReader::new(file);
         for line in reader.lines() {

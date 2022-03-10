@@ -7,13 +7,11 @@ use crate::api::ReadOptions;
 #[cfg(test)]
 use crate::api::WriteOptions;
 #[cfg(test)]
+use crate::tests::allclose;
+#[cfg(test)]
 use crate::BedError;
 #[cfg(test)]
 use crate::BedErrorPlus;
-// !!!cmk later use read_all or new macros to make reading all easier.
-// !!!cmk later is there a way to set default value based on the result type (if given)
-#[cfg(test)]
-use crate::tests::allclose;
 #[cfg(test)]
 use ndarray as nd;
 #[cfg(test)]

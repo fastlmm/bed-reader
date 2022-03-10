@@ -283,7 +283,7 @@ fn index() {
         _ => panic!("test failure"),
     };
 
-    let result = read_with_indexes(
+    let result2 = read_with_indexes(
         "bed_reader/tests/data/small_no_fam.bed",
         &[0],
         &[0],
@@ -292,12 +292,12 @@ fn index() {
         f32::NAN,
         1,
     );
-    match result {
-        Err(BedErrorPlus::BedError(BedError::CannotOpenFamOrBim(_))) => (),
+    match result2 {
+        Err(BedErrorPlus::IOError(_)) => (),
         _ => panic!("test failure"),
     };
 
-    let result = read_with_indexes(
+    let result3 = read_with_indexes(
         "bed_reader/tests/data/small_no_bim.bed",
         &[0],
         &[0],
@@ -306,20 +306,20 @@ fn index() {
         f32::NAN,
         1,
     );
-    match result {
-        Err(BedErrorPlus::BedError(BedError::CannotOpenFamOrBim(_))) => (),
+    match result3 {
+        Err(BedErrorPlus::IOError(_)) => (),
         _ => panic!("test failure"),
     };
 
-    let result = read_with_indexes(filename, &[2], &[usize::MAX], true, true, f32::NAN, 0);
-    match result {
+    let result4 = read_with_indexes(filename, &[2], &[usize::MAX], true, true, f32::NAN, 0);
+    match result4 {
         Err(BedErrorPlus::BedError(BedError::SidIndexTooBig(_))) => (),
         _ => panic!("test failure"),
     };
 
     let mut ignore_val = nd::Array2::zeros((1, 1));
     let buf_reader = BufReader::new(File::open("bed_reader/tests/data/small_no_bim.bed").unwrap());
-    let result = internal_read_no_alloc(
+    let result5 = internal_read_no_alloc(
         buf_reader,
         "ignore",
         usize::MAX,
@@ -330,20 +330,20 @@ fn index() {
         f64::NAN,
         &mut ignore_val.view_mut(),
     );
-    match result {
+    match result5 {
         Err(BedErrorPlus::BedError(BedError::IndexesTooBigForFiles(_, _))) => (),
         _ => panic!("test failure"),
     };
 
-    let result = read(
+    let result6 = read(
         "bed_reader/tests/data/no_such_file.nsf",
         true,
         true,
         f64::NAN,
         1,
     );
-    match result {
-        Err(BedErrorPlus::BedError(BedError::CannotOpenFamOrBim(_))) => (),
+    match result6 {
+        Err(BedErrorPlus::IOError(_)) => (),
         _ => panic!("test failure"),
     };
 }

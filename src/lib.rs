@@ -116,9 +116,6 @@ pub enum BedError {
     #[error("Cannot create Beta Dist with given parameters ({0},{1})")]
     CannotCreateBetaDist(f64, f64),
 
-    #[error("Cannot open metadata file. '{0}'")]
-    CannotOpenFamOrBim(String),
-
     #[error("Cannot use skipped metadata '{0}'")]
     CannotUseSkippedMetadata(String),
 }
@@ -446,13 +443,7 @@ fn write_internal<T: BedVal, P: AsRef<Path>>(
 }
 
 fn count_lines<P: AsRef<Path>>(path: P) -> Result<usize, BedErrorPlus> {
-    let path_buf = PathBuf::from(path.as_ref());
-    let file = match File::open(path) {
-        Err(_) => {
-            return Err(BedError::CannotOpenFamOrBim(path_buf.display().to_string()).into());
-        }
-        Ok(file) => file,
-    };
+    let file = File::open(path)?;
     let reader = BufReader::new(file);
     let count = reader.lines().count();
     Ok(count)
