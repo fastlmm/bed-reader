@@ -737,26 +737,13 @@ impl Bed {
     ) -> Result<nd::Array2<TVal>, BedErrorPlus> {
         let iid_count = self.iid_count()?;
         let sid_count = self.sid_count()?;
-
-        let num_threads = compute_num_threads(read_options.num_threads)?;
-
+        // !!!cmk 0 need fast way find length of index without creating a vector yet
         let iid_index = read_options.iid_index.to_vec(iid_count);
         let sid_index = read_options.sid_index.to_vec(sid_count);
-
         let shape = ShapeBuilder::set_f((iid_index.len(), sid_index.len()), read_options.is_f);
         let mut val = nd::Array2::<TVal>::default(shape);
 
-        read_no_alloc(
-            &self.path,
-            iid_count,
-            sid_count,
-            self.is_a1_counted,
-            &iid_index,
-            &sid_index,
-            read_options.missing_value,
-            num_threads,
-            &mut val.view_mut(),
-        )?;
+        self.read_and_fill_with_options(&mut val.view_mut(), read_options)?;
 
         Ok(val)
     }
