@@ -445,8 +445,6 @@ impl Bed {
         Bed::builder(path).build()
     }
 
-    // !!!cmk later is this how you do lazy accessors?
-    // !!!cmk later should this be "try_get_..." or just "iid_count" or as is
     pub fn iid_count(&mut self) -> Result<usize, BedErrorPlus> {
         if let Some(iid_count) = self.iid_count {
             Ok(iid_count)
@@ -710,17 +708,7 @@ impl Bed {
         let iid_count = self.iid_count()?;
         let sid_count = self.sid_count()?;
 
-        let num_threads = if let Some(num_threads) = read_options.num_threads {
-            num_threads
-        } else {
-            if let Ok(num_threads) = env::var("BED_READER_NUM_THREADS") {
-                num_threads.parse::<usize>()?
-            } else if let Ok(num_threads) = env::var("NUM_THREADS") {
-                num_threads.parse::<usize>()?
-            } else {
-                0
-            }
-        };
+        let num_threads = compute_num_threads(read_options.num_threads)?;
 
         let iid_index = read_options.iid_index.to_vec(iid_count);
         let sid_index = read_options.sid_index.to_vec(sid_count);
@@ -742,6 +730,21 @@ impl Bed {
 
         Ok(val)
     }
+}
+
+fn compute_num_threads(option_num_threads: Option<usize>) -> Result<usize, BedErrorPlus> {
+    let num_threads = if let Some(num_threads) = option_num_threads {
+        num_threads
+    } else {
+        if let Ok(num_threads) = env::var("BED_READER_NUM_THREADS") {
+            num_threads.parse::<usize>()?
+        } else if let Ok(num_threads) = env::var("NUM_THREADS") {
+            num_threads.parse::<usize>()?
+        } else {
+            0
+        }
+    };
+    Ok(num_threads)
 }
 
 impl Index {
@@ -922,7 +925,7 @@ impl ReadOptionsBuilder<f64> {
 
 #[derive(Clone, Debug, Builder)]
 #[builder(build_fn(private, name = "write_no_file_check", error = "BedErrorPlus"))]
-pub struct WriteOptions {
+pub struct WriteOptions<TVal: BedVal> {
     #[builder(setter(custom))]
     pub path: PathBuf, // !!!cmk later always clone?
 
@@ -981,10 +984,19 @@ pub struct WriteOptions {
     #[builder(setter(custom))]
     #[builder(default = "Skippable::Skip")]
     allele_2: Skippable<nd::Array1<String>>,
+
+    #[builder(default = "true")]
+    is_a1_counted: bool,
+
+    #[builder(default, setter(strip_option))]
+    pub num_threads: Option<usize>,
+
+    #[builder(default = "TVal::missing()")]
+    missing_value: TVal,
 }
 
-impl WriteOptions {
-    pub fn builder<P: AsRef<Path>>(path: P) -> WriteOptionsBuilder {
+impl<TVal: BedVal> WriteOptions<TVal> {
+    pub fn builder<P: AsRef<Path>>(path: P) -> WriteOptionsBuilder<TVal> {
         WriteOptionsBuilder::new(path)
     }
 
@@ -1072,11 +1084,15 @@ impl WriteOptions {
             }
         }
     }
+
+    pub fn is_a1_counted(&self) -> bool {
+        self.is_a1_counted
+    }
 }
 
-impl WriteOptionsBuilder {
+impl<TVal: BedVal> WriteOptionsBuilder<TVal> {
     // !!! cmk later just use the default builder?
-    pub fn build(&self) -> Result<WriteOptions, BedErrorPlus> {
+    pub fn build(&self) -> Result<WriteOptions<TVal>, BedErrorPlus> {
         let write_options = self.write_no_file_check()?;
 
         Ok(write_options)
@@ -1084,7 +1100,7 @@ impl WriteOptionsBuilder {
 
     // !!!cmk later should check that metadata agrees with val size
     // !!!cmk later maybe use the default builder?
-    pub fn write<TVal: BedVal>(&self, val: &nd::Array2<TVal>) -> Result<(), BedErrorPlus> {
+    pub fn write(&self, val: &nd::Array2<TVal>) -> Result<(), BedErrorPlus> {
         let write_options = self.build()?;
         write_with_options(val, &write_options)?;
 
@@ -1110,6 +1126,10 @@ impl WriteOptionsBuilder {
             bp_position: None,
             allele_1: None,
             allele_2: None,
+
+            is_a1_counted: None,
+            num_threads: None,
+            missing_value: None,
         }
     }
 
@@ -1253,6 +1273,16 @@ impl WriteOptionsBuilder {
         ));
         self
     }
+
+    pub fn count_a1(&mut self) -> &mut Self {
+        self.is_a1_counted = Some(true);
+        self
+    }
+
+    pub fn count_a2(&mut self) -> &mut Self {
+        self.is_a1_counted = Some(false);
+        self
+    }
 }
 
 pub fn write<TVal: BedVal>(val: &nd::Array2<TVal>, path: &Path) -> Result<(), BedErrorPlus> {
@@ -1261,7 +1291,7 @@ pub fn write<TVal: BedVal>(val: &nd::Array2<TVal>, path: &Path) -> Result<(), Be
 
 // !!!cmk later rename
 // !!!cmk later do this without a "clone"
-fn xfx<T, F>(field: &Skippable<nd::Array1<T>>, count: usize, lambda: F) -> nd::Array1<T>
+fn compute_field<T, F>(field: &Skippable<nd::Array1<T>>, count: usize, lambda: F) -> nd::Array1<T>
 where
     T: Clone + Default + Debug,
     F: Fn(usize) -> T,
@@ -1274,7 +1304,7 @@ where
 
 pub fn write_with_options<TVal: BedVal>(
     val: &nd::Array2<TVal>,
-    write_options: &WriteOptions,
+    write_options: &WriteOptions<TVal>,
 ) -> Result<(), BedErrorPlus> {
     // !!!cmk later can this be done in one step??
     let shape = val.shape();
@@ -1283,29 +1313,31 @@ pub fn write_with_options<TVal: BedVal>(
     // !!!cmk later if something goes wrong, clean up the files?
     let path = &write_options.path;
 
-    // !!!cmk 0 more options
-    // !!!cmk set is_a1_count
-    // .count_a2()
-    // !!!cmk set missing
-    // !!!cmk set num_threads
-    write_val(path, &val.view(), true, TVal::missing(), 0)?;
+    let num_threads = compute_num_threads(write_options.num_threads)?;
+    write_val(
+        path,
+        &val.view(),
+        write_options.is_a1_counted,
+        write_options.missing_value,
+        num_threads,
+    )?;
 
     let fam_path = to_metadata_path(path, &write_options.fam_path, "fam");
     let bim_path = to_metadata_path(path, &write_options.bim_path, "bim");
 
-    let fid = xfx(&write_options.fid, iid_count, |_| "0".to_string());
-    let iid = xfx(&write_options.iid, iid_count, |i| format!("iid{}", i + 1));
-    let father = xfx(&write_options.father, iid_count, |_| "0".to_string());
-    let mother = xfx(&write_options.mother, iid_count, |_| "0".to_string());
-    let sex = xfx(&write_options.sex, iid_count, |_| 0);
-    let pheno = xfx(&write_options.pheno, iid_count, |_| "0".to_string());
+    let fid = compute_field(&write_options.fid, iid_count, |_| "0".to_string());
+    let iid = compute_field(&write_options.iid, iid_count, |i| format!("iid{}", i + 1));
+    let father = compute_field(&write_options.father, iid_count, |_| "0".to_string());
+    let mother = compute_field(&write_options.mother, iid_count, |_| "0".to_string());
+    let sex = compute_field(&write_options.sex, iid_count, |_| 0);
+    let pheno = compute_field(&write_options.pheno, iid_count, |_| "0".to_string());
 
-    let chromosome = xfx(&write_options.chromosome, sid_count, |_| "0".to_string());
-    let sid = xfx(&write_options.sid, sid_count, |i| format!("sid{}", i + 1));
-    let cm_position = xfx(&write_options.cm_position, sid_count, |_| 0.0);
-    let bp_position = xfx(&write_options.bp_position, sid_count, |_| 0);
-    let allele_1 = xfx(&write_options.allele_1, sid_count, |_| "A1".to_string());
-    let allele_2 = xfx(&write_options.allele_2, sid_count, |_| "A2".to_string());
+    let chromosome = compute_field(&write_options.chromosome, sid_count, |_| "0".to_string());
+    let sid = compute_field(&write_options.sid, sid_count, |i| format!("sid{}", i + 1));
+    let cm_position = compute_field(&write_options.cm_position, sid_count, |_| 0.0);
+    let bp_position = compute_field(&write_options.bp_position, sid_count, |_| 0);
+    let allele_1 = compute_field(&write_options.allele_1, sid_count, |_| "A1".to_string());
+    let allele_2 = compute_field(&write_options.allele_2, sid_count, |_| "A2".to_string());
 
     let file = File::create(fam_path)?;
     let mut writer = BufWriter::new(file);
