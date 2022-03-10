@@ -701,7 +701,37 @@ impl Bed {
         self.read_with_options(read_options)
     }
 
-    pub(crate) fn read_with_options<TVal: BedVal>(
+    pub fn read_and_fill_with_options<TVal: BedVal>(
+        &mut self,
+        val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.,
+        read_options: ReadOptions<TVal>,
+    ) -> Result<(), BedErrorPlus> {
+        let iid_count = self.iid_count()?;
+        let sid_count = self.sid_count()?;
+
+        let num_threads = compute_num_threads(read_options.num_threads)?;
+
+        let iid_index = read_options.iid_index.to_vec(iid_count);
+        let sid_index = read_options.sid_index.to_vec(sid_count);
+
+        // !!!cmk later check that val has right (iid_index.len(), sid_index.len()), read_options.is_f);
+
+        read_no_alloc(
+            &self.path,
+            iid_count,
+            sid_count,
+            self.is_a1_counted,
+            &iid_index,
+            &sid_index,
+            read_options.missing_value,
+            num_threads,
+            &mut val.view_mut(),
+        )?;
+
+        Ok(())
+    }
+
+    pub fn read_with_options<TVal: BedVal>(
         &mut self,
         read_options: ReadOptions<TVal>,
     ) -> Result<nd::Array2<TVal>, BedErrorPlus> {
@@ -892,6 +922,14 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     pub fn read(&self, bed: &mut Bed) -> Result<nd::Array2<TVal>, BedErrorPlus> {
         let read_option = self.build()?;
         bed.read_with_options(read_option)
+    }
+    pub fn read_and_fill(
+        &self,
+        bed: &mut Bed,
+        val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
+    ) -> Result<(), BedErrorPlus> {
+        let read_option = self.build()?;
+        bed.read_and_fill_with_options(val, read_option)
     }
 
     pub fn f(&mut self) -> &Self {
