@@ -134,6 +134,7 @@ pub fn create_pool(num_threads: usize) -> Result<rayon::ThreadPool, BedErrorPlus
     }
 }
 
+// !!!cmk 0 remove????
 //#!!!cmk later hide this from the docs
 #[allow(clippy::too_many_arguments)]
 fn read_no_alloc<TVal: BedVal, P: AsRef<Path>>(
@@ -282,9 +283,9 @@ fn internal_read_no_alloc<TVal: BedVal, P: AsRef<Path>>(
     let from_two_bits_to_value = set_up_two_bits_to_value(is_a1_counted, missing_value);
 
     // "as" and math is safe because of early checks
-    if buf_reader.seek(SeekFrom::End(0))?
-        != in_iid_count_div4_u64 * (in_sid_count as u64) + CB_HEADER_U64
-    {
+    let file_len = buf_reader.seek(SeekFrom::End(0))?;
+    let file_len2 = in_iid_count_div4_u64 * (in_sid_count as u64) + CB_HEADER_U64;
+    if file_len != file_len2 {
         return Err(BedError::IllFormed(PathBuf::from(path.as_ref()).display().to_string()).into());
     }
 

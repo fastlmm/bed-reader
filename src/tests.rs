@@ -1,6 +1,8 @@
-// https://stackoverflow.com/questions/32900809/how-to-suppress-function-is-never-used-warning-for-a-function-used-by-tests
 #[cfg(test)]
-use crate::count_lines;
+use crate::api::Bed;
+#[cfg(test)]
+use crate::api::ReadOptions;
+// https://stackoverflow.com/questions/32900809/how-to-suppress-function-is-never-used-warning-for-a-function-used-by-tests
 #[cfg(test)]
 use crate::file_aat_piece;
 #[cfg(test)]
@@ -11,8 +13,6 @@ use crate::file_b_less_aatbx;
 use crate::read_into_f64;
 #[cfg(test)]
 use crate::try_div_4;
-#[cfg(test)]
-use crate::BedVal;
 #[cfg(test)]
 use crate::Dist;
 #[cfg(test)]
@@ -49,7 +49,12 @@ fn best_int8() {
     let filename = "bed_reader/tests/data/some_missing.bed";
 
     for output_order_is_f in [true, false].iter() {
-        let val = read(filename, *output_order_is_f, true, -127, 0).unwrap();
+        let mut bed = Bed::new(filename).unwrap();
+        let val = ReadOptions::builder()
+            .is_f(*output_order_is_f)
+            .i8()
+            .read(&mut bed)
+            .unwrap();
         let ref_val_i8 = reference_val_i8(true);
         assert_eq!(val, ref_val_i8);
     }
@@ -74,23 +79,19 @@ fn reference_val_i8(is_a1_counted: bool) -> nd::Array2<i8> {
 }
 
 #[test]
-fn read1() {
+fn read_test() {
     let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
-    let (iid_count, sid_count) = counts(file).unwrap();
-    assert!(iid_count == 10);
-    assert!(sid_count == 100);
-    let val = read(file, true, true, -127, 1).unwrap();
+    let mut bed = Bed::new(file).unwrap();
+    // !!! cmk later define dim and/or shape see https://docs.rs/ndarray/latest/ndarray/struct.ArrayBase.html#method.dim
+    assert!(bed.iid_count().unwrap() == 10);
+    assert!(bed.sid_count().unwrap() == 100);
+    let val: nd::Array2<i8> = bed.read().unwrap();
     let val_f64 = val.mapv(|elem| elem as f64);
     let mean_ = val_f64.mean().unwrap();
     assert!(mean_ == -13.142); // really shouldn't do mean on data where -127 represents missing
 
-    let result = read(
-        "bed_reader/tests/data/small_too_short.bed",
-        true,
-        true,
-        -127,
-        1,
-    );
+    let mut bed2 = Bed::new("bed_reader/tests/data/small_too_short.bed").unwrap();
+    let result = bed2.read::<i8>();
     match result {
         Err(BedErrorPlus::BedError(BedError::IllFormed(_))) => (),
         _ => panic!("test failure"),
@@ -105,13 +106,16 @@ fn rest_reader_bed() {
     let ref_val = reference_val(count_a1);
     let ref_val_i8 = reference_val_i8(count_a1);
 
-    let val = read(file, true, count_a1, f32::NAN, 0).unwrap();
+    // !!! cmk later think about moving is_a1_counted to read_options
+    let mut bed = Bed::builder(file).is_a1_counted(count_a1).build().unwrap();
+
+    let val = bed.read::<f32>().unwrap();
     assert!(allclose(&ref_val.view(), &val.view(), 1e-08, true));
 
-    let val_f64 = read(file, true, count_a1, f64::NAN, 0).unwrap();
+    let val_f64 = bed.read::<f64>().unwrap();
     assert!(allclose(&ref_val.view(), &val_f64.view(), 1e-08, true));
 
-    let val2 = read(file, true, count_a1, -127, 0).unwrap();
+    let val2 = bed.read::<i8>().unwrap();
     assert_eq!(val2, ref_val_i8);
 }
 
@@ -127,74 +131,45 @@ fn reference_val(is_a1_counted: bool) -> nd::Array2<f64> {
     val
 }
 
-// could make count_a1, etc. optional
-#[cfg(test)]
-pub fn read_with_indexes<TVal: BedVal, P: AsRef<Path>>(
-    path: P,
-    iid_index: &[usize],
-    sid_index: &[usize],
-    output_is_orderf: bool,
-    is_a1_counted: bool,
-    missing_value: TVal,
-    num_threads: usize,
-) -> Result<nd::Array2<TVal>, BedErrorPlus> {
-    let (iid_count, sid_count) = counts(&path)?;
+// !!! cmk 0 remove
 
-    let shape = ShapeBuilder::set_f((iid_index.len(), sid_index.len()), output_is_orderf);
-    let mut val = nd::Array2::<TVal>::default(shape);
+// #[cfg(test)]
+// pub fn counts<P: AsRef<Path>>(path: P) -> Result<(usize, usize), BedErrorPlus> {
+//     let iid_count = count_lines(path.as_ref().with_extension("fam"))?;
+//     let sid_count = count_lines(path.as_ref().with_extension("bim"))?;
+//     Ok((iid_count, sid_count))
+// }
 
-    read_no_alloc(
-        path,
-        iid_count,
-        sid_count,
-        is_a1_counted,
-        iid_index,
-        sid_index,
-        missing_value,
-        num_threads,
-        &mut val.view_mut(),
-    )?;
+// #[cfg(test)]
+// pub fn read<TVal: BedVal, P: AsRef<Path>>(
+//     path: P,
+//     output_is_orderf: bool,
+//     is_a1_counted: bool,
+//     missing_value: TVal,
+//     num_threads: usize,
+// ) -> Result<nd::Array2<TVal>, BedErrorPlus> {
+//     let (iid_count, sid_count) = counts(path.as_ref())?;
 
-    Ok(val)
-}
+//     let iid_index: Vec<usize> = (0..iid_count).collect();
+//     let sid_index: Vec<usize> = (0..sid_count).collect();
 
-#[cfg(test)]
-pub fn counts<P: AsRef<Path>>(path: P) -> Result<(usize, usize), BedErrorPlus> {
-    let iid_count = count_lines(path.as_ref().with_extension("fam"))?;
-    let sid_count = count_lines(path.as_ref().with_extension("bim"))?;
-    Ok((iid_count, sid_count))
-}
+//     let shape = ShapeBuilder::set_f((iid_count, sid_count), output_is_orderf);
+//     let mut val = nd::Array2::<TVal>::default(shape);
 
-#[cfg(test)]
-pub fn read<TVal: BedVal, P: AsRef<Path>>(
-    path: P,
-    output_is_orderf: bool,
-    is_a1_counted: bool,
-    missing_value: TVal,
-    num_threads: usize,
-) -> Result<nd::Array2<TVal>, BedErrorPlus> {
-    let (iid_count, sid_count) = counts(path.as_ref())?;
+//     read_no_alloc(
+//         path,
+//         iid_count,
+//         sid_count,
+//         is_a1_counted,
+//         &iid_index,
+//         &sid_index,
+//         missing_value,
+//         num_threads,
+//         &mut val.view_mut(),
+//     )?;
 
-    let iid_index: Vec<usize> = (0..iid_count).collect();
-    let sid_index: Vec<usize> = (0..sid_count).collect();
-
-    let shape = ShapeBuilder::set_f((iid_count, sid_count), output_is_orderf);
-    let mut val = nd::Array2::<TVal>::default(shape);
-
-    read_no_alloc(
-        path,
-        iid_count,
-        sid_count,
-        is_a1_counted,
-        &iid_index,
-        &sid_index,
-        missing_value,
-        num_threads,
-        &mut val.view_mut(),
-    )?;
-
-    Ok(val)
-}
+//     Ok(val)
+// }
 
 #[cfg(test)]
 pub fn allclose<
@@ -237,81 +212,90 @@ pub fn allclose<
 #[test]
 fn index() {
     let filename = "bed_reader/tests/data/some_missing.bed";
-    let (iid_count, sid_count) = counts(filename).unwrap();
-    let iid_index_full = (0..iid_count).collect::<Vec<usize>>();
     let ref_val_float = reference_val(true);
 
-    let val = read(filename, true, true, f32::NAN, 0).unwrap();
+    let val: nd::Array2<f64> = Bed::new(filename).unwrap().read().unwrap();
     assert!(allclose(&ref_val_float.view(), &val.view(), 1e-08, true));
 
-    let val = read_with_indexes(filename, &iid_index_full, &[2], true, true, f32::NAN, 0).unwrap();
+    let mut bed = Bed::new(filename).unwrap();
+    let val: nd::Array2<f32> = ReadOptions::builder()
+        .sid_index(2)
+        .f32()
+        .read(&mut bed)
+        .unwrap();
+
     assert!(allclose(
-        &(ref_val_float.slice(nd::s![.., 2..3])),
+        &(ref_val_float.slice(nd::s![.., 2usize..3])),
         &val.view(),
         1e-08,
         true
     ));
 
-    let val = read_with_indexes(filename, &[1usize], &[2usize], true, true, f32::NAN, 0).unwrap();
+    let val = ReadOptions::builder()
+        .iid_index(1)
+        .sid_index(2)
+        .f32()
+        .read(&mut bed)
+        .unwrap();
     assert!(allclose(
-        &ref_val_float.slice(nd::s![1..2, 2..3]),
+        // !!! cmk 0 can we make this work without usize?
+        &ref_val_float.slice(nd::s![1usize..2usize, 2usize..3usize]),
         &val.view(),
         1e-08,
         true
     ));
 
     // val = bed.read([2, -2])
-    let val = read_with_indexes(
-        filename,
-        &iid_index_full,
-        &[2, (sid_count - 2)],
-        true,
-        true,
-        f32::NAN,
-        1,
-    )
-    .unwrap();
+    let val = ReadOptions::builder()
+        .sid_index([2, bed.sid_count().unwrap() - 2])
+        .f32()
+        .read(&mut bed)
+        .unwrap();
 
-    let col0 = ref_val_float.slice(nd::s![.., 2]);
-    let col1 = ref_val_float.slice(nd::s![.., -2]);
+    let col0 = ref_val_float.slice(nd::s![.., 2usize]);
+    // !!! cmk 0 why is isize needed?
+    let col1 = ref_val_float.slice(nd::s![.., -2isize]);
     let expected = nd::stack![nd::Axis(1), col0, col1];
     assert!(allclose(&expected.view(), &val.view(), 1e-08, true));
 
-    let result = read_with_indexes(filename, &[usize::MAX], &[2], true, true, f32::NAN, 0);
+    let result = ReadOptions::builder()
+        .iid_index(usize::MAX)
+        .sid_index(2)
+        .f32()
+        .read(&mut bed);
     match result {
         Err(BedErrorPlus::BedError(BedError::IidIndexTooBig(_))) => (),
         _ => panic!("test failure"),
     };
 
-    let result2 = read_with_indexes(
-        "bed_reader/tests/data/small_no_fam.bed",
-        &[0],
-        &[0],
-        true,
-        true,
-        f32::NAN,
-        1,
-    );
+    let mut bed = Bed::new("bed_reader/tests/data/small_no_fam.bed").unwrap();
+    let result2 = ReadOptions::builder()
+        .iid_index(0)
+        .sid_index(0)
+        .f32()
+        .read(&mut bed);
     match result2 {
         Err(BedErrorPlus::IOError(_)) => (),
         _ => panic!("test failure"),
     };
 
-    let result3 = read_with_indexes(
-        "bed_reader/tests/data/small_no_bim.bed",
-        &[0],
-        &[0],
-        true,
-        true,
-        f32::NAN,
-        1,
-    );
+    let mut bed = Bed::new("bed_reader/tests/data/small_no_bim.bed").unwrap();
+    let result3 = ReadOptions::builder()
+        .iid_index(0)
+        .sid_index(0)
+        .f32()
+        .read(&mut bed);
     match result3 {
         Err(BedErrorPlus::IOError(_)) => (),
         _ => panic!("test failure"),
     };
 
-    let result4 = read_with_indexes(filename, &[2], &[usize::MAX], true, true, f32::NAN, 0);
+    let mut bed = Bed::new(filename).unwrap();
+    let result4 = ReadOptions::builder()
+        .iid_index(2)
+        .sid_index(usize::MAX)
+        .f32()
+        .read(&mut bed);
     match result4 {
         Err(BedErrorPlus::BedError(BedError::SidIndexTooBig(_))) => (),
         _ => panic!("test failure"),
@@ -335,13 +319,7 @@ fn index() {
         _ => panic!("test failure"),
     };
 
-    let result6 = read(
-        "bed_reader/tests/data/no_such_file.nsf",
-        true,
-        true,
-        f64::NAN,
-        1,
-    );
+    let result6 = Bed::new("bed_reader/tests/data/no_such_file.nsf");
     match result6 {
         Err(BedErrorPlus::IOError(_)) => (),
         _ => panic!("test failure"),
@@ -354,7 +332,8 @@ fn index() {
 fn writer() {
     let path = Path::new("bed_reader/tests/data/some_missing.bed");
 
-    let val = read(path, false, true, -127, 0).unwrap();
+    let mut bed = Bed::new(path).unwrap();
+    let val = ReadOptions::builder().c().i8().read(&mut bed).unwrap();
 
     let temp = TempDir::default();
     let path2 = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_test.bed");
@@ -366,10 +345,14 @@ fn writer() {
         std::fs::copy(from, to).unwrap();
     }
 
-    let val2 = read(path2, false, true, -127, 0).unwrap();
+    // !!! cmk later would be nice if could chain bed into read_options
+    let mut bed2 = Bed::new(path2).unwrap();
+    let val2 = ReadOptions::builder().c().i8().read(&mut bed2).unwrap();
+
     assert!(allclose(&val.view(), &val2.view(), 0, true));
 
-    let val = read(path, false, true, f64::NAN, 0).unwrap();
+    let mut bed = Bed::new(path).unwrap();
+    let val = ReadOptions::builder().c().f64().read(&mut bed).unwrap();
 
     let path2 = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64.bed");
 
@@ -380,11 +363,11 @@ fn writer() {
         std::fs::copy(from, to).unwrap();
     }
 
-    let val2 = read(path2, false, true, f64::NAN, 0).unwrap();
-
+    let mut bed2 = Bed::new(path2).unwrap();
+    let val2 = ReadOptions::builder().c().f64().read(&mut bed2).unwrap();
     assert!(allclose(&val.view(), &val2.view(), 1e-8, true));
 
-    let mut val = read(path, false, true, f64::NAN, 0).unwrap();
+    let mut val = ReadOptions::builder().c().f64().read(&mut bed).unwrap();
     val[(0, 0)] = 5.0;
     let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_5.bed");
 
@@ -466,7 +449,13 @@ fn fill_in() {
     let filename = "bed_reader/tests/data/some_missing.bed";
 
     for output_is_orderf_ptr in [false, true].iter() {
-        let mut val = read(filename, *output_is_orderf_ptr, true, f64::NAN, 0).unwrap();
+        let mut bed = Bed::builder(filename).build().unwrap();
+        let mut val = ReadOptions::builder()
+            .is_f(*output_is_orderf_ptr)
+            .f64()
+            .read(&mut bed)
+            .unwrap();
+
         let mut stats = nd::Array2::<f64>::zeros((val.dim().1, 2));
 
         impute_and_zero_mean_snps(
@@ -492,7 +481,12 @@ fn fill_in() {
             _ => panic!("test failure"),
         }
 
-        let mut val = read(filename, *output_is_orderf_ptr, true, f64::NAN, 0).unwrap();
+        let mut bed = Bed::builder(filename).build().unwrap();
+        let mut val = ReadOptions::builder()
+            .is_f(*output_is_orderf_ptr)
+            .f64()
+            .read(&mut bed)
+            .unwrap();
         let result = impute_and_zero_mean_snps(
             &mut val.view_mut(),
             Dist::Beta { a: -10.0, b: 0.0 },
@@ -533,14 +527,15 @@ fn fill_in() {
 #[test]
 fn standardize_unit() {
     for output_is_orderf_ptr in [true, false].iter() {
-        let mut val = read(
-            r"bed_reader/tests/data/toydata.5chrom.bed",
-            *output_is_orderf_ptr,
-            false,
-            f64::NAN,
-            1,
-        )
-        .unwrap();
+        let mut bed = Bed::builder("bed_reader/tests/data/toydata.5chrom.bed")
+            .count_a2()
+            .build()
+            .unwrap();
+        let mut val = ReadOptions::builder()
+            .is_f(*output_is_orderf_ptr)
+            .f64()
+            .read(&mut bed)
+            .unwrap();
         let mut stats = nd::Array2::<f64>::zeros((val.dim().1, 2));
         impute_and_zero_mean_snps(
             &mut val.view_mut(),
@@ -610,14 +605,15 @@ fn div_4() {
 #[test]
 fn standardize_beta() {
     for output_is_orderf_ptr in [true, false].iter() {
-        let mut val = read(
-            r"bed_reader/tests/data/toydata.5chrom.bed",
-            *output_is_orderf_ptr,
-            false,
-            f64::NAN,
-            1,
-        )
-        .unwrap();
+        let mut bed = Bed::builder("bed_reader/tests/data/toydata.5chrom.bed")
+            .count_a2()
+            .build()
+            .unwrap();
+        let mut val = ReadOptions::builder()
+            .is_f(*output_is_orderf_ptr)
+            .f64()
+            .read(&mut bed)
+            .unwrap();
         let mut stats = nd::Array2::<f64>::zeros((val.dim().1, 2));
         impute_and_zero_mean_snps(
             &mut val.view_mut(),
@@ -693,73 +689,38 @@ fn read_errors() {
 #[test]
 fn read_modes() {
     let filename = "bed_reader/tests/data/small.bed";
-    let (iid_count_s1, sid_count_s1) = counts(filename).unwrap();
+    let mut bed = Bed::new(filename).unwrap();
+    let iid_count_s1 = bed.iid_count().unwrap();
+    let sid_count_s1 = bed.sid_count().unwrap();
+
     let mut val_small_mode_1 = nd::Array2::<i8>::default((iid_count_s1, sid_count_s1));
-    let iid_index_s1 = (0..iid_count_s1).collect::<Vec<usize>>();
-    let sid_index_s1 = (0..sid_count_s1).collect::<Vec<usize>>();
+    bed.read_and_fill(&mut val_small_mode_1.view_mut()).unwrap();
 
-    let result = read_no_alloc(
-        filename,
-        iid_count_s1,
-        sid_count_s1,
-        true,
-        &iid_index_s1,
-        &sid_index_s1,
-        -127i8,
-        1,
-        &mut val_small_mode_1.view_mut(),
-    );
-    match result {
-        Ok(_) => (),
-        _ => panic!("test failure"),
-    };
-
-    let result = read_no_alloc(
-        "bed_reader/tests/data/small_too_short.bed",
-        iid_count_s1,
-        sid_count_s1,
-        true,
-        &iid_index_s1,
-        &sid_index_s1,
-        -127i8,
-        1,
-        &mut val_small_mode_1.view_mut(),
-    );
+    // !!! cmk later understand the .view_mut()
+    let mut bed_too_short = Bed::builder("bed_reader/tests/data/small_too_short.bed")
+        .fam_path("bed_reader/tests/data/small.fam")
+        .bim_path("bed_reader/tests/data/small.bim")
+        .build()
+        .unwrap();
+    let result = bed_too_short.read_and_fill(&mut val_small_mode_1.view_mut());
     match result {
         Err(BedErrorPlus::BedError(BedError::IllFormed(_))) => (),
         _ => panic!("test failure"),
     };
 
     let mut val_small_mode_0 = nd::Array2::<i8>::default((sid_count_s1, iid_count_s1));
-    let result = read_no_alloc(
-        "bed_reader/tests/data/smallmode0.bed",
-        sid_count_s1,
-        iid_count_s1,
-        true,
-        &sid_index_s1,
-        &iid_index_s1,
-        -127i8,
-        1,
-        &mut val_small_mode_0.view_mut(),
-    );
-    match result {
-        Ok(_) => (),
-        _ => panic!("test failure"),
-    };
-
+    let mut bed_mode0 = Bed::new("bed_reader/tests/data/smallmode0.bed").unwrap();
+    bed_mode0
+        .read_and_fill(&mut val_small_mode_0.view_mut())
+        .unwrap();
     assert_eq!(val_small_mode_0.t(), val_small_mode_1);
 
-    let result = read_no_alloc(
-        "bed_reader/tests/data/smallmodebad.bed",
-        iid_count_s1,
-        sid_count_s1,
-        true,
-        &iid_index_s1,
-        &sid_index_s1,
-        -127i8,
-        1,
-        &mut val_small_mode_1.view_mut(),
-    );
+    let mut bed_small_mode_bad = Bed::builder("bed_reader/tests/data/smallmodebad.bed")
+        .fam_path("bed_reader/tests/data/small.fam")
+        .bim_path("bed_reader/tests/data/small.bim")
+        .build()
+        .unwrap();
+    let result = bed_small_mode_bad.read_and_fill(&mut val_small_mode_1.view_mut());
     match result {
         Err(BedErrorPlus::BedError(BedError::BadMode(_))) => (),
         _ => panic!("test failure"),
@@ -781,24 +742,38 @@ fn write_fake_metadata<P: AsRef<Path>>(path: P, iid_count: usize, sid_count: usi
 #[test]
 fn zeros() {
     let filename = "bed_reader/tests/data/some_missing.bed";
-    let (iid_count, sid_count) = counts(filename).unwrap();
+    let mut bed = Bed::new(filename).unwrap();
+    let iid_count = bed.iid_count().unwrap();
+    let sid_count = bed.sid_count().unwrap();
     let iid_index_full = (0..iid_count).collect::<Vec<usize>>();
     let sid_index_full = (0..sid_count).collect::<Vec<usize>>();
     let ref_val_float = reference_val(true);
 
     // Test read on zero length indexes
-    let val = read(filename, true, true, f32::NAN, 0).unwrap();
+    let mut bed = Bed::new(filename).unwrap();
+    let val: nd::Array2<f32> = bed.read().unwrap();
     assert!(allclose(&ref_val_float.view(), &val.view(), 1e-08, true));
 
-    let out_val10 =
-        read_with_indexes(filename, &iid_index_full, &[], true, true, f64::NAN, 0).unwrap();
+    let out_val10 = ReadOptions::builder()
+        .sid_index([])
+        .f64()
+        .read(&mut bed)
+        .unwrap();
     assert!(out_val10.shape() == [iid_count, 0]);
 
-    let out_val01 =
-        read_with_indexes(filename, &[], &sid_index_full, true, true, f64::NAN, 0).unwrap();
+    let out_val01 = ReadOptions::builder()
+        .iid_index([])
+        .f64()
+        .read(&mut bed)
+        .unwrap();
     assert!(out_val01.shape() == [0, sid_count]);
 
-    let out_val00 = read_with_indexes(filename, &[], &[], true, true, f64::NAN, 0).unwrap();
+    let out_val00 = ReadOptions::builder()
+        .iid_index([])
+        .sid_index([])
+        .f64()
+        .read(&mut bed)
+        .unwrap();
     assert!(out_val00.shape() == [0, 0]);
 
     // Test subset on zero length indexes
@@ -833,20 +808,20 @@ fn zeros() {
 
     write_val(&path, &out_val01.view(), true, f64::NAN, 0).unwrap();
     write_fake_metadata(&path, 0, sid_count);
-    let result = read(&path, true, true, f64::NAN, 0);
-    let in_val01 = result.unwrap();
+
+    let in_val01 = Bed::new(&path).unwrap().read::<f64>().unwrap();
     assert!(in_val01.shape() == [0, sid_count]);
     assert!(allclose(&in_val01.view(), &out_val01.view(), 1e-08, true));
 
     write_val(&path, &out_val10.view(), true, f64::NAN, 0).unwrap();
     write_fake_metadata(&path, iid_count, 0);
-    let in_val10 = read(&path, true, true, f64::NAN, 0).unwrap();
+    let in_val10 = Bed::new(&path).unwrap().read::<f64>().unwrap();
     assert!(in_val10.shape() == [iid_count, 0]);
     assert!(allclose(&in_val10.view(), &out_val10.view(), 1e-08, true));
 
     write_val(&path, &out_val00.view(), true, f64::NAN, 0).unwrap();
     write_fake_metadata(&path, 0, 0);
-    let in_val00 = read(&path, true, true, f64::NAN, 0).unwrap();
+    let in_val00 = Bed::new(&path).unwrap().read::<f64>().unwrap();
     assert!(in_val00.shape() == [0, 0]);
     assert!(allclose(&in_val00.view(), &out_val00.view(), 1e-08, true));
 }

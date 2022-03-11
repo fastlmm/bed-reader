@@ -731,6 +731,33 @@ impl Bed {
         Ok(())
     }
 
+    pub fn read_and_fill<TVal: BedVal>(
+        &mut self,
+        val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.,
+    ) -> Result<(), BedErrorPlus> {
+        let read_options = ReadOptions::<TVal>::builder().build()?;
+        let num_threads = compute_num_threads(read_options.num_threads)?;
+
+        let iid_count = self.iid_count()?;
+        let sid_count = self.sid_count()?;
+        let iid_index = read_options.iid_index.to_vec(iid_count);
+        let sid_index = read_options.sid_index.to_vec(sid_count);
+
+        read_no_alloc(
+            &self.path,
+            iid_count,
+            sid_count,
+            self.is_a1_counted,
+            &iid_index,
+            &sid_index,
+            read_options.missing_value,
+            num_threads,
+            &mut val.view_mut(),
+        )?;
+
+        Ok(())
+    }
+
     pub fn read_with_options<TVal: BedVal>(
         &mut self,
         read_options: ReadOptions<TVal>,
@@ -838,8 +865,27 @@ impl From<Range<usize>> for Index {
 }
 
 impl From<&[usize]> for Index {
-    fn from(slice: &[usize]) -> Index {
-        Index::Vec(slice.to_vec())
+    fn from(array: &[usize]) -> Index {
+        Index::Vec(array.to_vec())
+    }
+}
+
+impl<const N: usize> From<[usize; N]> for Index {
+    fn from(array: [usize; N]) -> Index {
+        Index::Vec(array.to_vec())
+    }
+}
+
+impl<const N: usize> From<&[usize; N]> for Index {
+    fn from(array: &[usize; N]) -> Index {
+        Index::Vec(array.to_vec())
+    }
+}
+
+// !!!cmk later is ref &ndarray const array and bool OK
+impl From<&Vec<usize>> for Index {
+    fn from(vec_ref: &Vec<usize>) -> Index {
+        Index::Vec(vec_ref.clone())
     }
 }
 
