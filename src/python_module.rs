@@ -158,12 +158,12 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     ) -> Result<(), PyErr> {
         let val = unsafe { val.as_array() };
 
-        write_val(filename, &val, is_a1_counted, f64::NAN, num_threads)?;
+        // write_val(filename, &val, is_a1_counted, f64::NAN, num_threads)?;
         // !!!cmk 0
-        // WriteOptions::builder(filename)
-        //     .is_a1_counted(is_a1_counted)
-        //     .num_threads(num_threads)
-        //     .write(&val)?;
+        WriteOptions::builder(filename)
+            .is_a1_counted(is_a1_counted)
+            .num_threads(num_threads)
+            .write(&val)?;
 
         Ok(())
     }
@@ -178,12 +178,12 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     ) -> Result<(), PyErr> {
         let val = unsafe { val.as_array() };
 
-        write_val(filename, &val, is_a1_counted, f32::NAN, num_threads)?;
+        // write_val(filename, &val, is_a1_counted, f32::NAN, num_threads)?;
         // !!!cmk 0
-        // WriteOptions::builder(filename)
-        //     .is_a1_counted(is_a1_counted)
-        //     .num_threads(num_threads)
-        //     .write(&val)?;
+        WriteOptions::builder(filename)
+            .is_a1_counted(is_a1_counted)
+            .num_threads(num_threads)
+            .write(&val)?;
 
         Ok(())
     }

@@ -308,8 +308,8 @@ fn writer() {
     let path2 = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_test.bed");
 
     // !!!cmk 0 should there be a write(path,val) method?
-    // !!!cmk 0 WriteOptions::builder(path2).write(val).unwrap();
-    write_val(&path2, &val.view(), true, -127, 0).unwrap();
+    WriteOptions::builder(&path2).write(&val).unwrap();
+    //write_val(&path2, &val.view(), true, -127, 0).unwrap();
 
     for ext in ["fam", "bim"].iter() {
         let from = path.with_extension(ext);
@@ -346,24 +346,24 @@ fn writer() {
     let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_5.bed");
 
     if let Err(BedErrorPlus::BedError(BedError::BadValue(_))) =
-        // !!!cmk 0         WriteOptions::builder(path).write(&val)
-        write_val(&path, &val.view(), true, f64::NAN, 0)
+        WriteOptions::builder(&path).write(&val)
+    //cmk 0 write_val(&path, &val.view(), true, f64::NAN, 0)
     {
         assert!(!path.exists(), "file should not exist");
     } else {
         panic!("test failure")
     };
 
-    let val = nd::Array2::zeros((0, 0));
-    // cmk 0 let val = nd::Array2::<f64>::zeros((0, 0));
+    // let val = nd::Array2::zeros((0, 0));
+    let val = nd::Array2::<f64>::zeros((0, 0));
     let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_0s.bed");
-    // cmk 0 WriteOptions::builder(path).write(&val).unwrap();
-    write_val(&path, &val.view(), true, f64::NAN, 0).unwrap();
+    WriteOptions::builder(&path).write(&val).unwrap();
+    //cmk 0 write_val(&path, &val.view(), true, f64::NAN, 0).unwrap();
 
     let val: nd::Array2<i8> = nd::Array2::zeros((3, 0));
     let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_3_0.bed");
-    // cmk 0 WriteOptions::builder(path).write(&val).unwrap();
-    write_val(&path, &val.view(), true, -127, 0).unwrap();
+    WriteOptions::builder(path).write(&val).unwrap();
+    // cmk 0 write_val(&path, &val.view(), true, -127, 0).unwrap();
 }
 
 #[test]
@@ -790,14 +790,14 @@ fn zeros() {
     assert!(allclose(&in_val01.view(), &out_val01.view(), 1e-08, true));
 
     // !!!cmk 0 write_val(&path, &out_val10.view(), true, f64::NAN, 0).unwrap();
-    // WriteOptions::builder(path).write(&out_val10).unwrap();
+    WriteOptions::builder(&path).write(&out_val10).unwrap();
     write_fake_metadata(&path, iid_count, 0);
     let in_val10 = Bed::new(&path).unwrap().read::<f64>().unwrap();
     assert!(in_val10.shape() == [iid_count, 0]);
     assert!(allclose(&in_val10.view(), &out_val10.view(), 1e-08, true));
 
-    // !!!cmk 0 WriteOptions::builder(path).write(&out_val00).unwrap();
-    write_val(&path, &out_val00.view(), true, f64::NAN, 0).unwrap();
+    WriteOptions::builder(&path).write(&out_val00).unwrap();
+    // cmk 0 write_val(&path, &out_val00.view(), true, f64::NAN, 0).unwrap();
     write_fake_metadata(&path, 0, 0);
     let in_val00 = Bed::new(&path).unwrap().read::<f64>().unwrap();
     assert!(in_val00.shape() == [0, 0]);
