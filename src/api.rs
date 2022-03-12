@@ -1388,7 +1388,7 @@ pub fn write_with_options<TVal: BedVal>(
     let num_threads = compute_num_threads(write_options.num_threads)?;
     write_val(
         path,
-        &val.view(),
+        val,
         write_options.is_a1_counted,
         write_options.missing_value,
         num_threads,

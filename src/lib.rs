@@ -353,13 +353,19 @@ fn set_up_two_bits_to_value<TVal: From<i8>>(count_a1: bool, missing_value: TVal)
 
 // Thanks to Dawid for his dpc-pariter library that makes this function scale.
 // https://dpc.pw/adding-parallelism-to-your-rust-iterators
-pub fn write_val<T: BedVal, P: AsRef<Path>>(
+pub fn write_val<S, TVal, P>(
     path: P,
-    val: &nd::ArrayView2<'_, T>,
+    // val: &nd::ArrayView2<'_, TVal>,
+    val: &nd::ArrayBase<S, nd::Ix2>,
     is_a1_counted: bool,
-    missing: T,
+    missing: TVal,
     num_threads: usize,
-) -> Result<(), BedErrorPlus> {
+) -> Result<(), BedErrorPlus>
+where
+    S: nd::Data<Elem = TVal>,
+    TVal: BedVal,
+    P: AsRef<Path>,
+{
     let (iid_count, sid_count) = val.dim();
 
     // 4 genotypes per byte so round up
@@ -383,14 +389,21 @@ pub fn write_val<T: BedVal, P: AsRef<Path>>(
     }
 }
 
-fn write_internal<T: BedVal, P: AsRef<Path>>(
+// https://www.reddit.com/r/rust/comments/mo4s8e/difference_between_reference_and_view_in_ndarray/
+fn write_internal<S, TVal, P>(
     path: P,
     iid_count_div4: usize,
-    val: &nd::ArrayView2<'_, T>,
+    //val: &nd::ArrayView2<'_, TVal>,
+    val: &nd::ArrayBase<S, nd::Ix2>,
     is_a1_counted: bool,
-    missing: T,
+    missing: TVal,
     num_threads: usize,
-) -> Result<(), BedErrorPlus> {
+) -> Result<(), BedErrorPlus>
+where
+    S: nd::Data<Elem = TVal>,
+    TVal: BedVal,
+    P: AsRef<Path>,
+{
     let mut writer = BufWriter::new(File::create(&path)?);
     writer.write_all(&[BED_FILE_MAGIC1, BED_FILE_MAGIC2, 0x01])?;
 
@@ -399,9 +412,9 @@ fn write_internal<T: BedVal, P: AsRef<Path>>(
     let zero_code = if is_a1_counted { 3u8 } else { 0u8 };
     let two_code = if is_a1_counted { 0u8 } else { 3u8 };
 
-    let homozygous_primary_allele = T::from(0); // Major Allele
-    let heterozygous_allele = T::from(1);
-    let homozygous_secondary_allele = T::from(2); // Minor Allele
+    let homozygous_primary_allele = TVal::from(0); // Major Allele
+    let heterozygous_allele = TVal::from(1);
+    let homozygous_secondary_allele = TVal::from(2); // Minor Allele
 
     let path_buf = PathBuf::from(path.as_ref());
     scope(|scope| {
