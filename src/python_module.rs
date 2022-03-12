@@ -65,12 +65,12 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let mut bed = Bed::builder(filename)
             .iid_count(iid_count)
             .sid_count(sid_count)
-            .is_a1_counted(is_a1_counted)
             .build()?;
 
         ReadOptions::builder()
             .iid_index(*ii)
             .sid_index(*si)
+            .is_a1_counted(is_a1_counted)
             .num_threads(num_threads)
             .read_and_fill(&mut bed, &mut val.view_mut())?;
 
@@ -100,12 +100,12 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let mut bed = Bed::builder(filename)
             .iid_count(iid_count)
             .sid_count(sid_count)
-            .is_a1_counted(is_a1_counted)
             .build()?;
 
         ReadOptions::builder()
             .iid_index(*ii)
             .sid_index(*si)
+            .is_a1_counted(is_a1_counted)
             .num_threads(num_threads)
             .read_and_fill(&mut bed, &mut val.view_mut())?;
 
@@ -135,12 +135,12 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let mut bed = Bed::builder(filename)
             .iid_count(iid_count)
             .sid_count(sid_count)
-            .is_a1_counted(is_a1_counted)
             .build()?;
 
         ReadOptions::builder()
             .iid_index(*ii)
             .sid_index(*si)
+            .is_a1_counted(is_a1_counted)
             .num_threads(num_threads)
             .read_and_fill(&mut bed, &mut val.view_mut())?;
 

@@ -99,24 +99,33 @@ fn read_test() {
 }
 
 #[test]
-fn rest_reader_bed() {
+fn rest_reader_bed() -> Result<(), BedErrorPlus> {
     let file = "bed_reader/tests/data/some_missing.bed";
-    let count_a1 = false;
+    let is_a1_counted = false;
 
-    let ref_val = reference_val(count_a1);
-    let ref_val_i8 = reference_val_i8(count_a1);
+    let ref_val = reference_val(is_a1_counted);
+    let ref_val_i8 = reference_val_i8(is_a1_counted);
 
-    // !!! cmk later think about moving is_a1_counted to read_options
-    let mut bed = Bed::builder(file).is_a1_counted(count_a1).build().unwrap();
-
-    let val = bed.read::<f32>().unwrap();
+    let mut bed = Bed::new(file)?;
+    let val = ReadOptions::builder()
+        .is_a1_counted(is_a1_counted)
+        .f32()
+        .read(&mut bed)?;
     assert!(allclose(&ref_val.view(), &val.view(), 1e-08, true));
 
-    let val_f64 = bed.read::<f64>().unwrap();
+    let val_f64 = ReadOptions::builder()
+        .is_a1_counted(is_a1_counted)
+        .f64()
+        .read(&mut bed)?;
     assert!(allclose(&ref_val.view(), &val_f64.view(), 1e-08, true));
 
-    let val2 = bed.read::<i8>().unwrap();
+    let val2 = ReadOptions::builder()
+        .is_a1_counted(is_a1_counted)
+        .i8()
+        .read(&mut bed)?;
     assert_eq!(val2, ref_val_i8);
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -130,46 +139,6 @@ fn reference_val(is_a1_counted: bool) -> nd::Array2<f64> {
 
     val
 }
-
-// !!! cmk 0 remove
-
-// #[cfg(test)]
-// pub fn counts<P: AsRef<Path>>(path: P) -> Result<(usize, usize), BedErrorPlus> {
-//     let iid_count = count_lines(path.as_ref().with_extension("fam"))?;
-//     let sid_count = count_lines(path.as_ref().with_extension("bim"))?;
-//     Ok((iid_count, sid_count))
-// }
-
-// #[cfg(test)]
-// pub fn read<TVal: BedVal, P: AsRef<Path>>(
-//     path: P,
-//     output_is_orderf: bool,
-//     is_a1_counted: bool,
-//     missing_value: TVal,
-//     num_threads: usize,
-// ) -> Result<nd::Array2<TVal>, BedErrorPlus> {
-//     let (iid_count, sid_count) = counts(path.as_ref())?;
-
-//     let iid_index: Vec<usize> = (0..iid_count).collect();
-//     let sid_index: Vec<usize> = (0..sid_count).collect();
-
-//     let shape = ShapeBuilder::set_f((iid_count, sid_count), output_is_orderf);
-//     let mut val = nd::Array2::<TVal>::default(shape);
-
-//     read_no_alloc(
-//         path,
-//         iid_count,
-//         sid_count,
-//         is_a1_counted,
-//         &iid_index,
-//         &sid_index,
-//         missing_value,
-//         num_threads,
-//         &mut val.view_mut(),
-//     )?;
-
-//     Ok(val)
-// }
 
 #[cfg(test)]
 pub fn allclose<
@@ -225,7 +194,7 @@ fn index() {
         .unwrap();
 
     assert!(allclose(
-        &(ref_val_float.slice(nd::s![.., 2usize..3])),
+        &(ref_val_float.slice(nd::s![.., 2..3])),
         &val.view(),
         1e-08,
         true
@@ -238,8 +207,7 @@ fn index() {
         .read(&mut bed)
         .unwrap();
     assert!(allclose(
-        // !!! cmk 0 can we make this work without usize?
-        &ref_val_float.slice(nd::s![1usize..2usize, 2usize..3usize]),
+        &ref_val_float.slice(nd::s![1..2, 2..3]),
         &val.view(),
         1e-08,
         true
@@ -252,9 +220,8 @@ fn index() {
         .read(&mut bed)
         .unwrap();
 
-    let col0 = ref_val_float.slice(nd::s![.., 2usize]);
-    // !!! cmk 0 why is isize needed?
-    let col1 = ref_val_float.slice(nd::s![.., -2isize]);
+    let col0 = ref_val_float.slice(nd::s![.., 2]);
+    let col1 = ref_val_float.slice(nd::s![.., -2]);
     let expected = nd::stack![nd::Axis(1), col0, col1];
     assert!(allclose(&expected.view(), &val.view(), 1e-08, true));
 
@@ -527,11 +494,9 @@ fn fill_in() {
 #[test]
 fn standardize_unit() {
     for output_is_orderf_ptr in [true, false].iter() {
-        let mut bed = Bed::builder("bed_reader/tests/data/toydata.5chrom.bed")
-            .count_a2()
-            .build()
-            .unwrap();
+        let mut bed = Bed::new("bed_reader/tests/data/toydata.5chrom.bed").unwrap();
         let mut val = ReadOptions::builder()
+            .count_a2()
             .is_f(*output_is_orderf_ptr)
             .f64()
             .read(&mut bed)
@@ -605,11 +570,9 @@ fn div_4() {
 #[test]
 fn standardize_beta() {
     for output_is_orderf_ptr in [true, false].iter() {
-        let mut bed = Bed::builder("bed_reader/tests/data/toydata.5chrom.bed")
-            .count_a2()
-            .build()
-            .unwrap();
+        let mut bed = Bed::new("bed_reader/tests/data/toydata.5chrom.bed").unwrap();
         let mut val = ReadOptions::builder()
+            .count_a2()
             .is_f(*output_is_orderf_ptr)
             .f64()
             .read(&mut bed)

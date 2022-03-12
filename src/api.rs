@@ -117,9 +117,6 @@ pub struct Bed {
     bim_path: Option<PathBuf>,
 
     #[builder(default = "true")]
-    is_a1_counted: bool,
-
-    #[builder(default = "true")]
     is_checked_early: bool,
 
     #[builder(default, setter(strip_option))]
@@ -196,7 +193,6 @@ impl BedBuilder {
             fam_path: None,
             bim_path: None,
 
-            is_a1_counted: None,
             is_checked_early: None,
             iid_count: None,
             sid_count: None,
@@ -252,15 +248,6 @@ impl BedBuilder {
         self
     }
 
-    pub fn count_a1(&mut self) -> &mut Self {
-        self.is_a1_counted = Some(true);
-        self
-    }
-
-    pub fn count_a2(&mut self) -> &mut Self {
-        self.is_a1_counted = Some(false);
-        self
-    }
     pub fn skip_early_check(mut self) -> Self {
         self.is_checked_early = Some(false);
         self
@@ -709,6 +696,7 @@ impl Bed {
         let iid_count = self.iid_count()?;
         let sid_count = self.sid_count()?;
 
+        // !!! cmk later move this to read_options struct>
         let num_threads = compute_num_threads(read_options.num_threads)?;
 
         let iid_index = read_options.iid_index.to_vec(iid_count);
@@ -720,7 +708,7 @@ impl Bed {
             &self.path,
             iid_count,
             sid_count,
-            self.is_a1_counted,
+            read_options.is_a1_counted,
             &iid_index,
             &sid_index,
             read_options.missing_value,
@@ -747,7 +735,7 @@ impl Bed {
             &self.path,
             iid_count,
             sid_count,
-            self.is_a1_counted,
+            read_options.is_a1_counted,
             &iid_index,
             &sid_index,
             read_options.missing_value,
@@ -941,6 +929,9 @@ pub struct ReadOptions<TVal: BedVal> {
     #[builder(default = "true")]
     is_f: bool,
 
+    #[builder(default = "true")]
+    is_a1_counted: bool,
+
     #[builder(default, setter(strip_option))]
     pub num_threads: Option<usize>,
 }
@@ -972,6 +963,16 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
 
     pub fn c(&mut self) -> &Self {
         self.is_f(false);
+        self
+    }
+
+    pub fn count_a1(&mut self) -> &mut Self {
+        self.is_a1_counted = Some(true);
+        self
+    }
+
+    pub fn count_a2(&mut self) -> &mut Self {
+        self.is_a1_counted = Some(false);
         self
     }
 }

@@ -27,8 +27,8 @@ fn rusty_bed1() -> Result<(), BedErrorPlus> {
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     assert!(mean == -13.142); // really shouldn't do mean on data where -127 represents missing
 
-    let mut bed = Bed::builder(file).count_a2().build()?;
-    let val = bed.read::<i8>()?;
+    let mut bed = Bed::new(file)?;
+    let val = ReadOptions::builder().count_a2().i8().read(&mut bed)?;
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     assert!(mean == -13.274); // really shouldn't do mean on data where -127 represents missing
     Ok(())
@@ -90,8 +90,8 @@ fn rusty_bed3() -> Result<(), BedErrorPlus> {
 #[test]
 fn rusty_bed_allele() -> Result<(), BedErrorPlus> {
     let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
-    let mut bed = Bed::builder(file).count_a2().build()?;
-    let val: nd::Array2<i8> = bed.read()?;
+    let mut bed = Bed::new(file)?;
+    let val = ReadOptions::builder().count_a2().i8().read(&mut bed)?;
 
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     println!("{:?}", mean);

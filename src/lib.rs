@@ -134,7 +134,6 @@ pub fn create_pool(num_threads: usize) -> Result<rayon::ThreadPool, BedErrorPlus
     }
 }
 
-// !!!cmk 0 remove????
 //#!!!cmk later hide this from the docs
 #[allow(clippy::too_many_arguments)]
 fn read_no_alloc<TVal: BedVal, P: AsRef<Path>>(
