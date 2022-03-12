@@ -11,7 +11,7 @@ use crate::{
     BedError, BedErrorPlus, Dist, _file_ata_piece_internal,
     api::{Bed, ReadOptions, WriteOptions},
     create_pool, file_aat_piece, file_ata_piece, file_b_less_aatbx, impute_and_zero_mean_snps,
-    matrix_subset_no_alloc, read_into_f32, read_into_f64, write_val,
+    matrix_subset_no_alloc, read_into_f32, read_into_f64,
 };
 
 #[pymodule]
@@ -147,7 +147,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         Ok(())
     }
 
-    // !!!cmk 0 replace with API calls
     #[pyfn(m)]
     #[pyo3(name = "write_f64")]
     fn write_f64(
@@ -158,8 +157,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     ) -> Result<(), PyErr> {
         let val = unsafe { val.as_array() };
 
-        // write_val(filename, &val, is_a1_counted, f64::NAN, num_threads)?;
-        // !!!cmk 0
         WriteOptions::builder(filename)
             .is_a1_counted(is_a1_counted)
             .num_threads(num_threads)
@@ -178,8 +175,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     ) -> Result<(), PyErr> {
         let val = unsafe { val.as_array() };
 
-        // write_val(filename, &val, is_a1_counted, f32::NAN, num_threads)?;
-        // !!!cmk 0
         WriteOptions::builder(filename)
             .is_a1_counted(is_a1_counted)
             .num_threads(num_threads)
@@ -198,12 +193,10 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     ) -> Result<(), PyErr> {
         let val = unsafe { val.as_array() };
 
-        write_val(filename, &val, is_a1_counted, -127, num_threads)?;
-        // // !!!cmk 0
-        // WriteOptions::builder(filename)
-        //     .is_a1_counted(is_a1_counted)
-        //     .num_threads(num_threads)
-        //     .write(&val)?;
+        WriteOptions::builder(filename)
+            .is_a1_counted(is_a1_counted)
+            .num_threads(num_threads)
+            .write(&val)?;
 
         Ok(())
     }

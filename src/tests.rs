@@ -18,7 +18,7 @@ use crate::try_div_4;
 #[cfg(test)]
 use crate::Dist;
 #[cfg(test)]
-use crate::{impute_and_zero_mean_snps, matrix_subset_no_alloc, write_val};
+use crate::{impute_and_zero_mean_snps, matrix_subset_no_alloc};
 #[cfg(test)]
 use crate::{internal_read_no_alloc, read_no_alloc, BedError, BedErrorPlus};
 #[cfg(test)]
@@ -33,8 +33,6 @@ use num_traits::{abs, Signed};
 use std::f32;
 #[cfg(test)]
 use std::f64;
-#[cfg(test)]
-use std::io::{LineWriter, Write};
 #[cfg(test)]
 use std::ops::Range;
 #[cfg(test)]
@@ -309,7 +307,6 @@ fn writer() {
 
     // !!!cmk 0 should there be a write(path,val) method?
     WriteOptions::builder(&path2).write(&val).unwrap();
-    //write_val(&path2, &val.view(), true, -127, 0).unwrap();
 
     for ext in ["fam", "bim"].iter() {
         let from = path.with_extension(ext);
@@ -328,8 +325,7 @@ fn writer() {
 
     let path2 = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64.bed");
 
-    // cmk0 WriteOptions::builder(path2).write(&val).unwrap();
-    write_val(&path2, &val.view(), true, f64::NAN, 0).unwrap();
+    WriteOptions::builder(&path2).write(&val).unwrap();
 
     for ext in ["fam", "bim"].iter() {
         let from = path.with_extension(ext);
@@ -347,7 +343,6 @@ fn writer() {
 
     if let Err(BedErrorPlus::BedError(BedError::BadValue(_))) =
         WriteOptions::builder(&path).write(&val)
-    //cmk 0 write_val(&path, &val.view(), true, f64::NAN, 0)
     {
         assert!(!path.exists(), "file should not exist");
     } else {
@@ -358,12 +353,10 @@ fn writer() {
     let val = nd::Array2::<f64>::zeros((0, 0));
     let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_0s.bed");
     WriteOptions::builder(&path).write(&val).unwrap();
-    //cmk 0 write_val(&path, &val.view(), true, f64::NAN, 0).unwrap();
 
     let val: nd::Array2<i8> = nd::Array2::zeros((3, 0));
     let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_3_0.bed");
     WriteOptions::builder(path).write(&val).unwrap();
-    // cmk 0 write_val(&path, &val.view(), true, -127, 0).unwrap();
 }
 
 #[test]
@@ -701,19 +694,6 @@ fn read_modes() {
     };
 }
 
-#[cfg(test)]
-/// !!!cmk 0 remove this
-fn write_fake_metadata<P: AsRef<Path>>(path: P, iid_count: usize, sid_count: usize) {
-    for (ext, count) in ["fam", "bim"].iter().zip([iid_count, sid_count].iter()) {
-        let meta_name = PathBuf::from(path.as_ref()).with_extension(ext);
-        let file = std::fs::File::create(meta_name).unwrap();
-        let mut file = LineWriter::new(file);
-        for _ in 0..*count {
-            file.write_all(b"\n").unwrap();
-        }
-    }
-}
-
 #[test]
 fn zeros() {
     let filename = "bed_reader/tests/data/some_missing.bed";
@@ -781,24 +761,17 @@ fn zeros() {
     let temp = TempDir::default();
     let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_zeros.bed");
 
-    // !!!cmk 0 WriteOptions::builder(path).write(&out_val01).unwrap();
-    write_val(&path, &out_val01.view(), true, f64::NAN, 0).unwrap();
-    write_fake_metadata(&path, 0, sid_count);
-
+    WriteOptions::builder(&path).write(&out_val01).unwrap();
     let in_val01 = Bed::new(&path).unwrap().read::<f64>().unwrap();
     assert!(in_val01.shape() == [0, sid_count]);
     assert!(allclose(&in_val01.view(), &out_val01.view(), 1e-08, true));
 
-    // !!!cmk 0 write_val(&path, &out_val10.view(), true, f64::NAN, 0).unwrap();
     WriteOptions::builder(&path).write(&out_val10).unwrap();
-    write_fake_metadata(&path, iid_count, 0);
     let in_val10 = Bed::new(&path).unwrap().read::<f64>().unwrap();
     assert!(in_val10.shape() == [iid_count, 0]);
     assert!(allclose(&in_val10.view(), &out_val10.view(), 1e-08, true));
 
     WriteOptions::builder(&path).write(&out_val00).unwrap();
-    // cmk 0 write_val(&path, &out_val00.view(), true, f64::NAN, 0).unwrap();
-    write_fake_metadata(&path, 0, 0);
     let in_val00 = Bed::new(&path).unwrap().read::<f64>().unwrap();
     assert!(in_val00.shape() == [0, 0]);
     assert!(allclose(&in_val00.view(), &out_val00.view(), 1e-08, true));
