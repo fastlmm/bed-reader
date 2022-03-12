@@ -997,7 +997,10 @@ impl ReadOptionsBuilder<f64> {
 
 #[derive(Clone, Debug, Builder)]
 #[builder(build_fn(private, name = "write_no_file_check", error = "BedErrorPlus"))]
-pub struct WriteOptions<TVal: BedVal> {
+pub struct WriteOptions<TVal>
+where
+    TVal: BedVal,
+{
     #[builder(setter(custom))]
     pub path: PathBuf, // !!!cmk later always clone?
 
@@ -1067,7 +1070,10 @@ pub struct WriteOptions<TVal: BedVal> {
     missing_value: TVal,
 }
 
-impl<TVal: BedVal> WriteOptions<TVal> {
+impl<TVal> WriteOptions<TVal>
+where
+    TVal: BedVal,
+{
     pub fn builder<P: AsRef<Path>>(path: P) -> WriteOptionsBuilder<TVal> {
         WriteOptionsBuilder::new(path)
     }
@@ -1162,7 +1168,10 @@ impl<TVal: BedVal> WriteOptions<TVal> {
     }
 }
 
-impl<TVal: BedVal> WriteOptionsBuilder<TVal> {
+impl<TVal> WriteOptionsBuilder<TVal>
+where
+    TVal: BedVal,
+{
     // !!! cmk later just use the default builder?
     pub fn build(&self) -> Result<WriteOptions<TVal>, BedErrorPlus> {
         let write_options = self.write_no_file_check()?;
@@ -1172,7 +1181,10 @@ impl<TVal: BedVal> WriteOptionsBuilder<TVal> {
 
     // !!!cmk later should check that metadata agrees with val size
     // !!!cmk later maybe use the default builder?
-    pub fn write(&self, val: &nd::Array2<TVal>) -> Result<(), BedErrorPlus> {
+    pub fn write<S: nd::Data<Elem = TVal>>(
+        &self,
+        val: &nd::ArrayBase<S, nd::Ix2>,
+    ) -> Result<(), BedErrorPlus> {
         let write_options = self.build()?;
         write_with_options(val, &write_options)?;
 
@@ -1357,7 +1369,10 @@ impl<TVal: BedVal> WriteOptionsBuilder<TVal> {
     }
 }
 
-pub fn write<TVal: BedVal>(val: &nd::Array2<TVal>, path: &Path) -> Result<(), BedErrorPlus> {
+pub fn write<S: nd::Data<Elem = TVal>, TVal: BedVal>(
+    val: &nd::ArrayBase<S, nd::Ix2>,
+    path: &Path,
+) -> Result<(), BedErrorPlus> {
     WriteOptions::builder(path).write(val)
 }
 
@@ -1374,10 +1389,14 @@ where
     }
 }
 
-pub fn write_with_options<TVal: BedVal>(
-    val: &nd::Array2<TVal>,
+pub fn write_with_options<S, TVal>(
+    val: &nd::ArrayBase<S, nd::Ix2>,
     write_options: &WriteOptions<TVal>,
-) -> Result<(), BedErrorPlus> {
+) -> Result<(), BedErrorPlus>
+where
+    S: nd::Data<Elem = TVal>,
+    TVal: BedVal,
+{
     // !!!cmk later can this be done in one step??
     let shape = val.shape();
     let iid_count = shape[0];
