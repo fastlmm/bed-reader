@@ -13,11 +13,12 @@ use core::fmt::Debug;
 use nd::ShapeBuilder;
 use ndarray as nd;
 use std::io::Write;
+use std::ops::{Bound, Range, RangeBounds, RangeFrom, RangeInclusive, RangeTo, RangeToInclusive};
 use std::{
     env,
     fs::File,
     io::{BufRead, BufReader, BufWriter, Read},
-    ops::Range,
+    ops::RangeFull,
     path::{Path, PathBuf},
 };
 
@@ -750,12 +751,12 @@ impl Bed {
         &mut self,
         read_options: ReadOptions<TVal>,
     ) -> Result<nd::Array2<TVal>, BedErrorPlus> {
-        let iid_count = self.iid_count()?;
-        let sid_count = self.sid_count()?;
+        let iid_count_in = self.iid_count()?;
+        let sid_count_in = self.sid_count()?;
         // !!!cmk 0 need fast way find length of index without creating a vector yet
-        let iid_index = read_options.iid_index.to_vec(iid_count);
-        let sid_index = read_options.sid_index.to_vec(sid_count);
-        let shape = ShapeBuilder::set_f((iid_index.len(), sid_index.len()), read_options.is_f);
+        let iid_count_out = read_options.iid_index.len(iid_count_in);
+        let sid_count_out = read_options.sid_index.len(sid_count_in);
+        let shape = ShapeBuilder::set_f((iid_count_out, sid_count_out), read_options.is_f);
         let mut val = nd::Array2::<TVal>::default(shape);
 
         self.read_and_fill_with_options(&mut val.view_mut(), read_options)?;
@@ -786,7 +787,7 @@ impl Index {
     // Even better would be to support an iterator from Index (an enum with fields).
     pub fn to_vec(&self, count: usize) -> Vec<usize> {
         match self {
-            Index::None => (0..count).collect(),
+            Index::All => (0..count).collect(),
             Index::Vec(vec) => vec.to_vec(),
             Index::NDArrayBool(nd_array_bool) => {
                 // !!!cmk later check that bool_index.len() == iid_count
@@ -804,7 +805,11 @@ impl Index {
                 array.slice_collapse(nd_slice_info);
                 array.to_vec()
             }
-            Index::Range(range) => range.clone().collect(),
+            Index::RangeAny(range_any) => {
+                // https://stackoverflow.com/questions/55925523/array-cannot-be-indexed-by-rangefull
+                let range = range_any_to_range(range_any, count);
+                range.into_iter().collect::<Vec<usize>>()
+            }
             Index::NDArray(nd_array) => nd_array.to_vec(),
             Index::One(one) => vec![*one],
             Index::VecBool(vec_bool) => {
@@ -829,14 +834,63 @@ pub(crate) type SliceInfo1 =
 // !!!cmk later add docs to type typedbuilder stuff: https://docs.rs/typed-builder/latest/typed_builder/derive.TypedBuilder.html#customisation-with-attributes
 #[derive(Debug, Clone)]
 pub enum Index {
-    None,
+    All,
     One(usize),
     Vec(Vec<usize>),
     NDArray(nd::Array1<usize>),
     VecBool(Vec<bool>),
     NDArrayBool(nd::Array1<bool>),
     NDSliceInfo(SliceInfo1),
-    Range(Range<usize>),
+    RangeAny(RangeAny),
+}
+
+#[derive(Debug, Clone)]
+pub struct RangeAny {
+    start: Option<usize>,
+    end: Option<usize>,
+}
+
+// !!!cmk later make this a converter or method???
+fn range_any_to_range(range_any: &RangeAny, count: usize) -> Range<usize> {
+    let start = if let Some(start) = range_any.start {
+        start
+    } else {
+        0
+    };
+    let end = if let Some(end) = range_any.end {
+        end
+    } else {
+        count
+    };
+    Range {
+        start: start,
+        end: end,
+    }
+}
+
+// !!! cmk later test this syntax for ranges:  ..=3 .., etc
+impl Index {
+    fn len(&self, count: usize) -> usize {
+        match self {
+            Index::All => count,
+            Index::One(_) => 1,
+            Index::Vec(vec) => vec.len(),
+            Index::NDArray(nd_array) => nd_array.len(),
+            Index::VecBool(vec_bool) => vec_bool.iter().filter(|&b| *b).count(),
+            Index::NDArrayBool(nd_array_bool) => nd_array_bool.iter().filter(|&b| *b).count(),
+            // !!! cmk 0 remove need to to_vec
+            Index::NDSliceInfo(_) => self.to_vec(count).len(),
+            Index::RangeAny(range_any) => {
+                //self.to_vec(count).len()
+                let range = range_any_to_range(range_any, count);
+                if range.start >= range.end {
+                    0
+                } else {
+                    range.end - range.start
+                }
+            }
+        }
+    }
 }
 
 // !!!cmk later see if what ref conversions. See https://ricardomartins.cc/2016/08/03/convenient_and_idiomatic_conversions_in_rust
@@ -846,9 +900,71 @@ impl From<SliceInfo1> for Index {
     }
 }
 
+fn bounds_to_range_any(start_bound: Bound<&usize>, end_bound: Bound<&usize>) -> RangeAny {
+    let start = match start_bound {
+        Bound::Included(&start) => Some(start),
+        Bound::Excluded(&start) => Some(start + 1),
+        Bound::Unbounded => None,
+    };
+    let end = match end_bound {
+        Bound::Included(&end) => Some(end + 1),
+        Bound::Excluded(&end) => Some(end),
+        Bound::Unbounded => None,
+    };
+    RangeAny { start, end }
+}
+
+impl From<RangeFull> for Index {
+    fn from(range_thing: RangeFull) -> Index {
+        Index::RangeAny(bounds_to_range_any(
+            range_thing.start_bound(),
+            range_thing.end_bound(),
+        ))
+    }
+}
+
 impl From<Range<usize>> for Index {
-    fn from(range: Range<usize>) -> Index {
-        Index::Range(range)
+    fn from(range_thing: Range<usize>) -> Index {
+        Index::RangeAny(bounds_to_range_any(
+            range_thing.start_bound(),
+            range_thing.end_bound(),
+        ))
+    }
+}
+
+impl From<RangeFrom<usize>> for Index {
+    fn from(range_thing: RangeFrom<usize>) -> Index {
+        Index::RangeAny(bounds_to_range_any(
+            range_thing.start_bound(),
+            range_thing.end_bound(),
+        ))
+    }
+}
+
+impl From<RangeInclusive<usize>> for Index {
+    fn from(range_thing: RangeInclusive<usize>) -> Index {
+        Index::RangeAny(bounds_to_range_any(
+            range_thing.start_bound(),
+            range_thing.end_bound(),
+        ))
+    }
+}
+
+impl From<RangeTo<usize>> for Index {
+    fn from(range_thing: RangeTo<usize>) -> Index {
+        Index::RangeAny(bounds_to_range_any(
+            range_thing.start_bound(),
+            range_thing.end_bound(),
+        ))
+    }
+}
+
+impl From<RangeToInclusive<usize>> for Index {
+    fn from(range_thing: RangeToInclusive<usize>) -> Index {
+        Index::RangeAny(bounds_to_range_any(
+            range_thing.start_bound(),
+            range_thing.end_bound(),
+        ))
     }
 }
 
@@ -908,7 +1024,7 @@ impl From<Vec<bool>> for Index {
 
 impl From<()> for Index {
     fn from(_: ()) -> Index {
-        Index::None
+        Index::All
     }
 }
 
@@ -918,11 +1034,11 @@ pub struct ReadOptions<TVal: BedVal> {
     #[builder(default = "TVal::missing()")]
     missing_value: TVal,
 
-    #[builder(default = "Index::None")]
+    #[builder(default = "Index::All")]
     #[builder(setter(into))]
     iid_index: Index,
 
-    #[builder(default = "Index::None")]
+    #[builder(default = "Index::All")]
     #[builder(setter(into))]
     sid_index: Index,
 

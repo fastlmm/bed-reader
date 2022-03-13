@@ -355,7 +355,6 @@ fn set_up_two_bits_to_value<TVal: From<i8>>(count_a1: bool, missing_value: TVal)
 // https://dpc.pw/adding-parallelism-to-your-rust-iterators
 pub fn write_val<S, TVal, P>(
     path: P,
-    // val: &nd::ArrayView2<'_, TVal>,
     val: &nd::ArrayBase<S, nd::Ix2>,
     is_a1_counted: bool,
     missing: TVal,

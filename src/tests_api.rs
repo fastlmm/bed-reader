@@ -542,3 +542,24 @@ fn read_write() -> Result<(), BedErrorPlus> {
 
     Ok(())
 }
+
+#[test]
+fn range() -> Result<(), BedErrorPlus> {
+    // with open_bed(shared_datadir / "small.bed") as bed:
+    // val = bed.read()
+    // properties = bed.properties
+
+    let file_name = "bed_reader/tests/data/small.bed";
+    let mut bed = Bed::new(file_name)?;
+    ReadOptions::builder().iid_index(0..2).i8().read(&mut bed)?;
+    ReadOptions::builder()
+        .iid_index(0..=2)
+        .i8()
+        .read(&mut bed)?;
+    ReadOptions::builder().iid_index(..2).i8().read(&mut bed)?;
+    ReadOptions::builder().iid_index(..=2).i8().read(&mut bed)?;
+    ReadOptions::builder().iid_index(0..).i8().read(&mut bed)?;
+    ReadOptions::builder().iid_index(..).i8().read(&mut bed)?;
+
+    Ok(())
+}
