@@ -801,9 +801,19 @@ impl Index {
             // !!!cmk later can we implement this without two allocations?
             Index::NDSliceInfo(nd_slice_info) => {
                 // https://docs.rs/ndarray/0.15.4/ndarray/struct.ArrayBase.html#slicing
-                let mut array: nd::Array1<usize> = (0..count).collect();
-                array.slice_collapse(nd_slice_info);
-                array.to_vec()
+                // let mut array: nd::Array1<usize> = (0..count).collect();
+                // array.slice_collapse(nd_slice_info);
+                // array.to_vec()
+                let sesr = nd_slice_to_sesr(nd_slice_info, count);
+                if sesr.start > sesr.end {
+                    vec![]
+                } else {
+                    let mut vec: Vec<usize> = (sesr.start..sesr.end).step_by(sesr.step).collect();
+                    if sesr.is_reversed {
+                        vec.reverse();
+                    }
+                    vec
+                }
             }
             Index::RangeAny(range_any) => {
                 // https://stackoverflow.com/questions/55925523/array-cannot-be-indexed-by-rangefull
@@ -868,6 +878,99 @@ fn range_any_to_range(range_any: &RangeAny, count: usize) -> Range<usize> {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct SESR {
+    start: usize,
+    end: usize,
+    step: usize,
+    is_reversed: bool,
+}
+
+// !!! cmk 0 make this a constructor
+fn nd_slice_to_sesr(nd_slice_info: &SliceInfo1, count: usize) -> SESR {
+    //  self.to_vec(count).len(),
+    // https://docs.rs/ndarray/0.15.4/ndarray/struct.ArrayBase.html#method.slice_collapse
+    // Panics in the following cases:
+    // if an index is out of bounds
+    // if a step size is zero
+
+    // !! cmk 0 later
+    if nd_slice_info.in_ndim() != 1 || nd_slice_info.out_ndim() != 1 {
+        panic!("cmk expect 1d slices")
+    }
+
+    let slice_info_elem = nd_slice_info[0];
+    match slice_info_elem {
+        nd::SliceInfoElem::Slice { start, end, step } => {
+            // https://docs.rs/ndarray/0.15.4/ndarray/enum.SliceInfoElem.html
+            // s![..], 0,None,1
+            // s![a..b;2] a,b,2
+            // s![a..;-1], from a to end in reverse order
+            // start index; negative are counted from the back of the axis
+            // end index; negative are counted from the back of the axis; when not present the default is the full length of the axis.
+            // step size in elements; the default is 1, for every element.
+            // A range with step size. end is an exclusive index. Negative start or end indexes are counted from the back of the axis. If end is None, the slice extends to the end of the axis.
+            let step2: usize;
+            let is_reverse: bool;
+            if step > 0 {
+                step2 = step as usize;
+                is_reverse = false;
+            } else if step < 0 {
+                step2 = (-step) as usize;
+                is_reverse = true;
+            } else {
+                panic!("cmk expect step size to be non-zero")
+            }
+
+            let start2 = if start >= 0 {
+                start as usize
+            } else {
+                let abs_start = (-start) as usize;
+                if abs_start > count {
+                    panic!("cmk expect start index to be in range")
+                }
+                count - abs_start
+            };
+
+            let end2 = if let Some(end) = end {
+                if end >= 0 {
+                    end as usize
+                } else {
+                    let abs_end = (-end) as usize;
+                    if abs_end > count {
+                        panic!("cmk expect end index to be in range")
+                    }
+                    count - abs_end
+                }
+            } else {
+                count
+            };
+
+            SESR {
+                start: start2,
+                end: end2,
+                step: step2,
+                is_reversed: is_reverse,
+            }
+
+            // if start2 > end2 {
+            //     0usize
+            // } else {
+            //     (end2 - start2) / step2 + 1
+            // }
+        }
+        nd::SliceInfoElem::Index(index) => SESR {
+            start: index as usize,
+            end: index as usize + 1,
+            step: 1,
+            is_reversed: false,
+        },
+        nd::SliceInfoElem::NewAxis => {
+            panic!("cmk expect slice or index")
+        }
+    }
+}
+
 // !!! cmk later test this syntax for ranges:  ..=3 .., etc
 impl Index {
     fn len(&self, count: usize) -> usize {
@@ -879,9 +982,20 @@ impl Index {
             Index::VecBool(vec_bool) => vec_bool.iter().filter(|&b| *b).count(),
             Index::NDArrayBool(nd_array_bool) => nd_array_bool.iter().filter(|&b| *b).count(),
             // !!! cmk 0 remove need to to_vec
-            Index::NDSliceInfo(_) => self.to_vec(count).len(),
+            Index::NDSliceInfo(nd_slice_info) => {
+                // // !! cmk 0 later
+                // if nd_slice_info.in_ndim() != 1 || nd_slice_info.out_ndim() != 1 {
+                //     panic!("cmk expect 1d slices")
+                // }
+                let sesr = nd_slice_to_sesr(nd_slice_info, count);
+                if sesr.start > sesr.end {
+                    0
+                } else {
+                    (sesr.end - sesr.start) / sesr.step + 1
+                }
+            }
             Index::RangeAny(range_any) => {
-                //self.to_vec(count).len()
+                // !!! cmk 0 create a len for RangeAny
                 let range = range_any_to_range(range_any, count);
                 if range.start >= range.end {
                     0

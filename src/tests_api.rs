@@ -545,10 +545,6 @@ fn read_write() -> Result<(), BedErrorPlus> {
 
 #[test]
 fn range() -> Result<(), BedErrorPlus> {
-    // with open_bed(shared_datadir / "small.bed") as bed:
-    // val = bed.read()
-    // properties = bed.properties
-
     let file_name = "bed_reader/tests/data/small.bed";
     let mut bed = Bed::new(file_name)?;
     ReadOptions::builder().iid_index(0..2).i8().read(&mut bed)?;
@@ -560,6 +556,40 @@ fn range() -> Result<(), BedErrorPlus> {
     ReadOptions::builder().iid_index(..=2).i8().read(&mut bed)?;
     ReadOptions::builder().iid_index(0..).i8().read(&mut bed)?;
     ReadOptions::builder().iid_index(..).i8().read(&mut bed)?;
+
+    Ok(())
+}
+
+#[test]
+fn nd_slice() -> Result<(), BedErrorPlus> {
+    let ndarray = nd::array![0, 1, 2, 3];
+    println!("{:?}", ndarray.slice(nd::s![1..3])); // [1, 2]
+                                                   // This reverses Python's way cmk later make a note.
+    println!("{:?}", ndarray.slice(nd::s![1..3;-1])); // [2, 1]
+    println!("{:?}", ndarray.slice(nd::s![3..1;-1])); // []
+
+    let file_name = "bed_reader/tests/data/small.bed";
+    let mut bed = Bed::new(file_name)?;
+    ReadOptions::builder()
+        .iid_index(nd::s![0..2])
+        .i8()
+        .read(&mut bed)?;
+    ReadOptions::builder()
+        .iid_index(nd::s![..2])
+        .i8()
+        .read(&mut bed)?;
+    ReadOptions::builder()
+        .iid_index(nd::s![0..])
+        .i8()
+        .read(&mut bed)?;
+    ReadOptions::builder()
+        .iid_index(nd::s![0..2])
+        .i8()
+        .read(&mut bed)?;
+    ReadOptions::builder()
+        .iid_index(nd::s![-2..-1;-1])
+        .i8()
+        .read(&mut bed)?;
 
     Ok(())
 }
