@@ -52,33 +52,34 @@ pub enum Skippable<T> {
     Skip,
 }
 
-impl<T> Skippable<T> {
-    pub fn unwrap(self) -> T {
-        match self {
-            Skippable::Some(some) => some,
-            Skippable::Skip => {
-                todo!("Skippable::Skip")
-            }
-        }
-    }
-}
+// !!! cmk later these don't seem to b used
+// impl<T> Skippable<T> {
+//     pub fn unwrap(self) -> T {
+//         match self {
+//             Skippable::Some(some) => some,
+//             Skippable::Skip => {
+//                 todo!("Skippable::Skip")
+//             }
+//         }
+//     }
+// }
 
-impl<T> LazyOrSkip<T> {
-    pub const fn as_ref(&self) -> LazyOrSkip<&T> {
-        match *self {
-            LazyOrSkip::Some(ref x) => LazyOrSkip::Some(x),
-            LazyOrSkip::Lazy => LazyOrSkip::Lazy,
-            LazyOrSkip::Skip => LazyOrSkip::Skip,
-        }
-    }
-    pub fn unwrap(self) -> T {
-        match self {
-            LazyOrSkip::Some(val) => val,
-            LazyOrSkip::Lazy => panic!("called `LazyOrSkip::::unwrap()` on a `Lazy` value"),
-            LazyOrSkip::Skip => panic!("called `LazyOrSkip::::unwrap()` on a `Skip` value"),
-        }
-    }
-}
+// impl<T> LazyOrSkip<T> {
+//     pub const fn as_ref(&self) -> LazyOrSkip<&T> {
+//         match *self {
+//             LazyOrSkip::Some(ref x) => LazyOrSkip::Some(x),
+//             LazyOrSkip::Lazy => LazyOrSkip::Lazy,
+//             LazyOrSkip::Skip => LazyOrSkip::Skip,
+//         }
+//     }
+//     pub fn unwrap(self) -> T {
+//         match self {
+//             LazyOrSkip::Some(val) => val,
+//             LazyOrSkip::Lazy => panic!("called `LazyOrSkip::::unwrap()` on a `Lazy` value"),
+//             LazyOrSkip::Skip => panic!("called `LazyOrSkip::::unwrap()` on a `Skip` value"),
+//         }
+//     }
+// }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Metadata<'a> {
@@ -254,7 +255,7 @@ impl BedBuilder {
         self
     }
 
-    pub fn skip_iid(&mut self) -> &Self {
+    pub fn skip_iid(mut self) -> Self {
         self.iid = Some(LazyOrSkip::Skip);
         self
     }

@@ -264,12 +264,14 @@ fn metadata_etc() -> Result<(), BedErrorPlus> {
     println!("{:?}", bed.sex()?);
     // [1, 2, 0], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
 
+    let mut bed = Bed::new("bed_reader/tests/data/small.bed")?;
     println!("{:?}", bed.cm_position()?);
     // [100.4, 2000.5, 4000.7, 7000.9], shape=[4], strides=[1], layout=CFcf (0xf), const ndim=1
 
     println!("{:?}", bed.bp_position()?);
     // [1, 100, 1000, 1004], shape=[4], strides=[1], layout=CFcf (0xf), const ndim=1
 
+    let mut bed = Bed::new("bed_reader/tests/data/small.bed")?;
     println!("{:?}", bed.fid()?);
     // ["fid1", "fid1", "fid2"], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
 
@@ -591,5 +593,48 @@ fn nd_slice() -> Result<(), BedErrorPlus> {
         .i8()
         .read(&mut bed)?;
 
+    Ok(())
+}
+
+#[test]
+fn skip_coverage() -> Result<(), BedErrorPlus> {
+    let mut bed = Bed::builder("bed_reader/tests/data/small.bed")
+        .skip_fid()
+        .skip_iid()
+        .skip_father()
+        .skip_mother()
+        .skip_sex()
+        .skip_pheno()
+        .skip_chromosome()
+        .skip_sid()
+        .skip_cm_position()
+        .skip_bp_position()
+        .skip_allele_1()
+        .skip_allele_2()
+        .build()?;
+    bed.mother().unwrap_err();
+
+    Ok(())
+}
+
+#[test]
+fn into_iter() -> Result<(), BedErrorPlus> {
+    let file_name = "bed_reader/tests/data/small.bed";
+    let mut bed = Bed::builder(file_name)
+        .fid(["sample1", "sample2", "sample3"])
+        .iid(["sample1", "sample2", "sample3"])
+        .father(["sample1", "sample2", "sample3"])
+        .mother(["sample1", "sample2", "sample3"])
+        .sex([0, 0, 0])
+        .pheno(["sample1", "sample2", "sample3"])
+        .chromosome(["a", "b", "c", "d"])
+        .sid(["a", "b", "c", "d"])
+        .bp_position([0, 0, 0, 0])
+        .cm_position([0.0, 0.0, 0.0, 0.0])
+        .allele_1(["a", "b", "c", "d"])
+        .allele_2(["a", "b", "c", "d"])
+        .build()?;
+
+    let _ = bed.pheno()?;
     Ok(())
 }
