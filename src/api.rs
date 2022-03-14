@@ -798,27 +798,11 @@ impl Index {
                     .collect()
             }
             // !!!cmk later can we implement this without two allocations?
-            Index::NDSliceInfo(nd_slice_info) => {
-                // https://docs.rs/ndarray/0.15.4/ndarray/struct.ArrayBase.html#slicing
-                // let mut array: nd::Array1<usize> = (0..count).collect();
-                // array.slice_collapse(nd_slice_info);
-                // array.to_vec()
-                let sesr = SESR::new(nd_slice_info, count);
-                if sesr.start > sesr.end {
-                    vec![]
-                } else {
-                    let mut vec: Vec<usize> = (sesr.start..sesr.end).step_by(sesr.step).collect();
-                    if sesr.is_reversed {
-                        vec.reverse();
-                    }
-                    vec
-                }
-            }
-            Index::RangeAny(range_any) => {
-                // https://stackoverflow.com/questions/55925523/array-cannot-be-indexed-by-rangefull
-                let range = range_any_to_range(range_any, count);
-                range.into_iter().collect::<Vec<usize>>()
-            }
+            Index::NDSliceInfo(nd_slice_info) => RangeNdSlice::new(nd_slice_info, count).to_vec(),
+            Index::RangeAny(range_any) => range_any
+                .to_range(count)
+                .into_iter()
+                .collect::<Vec<usize>>(),
             Index::NDArray(nd_array) => nd_array.to_vec(),
             Index::One(one) => vec![*one],
             Index::VecBool(vec_bool) => {
@@ -859,33 +843,31 @@ pub struct RangeAny {
     end: Option<usize>,
 }
 
-// !!!cmk 0 make this a converter or method???
-fn range_any_to_range(range_any: &RangeAny, count: usize) -> Range<usize> {
-    let start = if let Some(start) = range_any.start {
-        start
-    } else {
-        0
-    };
-    let end = if let Some(end) = range_any.end {
-        end
-    } else {
-        count
-    };
-    Range {
-        start: start,
-        end: end,
+impl RangeAny {
+    // https://stackoverflow.com/questions/55925523/array-cannot-be-indexed-by-rangefull
+    fn to_range(&self, count: usize) -> Range<usize> {
+        let start = if let Some(start) = self.start {
+            start
+        } else {
+            0
+        };
+        let end = if let Some(end) = self.end { end } else { count };
+        Range {
+            start: start,
+            end: end,
+        }
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct SESR {
+pub struct RangeNdSlice {
     start: usize,
     end: usize,
     step: usize,
     is_reversed: bool,
 }
 
-impl SESR {
+impl RangeNdSlice {
     fn len(&self) -> usize {
         if self.start > self.end {
             0
@@ -894,8 +876,15 @@ impl SESR {
         }
     }
 
-    // cmk 0 make this a converter or method
-    // cmk 0 rename to range_nd_slice
+    // https://docs.rs/ndarray/0.15.4/ndarray/struct.ArrayBase.html#slicing
+    fn to_vec(&self) -> Vec<usize> {
+        let mut vec: Vec<usize> = (self.start..self.end).step_by(self.step).collect();
+        if self.is_reversed {
+            vec.reverse();
+        }
+        vec
+    }
+
     fn new(nd_slice_info: &SliceInfo1, count: usize) -> Self {
         //  self.to_vec(count).len(),
         // https://docs.rs/ndarray/0.15.4/ndarray/struct.ArrayBase.html#method.slice_collapse
@@ -955,20 +944,14 @@ impl SESR {
                     count
                 };
 
-                SESR {
+                RangeNdSlice {
                     start: start2,
                     end: end2,
                     step: step2,
                     is_reversed: is_reverse,
                 }
-
-                // if start2 > end2 {
-                //     0usize
-                // } else {
-                //     (end2 - start2) / step2 + 1
-                // }
             }
-            nd::SliceInfoElem::Index(index) => SESR {
+            nd::SliceInfoElem::Index(index) => RangeNdSlice {
                 start: index as usize,
                 end: index as usize + 1,
                 step: 1,
@@ -991,8 +974,8 @@ impl Index {
             Index::NDArray(nd_array) => nd_array.len(),
             Index::VecBool(vec_bool) => vec_bool.iter().filter(|&b| *b).count(),
             Index::NDArrayBool(nd_array_bool) => nd_array_bool.iter().filter(|&b| *b).count(),
-            Index::NDSliceInfo(nd_slice_info) => SESR::new(nd_slice_info, count).len(),
-            Index::RangeAny(range_any) => range_any_to_range(range_any, count).len(),
+            Index::NDSliceInfo(nd_slice_info) => RangeNdSlice::new(nd_slice_info, count).len(),
+            Index::RangeAny(range_any) => range_any.to_range(count).len(),
         }
     }
 }
