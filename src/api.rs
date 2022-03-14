@@ -859,7 +859,7 @@ pub struct RangeAny {
     end: Option<usize>,
 }
 
-// !!!cmk later make this a converter or method???
+// !!!cmk 0 make this a converter or method???
 fn range_any_to_range(range_any: &RangeAny, count: usize) -> Range<usize> {
     let start = if let Some(start) = range_any.start {
         start
@@ -886,6 +886,16 @@ pub struct SESR {
 }
 
 impl SESR {
+    fn len(&self) -> usize {
+        if self.start > self.end {
+            0
+        } else {
+            (self.end - self.start) / self.step + 1
+        }
+    }
+
+    // cmk 0 make this a converter or method
+    // cmk 0 rename to range_nd_slice
     fn new(nd_slice_info: &SliceInfo1, count: usize) -> Self {
         //  self.to_vec(count).len(),
         // https://docs.rs/ndarray/0.15.4/ndarray/struct.ArrayBase.html#method.slice_collapse
@@ -981,28 +991,8 @@ impl Index {
             Index::NDArray(nd_array) => nd_array.len(),
             Index::VecBool(vec_bool) => vec_bool.iter().filter(|&b| *b).count(),
             Index::NDArrayBool(nd_array_bool) => nd_array_bool.iter().filter(|&b| *b).count(),
-            // !!! cmk 0 remove need to to_vec
-            Index::NDSliceInfo(nd_slice_info) => {
-                // // !! cmk 0 later
-                // if nd_slice_info.in_ndim() != 1 || nd_slice_info.out_ndim() != 1 {
-                //     panic!("cmk expect 1d slices")
-                // }
-                let sesr = SESR::new(nd_slice_info, count);
-                if sesr.start > sesr.end {
-                    0
-                } else {
-                    (sesr.end - sesr.start) / sesr.step + 1
-                }
-            }
-            Index::RangeAny(range_any) => {
-                // !!! cmk 0 create a len for RangeAny
-                let range = range_any_to_range(range_any, count);
-                if range.start >= range.end {
-                    0
-                } else {
-                    range.end - range.start
-                }
-            }
+            Index::NDSliceInfo(nd_slice_info) => SESR::new(nd_slice_info, count).len(),
+            Index::RangeAny(range_any) => range_any_to_range(range_any, count).len(),
         }
     }
 }
