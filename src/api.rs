@@ -987,12 +987,15 @@ impl From<SliceInfo1> for Index {
     }
 }
 
-fn bounds_to_range_any(start_bound: Bound<&usize>, end_bound: Bound<&usize>) -> RangeAny {
+fn to_range_any<T: RangeBounds<usize>>(range_thing: T) -> RangeAny {
+    let start_bound = range_thing.start_bound();
     let start = match start_bound {
         Bound::Included(&start) => Some(start),
         Bound::Excluded(&start) => Some(start + 1),
         Bound::Unbounded => None,
     };
+
+    let end_bound = range_thing.end_bound();
     let end = match end_bound {
         Bound::Included(&end) => Some(end + 1),
         Bound::Excluded(&end) => Some(end),
@@ -1001,57 +1004,75 @@ fn bounds_to_range_any(start_bound: Bound<&usize>, end_bound: Bound<&usize>) -> 
     RangeAny { start, end }
 }
 
+impl From<RangeFull> for RangeAny {
+    fn from(range_thing: RangeFull) -> RangeAny {
+        to_range_any(range_thing)
+    }
+}
+
 impl From<RangeFull> for Index {
     fn from(range_thing: RangeFull) -> Index {
-        Index::RangeAny(bounds_to_range_any(
-            range_thing.start_bound(),
-            range_thing.end_bound(),
-        ))
+        Index::RangeAny(range_thing.into())
+    }
+}
+
+impl From<Range<usize>> for RangeAny {
+    fn from(range_thing: Range<usize>) -> RangeAny {
+        to_range_any(range_thing)
     }
 }
 
 impl From<Range<usize>> for Index {
     fn from(range_thing: Range<usize>) -> Index {
-        Index::RangeAny(bounds_to_range_any(
-            range_thing.start_bound(),
-            range_thing.end_bound(),
-        ))
+        Index::RangeAny(range_thing.into())
+    }
+}
+
+impl From<RangeFrom<usize>> for RangeAny {
+    fn from(range_thing: RangeFrom<usize>) -> RangeAny {
+        to_range_any(range_thing)
     }
 }
 
 impl From<RangeFrom<usize>> for Index {
     fn from(range_thing: RangeFrom<usize>) -> Index {
-        Index::RangeAny(bounds_to_range_any(
-            range_thing.start_bound(),
-            range_thing.end_bound(),
-        ))
+        Index::RangeAny(range_thing.into())
+    }
+}
+
+impl From<RangeInclusive<usize>> for RangeAny {
+    fn from(range_thing: RangeInclusive<usize>) -> RangeAny {
+        to_range_any(range_thing)
     }
 }
 
 impl From<RangeInclusive<usize>> for Index {
     fn from(range_thing: RangeInclusive<usize>) -> Index {
-        Index::RangeAny(bounds_to_range_any(
-            range_thing.start_bound(),
-            range_thing.end_bound(),
-        ))
+        Index::RangeAny(range_thing.into())
+    }
+}
+
+impl From<RangeTo<usize>> for RangeAny {
+    fn from(range_thing: RangeTo<usize>) -> RangeAny {
+        to_range_any(range_thing)
     }
 }
 
 impl From<RangeTo<usize>> for Index {
     fn from(range_thing: RangeTo<usize>) -> Index {
-        Index::RangeAny(bounds_to_range_any(
-            range_thing.start_bound(),
-            range_thing.end_bound(),
-        ))
+        Index::RangeAny(range_thing.into())
+    }
+}
+
+impl From<RangeToInclusive<usize>> for RangeAny {
+    fn from(range_thing: RangeToInclusive<usize>) -> RangeAny {
+        to_range_any(range_thing)
     }
 }
 
 impl From<RangeToInclusive<usize>> for Index {
     fn from(range_thing: RangeToInclusive<usize>) -> Index {
-        Index::RangeAny(bounds_to_range_any(
-            range_thing.start_bound(),
-            range_thing.end_bound(),
-        ))
+        Index::RangeAny(range_thing.into())
     }
 }
 
