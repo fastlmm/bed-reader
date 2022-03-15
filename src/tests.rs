@@ -1,9 +1,9 @@
 #[cfg(test)]
+use crate::api::write;
+#[cfg(test)]
 use crate::api::Bed;
 #[cfg(test)]
 use crate::api::ReadOptions;
-#[cfg(test)]
-use crate::api::WriteOptions;
 // https://stackoverflow.com/questions/32900809/how-to-suppress-function-is-never-used-warning-for-a-function-used-by-tests
 #[cfg(test)]
 use crate::file_aat_piece;
@@ -305,8 +305,7 @@ fn writer() {
     let temp = TempDir::default();
     let path2 = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_test.bed");
 
-    // !!!cmk 0 should there be a write(path,val) method?
-    WriteOptions::builder(&path2).write(&val).unwrap();
+    write(&val, &path2).unwrap();
 
     for ext in ["fam", "bim"].iter() {
         let from = path.with_extension(ext);
@@ -325,7 +324,7 @@ fn writer() {
 
     let path2 = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64.bed");
 
-    WriteOptions::builder(&path2).write(&val).unwrap();
+    write(&val, &path2).unwrap();
 
     for ext in ["fam", "bim"].iter() {
         let from = path.with_extension(ext);
@@ -341,9 +340,7 @@ fn writer() {
     val[(0, 0)] = 5.0;
     let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_5.bed");
 
-    if let Err(BedErrorPlus::BedError(BedError::BadValue(_))) =
-        WriteOptions::builder(&path).write(&val)
-    {
+    if let Err(BedErrorPlus::BedError(BedError::BadValue(_))) = write(&val, &path) {
         assert!(!path.exists(), "file should not exist");
     } else {
         panic!("test failure")
@@ -352,11 +349,11 @@ fn writer() {
     // let val = nd::Array2::zeros((0, 0));
     let val = nd::Array2::<f64>::zeros((0, 0));
     let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_0s.bed");
-    WriteOptions::builder(&path).write(&val).unwrap();
+    write(&val, &path).unwrap();
 
     let val: nd::Array2<i8> = nd::Array2::zeros((3, 0));
     let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_3_0.bed");
-    WriteOptions::builder(path).write(&val).unwrap();
+    write(&val, &path).unwrap();
 }
 
 #[test]
@@ -761,17 +758,17 @@ fn zeros() {
     let temp = TempDir::default();
     let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_zeros.bed");
 
-    WriteOptions::builder(&path).write(&out_val01).unwrap();
+    write(&out_val01, &path).unwrap();
     let in_val01 = Bed::new(&path).unwrap().read::<f64>().unwrap();
     assert!(in_val01.shape() == [0, sid_count]);
     assert!(allclose(&in_val01.view(), &out_val01.view(), 1e-08, true));
 
-    WriteOptions::builder(&path).write(&out_val10).unwrap();
+    write(&out_val10, &path).unwrap();
     let in_val10 = Bed::new(&path).unwrap().read::<f64>().unwrap();
     assert!(in_val10.shape() == [iid_count, 0]);
     assert!(allclose(&in_val10.view(), &out_val10.view(), 1e-08, true));
 
-    WriteOptions::builder(&path).write(&out_val00).unwrap();
+    write(&out_val00, &path).unwrap();
     let in_val00 = Bed::new(&path).unwrap().read::<f64>().unwrap();
     assert!(in_val00.shape() == [0, 0]);
     assert!(allclose(&in_val00.view(), &out_val00.view(), 1e-08, true));
