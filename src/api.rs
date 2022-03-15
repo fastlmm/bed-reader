@@ -800,10 +800,14 @@ impl Index {
             }
             // !!!cmk later can we implement this without two allocations?
             Index::NDSliceInfo(nd_slice_info) => RangeNdSlice::new(nd_slice_info, count).to_vec(),
-            Index::RangeAny(range_any) => range_any
-                .to_range(count)
-                .into_iter()
-                .collect::<Vec<usize>>(),
+            Index::RangeAny(range_any) => {
+                let range = range_any.to_range(count);
+                if range.start > range.end {
+                    panic!("index starts at {} but ends at {}", range.start, range.end);
+                } else {
+                    range.collect::<Vec<usize>>()
+                }
+            }
             Index::NDArray(nd_array) => nd_array.to_vec(),
             Index::One(one) => vec![*one],
             Index::VecBool(vec_bool) => {
@@ -871,7 +875,7 @@ pub struct RangeNdSlice {
 impl RangeNdSlice {
     fn len(&self) -> usize {
         if self.start > self.end {
-            0
+            panic!("index starts at {} but ends at {}", self.start, self.end);
         } else {
             (self.end - self.start) / self.step + 1
         }
@@ -879,6 +883,9 @@ impl RangeNdSlice {
 
     // https://docs.rs/ndarray/0.15.4/ndarray/struct.ArrayBase.html#slicing
     fn to_vec(&self) -> Vec<usize> {
+        if self.start > self.end {
+            panic!("index starts at {} but ends at {}", self.start, self.end);
+        }
         let mut vec: Vec<usize> = (self.start..self.end).step_by(self.step).collect();
         if self.is_reversed {
             vec.reverse();

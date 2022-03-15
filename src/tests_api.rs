@@ -66,6 +66,8 @@ use std::collections::HashSet;
 #[cfg(test)]
 use std::fs;
 #[cfg(test)]
+use std::panic::catch_unwind;
+#[cfg(test)]
 use std::path::PathBuf;
 
 #[test]
@@ -638,3 +640,106 @@ fn into_iter() -> Result<(), BedErrorPlus> {
     let _ = bed.pheno()?;
     Ok(())
 }
+
+// !!!cmk 0 clean this up
+#[cfg(test)]
+fn range_thing1<R>(range_thing: R) -> Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>
+where
+    R: std::ops::RangeBounds<usize>
+        + std::fmt::Debug
+        + Clone
+        + std::slice::SliceIndex<[usize], Output = [usize]>
+        + std::panic::RefUnwindSafe,
+{
+    println!("Running {:?}", &range_thing);
+    let file_name = "bed_reader/tests/data/small.bed";
+
+    let result1 = catch_unwind(|| {
+        let mut bed = Bed::new(file_name).unwrap();
+        let all: Vec<usize> = (0..bed.iid_count().unwrap()).collect();
+        let mut bed = Bed::new(file_name).unwrap();
+        let iid_index: &[usize] = &all[range_thing.clone()];
+        ReadOptions::builder()
+            .iid_index(iid_index)
+            .i8()
+            .read(&mut bed)
+    });
+    if result1.is_err() {
+        return Err(BedError::PanickedThread().into());
+    }
+    match result1 {
+        Err(_) => Err(BedError::PanickedThread().into()),
+        Ok(bed_result) => Ok(bed_result),
+    }
+}
+
+#[cfg(test)]
+fn range_thing2(
+    range_thing: crate::api::Index,
+) -> Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus> {
+    println!("Running {:?}", &range_thing);
+    let file_name = "bed_reader/tests/data/small.bed";
+
+    let result2 = catch_unwind(|| {
+        let mut bed = Bed::new(file_name).unwrap();
+        ReadOptions::builder()
+            .iid_index(range_thing.clone())
+            .i8()
+            .read(&mut bed)
+    });
+    if result2.is_err() {
+        return Err(BedError::PanickedThread().into());
+    }
+    match result2 {
+        Err(_) => Err(BedError::PanickedThread().into()),
+        Ok(bed_result) => Ok(bed_result),
+    }
+}
+
+#[cfg(test)]
+fn assert_same_result(
+    result1: Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>,
+    result2: Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>,
+) {
+    if result1.is_err() || result2.is_err() {
+        if result1.is_err() != result2.is_err() {
+            println!("{:?}", result1);
+            println!("{:?}", result2);
+            assert!(result2.is_err(), "both should panic the same");
+        }
+        return;
+    }
+    let result1: Result<nd::Array2<i8>, BedErrorPlus> = result1.unwrap();
+    let result2: Result<nd::Array2<i8>, BedErrorPlus> = result2.unwrap();
+    if result1.is_err() || result2.is_err() {
+        if result1.is_err() != result2.is_err() {
+            println!("{:?}", result1);
+            println!("{:?}", result2);
+            assert!(result2.is_err(), "both should error the same");
+        }
+        return;
+    }
+
+    let result1 = result1.unwrap();
+    let result2 = result2.unwrap();
+    println!("{:?}", result1);
+    println!("{:?}", result2);
+    assert!(
+        allclose(&result1.view(), &result2.view(), 0, true),
+        "not close"
+    );
+}
+
+// !!!cmk 0 Get these running. also, add tests for illegal ranges and backwards ranges
+#[test]
+fn range_same() -> Result<(), BedErrorPlus> {
+    assert_same_result(range_thing1(..), range_thing2((..).into()));
+    assert_same_result(range_thing1(..3), range_thing2((..3).into()));
+    assert_same_result(range_thing1(..=3), range_thing2((..=3).into()));
+    assert_same_result(range_thing1(1..), range_thing2((1..).into()));
+    assert_same_result(range_thing1(1..3), range_thing2((1..3).into()));
+    assert_same_result(range_thing1(1..=3), range_thing2((1..=3).into()));
+    Ok(())
+}
+
+// !!!cmk 0 create similar tests for nd::slices
