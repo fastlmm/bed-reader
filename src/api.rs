@@ -52,7 +52,7 @@ pub enum Skippable<T> {
     Skip,
 }
 
-// !!! cmk later these don't seem to b used
+// !!! cmk later these don't seem to be used
 // impl<T> Skippable<T> {
 //     pub fn unwrap(self) -> T {
 //         match self {
@@ -803,7 +803,10 @@ impl Index {
             Index::RangeAny(range_any) => {
                 let range = range_any.to_range(count);
                 if range.start > range.end {
-                    panic!("index starts at {} but ends at {}", range.start, range.end);
+                    panic!(
+                        "cmk 0 index starts at {} but ends at {}",
+                        range.start, range.end
+                    );
                 } else {
                     range.collect::<Vec<usize>>()
                 }
@@ -866,7 +869,10 @@ impl RangeAny {
     fn len(&self, count: usize) -> usize {
         let range = self.to_range(count);
         if range.start > range.end {
-            panic!("index starts at {} but ends at {}", range.start, range.end);
+            panic!(
+                "cmk 0 index starts at {} but ends at {}",
+                range.start, range.end
+            );
         } else {
             range.end - range.start
         }
@@ -884,7 +890,10 @@ pub struct RangeNdSlice {
 impl RangeNdSlice {
     fn len(&self) -> usize {
         if self.start > self.end {
-            panic!("index starts at {} but ends at {}", self.start, self.end);
+            panic!(
+                "cmk 0 index starts at {} but ends at {}",
+                self.start, self.end
+            );
         } else {
             (self.end - self.start) / self.step + 1
         }
@@ -893,7 +902,10 @@ impl RangeNdSlice {
     // https://docs.rs/ndarray/0.15.4/ndarray/struct.ArrayBase.html#slicing
     fn to_vec(&self) -> Vec<usize> {
         if self.start > self.end {
-            panic!("index starts at {} but ends at {}", self.start, self.end);
+            panic!(
+                "cmk 0 index starts at {} but ends at {}",
+                self.start, self.end
+            );
         }
         let mut vec: Vec<usize> = (self.start..self.end).step_by(self.step).collect();
         if self.is_reversed {
@@ -908,10 +920,11 @@ impl RangeNdSlice {
         // Panics in the following cases:
         // if an index is out of bounds
         // if a step size is zero
+        // !!! cmk 0 what about start after end?
 
         // !! cmk 0 later
         if nd_slice_info.in_ndim() != 1 || nd_slice_info.out_ndim() != 1 {
-            panic!("cmk expect 1d slices")
+            panic!("cmk 0 expect 1d slices")
         }
 
         let slice_info_elem = nd_slice_info[0];
@@ -934,7 +947,7 @@ impl RangeNdSlice {
                     step2 = (-step) as usize;
                     is_reverse = true;
                 } else {
-                    panic!("cmk expect step size to be non-zero")
+                    panic!("cmk 0 expect step size to be non-zero")
                 }
 
                 let start2 = if start >= 0 {
@@ -942,7 +955,7 @@ impl RangeNdSlice {
                 } else {
                     let abs_start = (-start) as usize;
                     if abs_start > count {
-                        panic!("cmk expect start index to be in range")
+                        panic!("cmk 0 expect start index to be in range")
                     }
                     count - abs_start
                 };
@@ -953,7 +966,7 @@ impl RangeNdSlice {
                     } else {
                         let abs_end = (-end) as usize;
                         if abs_end > count {
-                            panic!("cmk expect end index to be in range")
+                            panic!("cmk 0 expect end index to be in range")
                         }
                         count - abs_end
                     }
@@ -975,7 +988,7 @@ impl RangeNdSlice {
                 is_reversed: false,
             },
             nd::SliceInfoElem::NewAxis => {
-                panic!("cmk later expect slice or index")
+                panic!("cmk 0 later expect slice or index")
             }
         }
     }
