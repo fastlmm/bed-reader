@@ -643,7 +643,7 @@ fn into_iter() -> Result<(), BedErrorPlus> {
 
 // !!!cmk 0 clean this up
 #[cfg(test)]
-fn range_thing1<R>(range_thing: R) -> Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>
+fn rt1<R>(range_thing: R) -> Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>
 where
     R: std::ops::RangeBounds<usize>
         + std::fmt::Debug
@@ -652,7 +652,7 @@ where
         + std::panic::RefUnwindSafe,
 {
     println!("Running {:?}", &range_thing);
-    let file_name = "bed_reader/tests/data/small.bed";
+    let file_name = "bed_reader/tests/data/toydata.5chrom.bed";
 
     let result1 = catch_unwind(|| {
         let mut bed = Bed::new(file_name).unwrap();
@@ -674,11 +674,21 @@ where
 }
 
 #[cfg(test)]
-fn range_thing2(
+fn rt23(
+    range_thing: crate::api::Index,
+) -> (
+    Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>,
+    Result<Result<usize, BedErrorPlus>, BedErrorPlus>,
+) {
+    (rt2(range_thing.clone()), rt3(range_thing.clone()))
+}
+
+#[cfg(test)]
+fn rt2(
     range_thing: crate::api::Index,
 ) -> Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus> {
     println!("Running {:?}", &range_thing);
-    let file_name = "bed_reader/tests/data/small.bed";
+    let file_name = "bed_reader/tests/data/toydata.5chrom.bed";
 
     let result2 = catch_unwind(|| {
         let mut bed = Bed::new(file_name).unwrap();
@@ -697,24 +707,50 @@ fn range_thing2(
 }
 
 #[cfg(test)]
+fn rt3(range_thing: crate::api::Index) -> Result<Result<usize, BedErrorPlus>, BedErrorPlus> {
+    println!("Running {:?}", &range_thing);
+    let file_name = "bed_reader/tests/data/toydata.5chrom.bed";
+
+    let result3 = catch_unwind(|| {
+        let mut bed = Bed::new(file_name).unwrap();
+        range_thing.clone().len(bed.iid_count().unwrap())
+    });
+    if result3.is_err() {
+        return Err(BedError::PanickedThread().into());
+    }
+    match result3 {
+        Err(_) => Err(BedError::PanickedThread().into()),
+        Ok(bed_result) => Ok(Ok(bed_result)),
+    }
+}
+
+#[cfg(test)]
 fn assert_same_result(
     result1: Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>,
-    result2: Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>,
+    result23: (
+        Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>,
+        Result<Result<usize, BedErrorPlus>, BedErrorPlus>,
+    ),
 ) {
-    if result1.is_err() || result2.is_err() {
-        if result1.is_err() != result2.is_err() {
+    let result2 = result23.0;
+    let result3 = result23.1;
+    if result1.is_err() || result2.is_err() || result3.is_err() {
+        if result1.is_err() != result2.is_err() || result1.is_err() != result3.is_err() {
             println!("{:?}", result1);
             println!("{:?}", result2);
-            assert!(result2.is_err(), "both should panic the same");
+            println!("{:?}", result3);
+            panic!("both should panic the same");
         }
         return;
     }
     let result1: Result<nd::Array2<i8>, BedErrorPlus> = result1.unwrap();
     let result2: Result<nd::Array2<i8>, BedErrorPlus> = result2.unwrap();
-    if result1.is_err() || result2.is_err() {
-        if result1.is_err() != result2.is_err() {
+    let result3: Result<usize, BedErrorPlus> = result3.unwrap();
+    if result1.is_err() || result2.is_err() || result3.is_err() {
+        if result1.is_err() != result2.is_err() || result1.is_err() != result3.is_err() {
             println!("{:?}", result1);
             println!("{:?}", result2);
+            println!("{:?}", result3);
             assert!(result2.is_err(), "both should error the same");
         }
         return;
@@ -722,23 +758,29 @@ fn assert_same_result(
 
     let result1 = result1.unwrap();
     let result2 = result2.unwrap();
+    let result3 = result3.unwrap();
     println!("{:?}", result1);
     println!("{:?}", result2);
+    println!("{:?}", result3);
     assert!(
         allclose(&result1.view(), &result2.view(), 0, true),
         "not close"
     );
+    assert!(result1.shape()[0] == result3, "not same length");
 }
 
 // !!!cmk 0 Get these running. also, add tests for illegal ranges and backwards ranges
 #[test]
 fn range_same() -> Result<(), BedErrorPlus> {
-    assert_same_result(range_thing1(..), range_thing2((..).into()));
-    assert_same_result(range_thing1(..3), range_thing2((..3).into()));
-    assert_same_result(range_thing1(..=3), range_thing2((..=3).into()));
-    assert_same_result(range_thing1(1..), range_thing2((1..).into()));
-    assert_same_result(range_thing1(1..3), range_thing2((1..3).into()));
-    assert_same_result(range_thing1(1..=3), range_thing2((1..=3).into()));
+    assert_same_result(rt1(3..0), rt23((3..0).into()));
+    assert_same_result(rt1(1000..), rt23((1000..).into()));
+
+    assert_same_result(rt1(..), rt23((..).into()));
+    assert_same_result(rt1(..3), rt23((..3).into()));
+    assert_same_result(rt1(..=3), rt23((..=3).into()));
+    assert_same_result(rt1(1..), rt23((1..).into()));
+    assert_same_result(rt1(1..3), rt23((1..3).into()));
+    assert_same_result(rt1(1..=3), rt23((1..=3).into()));
     Ok(())
 }
 

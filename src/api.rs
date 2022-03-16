@@ -862,6 +862,15 @@ impl RangeAny {
             end: end,
         }
     }
+
+    fn len(&self, count: usize) -> usize {
+        let range = self.to_range(count);
+        if range.start > range.end {
+            panic!("index starts at {} but ends at {}", range.start, range.end);
+        } else {
+            range.end - range.start
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -974,7 +983,7 @@ impl RangeNdSlice {
 
 // !!! cmk later test this syntax for ranges:  ..=3 .., etc
 impl Index {
-    fn len(&self, count: usize) -> usize {
+    pub fn len(&self, count: usize) -> usize {
         match self {
             Index::All => count,
             Index::One(_) => 1,
@@ -983,7 +992,7 @@ impl Index {
             Index::VecBool(vec_bool) => vec_bool.iter().filter(|&b| *b).count(),
             Index::NDArrayBool(nd_array_bool) => nd_array_bool.iter().filter(|&b| *b).count(),
             Index::NDSliceInfo(nd_slice_info) => RangeNdSlice::new(nd_slice_info, count).len(),
-            Index::RangeAny(range_any) => range_any.to_range(count).len(),
+            Index::RangeAny(range_any) => range_any.len(count),
         }
     }
 }
