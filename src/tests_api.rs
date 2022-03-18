@@ -5,6 +5,8 @@ use crate::api::Bed;
 #[cfg(test)]
 use crate::api::ReadOptions;
 #[cfg(test)]
+use crate::api::SliceInfo1;
+#[cfg(test)]
 use crate::api::WriteOptions;
 #[cfg(test)]
 use crate::tests::allclose;
@@ -673,6 +675,32 @@ where
     }
 }
 
+// !!!cmk 0 clean this up
+#[cfg(test)]
+fn nds1(range_thing: SliceInfo1) -> Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus> {
+    println!("Running {:?}", &range_thing);
+    let file_name = "bed_reader/tests/data/toydata.5chrom.bed";
+
+    let result1 = catch_unwind(|| {
+        let mut bed = Bed::new(file_name).unwrap();
+        let all: nd::Array1<usize> = (0..bed.iid_count().unwrap()).collect();
+        let mut bed = Bed::new(file_name).unwrap();
+        let iid_index = &all.slice(&range_thing);
+        ReadOptions::builder()
+            // !!!cmk 0 fix index so it can take nd array OR view OR Cow etc
+            .iid_index(iid_index)
+            .i8()
+            .read(&mut bed)
+    });
+    if result1.is_err() {
+        return Err(BedError::PanickedThread().into());
+    }
+    match result1 {
+        Err(_) => Err(BedError::PanickedThread().into()),
+        Ok(bed_result) => Ok(bed_result),
+    }
+}
+
 #[cfg(test)]
 fn rt23(
     range_thing: crate::api::Index,
@@ -781,7 +809,39 @@ fn range_same() -> Result<(), BedErrorPlus> {
     assert_same_result(rt1(1..), rt23((1..).into()));
     assert_same_result(rt1(1..3), rt23((1..3).into()));
     assert_same_result(rt1(1..=3), rt23((1..=3).into()));
+    assert_same_result(rt1(2..=2), rt23((2..=2).into()));
     Ok(())
 }
 
 // !!!cmk 0 create similar tests for nd::slices
+#[test]
+fn nd_slice_same() -> Result<(), BedErrorPlus> {
+    assert_same_result(nds1(s![1000..]), rt23(s![1000..].into()));
+    assert_same_result(nds1(s![..1000]), rt23(s![..1000].into()));
+    assert_same_result(nds1(s![999..1000]), rt23(s![999..1000].into()));
+    assert_same_result(nds1(s![-1000..]), rt23(s![-1000..].into()));
+    assert_same_result(nds1(s![..-1000]), rt23(s![..-1000].into()));
+    assert_same_result(nds1(s![-999..-1000]), rt23(s![-999..-1000].into()));
+    assert_same_result(nds1(s![3..0]), rt23(s![3..0].into()));
+    assert_same_result(nds1(s![-1..-2]), rt23(s![-1..-2].into()));
+
+    assert_same_result(nds1(s![..-3]), rt23(s![..-3].into()));
+    assert_same_result(nds1(s![..=-3]), rt23(s![..=-3].into()));
+    assert_same_result(nds1(s![-1..]), rt23(s![-1..].into()));
+    assert_same_result(nds1(s![-3..-1]), rt23(s![-3..-1].into()));
+    assert_same_result(nds1(s![-3..=-1]), rt23(s![-3..=-1].into()));
+    assert_same_result(nds1(s![-3..=-1]), rt23(s![-3..=-1].into()));
+    assert_same_result(nds1(s![-2..=-2]), rt23(s![-2..=-2].into()));
+    assert_same_result(nds1(s![1..-1]), rt23(s![1..-1].into()));
+
+    assert_same_result(nds1(s![..]), rt23((s![..]).into()));
+    assert_same_result(nds1(s![..3]), rt23((s![..3]).into()));
+    assert_same_result(nds1(s![..=3]), rt23((s![..=3]).into()));
+    assert_same_result(nds1(s![1..]), rt23((s![1..]).into()));
+    assert_same_result(nds1(s![1..3]), rt23((s![1..3]).into()));
+    assert_same_result(nds1(s![1..=3]), rt23((s![1..=3]).into()));
+    assert_same_result(nds1(s![2..=2]), rt23(s![2..=2].into()));
+
+    // !!!cmk 0 test -1..-2, it should be len 0 (I think)
+    Ok(())
+}

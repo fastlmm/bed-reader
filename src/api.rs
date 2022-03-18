@@ -887,31 +887,31 @@ pub struct RangeNdSlice {
     is_reversed: bool,
 }
 
+// https://www.geeksforgeeks.org/find-ceil-ab-without-using-ceil-function/
+fn div_ceil(a: usize, b: usize) -> usize {
+    (a + b - 1) / b
+}
+
 impl RangeNdSlice {
     fn len(&self) -> usize {
         if self.start > self.end {
-            panic!(
-                "cmk 0 index starts at {} but ends at {}",
-                self.start, self.end
-            );
+            0
         } else {
-            (self.end - self.start) / self.step + 1
+            div_ceil(self.end - self.start, self.step)
         }
     }
 
     // https://docs.rs/ndarray/0.15.4/ndarray/struct.ArrayBase.html#slicing
     fn to_vec(&self) -> Vec<usize> {
         if self.start > self.end {
-            panic!(
-                "cmk 0 index starts at {} but ends at {}",
-                self.start, self.end
-            );
+            Vec::new()
+        } else {
+            let mut vec: Vec<usize> = (self.start..self.end).step_by(self.step).collect();
+            if self.is_reversed {
+                vec.reverse();
+            }
+            vec
         }
-        let mut vec: Vec<usize> = (self.start..self.end).step_by(self.step).collect();
-        if self.is_reversed {
-            vec.reverse();
-        }
-        vec
     }
 
     fn new(nd_slice_info: &SliceInfo1, count: usize) -> Self {
@@ -939,36 +939,46 @@ impl RangeNdSlice {
                 // step size in elements; the default is 1, for every element.
                 // A range with step size. end is an exclusive index. Negative start or end indexes are counted from the back of the axis. If end is None, the slice extends to the end of the axis.
                 let step2: usize;
-                let is_reverse: bool;
+                let is_reverse2: bool;
                 if step > 0 {
                     step2 = step as usize;
-                    is_reverse = false;
+                    is_reverse2 = false;
                 } else if step < 0 {
                     step2 = (-step) as usize;
-                    is_reverse = true;
+                    is_reverse2 = true;
                 } else {
                     panic!("cmk 0 expect step size to be non-zero")
                 }
 
                 let start2 = if start >= 0 {
-                    start as usize
-                } else {
-                    let abs_start = (-start) as usize;
-                    if abs_start > count {
-                        panic!("cmk 0 expect start index to be in range")
+                    let start3 = start as usize;
+                    if start3 > count {
+                        panic!("cmk 0 expect start index to be no more than count")
+                    } else {
+                        start3
                     }
-                    count - abs_start
+                } else {
+                    let start3 = (-start) as usize;
+                    if start3 > count {
+                        panic!("cmk 0 expect start index to be no more than count")
+                    }
+                    count - start3
                 };
 
                 let end2 = if let Some(end) = end {
                     if end >= 0 {
-                        end as usize
-                    } else {
-                        let abs_end = (-end) as usize;
-                        if abs_end > count {
-                            panic!("cmk 0 expect end index to be in range")
+                        let end3 = end as usize;
+                        if end3 > count {
+                            panic!("cmk 0 expect end index to be no more than count")
+                        } else {
+                            end3
                         }
-                        count - abs_end
+                    } else {
+                        let end3 = (-end) as usize;
+                        if end3 > count {
+                            panic!("cmk 0 expect end index to be no more than count")
+                        }
+                        count - end3
                     }
                 } else {
                     count
@@ -978,7 +988,7 @@ impl RangeNdSlice {
                     start: start2,
                     end: end2,
                     step: step2,
-                    is_reversed: is_reverse,
+                    is_reversed: is_reverse2,
                 }
             }
             nd::SliceInfoElem::Index(index) => RangeNdSlice {
@@ -1121,6 +1131,13 @@ impl<const N: usize> From<[usize; N]> for Index {
 impl<const N: usize> From<&[usize; N]> for Index {
     fn from(array: &[usize; N]) -> Index {
         Index::Vec(array.to_vec())
+    }
+}
+
+// !!!cmk 0 can we replace this with an ArrayBase?
+impl From<&nd::ArrayView1<'_, usize>> for Index {
+    fn from(view: &nd::ArrayView1<usize>) -> Index {
+        Index::NDArray(view.to_owned())
     }
 }
 
