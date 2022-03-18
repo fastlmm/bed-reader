@@ -643,7 +643,6 @@ fn into_iter() -> Result<(), BedErrorPlus> {
     Ok(())
 }
 
-// !!!cmk 0 clean this up
 #[cfg(test)]
 fn rt1<R>(range_thing: R) -> Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>
 where
@@ -675,10 +674,8 @@ where
     }
 }
 
-// !!!cmk 0 clean this up
 #[cfg(test)]
 fn nds1(range_thing: SliceInfo1) -> Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus> {
-    println!("Running {:?}", &range_thing);
     let file_name = "bed_reader/tests/data/toydata.5chrom.bed";
 
     let result1 = catch_unwind(|| {
@@ -715,7 +712,6 @@ fn rt23(
 fn rt2(
     range_thing: crate::api::Index,
 ) -> Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus> {
-    println!("Running {:?}", &range_thing);
     let file_name = "bed_reader/tests/data/toydata.5chrom.bed";
 
     let result2 = catch_unwind(|| {
@@ -736,7 +732,6 @@ fn rt2(
 
 #[cfg(test)]
 fn rt3(range_thing: crate::api::Index) -> Result<Result<usize, BedErrorPlus>, BedErrorPlus> {
-    println!("Running {:?}", &range_thing);
     let file_name = "bed_reader/tests/data/toydata.5chrom.bed";
 
     let result3 = catch_unwind(|| {
@@ -797,7 +792,6 @@ fn assert_same_result(
     assert!(result1.shape()[0] == result3, "not same length");
 }
 
-// !!!cmk 0 Get these running. also, add tests for illegal ranges and backwards ranges
 #[test]
 fn range_same() -> Result<(), BedErrorPlus> {
     assert_same_result(rt1(3..0), rt23((3..0).into()));
@@ -813,7 +807,6 @@ fn range_same() -> Result<(), BedErrorPlus> {
     Ok(())
 }
 
-// !!!cmk 0 create similar tests for nd::slices
 #[test]
 fn nd_slice_same() -> Result<(), BedErrorPlus> {
     assert_same_result(nds1(s![1000..]), rt23(s![1000..].into()));
@@ -833,6 +826,7 @@ fn nd_slice_same() -> Result<(), BedErrorPlus> {
     assert_same_result(nds1(s![-3..=-1]), rt23(s![-3..=-1].into()));
     assert_same_result(nds1(s![-2..=-2]), rt23(s![-2..=-2].into()));
     assert_same_result(nds1(s![1..-1]), rt23(s![1..-1].into()));
+    assert_same_result(nds1(s![-1..-2]), rt23(s![-1..-2].into()));
 
     assert_same_result(nds1(s![..]), rt23((s![..]).into()));
     assert_same_result(nds1(s![..3]), rt23((s![..3]).into()));
@@ -841,7 +835,5 @@ fn nd_slice_same() -> Result<(), BedErrorPlus> {
     assert_same_result(nds1(s![1..3]), rt23((s![1..3]).into()));
     assert_same_result(nds1(s![1..=3]), rt23((s![1..=3]).into()));
     assert_same_result(nds1(s![2..=2]), rt23(s![2..=2].into()));
-
-    // !!!cmk 0 test -1..-2, it should be len 0 (I think)
     Ok(())
 }

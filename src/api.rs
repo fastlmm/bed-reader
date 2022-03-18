@@ -910,12 +910,13 @@ impl RangeNdSlice {
     fn new(nd_slice_info: &SliceInfo1, count: usize) -> Result<Self, BedErrorPlus> {
         //  self.to_vec(count).len(),
         // https://docs.rs/ndarray/0.15.4/ndarray/struct.ArrayBase.html#method.slice_collapse
-        // Panics in the following cases:
-        // if an index is out of bounds
-        // if a step size is zero
-        // !!! cmk 0 what about start after end?
-
-        // !! cmk 0 later
+        // Error in the following cases
+        // * SliceInfo is not a 1-dimensional or is a NewAxis
+        // * Step is 0
+        // * Start is greater than count
+        // * End is greater than count
+        // As with ndarray, Start can be greater than End is allowed
+        // and means the slice is empty.
         if nd_slice_info.in_ndim() != 1 || nd_slice_info.out_ndim() != 1 {
             return Err(BedError::NdSliceInfoNot1D.into());
         }
