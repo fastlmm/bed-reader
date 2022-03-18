@@ -118,6 +118,9 @@ pub enum BedError {
 
     #[error("Cannot use skipped metadata '{0}'")]
     CannotUseSkippedMetadata(String),
+
+    #[error("Index starts at {0} but ends at {1}")]
+    StartGreaterThanEnd(usize, usize),
 }
 
 // Trait alias

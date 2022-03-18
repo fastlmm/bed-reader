@@ -701,8 +701,8 @@ impl Bed {
         // !!! cmk later move this to read_options struct>
         let num_threads = compute_num_threads(read_options.num_threads)?;
 
-        let iid_index = read_options.iid_index.to_vec(iid_count);
-        let sid_index = read_options.sid_index.to_vec(sid_count);
+        let iid_index = read_options.iid_index.to_vec(iid_count)?;
+        let sid_index = read_options.sid_index.to_vec(sid_count)?;
 
         // !!!cmk later check that val has right (iid_index.len(), sid_index.len()), read_options.is_f);
 
@@ -730,8 +730,8 @@ impl Bed {
 
         let iid_count = self.iid_count()?;
         let sid_count = self.sid_count()?;
-        let iid_index = read_options.iid_index.to_vec(iid_count);
-        let sid_index = read_options.sid_index.to_vec(sid_count);
+        let iid_index = read_options.iid_index.to_vec(iid_count)?;
+        let sid_index = read_options.sid_index.to_vec(sid_count)?;
 
         read_no_alloc(
             &self.path,
@@ -785,43 +785,43 @@ impl Index {
     // We can't define a 'From' because we want to add count at the last moment.
     // Would be nice to not always allocate a new vec, maybe with Rc<[T]>?
     // Even better would be to support an iterator from Index (an enum with fields).
-    pub fn to_vec(&self, count: usize) -> Vec<usize> {
+    pub fn to_vec(&self, count: usize) -> Result<Vec<usize>, BedErrorPlus> {
         match self {
-            Index::All => (0..count).collect(),
-            Index::Vec(vec) => vec.to_vec(),
-            Index::NDArrayBool(nd_array_bool) => {
-                // !!!cmk later check that bool_index.len() == iid_count
-                nd_array_bool
+            Index::All => Ok((0..count).collect()),
+            Index::Vec(vec) => Ok(vec.to_vec()),
+            Index::NDArrayBool(nd_array_bool) =>
+            // !!!cmk later check that bool_index.len() == iid_count
+            {
+                Ok(nd_array_bool
                     .iter()
                     .enumerate()
                     .filter(|(_, b)| **b)
                     .map(|(i, _)| i)
-                    .collect()
+                    .collect())
             }
             // !!!cmk later can we implement this without two allocations?
-            Index::NDSliceInfo(nd_slice_info) => RangeNdSlice::new(nd_slice_info, count).to_vec(),
+            Index::NDSliceInfo(nd_slice_info) => {
+                Ok(RangeNdSlice::new(nd_slice_info, count).to_vec())
+            }
             Index::RangeAny(range_any) => {
                 let range = range_any.to_range(count);
                 if range.start > range.end {
-                    panic!(
-                        "cmk 0 index starts at {} but ends at {}",
-                        range.start, range.end
-                    );
+                    Err(BedError::StartGreaterThanEnd(range.start, range.end).into())
                 } else {
-                    range.collect::<Vec<usize>>()
+                    Ok(range.collect::<Vec<usize>>())
                 }
             }
-            Index::NDArray(nd_array) => nd_array.to_vec(),
-            Index::One(one) => vec![*one],
+            Index::NDArray(nd_array) => Ok(nd_array.to_vec()),
+            Index::One(one) => Ok(vec![*one]),
             Index::VecBool(vec_bool) => {
                 // !!!cmk later similar code elsewhere
                 // !!!cmk later check that vec_bool.len() == iid_count
-                vec_bool
+                Ok(vec_bool
                     .iter()
                     .enumerate()
                     .filter(|(_, b)| **b)
                     .map(|(i, _)| i)
-                    .collect()
+                    .collect())
             }
         }
     }
