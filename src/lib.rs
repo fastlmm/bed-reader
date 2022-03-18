@@ -121,6 +121,21 @@ pub enum BedError {
 
     #[error("Index starts at {0} but ends at {1}")]
     StartGreaterThanEnd(usize, usize),
+
+    #[error("Step of zero not allowed")]
+    StepZero,
+
+    #[error("Index starts at {0} but count is {1}")]
+    StartGreaterThanCount(usize, usize),
+
+    #[error("Index ends at {0} but count is {1}")]
+    EndGreaterThanCount(usize, usize),
+
+    #[error("Adding new axis not allowed")]
+    NewAxis,
+
+    #[error("Expect 1-D NDArray SliceInfo")]
+    NdSliceInfoNot1D,
 }
 
 // Trait alias

@@ -801,7 +801,7 @@ impl Index {
             }
             // !!!cmk later can we implement this without two allocations?
             Index::NDSliceInfo(nd_slice_info) => {
-                Ok(RangeNdSlice::new(nd_slice_info, count).to_vec())
+                Ok(RangeNdSlice::new(nd_slice_info, count)?.to_vec())
             }
             Index::RangeAny(range_any) => {
                 let range = range_any.to_range(count)?;
@@ -907,7 +907,7 @@ impl RangeNdSlice {
         }
     }
 
-    fn new(nd_slice_info: &SliceInfo1, count: usize) -> Self {
+    fn new(nd_slice_info: &SliceInfo1, count: usize) -> Result<Self, BedErrorPlus> {
         //  self.to_vec(count).len(),
         // https://docs.rs/ndarray/0.15.4/ndarray/struct.ArrayBase.html#method.slice_collapse
         // Panics in the following cases:
@@ -917,7 +917,7 @@ impl RangeNdSlice {
 
         // !! cmk 0 later
         if nd_slice_info.in_ndim() != 1 || nd_slice_info.out_ndim() != 1 {
-            panic!("cmk 0 expect 1d slices")
+            return Err(BedError::NdSliceInfoNot1D.into());
         }
 
         let slice_info_elem = nd_slice_info[0];
@@ -940,20 +940,20 @@ impl RangeNdSlice {
                     step2 = (-step) as usize;
                     is_reverse2 = true;
                 } else {
-                    panic!("cmk 0 expect step size to be non-zero")
+                    return Err(BedError::StepZero.into());
                 }
 
                 let start2 = if start >= 0 {
                     let start3 = start as usize;
                     if start3 > count {
-                        panic!("cmk 0 expect start index to be no more than count")
+                        return Err(BedError::StartGreaterThanCount(start3, count).into());
                     } else {
                         start3
                     }
                 } else {
                     let start3 = (-start) as usize;
                     if start3 > count {
-                        panic!("cmk 0 expect start index to be no more than count")
+                        return Err(BedError::StartGreaterThanCount(start3, count).into());
                     }
                     count - start3
                 };
@@ -962,14 +962,14 @@ impl RangeNdSlice {
                     if end >= 0 {
                         let end3 = end as usize;
                         if end3 > count {
-                            panic!("cmk 0 expect end index to be no more than count")
+                            return Err(BedError::EndGreaterThanCount(end3, count).into());
                         } else {
                             end3
                         }
                     } else {
                         let end3 = (-end) as usize;
                         if end3 > count {
-                            panic!("cmk 0 expect end index to be no more than count")
+                            return Err(BedError::EndGreaterThanCount(end3, count).into());
                         }
                         count - end3
                     }
@@ -977,21 +977,21 @@ impl RangeNdSlice {
                     count
                 };
 
-                RangeNdSlice {
+                Ok(RangeNdSlice {
                     start: start2,
                     end: end2,
                     step: step2,
                     is_reversed: is_reverse2,
-                }
+                })
             }
-            nd::SliceInfoElem::Index(index) => RangeNdSlice {
+            nd::SliceInfoElem::Index(index) => Ok(RangeNdSlice {
                 start: index as usize,
                 end: index as usize + 1,
                 step: 1,
                 is_reversed: false,
-            },
+            }),
             nd::SliceInfoElem::NewAxis => {
-                panic!("cmk 0 later expect slice or index")
+                return Err(BedError::NewAxis.into());
             }
         }
     }
@@ -1007,7 +1007,7 @@ impl Index {
             Index::NDArray(nd_array) => Ok(nd_array.len()),
             Index::VecBool(vec_bool) => Ok(vec_bool.iter().filter(|&b| *b).count()),
             Index::NDArrayBool(nd_array_bool) => Ok(nd_array_bool.iter().filter(|&b| *b).count()),
-            Index::NDSliceInfo(nd_slice_info) => Ok(RangeNdSlice::new(nd_slice_info, count).len()),
+            Index::NDSliceInfo(nd_slice_info) => Ok(RangeNdSlice::new(nd_slice_info, count)?.len()),
             Index::RangeAny(range_any) => range_any.len(count),
         }
     }
