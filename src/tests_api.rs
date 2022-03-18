@@ -741,7 +741,7 @@ fn rt3(range_thing: crate::api::Index) -> Result<Result<usize, BedErrorPlus>, Be
 
     let result3 = catch_unwind(|| {
         let mut bed = Bed::new(file_name).unwrap();
-        range_thing.clone().len(bed.iid_count().unwrap())
+        range_thing.clone().len(bed.iid_count().unwrap()).unwrap()
     });
     if result3.is_err() {
         return Err(BedError::PanickedThread().into());
@@ -749,6 +749,14 @@ fn rt3(range_thing: crate::api::Index) -> Result<Result<usize, BedErrorPlus>, Be
     match result3 {
         Err(_) => Err(BedError::PanickedThread().into()),
         Ok(bed_result) => Ok(Ok(bed_result)),
+    }
+}
+
+#[cfg(test)]
+fn is_err2<T>(result_result: &Result<Result<T, BedErrorPlus>, BedErrorPlus>) -> bool {
+    match result_result {
+        Ok(Ok(_)) => false,
+        _ => true,
     }
 }
 
@@ -762,31 +770,23 @@ fn assert_same_result(
 ) {
     let result2 = result23.0;
     let result3 = result23.1;
-    if result1.is_err() || result2.is_err() || result3.is_err() {
-        if result1.is_err() != result2.is_err() || result1.is_err() != result3.is_err() {
+    let err1 = is_err2(&result1);
+    let err2 = is_err2(&result2);
+    let err3 = is_err2(&result3);
+
+    if err1 || err2 || err3 {
+        if !err1 || !err2 || !err3 {
             println!("{:?}", result1);
             println!("{:?}", result2);
             println!("{:?}", result3);
-            panic!("both should panic the same");
-        }
-        return;
-    }
-    let result1: Result<nd::Array2<i8>, BedErrorPlus> = result1.unwrap();
-    let result2: Result<nd::Array2<i8>, BedErrorPlus> = result2.unwrap();
-    let result3: Result<usize, BedErrorPlus> = result3.unwrap();
-    if result1.is_err() || result2.is_err() || result3.is_err() {
-        if result1.is_err() != result2.is_err() || result1.is_err() != result3.is_err() {
-            println!("{:?}", result1);
-            println!("{:?}", result2);
-            println!("{:?}", result3);
-            assert!(result2.is_err(), "both should error the same");
+            panic!("all should panic/error the same");
         }
         return;
     }
 
-    let result1 = result1.unwrap();
-    let result2 = result2.unwrap();
-    let result3 = result3.unwrap();
+    let result1 = result1.unwrap().unwrap();
+    let result2 = result2.unwrap().unwrap();
+    let result3 = result3.unwrap().unwrap();
     println!("{:?}", result1);
     println!("{:?}", result2);
     println!("{:?}", result3);

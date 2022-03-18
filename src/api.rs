@@ -754,8 +754,8 @@ impl Bed {
     ) -> Result<nd::Array2<TVal>, BedErrorPlus> {
         let iid_count_in = self.iid_count()?;
         let sid_count_in = self.sid_count()?;
-        let iid_count_out = read_options.iid_index.len(iid_count_in);
-        let sid_count_out = read_options.sid_index.len(sid_count_in);
+        let iid_count_out = read_options.iid_index.len(iid_count_in)?;
+        let sid_count_out = read_options.sid_index.len(sid_count_in)?;
         let shape = ShapeBuilder::set_f((iid_count_out, sid_count_out), read_options.is_f);
         let mut val = nd::Array2::<TVal>::default(shape);
 
@@ -804,12 +804,8 @@ impl Index {
                 Ok(RangeNdSlice::new(nd_slice_info, count).to_vec())
             }
             Index::RangeAny(range_any) => {
-                let range = range_any.to_range(count);
-                if range.start > range.end {
-                    Err(BedError::StartGreaterThanEnd(range.start, range.end).into())
-                } else {
-                    Ok(range.collect::<Vec<usize>>())
-                }
+                let range = range_any.to_range(count)?;
+                Ok(range.collect::<Vec<usize>>())
             }
             Index::NDArray(nd_array) => Ok(nd_array.to_vec()),
             Index::One(one) => Ok(vec![*one]),
@@ -853,29 +849,26 @@ pub struct RangeAny {
 
 impl RangeAny {
     // https://stackoverflow.com/questions/55925523/array-cannot-be-indexed-by-rangefull
-    fn to_range(&self, count: usize) -> Range<usize> {
+    fn to_range(&self, count: usize) -> Result<Range<usize>, BedErrorPlus> {
         let start = if let Some(start) = self.start {
             start
         } else {
             0
         };
         let end = if let Some(end) = self.end { end } else { count };
-        Range {
-            start: start,
-            end: end,
+        if start > end {
+            Err(BedError::StartGreaterThanEnd(start, end).into())
+        } else {
+            Ok(Range {
+                start: start,
+                end: end,
+            })
         }
     }
 
-    fn len(&self, count: usize) -> usize {
-        let range = self.to_range(count);
-        if range.start > range.end {
-            panic!(
-                "cmk 0 index starts at {} but ends at {}",
-                range.start, range.end
-            );
-        } else {
-            range.end - range.start
-        }
+    fn len(&self, count: usize) -> Result<usize, BedErrorPlus> {
+        let range = self.to_range(count)?;
+        Ok(range.end - range.start)
     }
 }
 
@@ -1006,15 +999,15 @@ impl RangeNdSlice {
 
 // !!! cmk later test this syntax for ranges:  ..=3 .., etc
 impl Index {
-    pub fn len(&self, count: usize) -> usize {
+    pub fn len(&self, count: usize) -> Result<usize, BedErrorPlus> {
         match self {
-            Index::All => count,
-            Index::One(_) => 1,
-            Index::Vec(vec) => vec.len(),
-            Index::NDArray(nd_array) => nd_array.len(),
-            Index::VecBool(vec_bool) => vec_bool.iter().filter(|&b| *b).count(),
-            Index::NDArrayBool(nd_array_bool) => nd_array_bool.iter().filter(|&b| *b).count(),
-            Index::NDSliceInfo(nd_slice_info) => RangeNdSlice::new(nd_slice_info, count).len(),
+            Index::All => Ok(count),
+            Index::One(_) => Ok(1),
+            Index::Vec(vec) => Ok(vec.len()),
+            Index::NDArray(nd_array) => Ok(nd_array.len()),
+            Index::VecBool(vec_bool) => Ok(vec_bool.iter().filter(|&b| *b).count()),
+            Index::NDArrayBool(nd_array_bool) => Ok(nd_array_bool.iter().filter(|&b| *b).count()),
+            Index::NDSliceInfo(nd_slice_info) => Ok(RangeNdSlice::new(nd_slice_info, count).len()),
             Index::RangeAny(range_any) => range_any.len(count),
         }
     }
