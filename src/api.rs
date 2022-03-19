@@ -9,6 +9,26 @@
 
 // !!!cmk later document and add issue that File(s) are not held, incorrectly allowing for the file to be changed between reads.
 
+// !!!cmk 0 Notes on a function that accepts BaseArray and/or any iterable
+
+// // https://stackoverflow.com/questions/38183551/concisely-initializing-a-vector-of-strings
+// // https://stackoverflow.com/questions/65250496/how-to-convert-intoiteratoritem-asrefstr-to-iteratoritem-str-in-rust
+// pub fn fid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, fid: I) -> Self {
+//     self.fid = Some(LazyOrSkip::Some(
+//         fid.into_iter().map(|s| s.as_ref().to_string()).collect(),
+//     ));
+//     self
+// }
+
+// pub fn write_val<S, TVal>(
+//     val: &nd::ArrayBase<S, nd::Ix2>,
+//     missing: TVal,
+// ) -> Result<(), BedErrorPlus>
+// where
+//     S: nd::Data<Elem = TVal>,
+//     TVal: BedVal,
+// {
+
 use core::fmt::Debug;
 use nd::ShapeBuilder;
 use ndarray as nd;
@@ -807,7 +827,7 @@ impl Index {
                 let range = range_any.to_range(count)?;
                 Ok(range.collect::<Vec<usize>>())
             }
-            Index::NDArray(nd_array) => Ok(nd_array.to_vec()),
+            // !!! cmk 0 Index::NDArray(nd_array) => Ok(nd_array.to_vec()),
             Index::One(one) => Ok(vec![*one]),
             Index::VecBool(vec_bool) => {
                 // !!!cmk later similar code elsewhere
@@ -834,7 +854,7 @@ pub enum Index {
     All,
     One(usize),
     Vec(Vec<usize>),
-    NDArray(nd::Array1<usize>),
+    // !!!cmk 0 NDArray(nd::Array1<usize>),
     VecBool(Vec<bool>),
     NDArrayBool(nd::Array1<bool>),
     NDSliceInfo(SliceInfo1),
@@ -1005,7 +1025,7 @@ impl Index {
             Index::All => Ok(count),
             Index::One(_) => Ok(1),
             Index::Vec(vec) => Ok(vec.len()),
-            Index::NDArray(nd_array) => Ok(nd_array.len()),
+            // !!!cmk 0 Index::NDArray(nd_array) => Ok(nd_array.len()),
             Index::VecBool(vec_bool) => Ok(vec_bool.iter().filter(|&b| *b).count()),
             Index::NDArrayBool(nd_array_bool) => Ok(nd_array_bool.iter().filter(|&b| *b).count()),
             Index::NDSliceInfo(nd_slice_info) => Ok(RangeNdSlice::new(nd_slice_info, count)?.len()),
@@ -1044,6 +1064,7 @@ impl From<RangeFull> for RangeAny {
     }
 }
 
+// !!!cmk 0
 impl From<RangeFull> for Index {
     fn from(range_thing: RangeFull) -> Index {
         Index::RangeAny(range_thing.into())
@@ -1128,10 +1149,17 @@ impl<const N: usize> From<&[usize; N]> for Index {
     }
 }
 
+// impl<I: IntoIterator<Item = usize>> From<I> for Index {
+//     fn from(iter: I) -> Index {
+//         Index::Vec(iter.into_iter().collect())
+//     }
+// }
+
 // !!!cmk 0 can we replace this with an ArrayBase?
-impl From<&nd::ArrayView1<'_, usize>> for Index {
-    fn from(view: &nd::ArrayView1<usize>) -> Index {
-        Index::NDArray(view.to_owned())
+impl<S: nd::Data<Elem = usize>> From<&nd::ArrayBase<S, nd::Ix1>> for Index {
+    fn from(view: &nd::ArrayBase<S, nd::Ix1>) -> Index {
+        let vec = view.iter().map(|i| *i).collect();
+        Index::Vec(vec)
     }
 }
 
@@ -1153,11 +1181,13 @@ impl From<Vec<usize>> for Index {
         Index::Vec(vec)
     }
 }
-impl From<nd::Array1<usize>> for Index {
-    fn from(nd_array: nd::Array1<usize>) -> Index {
-        Index::NDArray(nd_array)
-    }
-}
+
+// !!!cmk 0
+// impl From<nd::Array1<usize>> for Index {
+//     fn from(nd_array: nd::Array1<usize>) -> Index {
+//         Index::NDArray(nd_array)
+//     }
+// }
 
 impl From<nd::Array1<bool>> for Index {
     fn from(nd_array_bool: nd::Array1<bool>) -> Index {
