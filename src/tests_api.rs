@@ -643,7 +643,6 @@ fn into_iter() -> Result<(), BedErrorPlus> {
     Ok(())
 }
 
-// !!!cmk 0 clean this up
 #[cfg(test)]
 fn rt1<R>(range_thing: R) -> Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>
 where
@@ -675,7 +674,6 @@ where
     }
 }
 
-// !!!cmk 0 clean this up
 #[cfg(test)]
 fn nds1(range_thing: SliceInfo1) -> Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus> {
     println!("Running {:?}", &range_thing);
@@ -687,7 +685,6 @@ fn nds1(range_thing: SliceInfo1) -> Result<Result<nd::Array2<i8>, BedErrorPlus>,
         let mut bed = Bed::new(file_name).unwrap();
         let iid_index = &all.slice(&range_thing);
         ReadOptions::builder()
-            // !!!cmk 0 fix index so it can take nd array OR view OR Cow etc
             .iid_index(iid_index)
             .i8()
             .read(&mut bed)
@@ -797,7 +794,6 @@ fn assert_same_result(
     assert!(result1.shape()[0] == result3, "not same length");
 }
 
-// !!!cmk 0 Get these running. also, add tests for illegal ranges and backwards ranges
 #[test]
 fn range_same() -> Result<(), BedErrorPlus> {
     assert_same_result(rt1(3..0), rt23((3..0).into()));
@@ -813,7 +809,6 @@ fn range_same() -> Result<(), BedErrorPlus> {
     Ok(())
 }
 
-// !!!cmk 0 create similar tests for nd::slices
 #[test]
 fn nd_slice_same() -> Result<(), BedErrorPlus> {
     assert_same_result(nds1(s![1000..]), rt23(s![1000..].into()));
@@ -842,6 +837,5 @@ fn nd_slice_same() -> Result<(), BedErrorPlus> {
     assert_same_result(nds1(s![1..=3]), rt23((s![1..=3]).into()));
     assert_same_result(nds1(s![2..=2]), rt23(s![2..=2].into()));
 
-    // !!!cmk 0 test -1..-2, it should be len 0 (I think)
     Ok(())
 }
