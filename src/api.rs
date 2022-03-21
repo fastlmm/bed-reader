@@ -146,19 +146,15 @@ pub struct Bed {
     #[builder(setter(custom))]
     #[builder(default = "LazyOrSkip::Lazy")]
     allele_2: LazyOrSkip<nd::Array1<String>>,
-    #[builder(private)]
-    fam_file: PathBuf,
-
-    #[builder(private)]
-    bim_file: PathBuf,
 }
 
 impl BedBuilder {
     pub fn new<P: AsRef<Path>>(path: P) -> Self {
         let path: PathBuf = path.as_ref().into();
 
-        let fam_file = to_metadata_path(&path, &None, "fam");
-        let bim_file = to_metadata_path(&path, &None, "bim");
+        // !!!cmk 0
+        // let fam_file = to_metadata_path(&path, &None, "fam");
+        // let bim_file = to_metadata_path(&path, &None, "bim");
 
         Self {
             path: Some(path),
@@ -182,17 +178,11 @@ impl BedBuilder {
             bp_position: None,
             allele_1: None,
             allele_2: None,
-            // !!!cmk 0 give better name
-            fam_file: Some(fam_file),
-            bim_file: Some(bim_file),
         }
     }
 
     pub fn build(&self) -> Result<Bed, BedErrorPlus> {
-        let mut bed = self.build_no_file_check()?;
-
-        bed.fam_file = to_metadata_path(&bed.path, &bed.fam_path, "fam");
-        bed.bim_file = to_metadata_path(&bed.path, &bed.bim_path, "bim");
+        let bed = self.build_no_file_check()?;
 
         if bed.is_checked_early {
             // !!!cmk 0 similar code elsewhere
@@ -404,31 +394,32 @@ impl Bed {
     }
 
     // !!! cmk 0
-    // pub fn fam_path(&mut self) -> Result<PathBuf, BedErrorPlus> {
-    //     if let Some(path) = &self.fam_path {
-    //         Ok(path.clone())
-    //     } else {
-    //         let path = to_metadata_path(&self.path, &self.fam_path, "fam");
-    //         self.fam_path = Some(path.clone());
-    //         Ok(path)
-    //     }
-    // }
+    pub fn fam_path(&mut self) -> Result<PathBuf, BedErrorPlus> {
+        if let Some(path) = &self.fam_path {
+            Ok(path.clone())
+        } else {
+            let path = to_metadata_path(&self.path, &self.fam_path, "fam");
+            self.fam_path = Some(path.clone());
+            Ok(path)
+        }
+    }
 
-    // pub fn bim_path(&mut self) -> Result<PathBuf, BedErrorPlus> {
-    //     if let Some(path) = &self.bim_path {
-    //         Ok(path.clone())
-    //     } else {
-    //         let path = to_metadata_path(&self.path, &self.bim_path, "bim");
-    //         self.bim_path = Some(path.clone());
-    //         Ok(path)
-    //     }
-    // }
+    pub fn bim_path(&mut self) -> Result<PathBuf, BedErrorPlus> {
+        if let Some(path) = &self.bim_path {
+            Ok(path.clone())
+        } else {
+            let path = to_metadata_path(&self.path, &self.bim_path, "bim");
+            self.bim_path = Some(path.clone());
+            Ok(path)
+        }
+    }
 
     pub fn iid_count(&mut self) -> Result<usize, BedErrorPlus> {
         if let Some(iid_count) = self.iid_count {
             Ok(iid_count)
         } else {
-            let iid_count = count_lines(&self.fam_file)?;
+            let fam_path = self.fam_path()?;
+            let iid_count = count_lines(fam_path)?;
             self.iid_count = Some(iid_count);
             Ok(iid_count)
         }
@@ -437,7 +428,8 @@ impl Bed {
         if let Some(sid_count) = self.sid_count {
             Ok(sid_count)
         } else {
-            let sid_count = count_lines(&self.bim_file)?;
+            let bim_path = self.bim_path()?;
+            let sid_count = count_lines(bim_path)?;
             self.sid_count = Some(sid_count);
             Ok(sid_count)
         }
@@ -486,7 +478,8 @@ impl Bed {
             field_vec.push(5);
         }
 
-        let mut vec_of_vec = self.read_fam_or_bim(&field_vec, &self.fam_file)?;
+        let fam_path = self.fam_path()?;
+        let mut vec_of_vec = self.read_fam_or_bim(&field_vec, &fam_path)?;
 
         // unwraps are safe because we pop once for every push
         if self.pheno.is_lazy() {
@@ -536,7 +529,8 @@ impl Bed {
             field_vec.push(5);
         }
 
-        let mut vec_of_vec = self.read_fam_or_bim(&field_vec, &self.bim_file)?;
+        let bim_path = self.bim_path()?;
+        let mut vec_of_vec = self.read_fam_or_bim(&field_vec, &bim_path)?;
 
         // unwraps are safe because we pop once for every push
         if self.allele_2.is_lazy() {
