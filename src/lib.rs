@@ -136,6 +136,9 @@ pub enum BedError {
 
     #[error("Expect 1-D NDArray SliceInfo")]
     NdSliceInfoNot1D,
+
+    #[error("Expect {0} fields but find only {1} in '{2}'")]
+    FamBamFieldCount(usize, usize, String),
 }
 
 // Trait alias

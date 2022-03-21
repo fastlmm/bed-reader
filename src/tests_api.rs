@@ -843,6 +843,15 @@ fn nd_slice_same() -> Result<(), BedErrorPlus> {
 #[test]
 fn counts_and_files() -> Result<(), BedErrorPlus> {
     let file_name = "bed_reader/tests/data/small.bed";
+
+    let mut bed = Bed::builder(file_name)
+        .bim_path("bed_reader/tests/data/small.bad_bim")
+        .build()?;
+    match bed.sid() {
+        Err(BedErrorPlus::BedError(BedError::FamBamFieldCount(_, _, _))) => {}
+        _ => panic!("should be an error"),
+    }
+
     let mut bed = Bed::builder(file_name).iid_count(4).build()?;
     assert_eq!(bed.iid_count()?, 4);
     // !!!cmk 0 the real answer is 3, but the test is 4 so this should give an error

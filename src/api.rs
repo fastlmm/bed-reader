@@ -17,7 +17,7 @@ use std::ops::{Bound, Range, RangeBounds, RangeFrom, RangeInclusive, RangeTo, Ra
 use std::{
     env,
     fs::File,
-    io::{BufRead, BufReader, BufWriter, Read},
+    io::{BufRead, BufReader, BufWriter},
     ops::RangeFull,
     path::{Path, PathBuf},
 };
@@ -27,7 +27,6 @@ use derive_builder::Builder;
 
 use crate::{
     count_lines, open_and_check, read_no_alloc, write_val, BedError, BedErrorPlus, BedVal,
-    BED_FILE_MAGIC1, BED_FILE_MAGIC2, CB_HEADER_USIZE,
 };
 
 #[derive(Debug, Clone)]
@@ -574,6 +573,13 @@ impl Bed {
                     vec_of_vec[ii].push(field.to_string());
                     ii += 1;
                 }
+            }
+            if ii != 6 {
+                return Err(BedErrorPlus::BedError(BedError::FamBamFieldCount(
+                    6,
+                    ii,
+                    path_buf.to_str().unwrap().to_string(),
+                )));
             }
         }
 
