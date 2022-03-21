@@ -82,7 +82,7 @@ fn reference_val_i8(is_a1_counted: bool) -> nd::Array2<i8> {
 fn read_test() {
     let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
     let mut bed = Bed::new(file).unwrap();
-    // !!! cmk later define dim and/or shape see https://docs.rs/ndarray/latest/ndarray/struct.ArrayBase.html#method.dim
+    // !!! cmk 0 define dim and/or shape see https://docs.rs/ndarray/latest/ndarray/struct.ArrayBase.html#method.dim
     assert!(bed.iid_count().unwrap() == 10);
     assert!(bed.sid_count().unwrap() == 100);
     let val: nd::Array2<i8> = bed.read().unwrap();

@@ -52,35 +52,6 @@ pub enum Skippable<T> {
     Skip,
 }
 
-// !!! cmk later these don't seem to be used
-// impl<T> Skippable<T> {
-//     pub fn unwrap(self) -> T {
-//         match self {
-//             Skippable::Some(some) => some,
-//             Skippable::Skip => {
-//                 todo!("Skippable::Skip")
-//             }
-//         }
-//     }
-// }
-
-// impl<T> LazyOrSkip<T> {
-//     pub const fn as_ref(&self) -> LazyOrSkip<&T> {
-//         match *self {
-//             LazyOrSkip::Some(ref x) => LazyOrSkip::Some(x),
-//             LazyOrSkip::Lazy => LazyOrSkip::Lazy,
-//             LazyOrSkip::Skip => LazyOrSkip::Skip,
-//         }
-//     }
-//     pub fn unwrap(self) -> T {
-//         match self {
-//             LazyOrSkip::Some(val) => val,
-//             LazyOrSkip::Lazy => panic!("called `LazyOrSkip::::unwrap()` on a `Lazy` value"),
-//             LazyOrSkip::Skip => panic!("called `LazyOrSkip::::unwrap()` on a `Skip` value"),
-//         }
-//     }
-// }
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct Metadata<'a> {
     pub fid: Skippable<&'a nd::Array1<String>>,
@@ -175,7 +146,6 @@ pub struct Bed {
     #[builder(setter(custom))]
     #[builder(default = "LazyOrSkip::Lazy")]
     allele_2: LazyOrSkip<nd::Array1<String>>,
-
     #[builder(private)]
     fam_file: PathBuf,
 
@@ -212,8 +182,7 @@ impl BedBuilder {
             bp_position: None,
             allele_1: None,
             allele_2: None,
-
-            // !!!cmk later give better name
+            // !!!cmk 0 give better name
             fam_file: Some(fam_file),
             bim_file: Some(bim_file),
         }
@@ -226,7 +195,7 @@ impl BedBuilder {
         bed.bim_file = to_metadata_path(&bed.path, &bed.bim_path, "bim");
 
         if bed.is_checked_early {
-            // !!!cmk later similar code elsewhere
+            // !!!cmk 0 similar code elsewhere
             let mut buf_reader = BufReader::new(File::open(&bed.path)?);
             let mut bytes_vector: Vec<u8> = vec![0; CB_HEADER_USIZE];
             buf_reader.read_exact(&mut bytes_vector)?;
@@ -434,6 +403,27 @@ impl Bed {
         Bed::builder(path).build()
     }
 
+    // !!! cmk 0
+    // pub fn fam_path(&mut self) -> Result<PathBuf, BedErrorPlus> {
+    //     if let Some(path) = &self.fam_path {
+    //         Ok(path.clone())
+    //     } else {
+    //         let path = to_metadata_path(&self.path, &self.fam_path, "fam");
+    //         self.fam_path = Some(path.clone());
+    //         Ok(path)
+    //     }
+    // }
+
+    // pub fn bim_path(&mut self) -> Result<PathBuf, BedErrorPlus> {
+    //     if let Some(path) = &self.bim_path {
+    //         Ok(path.clone())
+    //     } else {
+    //         let path = to_metadata_path(&self.path, &self.bim_path, "bim");
+    //         self.bim_path = Some(path.clone());
+    //         Ok(path)
+    //     }
+    // }
+
     pub fn iid_count(&mut self) -> Result<usize, BedErrorPlus> {
         if let Some(iid_count) = self.iid_count {
             Ok(iid_count)
@@ -595,7 +585,7 @@ impl Bed {
         for line in reader.lines() {
             let line = line?;
             let field = line.split_whitespace();
-            // !!!cmk later assert if not enough fields
+            // !!!cmk 0 assert if not enough fields
 
             let mut ii = 0;
             for (i, field) in field.enumerate() {
@@ -698,13 +688,13 @@ impl Bed {
         let iid_count = self.iid_count()?;
         let sid_count = self.sid_count()?;
 
-        // !!! cmk later move this to read_options struct>
+        // !!! cmk 0 move this to read_options struct>
         let num_threads = compute_num_threads(read_options.num_threads)?;
 
         let iid_index = read_options.iid_index.to_vec(iid_count)?;
         let sid_index = read_options.sid_index.to_vec(sid_count)?;
 
-        // !!!cmk later check that val has right (iid_index.len(), sid_index.len()), read_options.is_f);
+        // !!!cmk 0 check that val has right (iid_index.len(), sid_index.len()), read_options.is_f);
 
         read_no_alloc(
             &self.path,
@@ -790,7 +780,7 @@ impl Index {
             Index::All => Ok((0..count).collect()),
             Index::Vec(vec) => Ok(vec.to_vec()),
             Index::NDArrayBool(nd_array_bool) =>
-            // !!!cmk later check that bool_index.len() == iid_count
+            // !!!cmk 0 check that bool_index.len() == iid_count
             {
                 Ok(nd_array_bool
                     .iter()
@@ -810,8 +800,8 @@ impl Index {
             Index::NDArray(nd_array) => Ok(nd_array.to_vec()),
             Index::One(one) => Ok(vec![*one]),
             Index::VecBool(vec_bool) => {
-                // !!!cmk later similar code elsewhere
-                // !!!cmk later check that vec_bool.len() == iid_count
+                // !!!cmk 0 similar code elsewhere
+                // !!!cmk 0 check that vec_bool.len() == iid_count
                 Ok(vec_bool
                     .iter()
                     .enumerate()
@@ -998,7 +988,6 @@ impl RangeNdSlice {
     }
 }
 
-// !!! cmk later test this syntax for ranges:  ..=3 .., etc
 impl Index {
     pub fn len(&self, count: usize) -> Result<usize, BedErrorPlus> {
         match self {
@@ -1640,7 +1629,7 @@ pub fn write<S: nd::Data<Elem = TVal>, TVal: BedVal>(
     WriteOptions::builder(path).write(val)
 }
 
-// !!!cmk later rename
+// !!!cmk 0 rename
 // !!!cmk later do this without a "clone"
 fn compute_field<T, F>(field: &Skippable<nd::Array1<T>>, count: usize, lambda: F) -> nd::Array1<T>
 where
@@ -1665,7 +1654,7 @@ where
     let shape = val.shape();
     let iid_count = shape[0];
     let sid_count = shape[1];
-    // !!!cmk later if something goes wrong, clean up the files?
+    // !!!cmk 0 if something goes wrong, clean up the files?
     let path = &write_options.path;
 
     let num_threads = compute_num_threads(write_options.num_threads)?;
