@@ -26,8 +26,8 @@ use derive_builder::Builder;
 // !!! might want to use this instead use typed_builder::TypedBuilder;
 
 use crate::{
-    count_lines, read_no_alloc, write_val, BedError, BedErrorPlus, BedVal, BED_FILE_MAGIC1,
-    BED_FILE_MAGIC2, CB_HEADER_USIZE,
+    count_lines, open_and_check, read_no_alloc, write_val, BedError, BedErrorPlus, BedVal,
+    BED_FILE_MAGIC1, BED_FILE_MAGIC2, CB_HEADER_USIZE,
 };
 
 #[derive(Debug, Clone)]
@@ -152,10 +152,6 @@ impl BedBuilder {
     pub fn new<P: AsRef<Path>>(path: P) -> Self {
         let path: PathBuf = path.as_ref().into();
 
-        // !!!cmk 0
-        // let fam_file = to_metadata_path(&path, &None, "fam");
-        // let bim_file = to_metadata_path(&path, &None, "bim");
-
         Self {
             path: Some(path),
             fam_path: None,
@@ -185,15 +181,7 @@ impl BedBuilder {
         let bed = self.build_no_file_check()?;
 
         if bed.is_checked_early {
-            // !!!cmk 0 similar code elsewhere
-            let mut buf_reader = BufReader::new(File::open(&bed.path)?);
-            let mut bytes_vector: Vec<u8> = vec![0; CB_HEADER_USIZE];
-            buf_reader.read_exact(&mut bytes_vector)?;
-            if (BED_FILE_MAGIC1 != bytes_vector[0]) || (BED_FILE_MAGIC2 != bytes_vector[1]) {
-                return Err(
-                    BedError::IllFormed(PathBuf::from(&bed.path).display().to_string()).into(),
-                );
-            }
+            open_and_check(&bed.path)?;
         }
 
         Ok(bed)
@@ -393,7 +381,6 @@ impl Bed {
         Bed::builder(path).build()
     }
 
-    // !!! cmk 0
     pub fn fam_path(&mut self) -> Result<PathBuf, BedErrorPlus> {
         if let Some(path) = &self.fam_path {
             Ok(path.clone())

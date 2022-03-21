@@ -168,12 +168,8 @@ fn read_no_alloc<TVal: BedVal, P: AsRef<Path>>(
     let path_buf = PathBuf::from(path.as_ref());
 
     create_pool(num_threads)?.install(|| {
-        let mut buf_reader = BufReader::new(File::open(&path_buf)?);
-        let mut bytes_vector: Vec<u8> = vec![0; CB_HEADER_USIZE];
-        buf_reader.read_exact(&mut bytes_vector)?;
-        if (BED_FILE_MAGIC1 != bytes_vector[0]) || (BED_FILE_MAGIC2 != bytes_vector[1]) {
-            return Err(BedError::IllFormed(path_buf.display().to_string()).into());
-        }
+        let (buf_reader, bytes_vector) = open_and_check(&path_buf)?;
+
         match bytes_vector[2] {
             0 => {
                 // We swap 'iid' and 'sid' and then reverse the axes.
@@ -205,6 +201,16 @@ fn read_no_alloc<TVal: BedVal, P: AsRef<Path>>(
         }
     })?;
     Ok(())
+}
+
+fn open_and_check(path_buf: &PathBuf) -> Result<(BufReader<File>, Vec<u8>), BedErrorPlus> {
+    let mut buf_reader = BufReader::new(File::open(path_buf)?);
+    let mut bytes_vector: Vec<u8> = vec![0; CB_HEADER_USIZE];
+    buf_reader.read_exact(&mut bytes_vector)?;
+    if (BED_FILE_MAGIC1 != bytes_vector[0]) || (BED_FILE_MAGIC2 != bytes_vector[1]) {
+        return Err(BedError::IllFormed(path_buf.display().to_string()).into());
+    }
+    Ok((buf_reader, bytes_vector))
 }
 
 trait Max {
