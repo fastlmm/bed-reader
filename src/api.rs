@@ -654,19 +654,22 @@ impl Bed {
             count += 1;
             let field = line.split_whitespace();
 
-            let mut ii = 0;
-            for (i, field) in field.enumerate() {
-                if field_vec.contains(&i) {
-                    vec_of_vec[ii].push(field.to_string());
-                    ii += 1;
+            let mut field_count = 0;
+            let mut of_interest_count = 0;
+            for field in field {
+                if field_vec.contains(&field_count) {
+                    vec_of_vec[of_interest_count].push(field.to_string());
+                    of_interest_count += 1;
                 }
+                field_count += 1;
             }
-            if ii != 6 {
-                return Err(BedErrorPlus::BedError(BedError::FamBamFieldCount(
+            if field_count != 6 {
+                return Err(BedError::FamBamFieldCount(
                     6,
-                    ii,
+                    field_count,
                     path_buf.to_str().unwrap().to_string(),
-                )));
+                )
+                .into());
             }
         }
 

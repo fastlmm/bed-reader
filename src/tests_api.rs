@@ -886,15 +886,14 @@ fn counts_and_files() -> Result<(), BedErrorPlus> {
     let _ = bed.iid()?;
     let _ = bed.iid_count()?;
 
-    // !!!cmk 0 you can set the *_count with iid, etc
+    // We give the wrong number for iid_count and then expect an error
     let mut bed = Bed::builder(file_name)
         .iid(["i1", "i2", "i3", "i4"])
         .build()?;
     assert_eq!(bed.iid_count()?, 4);
-    // We give the wrong number for iid_count and then expect an error
-    let mut bed = Bed::builder(file_name).iid_count(4).build()?;
-    assert_eq!(bed.iid_count()?, 4);
-    match bed.fid() {
+    let fid_result = bed.fid();
+    println!("{:?}", fid_result);
+    match fid_result {
         Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => {}
         _ => panic!("should be an error"),
     }
