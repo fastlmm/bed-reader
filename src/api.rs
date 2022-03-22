@@ -1319,12 +1319,12 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
         bed.read_and_fill_with_options(val, read_option)
     }
 
-    pub fn f(&mut self) -> &Self {
+    pub fn f(&mut self) -> &mut Self {
         self.is_f(true);
         self
     }
 
-    pub fn c(&mut self) -> &Self {
+    pub fn c(&mut self) -> &mut Self {
         self.is_f(false);
         self
     }
@@ -1341,19 +1341,19 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
 }
 
 impl ReadOptionsBuilder<i8> {
-    pub fn i8(&self) -> &Self {
+    pub fn i8(&mut self) -> &mut Self {
         self
     }
 }
 
 impl ReadOptionsBuilder<f32> {
-    pub fn f32(&self) -> &Self {
+    pub fn f32(&mut self) -> &mut Self {
         self
     }
 }
 
 impl ReadOptionsBuilder<f64> {
-    pub fn f64(&self) -> &Self {
+    pub fn f64(&mut self) -> &mut Self {
         self
     }
 }

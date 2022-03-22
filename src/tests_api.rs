@@ -917,3 +917,16 @@ fn bool_read() -> Result<(), BedErrorPlus> {
 
     Ok(())
 }
+
+#[test]
+fn i8_etc() -> Result<(), BedErrorPlus> {
+    let file_name = "bed_reader/tests/data/small.bed";
+    let mut bed = Bed::new(file_name)?;
+    let _val = ReadOptions::builder()
+        .f()
+        .i8()
+        .iid_index([false, false, true])
+        .read(&mut bed)?;
+
+    Ok(())
+}
