@@ -707,22 +707,22 @@ fn zeros() {
     assert!(allclose(&ref_val_float.view(), &val.view(), 1e-08, true));
 
     let out_val10 = ReadOptions::builder()
-        .sid_index([])
+        .sid_index([0; 0])
         .f64()
         .read(&mut bed)
         .unwrap();
     assert!(out_val10.shape() == [iid_count, 0]);
 
     let out_val01 = ReadOptions::builder()
-        .iid_index([])
+        .iid_index([0; 0])
         .f64()
         .read(&mut bed)
         .unwrap();
     assert!(out_val01.shape() == [0, sid_count]);
 
     let out_val00 = ReadOptions::builder()
-        .iid_index([])
-        .sid_index([])
+        .iid_index([0; 0])
+        .sid_index([0; 0])
         .f64()
         .read(&mut bed)
         .unwrap();

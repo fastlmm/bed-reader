@@ -872,13 +872,9 @@ fn counts_and_files() -> Result<(), BedErrorPlus> {
     let mut bed = Bed::builder(file_name)
         .bim_path("bed_reader/tests/data/small.bim")
         .build()?;
-    println!("{:?}", bed.fam_path()?);
-    println!("{:?}", bed.bim_path()?);
     assert_eq!(bed.iid_count()?, 3);
     assert_eq!(bed.sid_count()?, 4);
     let mut bed = Bed::new(file_name)?;
-    println!("{:?}", bed.fam_path()?);
-    println!("{:?}", bed.bim_path()?);
     assert_eq!(bed.iid_count()?, 3);
     assert_eq!(bed.sid_count()?, 4);
 
@@ -892,11 +888,32 @@ fn counts_and_files() -> Result<(), BedErrorPlus> {
         .build()?;
     assert_eq!(bed.iid_count()?, 4);
     let fid_result = bed.fid();
-    println!("{:?}", fid_result);
     match fid_result {
         Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => {}
         _ => panic!("should be an error"),
     }
+
+    Ok(())
+}
+
+#[test]
+fn bool_read() -> Result<(), BedErrorPlus> {
+    let file_name = "bed_reader/tests/data/small.bed";
+    let mut bed = Bed::new(file_name)?;
+    let result = ReadOptions::builder()
+        .iid_index([false, false, true, false])
+        .i8()
+        .read(&mut bed);
+    println!("{:?}", result);
+    match result {
+        Err(BedErrorPlus::BedError(BedError::BoolArrayVectorWrongLength(_, _))) => {}
+        _ => panic!("should be an error"),
+    }
+
+    let _val = ReadOptions::builder()
+        .iid_index([false, false, true])
+        .i8()
+        .read(&mut bed)?;
 
     Ok(())
 }

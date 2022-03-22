@@ -855,9 +855,12 @@ impl Index {
         match self {
             Index::All => Ok((0..count).collect()),
             Index::Vec(vec) => Ok(vec.to_vec()),
-            Index::NDArrayBool(nd_array_bool) =>
-            // !!!cmk 0 check that bool_index.len() == iid_count
-            {
+            Index::NDArrayBool(nd_array_bool) => {
+                if nd_array_bool.len() != count {
+                    return Err(
+                        BedError::BoolArrayVectorWrongLength(count, nd_array_bool.len()).into(),
+                    );
+                }
                 Ok(nd_array_bool
                     .iter()
                     .enumerate()
@@ -876,7 +879,9 @@ impl Index {
             Index::NDArray(nd_array) => Ok(nd_array.to_vec()),
             Index::One(one) => Ok(vec![*one]),
             Index::VecBool(vec_bool) => {
-                // !!!cmk 0 check that vec_bool.len() == iid_count
+                if vec_bool.len() != count {
+                    return Err(BedError::BoolArrayVectorWrongLength(count, vec_bool.len()).into());
+                }
                 Ok(vec_bool
                     .iter()
                     .enumerate()
@@ -1198,10 +1203,40 @@ impl From<&nd::ArrayView1<'_, usize>> for Index {
     }
 }
 
-// !!!cmk later is ref &ndarray const array and bool OK
 impl From<&Vec<usize>> for Index {
     fn from(vec_ref: &Vec<usize>) -> Index {
         Index::Vec(vec_ref.clone())
+    }
+}
+
+// !!!cmk later is ref &ndarray const array and bool OK
+impl From<&nd::ArrayView1<'_, bool>> for Index {
+    fn from(view: &nd::ArrayView1<bool>) -> Index {
+        Index::NDArrayBool(view.to_owned())
+    }
+}
+
+impl From<&Vec<bool>> for Index {
+    fn from(vec_ref: &Vec<bool>) -> Index {
+        Index::VecBool(vec_ref.clone())
+    }
+}
+
+impl From<&[bool]> for Index {
+    fn from(array: &[bool]) -> Index {
+        Index::VecBool(array.to_vec())
+    }
+}
+
+impl<const N: usize> From<[bool; N]> for Index {
+    fn from(array: [bool; N]) -> Index {
+        Index::VecBool(array.to_vec())
+    }
+}
+
+impl<const N: usize> From<&[bool; N]> for Index {
+    fn from(array: &[bool; N]) -> Index {
+        Index::VecBool(array.to_vec())
     }
 }
 

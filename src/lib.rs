@@ -142,6 +142,9 @@ pub enum BedError {
 
     #[error("{0}_count values of {1} and {2} are inconsistent")]
     InconsistentCount(String, usize, usize),
+
+    #[error("Expect bool arrays and vectors to be length {0}, not {1}")]
+    BoolArrayVectorWrongLength(usize, usize),
 }
 
 // Trait alias
