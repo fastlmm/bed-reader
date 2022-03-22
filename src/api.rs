@@ -184,6 +184,33 @@ impl BedBuilder {
         }
     }
 
+    fn check_counts(
+        count_vec: Vec<Option<usize>>,
+        option_xid_count: &mut Option<usize>,
+        prefix: &str,
+    ) -> Result<(), BedErrorPlus> {
+        for option_count in count_vec {
+            if let Some(count) = option_count {
+                match option_xid_count {
+                    Some(xid_count) => {
+                        if *xid_count != count {
+                            return Err(BedError::InconsistentCount(
+                                prefix.to_string(),
+                                *xid_count,
+                                count,
+                            )
+                            .into());
+                        }
+                    }
+                    None => {
+                        *option_xid_count = Some(count);
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
     pub fn build(&self) -> Result<Bed, BedErrorPlus> {
         let mut bed = self.build_no_file_check()?;
 
@@ -199,20 +226,10 @@ impl BedBuilder {
             option_count(&bed.sex),
             option_count(&bed.pheno),
         ];
-        for option_count in count_vec {
-            if let Some(count) = option_count {
-                match bed.iid_count {
-                    Some(iid_count) => {
-                        if iid_count != count {
-                            return Err(BedError::InconsistentIidCount(iid_count, count).into());
-                        }
-                    }
-                    None => {
-                        bed.iid_count = Some(count);
-                    }
-                }
-            }
-        }
+
+        println!("{:?}", bed.iid_count);
+        BedBuilder::check_counts(count_vec, &mut bed.iid_count, "iid")?;
+        println!("{:?}", bed.iid_count);
 
         Ok(bed)
     }
@@ -501,7 +518,9 @@ impl Bed {
         match self.iid_count {
             Some(iid_count) => {
                 if iid_count != count {
-                    return Err(BedError::InconsistentIidCount(iid_count, count).into());
+                    return Err(
+                        BedError::InconsistentCount("iid".to_string(), iid_count, count).into(),
+                    );
                 }
             }
             None => {
@@ -562,7 +581,9 @@ impl Bed {
         match self.sid_count {
             Some(sid_count) => {
                 if sid_count != count {
-                    return Err(BedError::InconsistentSidCount(sid_count, count).into());
+                    return Err(
+                        BedError::InconsistentCount("sid".to_string(), sid_count, count).into(),
+                    );
                 }
             }
             None => {

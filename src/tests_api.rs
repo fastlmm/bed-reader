@@ -844,6 +844,15 @@ fn nd_slice_same() -> Result<(), BedErrorPlus> {
 fn counts_and_files() -> Result<(), BedErrorPlus> {
     let file_name = "bed_reader/tests/data/small.bed";
 
+    match Bed::builder(file_name)
+        .fid(["f1", "f1", "f1"])
+        .iid(["i1", "i2", "i3", "i4"])
+        .build()
+    {
+        Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => {}
+        _ => panic!("should be an error"),
+    }
+
     let mut bed = Bed::builder(file_name)
         .bim_path("bed_reader/tests/data/small.bad_bim")
         .build()?;
@@ -856,7 +865,7 @@ fn counts_and_files() -> Result<(), BedErrorPlus> {
     let mut bed = Bed::builder(file_name).iid_count(4).build()?;
     assert_eq!(bed.iid_count()?, 4);
     match bed.iid() {
-        Err(BedErrorPlus::BedError(BedError::InconsistentIidCount(_, _))) => {}
+        Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => {}
         _ => panic!("should be an error"),
     }
 
@@ -886,16 +895,7 @@ fn counts_and_files() -> Result<(), BedErrorPlus> {
     let mut bed = Bed::builder(file_name).iid_count(4).build()?;
     assert_eq!(bed.iid_count()?, 4);
     match bed.fid() {
-        Err(BedErrorPlus::BedError(BedError::InconsistentIidCount(_, _))) => {}
-        _ => panic!("should be an error"),
-    }
-
-    match Bed::builder(file_name)
-        .fid(["f1", "f1", "f1"])
-        .iid(["i1", "i2", "i3", "i4"])
-        .build()
-    {
-        Err(BedErrorPlus::BedError(BedError::InconsistentIidCount(_, _))) => {}
+        Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => {}
         _ => panic!("should be an error"),
     }
 
