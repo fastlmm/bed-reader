@@ -857,7 +857,7 @@ fn counts_and_files() -> Result<(), BedErrorPlus> {
         .bim_path("bed_reader/tests/data/small.bad_bim")
         .build()?;
     match bed.sid() {
-        Err(BedErrorPlus::BedError(BedError::FamBamFieldCount(_, _, _))) => {}
+        Err(BedErrorPlus::BedError(BedError::MetadataFieldCount(_, _, _))) => {}
         _ => panic!("should be an error"),
     }
 

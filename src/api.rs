@@ -664,7 +664,7 @@ impl Bed {
                 field_count += 1;
             }
             if field_count != 6 {
-                return Err(BedError::FamBamFieldCount(
+                return Err(BedError::MetadataFieldCount(
                     6,
                     field_count,
                     path_buf.to_str().unwrap().to_string(),

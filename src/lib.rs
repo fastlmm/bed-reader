@@ -138,7 +138,7 @@ pub enum BedError {
     NdSliceInfoNot1D,
 
     #[error("Expect {0} fields but find only {1} in '{2}'")]
-    FamBamFieldCount(usize, usize, String),
+    MetadataFieldCount(usize, usize, String),
 
     #[error("{0}_count values of {1} and {2} are inconsistent")]
     InconsistentCount(String, usize, usize),
