@@ -68,6 +68,14 @@ pub struct Metadata<'a> {
     pub allele_2: Skippable<&'a nd::Array1<String>>,
 }
 
+fn option_count<T>(array: &LazyOrSkip<nd::Array1<T>>) -> Option<usize> {
+    match array {
+        LazyOrSkip::Some(array) => Some(array.len()),
+        LazyOrSkip::Skip => None,
+        LazyOrSkip::Lazy => None,
+    }
+}
+
 // https://crates.io/crates/typed-builder
 // (or https://docs.rs/derive_builder/latest/derive_builder/)
 // Somehow ndarray can do this: 	Array::zeros((3, 4, 5).f())
@@ -177,10 +185,33 @@ impl BedBuilder {
     }
 
     pub fn build(&self) -> Result<Bed, BedErrorPlus> {
-        let bed = self.build_no_file_check()?;
+        let mut bed = self.build_no_file_check()?;
 
         if bed.is_checked_early {
             open_and_check(&bed.path)?;
+        }
+
+        let count_vec = vec![
+            option_count(&bed.fid),
+            option_count(&bed.iid),
+            option_count(&bed.father),
+            option_count(&bed.mother),
+            option_count(&bed.sex),
+            option_count(&bed.pheno),
+        ];
+        for option_count in count_vec {
+            if let Some(count) = option_count {
+                match bed.iid_count {
+                    Some(iid_count) => {
+                        if iid_count != count {
+                            return Err(BedError::InconsistentIidCount(iid_count, count).into());
+                        }
+                    }
+                    None => {
+                        bed.iid_count = Some(count);
+                    }
+                }
+            }
         }
 
         Ok(bed)
@@ -272,6 +303,7 @@ impl BedBuilder {
         self.iid = Some(LazyOrSkip::Some(
             iid.into_iter().map(|s| s.as_ref().to_string()).collect(),
         ));
+
         self
     }
     pub fn father<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, father: I) -> Self {
@@ -469,7 +501,7 @@ impl Bed {
         match self.iid_count {
             Some(iid_count) => {
                 if iid_count != count {
-                    return Err(BedError::FamIidCountMismatch(iid_count, count).into());
+                    return Err(BedError::InconsistentIidCount(iid_count, count).into());
                 }
             }
             None => {
@@ -530,7 +562,7 @@ impl Bed {
         match self.sid_count {
             Some(sid_count) => {
                 if sid_count != count {
-                    return Err(BedError::BimSidCountMismatch(sid_count, count).into());
+                    return Err(BedError::InconsistentSidCount(sid_count, count).into());
                 }
             }
             None => {

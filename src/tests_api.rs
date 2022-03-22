@@ -856,7 +856,7 @@ fn counts_and_files() -> Result<(), BedErrorPlus> {
     let mut bed = Bed::builder(file_name).iid_count(4).build()?;
     assert_eq!(bed.iid_count()?, 4);
     match bed.iid() {
-        Err(BedErrorPlus::BedError(BedError::FamIidCountMismatch(_, _))) => {}
+        Err(BedErrorPlus::BedError(BedError::InconsistentIidCount(_, _))) => {}
         _ => panic!("should be an error"),
     }
 
@@ -876,6 +876,28 @@ fn counts_and_files() -> Result<(), BedErrorPlus> {
     let mut bed = Bed::builder(file_name).build()?;
     let _ = bed.iid()?;
     let _ = bed.iid_count()?;
+
+    // !!!cmk 0 you can set the *_count with iid, etc
+    let mut bed = Bed::builder(file_name)
+        .iid(["i1", "i2", "i3", "i4"])
+        .build()?;
+    assert_eq!(bed.iid_count()?, 4);
+    // We give the wrong number for iid_count and then expect an error
+    let mut bed = Bed::builder(file_name).iid_count(4).build()?;
+    assert_eq!(bed.iid_count()?, 4);
+    match bed.fid() {
+        Err(BedErrorPlus::BedError(BedError::InconsistentIidCount(_, _))) => {}
+        _ => panic!("should be an error"),
+    }
+
+    match Bed::builder(file_name)
+        .fid(["f1", "f1", "f1"])
+        .iid(["i1", "i2", "i3", "i4"])
+        .build()
+    {
+        Err(BedErrorPlus::BedError(BedError::InconsistentIidCount(_, _))) => {}
+        _ => panic!("should be an error"),
+    }
 
     Ok(())
 }

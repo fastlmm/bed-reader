@@ -140,11 +140,11 @@ pub enum BedError {
     #[error("Expect {0} fields but find only {1} in '{2}'")]
     FamBamFieldCount(usize, usize, String),
 
-    #[error("Given iid_count ({0}) is not equal the lines in the fam file ({1})")]
-    FamIidCountMismatch(usize, usize),
+    #[error("iid_count values of {0} and {1} are inconsistent")]
+    InconsistentIidCount(usize, usize),
 
-    #[error("Given sid_count ({0}) is not equal the lines in the bim file ({1})")]
-    BimSidCountMismatch(usize, usize),
+    #[error("sid_count values of {0} and {1} are inconsistent")]
+    InconsistentSidCount(usize, usize),
 }
 
 // Trait alias
