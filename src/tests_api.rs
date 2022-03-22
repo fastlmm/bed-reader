@@ -852,10 +852,13 @@ fn counts_and_files() -> Result<(), BedErrorPlus> {
         _ => panic!("should be an error"),
     }
 
+    // We give the wrong number for iid_count and then expect an error
     let mut bed = Bed::builder(file_name).iid_count(4).build()?;
     assert_eq!(bed.iid_count()?, 4);
-    // !!!cmk 0 the real answer is 3, but the test is 4 so this should give an error
-    let _ = bed.iid();
+    match bed.iid() {
+        Err(BedErrorPlus::BedError(BedError::FamIidCountMismatch(_, _))) => {}
+        _ => panic!("should be an error"),
+    }
 
     let mut bed = Bed::builder(file_name)
         .bim_path("bed_reader/tests/data/small.bim")
@@ -869,6 +872,10 @@ fn counts_and_files() -> Result<(), BedErrorPlus> {
     println!("{:?}", bed.bim_path()?);
     assert_eq!(bed.iid_count()?, 3);
     assert_eq!(bed.sid_count()?, 4);
+
+    let mut bed = Bed::builder(file_name).build()?;
+    let _ = bed.iid()?;
+    let _ = bed.iid_count()?;
 
     Ok(())
 }

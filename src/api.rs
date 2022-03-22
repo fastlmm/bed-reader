@@ -465,7 +465,17 @@ impl Bed {
         }
 
         let fam_path = self.fam_path()?;
-        let mut vec_of_vec = self.read_fam_or_bim(&field_vec, &fam_path)?;
+        let (mut vec_of_vec, count) = self.read_fam_or_bim(&field_vec, &fam_path)?;
+        match self.iid_count {
+            Some(iid_count) => {
+                if iid_count != count {
+                    return Err(BedError::FamIidCountMismatch(iid_count, count).into());
+                }
+            }
+            None => {
+                self.iid_count = Some(count);
+            }
+        }
 
         // unwraps are safe because we pop once for every push
         if self.pheno.is_lazy() {
@@ -516,7 +526,17 @@ impl Bed {
         }
 
         let bim_path = self.bim_path()?;
-        let mut vec_of_vec = self.read_fam_or_bim(&field_vec, &bim_path)?;
+        let (mut vec_of_vec, count) = self.read_fam_or_bim(&field_vec, &bim_path)?;
+        match self.sid_count {
+            Some(sid_count) => {
+                if sid_count != count {
+                    return Err(BedError::BimSidCountMismatch(sid_count, count).into());
+                }
+            }
+            None => {
+                self.sid_count = Some(count);
+            }
+        }
 
         // unwraps are safe because we pop once for every push
         if self.allele_2.is_lazy() {
@@ -556,16 +576,17 @@ impl Bed {
         &self,
         field_vec: &Vec<usize>,
         path_buf: &PathBuf,
-    ) -> Result<Vec<Vec<String>>, BedErrorPlus> {
+    ) -> Result<(Vec<Vec<String>>, usize), BedErrorPlus> {
         let mut vec_of_vec = vec![vec![]; field_vec.len()];
 
         let file = File::open(&path_buf)?;
 
         let reader = BufReader::new(file);
+        let mut count = 0;
         for line in reader.lines() {
             let line = line?;
+            count += 1;
             let field = line.split_whitespace();
-            // !!!cmk 0 assert if not enough fields
 
             let mut ii = 0;
             for (i, field) in field.enumerate() {
@@ -583,7 +604,7 @@ impl Bed {
             }
         }
 
-        Ok(vec_of_vec)
+        Ok((vec_of_vec, count))
     }
 
     fn unlazy_fam<T: FromStringArray<T>>(&mut self, is_lazy: bool) -> Result<(), BedErrorPlus> {
@@ -605,7 +626,7 @@ impl Bed {
         name: &str,
     ) -> Result<&'a nd::Array1<T>, BedErrorPlus> {
         match field {
-            LazyOrSkip::Some(fid) => Ok(fid),
+            LazyOrSkip::Some(array) => Ok(array),
             LazyOrSkip::Skip => Err(BedError::CannotUseSkippedMetadata(name.to_string()).into()),
             LazyOrSkip::Lazy => panic!("impossible"),
         }
@@ -675,7 +696,6 @@ impl Bed {
         let iid_count = self.iid_count()?;
         let sid_count = self.sid_count()?;
 
-        // !!! cmk 0 move this to read_options struct>
         let num_threads = compute_num_threads(read_options.num_threads)?;
 
         let iid_index = read_options.iid_index.to_vec(iid_count)?;
@@ -787,7 +807,6 @@ impl Index {
             Index::NDArray(nd_array) => Ok(nd_array.to_vec()),
             Index::One(one) => Ok(vec![*one]),
             Index::VecBool(vec_bool) => {
-                // !!!cmk 0 similar code elsewhere
                 // !!!cmk 0 check that vec_bool.len() == iid_count
                 Ok(vec_bool
                     .iter()
