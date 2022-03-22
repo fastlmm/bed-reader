@@ -218,18 +218,31 @@ impl BedBuilder {
             open_and_check(&bed.path)?;
         }
 
-        let count_vec = vec![
-            option_count(&bed.fid),
-            option_count(&bed.iid),
-            option_count(&bed.father),
-            option_count(&bed.mother),
-            option_count(&bed.sex),
-            option_count(&bed.pheno),
-        ];
+        BedBuilder::check_counts(
+            vec![
+                option_count(&bed.fid),
+                option_count(&bed.iid),
+                option_count(&bed.father),
+                option_count(&bed.mother),
+                option_count(&bed.sex),
+                option_count(&bed.pheno),
+            ],
+            &mut bed.iid_count,
+            "iid",
+        )?;
 
-        println!("{:?}", bed.iid_count);
-        BedBuilder::check_counts(count_vec, &mut bed.iid_count, "iid")?;
-        println!("{:?}", bed.iid_count);
+        BedBuilder::check_counts(
+            vec![
+                option_count(&bed.chromosome),
+                option_count(&bed.sid),
+                option_count(&bed.cm_position),
+                option_count(&bed.bp_position),
+                option_count(&bed.allele_1),
+                option_count(&bed.allele_2),
+            ],
+            &mut bed.sid_count,
+            "sid",
+        )?;
 
         Ok(bed)
     }
