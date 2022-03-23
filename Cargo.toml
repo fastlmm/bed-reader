@@ -46,7 +46,9 @@ Documentation = "http://fastlmm.github.io/bed-reader"
 
 [lib]
 name = "bed_reader"
-crate-type = ["cdylib"]
+# !!!cmk later what's the effects of adding "rlib" to allow doc tests to work?
+# !!!cmk later https://github.com/rust-lang/cargo/issues/6659
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 thiserror = "1.0.30"

@@ -3,6 +3,30 @@
 // See: https://towardsdatascience.com/nine-rules-for-writing-python-extensions-in-rust-d35ea3a4ec29?sk=f8d808d5f414154fdb811e4137011437
 // for an article on how this project uses Rust to create a Python extension.
 
+//! # bed-reader
+//!
+//! Read and write the PLINK BED format, simply and efficiently.
+//!
+//! Features:
+//!   * Fast multi-threaded engine.
+//!   * Supports many indexing methods. Slice data by individuals (samples) and/or SNPs (variants).
+//!   * Used by Python packages PySnpTools, FaST-LMM, and PyStatGen.
+//!   * Supports PLINK 1.9.
+//!
+//! ## Usage
+//!
+//! Read genotype data from a .bed file.
+//!
+//! ```
+//! # use bed_reader::BedErrorPlus;
+//! use bed_reader::Bed;
+//! let file_name = "bed_reader/tests/data/small.bed";
+//! let mut bed = Bed::new(file_name)?;
+//! let val = bed.read::<f64>()?;
+//! println!("{:?}", val);
+//! # Ok::<(), BedErrorPlus>(())
+//! ```
+
 mod python_module;
 mod tests;
 mod tests_api;
@@ -159,7 +183,7 @@ pub enum BedError {
 pub trait BedVal: Copy + Default + From<i8> + Debug + Sync + Send + Missing + PartialEq {}
 impl<T> BedVal for T where T: Copy + Default + From<i8> + Debug + Sync + Send + Missing + PartialEq {}
 
-pub fn create_pool(num_threads: usize) -> Result<rayon::ThreadPool, BedErrorPlus> {
+fn create_pool(num_threads: usize) -> Result<rayon::ThreadPool, BedErrorPlus> {
     match rayon::ThreadPoolBuilder::new()
         .num_threads(num_threads)
         .build()
@@ -394,7 +418,7 @@ fn set_up_two_bits_to_value<TVal: From<i8>>(count_a1: bool, missing_value: TVal)
 
 // Thanks to Dawid for his dpc-pariter library that makes this function scale.
 // https://dpc.pw/adding-parallelism-to-your-rust-iterators
-pub fn write_val<S, TVal, P>(
+fn write_val<S, TVal, P>(
     path: P,
     val: &nd::ArrayBase<S, nd::Ix2>,
     is_a1_counted: bool,
@@ -502,7 +526,7 @@ fn count_lines<P: AsRef<Path>>(path: P) -> Result<usize, BedErrorPlus> {
     Ok(count)
 }
 
-pub fn matrix_subset_no_alloc<
+fn matrix_subset_no_alloc<
     TIn: Copy + Default + Debug + Sync + Send + Sized,
     TOut: Copy + Default + Debug + Sync + Send + From<TIn>,
 >(
@@ -547,12 +571,12 @@ pub fn matrix_subset_no_alloc<
     }
 }
 
-pub enum Dist {
+enum Dist {
     Unit,
     Beta { a: f64, b: f64 },
 }
 
-pub fn impute_and_zero_mean_snps<
+fn impute_and_zero_mean_snps<
     T: Default + Copy + Debug + Sync + Send + Float + ToPrimitive + FromPrimitive,
 >(
     val: &mut nd::ArrayViewMut2<'_, T>,
@@ -591,6 +615,7 @@ pub fn impute_and_zero_mean_snps<
     }
 }
 
+// !!!cmk later move the other fast-lmm functions into their own package
 fn find_factor<T: Default + Copy + Debug + Sync + Send + Float + ToPrimitive + FromPrimitive>(
     dist: &Dist,
     mean_s: T,
@@ -1099,7 +1124,7 @@ fn file_aat_piece<T: Float + Sync + Send + AddAssign, P: AsRef<Path>>(
 // !!!cmk later document and add issue that File(s) are not held, incorrectly allowing for the file to be changed between reads.
 
 #[derive(Debug, Clone)]
-pub enum LazyOrSkip<T> {
+enum LazyOrSkip<T> {
     Lazy,
     Skip,
     Some(T),
@@ -1114,6 +1139,7 @@ impl<T> LazyOrSkip<T> {
     }
 }
 
+#[doc(hidden)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Skippable<T> {
     Some(T),
@@ -1982,6 +2008,8 @@ pub(crate) type SliceInfo1 =
 // Could implement an enumerator, but it is complex and requires a 'match' on each next()
 //     https://stackoverflow.com/questions/65272613/how-to-implement-intoiterator-for-an-enum-of-iterable-variants
 // !!!cmk later add docs to type typedbuilder stuff: https://docs.rs/typed-builder/latest/typed_builder/derive.TypedBuilder.html#customisation-with-attributes
+// !!!cmk should this be hidden?
+#[doc(hidden)]
 #[derive(Debug, Clone)]
 pub enum Index {
     All,
@@ -1994,6 +2022,7 @@ pub enum Index {
     RangeAny(RangeAny),
 }
 
+#[doc(hidden)]
 #[derive(Debug, Clone)]
 pub struct RangeAny {
     start: Option<usize>,
@@ -2025,6 +2054,7 @@ impl RangeAny {
     }
 }
 
+#[doc(hidden)]
 #[derive(Debug, Clone)]
 pub struct RangeNdSlice {
     start: usize,
