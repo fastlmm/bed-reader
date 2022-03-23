@@ -952,7 +952,7 @@ fn fill() -> Result<(), BedErrorPlus> {
     let mut val = nd::Array2::<i8>::default((1, 4));
     bed.read_and_fill_with_options(&mut val.view_mut(), &read_options)?;
 
-    assert_eq!(bed.shape()?, (3, 4));
+    assert_eq!(bed.dim()?, (3, 4));
 
     Ok(())
 }

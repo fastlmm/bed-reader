@@ -4,10 +4,9 @@
 // for an article on how this project uses Rust to create a Python extension.
 
 pub mod api;
+mod python_module;
 mod tests;
 mod tests_api;
-
-mod python_module;
 
 use crate::api::ReadOptionsBuilderError;
 use byteorder::{LittleEndian, ReadBytesExt};
@@ -18,7 +17,7 @@ use num_traits::{Float, FromPrimitive, ToPrimitive};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use rayon::{iter::ParallelBridge, ThreadPoolBuildError};
 use statrs::distribution::{Beta, Continuous};
-use std::fs::{self};
+use std::fs;
 use std::num::{ParseFloatError, ParseIntError};
 use std::ops::AddAssign;
 use std::ops::{Div, Sub};
