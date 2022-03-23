@@ -47,7 +47,7 @@ const CB_HEADER_USIZE: usize = 3;
 //  https://rust-lang-nursery.github.io/rust-cookbook/science/mathematics/linear_algebra.html
 
 /// BedError enumerates all possible errors returned by this library.
-/// Based on https://nick.groenen.me/posts/rust-error-handling/#the-library-error-type
+/// Based on `<https://nick.groenen.me/posts/rust-error-handling/#the-library-error-type>`
 #[derive(Error, Debug)]
 pub enum BedErrorPlus {
     #[error(transparent)]

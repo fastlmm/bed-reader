@@ -38,7 +38,6 @@ fn rusty_bed1() -> Result<(), BedErrorPlus> {
 
 #[test]
 fn rusty_bed2() -> Result<(), BedErrorPlus> {
-    // !!!cmk later reading one iid is very common. Make it easy.
     let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
     let mut bed = Bed::new(file)?;
 

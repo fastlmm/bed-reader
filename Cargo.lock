@@ -34,7 +34,6 @@ dependencies = [
  "byteorder",
  "derive_builder",
  "dpc-pariter",
- "either",
  "ndarray",
  "ndarray-npy",
  "num-traits",
