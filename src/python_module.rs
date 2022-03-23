@@ -8,10 +8,9 @@ use pyo3::{
 };
 
 use crate::{
-    BedError, BedErrorPlus, Dist, _file_ata_piece_internal,
-    api::{Bed, ReadOptions, WriteOptions},
-    create_pool, file_aat_piece, file_ata_piece, file_b_less_aatbx, impute_and_zero_mean_snps,
-    matrix_subset_no_alloc, read_into_f32, read_into_f64,
+    BedError, BedErrorPlus, Dist, _file_ata_piece_internal, create_pool, file_aat_piece,
+    file_ata_piece, file_b_less_aatbx, impute_and_zero_mean_snps, matrix_subset_no_alloc,
+    read_into_f32, read_into_f64, Bed, ReadOptions, WriteOptions,
 };
 
 #[pymodule]

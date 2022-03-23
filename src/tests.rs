@@ -1,9 +1,9 @@
 #[cfg(test)]
-use crate::api::write;
+use crate::write;
 #[cfg(test)]
-use crate::api::Bed;
+use crate::Bed;
 #[cfg(test)]
-use crate::api::ReadOptions;
+use crate::ReadOptions;
 // https://stackoverflow.com/questions/32900809/how-to-suppress-function-is-never-used-warning-for-a-function-used-by-tests
 #[cfg(test)]
 use crate::file_aat_piece;

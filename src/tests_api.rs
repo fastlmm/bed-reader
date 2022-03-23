@@ -1,19 +1,19 @@
 #[cfg(test)]
-use crate::api::write;
-#[cfg(test)]
-use crate::api::Bed;
-#[cfg(test)]
-use crate::api::ReadOptions;
-#[cfg(test)]
-use crate::api::SliceInfo1;
-#[cfg(test)]
-use crate::api::WriteOptions;
-#[cfg(test)]
 use crate::tests::allclose;
+#[cfg(test)]
+use crate::write;
+#[cfg(test)]
+use crate::Bed;
 #[cfg(test)]
 use crate::BedError;
 #[cfg(test)]
 use crate::BedErrorPlus;
+#[cfg(test)]
+use crate::ReadOptions;
+#[cfg(test)]
+use crate::SliceInfo1;
+#[cfg(test)]
+use crate::WriteOptions;
 #[cfg(test)]
 use ndarray as nd;
 #[cfg(test)]
@@ -699,7 +699,7 @@ fn nds1(range_thing: SliceInfo1) -> Result<Result<nd::Array2<i8>, BedErrorPlus>,
 
 #[cfg(test)]
 fn rt23(
-    range_thing: crate::api::Index,
+    range_thing: crate::Index,
 ) -> (
     Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>,
     Result<Result<usize, BedErrorPlus>, BedErrorPlus>,
@@ -708,9 +708,7 @@ fn rt23(
 }
 
 #[cfg(test)]
-fn rt2(
-    range_thing: crate::api::Index,
-) -> Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus> {
+fn rt2(range_thing: crate::Index) -> Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus> {
     println!("Running {:?}", &range_thing);
     let file_name = "bed_reader/tests/data/toydata.5chrom.bed";
 
@@ -731,7 +729,7 @@ fn rt2(
 }
 
 #[cfg(test)]
-fn rt3(range_thing: crate::api::Index) -> Result<Result<usize, BedErrorPlus>, BedErrorPlus> {
+fn rt3(range_thing: crate::Index) -> Result<Result<usize, BedErrorPlus>, BedErrorPlus> {
     println!("Running {:?}", &range_thing);
     let file_name = "bed_reader/tests/data/toydata.5chrom.bed";
 
