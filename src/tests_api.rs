@@ -930,3 +930,29 @@ fn i8_etc() -> Result<(), BedErrorPlus> {
 
     Ok(())
 }
+
+#[test]
+fn fill() -> Result<(), BedErrorPlus> {
+    let file_name = "bed_reader/tests/data/small.bed";
+    let mut bed = Bed::new(file_name)?;
+    let read_options = ReadOptions::builder()
+        .f()
+        .i8()
+        .iid_index([false, false, true])
+        .build()?;
+
+    let mut val = nd::Array2::<i8>::default((3, 4));
+    // !!!cmk later understand this view_mut
+    let result = bed.read_and_fill_with_options(&mut val.view_mut(), &read_options);
+    match result {
+        Err(BedErrorPlus::BedError(BedError::InvalidShape(_, _, _, _))) => {}
+        _ => panic!("should be an error"),
+    }
+
+    let mut val = nd::Array2::<i8>::default((1, 4));
+    bed.read_and_fill_with_options(&mut val.view_mut(), &read_options)?;
+
+    assert_eq!(bed.shape()?, (3, 4));
+
+    Ok(())
+}

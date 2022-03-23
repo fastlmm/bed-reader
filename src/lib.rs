@@ -145,6 +145,9 @@ pub enum BedError {
 
     #[error("Expect bool arrays and vectors to be length {0}, not {1}")]
     BoolArrayVectorWrongLength(usize, usize),
+
+    #[error("Expect ndarray of shape ({0}, {1}), but found shape ({2}, {3})")]
+    InvalidShape(usize, usize, usize, usize),
 }
 
 // Trait alias
