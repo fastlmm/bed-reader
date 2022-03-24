@@ -147,6 +147,26 @@ fn doc_test_test() -> Result<(), BedErrorPlus> {
             [0.0, 1.0, 2.0, 0.0]
         ],
     );
+
+    let file_name2 = "bed_reader/tests/data/some_missing.bed";
+    let mut bed2 = Bed::new(file_name2)?;
+    let val2 = ReadOptions::builder()
+        .f64()
+        .iid_index(s![..;2])
+        .sid_index(20..30)
+        .read(&mut bed2)?;
+    assert!(val2.dim() == (50, 10));
+
+    let mut bed3 = Bed::new(file_name2)?;
+    println!("{:?}", bed3.iid()?.slice(s![..5]));
+    println!("{:?}", bed3.sid()?.slice(s![..5]));
+    println!("{:?}", bed3.chromosome()?.iter().collect::<HashSet<_>>());
+    let val3 = ReadOptions::builder()
+        .sid_index(bed3.chromosome()?.map(|elem| elem == "5"))
+        .f64()
+        .read(&mut bed3)?;
+    assert!(val3.dim() == (100, 6));
+
     Ok(())
 }
 
@@ -409,7 +429,7 @@ fn readme_examples() -> Result<(), BedErrorPlus> {
     println!("{:?}", bed3.sid()?.slice(s![..5]));
     let unique = bed3.chromosome()?.iter().collect::<HashSet<_>>();
     println!("{:?}", unique);
-    // let is_5 = bed3.get_chromosome()?.map(|elem| elem == "5");
+    // let is_5 = bed3.chromosome()?.map(|elem| elem == "5");
     let is_5 = nd::Zip::from(bed3.chromosome()?).par_map_collect(|elem| elem == "5");
     let val3 = ReadOptions::builder()
         .sid_index(is_5)
