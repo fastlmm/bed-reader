@@ -18,12 +18,21 @@
 //! Read genotype data from a .bed file.
 //!
 //! ```
-//! # use bed_reader::BedErrorPlus;
+//! use ndarray as nd;
 //! use bed_reader::Bed;
+//! use bed_reader::assert_eq_nan;
 //! let file_name = "bed_reader/tests/data/small.bed";
 //! let mut bed = Bed::new(file_name)?;
 //! let val = bed.read::<f64>()?;
-//! println!("{:?}", val);
+//! assert_eq_nan(
+//!     &val,
+//!     &nd::array![
+//!         [1.0, 0.0, f64::NAN, 0.0],
+//!         [2.0, 0.0, f64::NAN, 2.0],
+//!         [0.0, 1.0, 2.0, 0.0]
+//!     ],
+//! );
+//! # use bed_reader::BedErrorPlus;
 //! # Ok::<(), BedErrorPlus>(())
 //! ```
 
@@ -50,7 +59,7 @@ use derive_builder::Builder;
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use dpc_pariter::{scope, IteratorExt};
-use num_traits::{Float, FromPrimitive, ToPrimitive};
+use num_traits::{abs, Float, FromPrimitive, Signed, ToPrimitive};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use rayon::{iter::ParallelBridge, ThreadPoolBuildError};
 use statrs::distribution::{Beta, Continuous};
@@ -3009,4 +3018,48 @@ impl FromStringArray<i32> for i32 {
             Err(e) => Err(BedErrorPlus::ParseIntError(e)),
         }
     }
+}
+
+pub fn assert_eq_nan(
+    val: &nd::ArrayBase<nd::OwnedRepr<f64>, nd::Dim<[usize; 2]>>,
+    answer: &nd::ArrayBase<nd::OwnedRepr<f64>, nd::Dim<[usize; 2]>>,
+) {
+    assert!(allclose::<f64, f64>(&val.view(), &answer.view(), 0.0, true));
+}
+
+pub fn allclose<
+    T1: 'static + Copy + PartialEq + PartialOrd + Signed,
+    T2: 'static + Copy + PartialEq + PartialOrd + Signed + Into<T1>,
+>(
+    val1: &nd::ArrayView2<'_, T1>,
+    val2: &nd::ArrayView2<'_, T2>,
+    atol: T1,
+    equal_nan: bool,
+) -> bool {
+    assert!(val1.dim() == val2.dim());
+    // Could be run in parallel
+
+    nd::Zip::from(val1)
+        .and(val2)
+        .fold(true, |acc, ptr_a, ptr_b| -> bool {
+            if !acc {
+                return false;
+            }
+            // x != x is a generic nan check
+            #[allow(clippy::eq_op)]
+            let a_nan = *ptr_a != *ptr_a;
+            #[allow(clippy::eq_op)]
+            let b_nan = *ptr_b != *ptr_b;
+
+            if a_nan || b_nan {
+                if equal_nan {
+                    a_nan == b_nan
+                } else {
+                    false
+                }
+            } else {
+                let c: T1 = abs(*ptr_a - T2::into(*ptr_b));
+                c <= atol
+            }
+        })
 }

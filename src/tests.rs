@@ -1,4 +1,6 @@
 #[cfg(test)]
+use crate::allclose;
+#[cfg(test)]
 use crate::write;
 #[cfg(test)]
 use crate::Bed;
@@ -28,7 +30,7 @@ use ndarray::ShapeBuilder;
 #[cfg(test)]
 use ndarray_npy::read_npy;
 #[cfg(test)]
-use num_traits::{abs, Signed};
+use num_traits::abs;
 #[cfg(test)]
 use std::f32;
 #[cfg(test)]
@@ -137,44 +139,6 @@ fn reference_val(is_a1_counted: bool) -> nd::Array2<f64> {
     }
 
     val
-}
-
-#[cfg(test)]
-pub fn allclose<
-    T1: 'static + Copy + PartialEq + PartialOrd + Signed,
-    T2: 'static + Copy + PartialEq + PartialOrd + Signed + Into<T1>,
->(
-    val1: &nd::ArrayView2<'_, T1>,
-    val2: &nd::ArrayView2<'_, T2>,
-    atol: T1,
-    equal_nan: bool,
-) -> bool {
-    assert!(val1.dim() == val2.dim());
-    // Could be run in parallel
-
-    nd::Zip::from(val1)
-        .and(val2)
-        .fold(true, |acc, ptr_a, ptr_b| -> bool {
-            if !acc {
-                return false;
-            }
-            // x != x is a generic nan check
-            #[allow(clippy::eq_op)]
-            let a_nan = *ptr_a != *ptr_a;
-            #[allow(clippy::eq_op)]
-            let b_nan = *ptr_b != *ptr_b;
-
-            if a_nan || b_nan {
-                if equal_nan {
-                    a_nan == b_nan
-                } else {
-                    false
-                }
-            } else {
-                let c: T1 = abs(*ptr_a - T2::into(*ptr_b));
-                c <= atol
-            }
-        })
 }
 
 #[test]

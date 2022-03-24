@@ -1,5 +1,7 @@
 #[cfg(test)]
-use crate::tests::allclose;
+use crate::allclose;
+#[cfg(test)]
+use crate::assert_eq_nan;
 #[cfg(test)]
 use crate::write;
 #[cfg(test)]
@@ -129,6 +131,22 @@ fn bad_header() -> Result<(), BedErrorPlus> {
         _ => panic!("test failure"),
     };
 
+    Ok(())
+}
+
+#[test]
+fn doc_test_test() -> Result<(), BedErrorPlus> {
+    let file_name = "bed_reader/tests/data/small.bed";
+    let mut bed = Bed::new(file_name)?;
+    let val = bed.read::<f64>()?;
+    assert_eq_nan(
+        &val,
+        &nd::array![
+            [1.0, 0.0, f64::NAN, 0.0],
+            [2.0, 0.0, f64::NAN, 2.0],
+            [0.0, 1.0, 2.0, 0.0]
+        ],
+    );
     Ok(())
 }
 
