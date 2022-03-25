@@ -993,6 +993,79 @@ fn fill() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
+fn read_options_builder() -> Result<(), BedErrorPlus> {
+    let file_name = "bed_reader/tests/data/small.bed";
+
+    let mut bed = Bed::new(file_name)?;
+    // Read the SNPs indexed by 2.
+    let val = ReadOptions::builder().sid_index(2).f64().read(&mut bed)?;
+
+    assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
+
+    // Read the SNPs indexed by 2, 3, and 0.
+    let val = ReadOptions::builder()
+        .sid_index([2, 3, 0])
+        .f64()
+        .read(&mut bed)?;
+
+    assert_eq_nan(
+        &val,
+        &nd::array![[f64::NAN, 0.0, 1.0], [f64::NAN, 2.0, 2.0], [2.0, 0.0, 0.0]],
+    );
+
+    //  Read SNPs from 1 (inclusive) to 4 (exclusive).
+    let val = ReadOptions::builder()
+        .sid_index(1..4)
+        .f64()
+        .read(&mut bed)?;
+
+    assert_eq_nan(
+        &val,
+        &nd::array![[0.0, f64::NAN, 0.0], [0.0, f64::NAN, 2.0], [1.0, 2.0, 0.0]],
+    );
+
+    // Print unique chrom values. Then, read all SNPs in chrom 5.
+    use std::collections::HashSet;
+
+    println!("{:?}", bed.chromosome()?.iter().collect::<HashSet<_>>());
+    // This outputs: {"5", "1", "Y"}.
+    let val = ReadOptions::builder()
+        .sid_index(bed.chromosome()?.map(|elem| elem == "5"))
+        .f64()
+        .read(&mut bed)?;
+
+    assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
+
+    // Read 1st individual (across all SNPs).
+    let val = ReadOptions::builder().iid_index(0).f64().read(&mut bed)?;
+
+    assert_eq_nan(&val, &nd::array![[1.0, 0.0, f64::NAN, 0.0]]);
+
+    // Read every 2nd individual.
+    use ndarray::s;
+    let val = ReadOptions::builder()
+        .iid_index(s![..;2])
+        .f64()
+        .read(&mut bed)?;
+
+    assert_eq_nan(
+        &val,
+        &nd::array![[1.0, 0.0, f64::NAN, 0.0], [0.0, 1.0, 2.0, 0.0]],
+    );
+
+    // Read last and 2nd-to-last individuals and the last SNPs
+    let val = ReadOptions::builder()
+        .iid_index(s![-2..=-1;-1])
+        .sid_index(s![-1..=-1])
+        .f64()
+        .read(&mut bed)?;
+
+    println!("{:?}", &val);
+    assert_eq_nan(&val, &nd::array![[0.0], [2.0]]);
+    Ok(())
+}
+
+#[test]
 fn bed_builder() -> Result<(), BedErrorPlus> {
     let file_name = "bed_reader/tests/data/small.bed";
     let mut bed = Bed::builder(file_name).build()?;

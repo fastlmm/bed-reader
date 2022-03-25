@@ -110,18 +110,18 @@
 //! * [`Bed::builder`](struct.Bed.html#method.builder) - Open a PLINK .bed file for reading. Supports options.
 //! ### Read Genotype Data
 //! * [`Bed::read`](struct.Bed.html#method.read) - Read all genotype data.
-//! * [`ReadOptions::read`](struct.ReadOptions.html#method.read) - Read selected genotype data.
-//! * [`ReadOptions::read_and_fill`](struct.ReadOptions.html#method.read_and_fill) - Fill an existing array with selected genotype data.
+//! * [`ReadOptions::read`](struct.ReadOptions.html#method.read) - Read genotype data. Supports selection and options.
+//! * [`ReadOptions::read_and_fill`](struct.ReadOptions.html#method.read_and_fill) - Fill an existing array with genotype data. Supports selection and options.
 //!
-//! *alternatives*
-//! * [`Bed::read_with_options`](struct.Bed.html#method.read_with_options) - Read selected genotype data.
+//! *Alternatives:*
+//! * [`Bed::read_with_options`](struct.Bed.html#method.read_with_options) - Read genotype data. Supports selection and options.
 //! * [`Bed::read_and_fill`](struct.Bed.html#method.read_and_fill) - Fill an existing array with genotype data.
-//! * [`Bed::read_and_fill_with_options`](struct.Bed.html#method.read_and_fill_with_options) - Fill an existing array with selected genotype data.
+//! * [`Bed::read_and_fill_with_options`](struct.Bed.html#method.read_and_fill_with_options) - Fill an existing array with genotype data. Supports selection and options.
 //! ### Write Genotype Data
 //! * [`Bed::write`](struct.Bed.html#method.write) - Write genotype data.
 //! * [`WriteOptions::write`](struct.WriteOptions.html#method.write) - Write genotype data with options.
 //!
-//! *alternative*
+//! *Alternative:*
 //! * [`Bed::write_with_options`](struct.Bed.html#method.write_with_options) - Write genotype data with options.
 //! ### Read Metadata
 //! * [`Bed::iid_count`](struct.Bed.html#method.iid_count) - Number of individuals (samples)
@@ -1660,14 +1660,14 @@ fn to_skippable<'a, T>(lazy_or_skip: &'a LazyOrSkip<T>) -> Skippable<&'a T> {
     }
 }
 
-// !!!cmk later should bedbuilder be able to accept a metadata struct?
+// !!!cmk later should bed builder be able to accept a metadata struct?
 
 impl Bed {
     /// Attempts to open a PLINK .bed file for reading. Supports options.
     ///
     /// > Also see [`Bed::new`](struct.Bed.html#method.new), which does not support options.
     ///
-    /// Options, [listed here](struct.BedBuilder.html#implementations), can:
+    /// The options, [listed here](struct.BedBuilder.html#implementations), can:
     ///  * set the path of the .fam and/or .bim file
     ///  * override selected metadata, for example, replacing the individual ids.
     ///  * give the number of individuals (samples) or SNPs (variants)
@@ -1676,7 +1676,9 @@ impl Bed {
     ///
     /// # Errors
     /// By default, this method will return an error if the file is missing or its header
-    /// is ill-formed.
+    /// is ill-formed. It will also return an error if the options contradict each other.
+    /// See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
+    /// for all possible errors.
     ///
     /// # Examples
     /// List individual (sample) [`iid`](struct.Bed.html#method.iid) and
@@ -1799,16 +1801,64 @@ impl Bed {
         BedBuilder::new(path)
     }
 
-    /// Attempts to open a PLINK .bed file for reading.
+    /// Attempts to open a PLINK .bed file for reading. Does not support options.
     ///
-    /// See [`Bed::builder`](struct.Bed.html#method.builder) for options.
+    /// > Also see [`Bed::builder`](struct.Bed.html#method.builder), which does support options.
     ///
     /// # Errors
-    /// By default this method will return an error if the file is missing or its header
-    /// is ill-formed.
+    /// By default, this method will return an error if the file is missing or its header
+    /// is ill-formed. See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
+    /// for all possible errors.
     ///
     /// # Examples
+    /// List individual (sample) [`iid`](struct.Bed.html#method.iid) and
+    /// SNP (variant) [`sid`](struct.Bed.html#method.sid),
+    /// then [`read`](struct.Bed.html#method.read) the whole file.
     ///
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::Bed;
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// println!("{:?}", bed.iid()?);
+    /// println!("{:?}", bed.sid()?);
+    /// let val = bed.read::<f64>()?;
+    ///
+    /// assert_eq_nan(
+    ///     &val,
+    ///     &nd::array![
+    ///         [1.0, 0.0, f64::NAN, 0.0],
+    ///         [2.0, 0.0, f64::NAN, 2.0],
+    ///         [0.0, 1.0, 2.0, 0.0]
+    ///     ],
+    /// );
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
+    /// *This outputs:*
+    /// ```text
+    /// ["iid1", "iid2", "iid3"], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
+    /// ["sid1", "sid2", "sid3", "sid4"], shape=[4], strides=[1], layout=CFcf (0xf), const ndim=1  
+    /// ```
+    ///
+    /// Open the file and read data for one SNP (variant)
+    /// at index position 2.
+    /// ```
+    /// # use ndarray as nd;
+    /// # use bed_reader::Bed;
+    /// # use bed_reader::assert_eq_nan;
+    /// # let file_name = "bed_reader/tests/data/small.bed";
+    /// use bed_reader::ReadOptions;
+    ///
+    /// let mut bed = Bed::new(file_name)?;
+    /// let val = ReadOptions::builder().sid_index(2).f64().read(&mut bed)?;
+    ///
+    /// assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
     pub fn new<P: AsRef<Path>>(path: P) -> Result<Self, BedErrorPlus> {
         Bed::builder(path).build()
     }
@@ -2695,6 +2745,125 @@ impl<TVal: BedVal> ReadOptions<TVal> {
 }
 
 impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
+    /// Read genotype data. Supports selection and options.
+    ///
+    /// > Also see cmk 0, which does not support options.
+    ///
+    /// The options, [listed here](struct.ReadOptionsBuilder.html#implementations), can specify the:
+    ///  * type of the array values (f64, f32, or i8)
+    ///  * individuals (samples) to read
+    ///  * SNPs (variants) to read
+    ///  * order (Fortran [default] or C) of the output array
+    ///  * value for missing data
+    ///  * number of threads used for reading
+    ///  * whether to count the first allele [default] or the second
+    ///
+    /// # Errors
+    /// See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
+    /// for all possible errors.
+    ///
+    /// # Examples
+    /// Read all data in a .bed file.
+    ///
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let val = ReadOptions::builder().f64().read(&mut bed)?;
+    ///
+    /// assert_eq_nan(
+    ///     &val,
+    ///     &nd::array![
+    ///         [1.0, 0.0, f64::NAN, 0.0],
+    ///         [2.0, 0.0, f64::NAN, 2.0],
+    ///         [0.0, 1.0, 2.0, 0.0]
+    ///     ],
+    /// );
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
+    ///
+    /// cmk 0 To read selected individuals (samples) and/or SNPs (variants),
+    /// set each part of a numpy.s_ to an int, a list of int,
+    /// a slice expression, or a list of bool.
+    /// Negative integers count from the end of the list.
+    /// ```
+    /// # use ndarray as nd;
+    /// # use bed_reader::{Bed, ReadOptions};
+    /// # use bed_reader::assert_eq_nan;
+    /// # let file_name = "bed_reader/tests/data/small.bed";
+    ///
+    /// let mut bed = Bed::new(file_name)?;
+    /// // Read the SNPs indexed by 2.
+    /// let val = ReadOptions::builder().sid_index(2).f64().read(&mut bed)?;
+    ///
+    /// assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
+    ///
+    /// // Read the SNPs indexed by 2, 3, and 0.
+    /// let val = ReadOptions::builder()
+    ///     .sid_index([2, 3, 0])
+    ///     .f64()
+    ///     .read(&mut bed)?;
+    ///
+    /// assert_eq_nan(
+    ///     &val,
+    ///     &nd::array![[f64::NAN, 0.0, 1.0], [f64::NAN, 2.0, 2.0], [2.0, 0.0, 0.0]],
+    /// );
+    ///
+    /// //  Read SNPs from 1 (inclusive) to 4 (exclusive).
+    /// let val = ReadOptions::builder()
+    ///     .sid_index(1..4)
+    ///     .f64()
+    ///     .read(&mut bed)?;
+    ///
+    /// assert_eq_nan(
+    ///     &val,
+    ///     &nd::array![[0.0, f64::NAN, 0.0], [0.0, f64::NAN, 2.0], [1.0, 2.0, 0.0]],
+    /// );
+    ///
+    /// // Print unique chrom values. Then, read all SNPs in chrom 5.
+    /// use std::collections::HashSet;
+    ///
+    /// println!("{:?}", bed.chromosome()?.iter().collect::<HashSet<_>>());
+    /// // This outputs: ['1', '5', 'Y'].
+    /// let val = ReadOptions::builder()
+    ///     .sid_index(bed.chromosome()?.map(|elem| elem == "5"))
+    ///     .f64()
+    ///     .read(&mut bed)?;
+    ///
+    /// assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
+    ///
+    /// // Read 1st individual (across all SNPs).
+    /// let val = ReadOptions::builder().iid_index(0).f64().read(&mut bed)?;
+    ///
+    /// assert_eq_nan(&val, &nd::array![[1.0, 0.0, f64::NAN, 0.0]]);
+    ///
+    /// // Read every 2nd individual.
+    /// use ndarray::s;
+    /// let val = ReadOptions::builder()
+    ///     .iid_index(s![..;2])
+    ///     .f64()
+    ///     .read(&mut bed)?;
+    ///
+    /// assert_eq_nan(
+    ///     &val,
+    ///     &nd::array![[1.0, 0.0, f64::NAN, 0.0], [0.0, 1.0, 2.0, 0.0]],
+    /// );
+    ///
+    /// // Read last and 2nd-to-last individuals and the last SNPs
+    /// let val = ReadOptions::builder()
+    ///     .iid_index(s![-2..=-1;-1])
+    ///     .sid_index(s![-1..=-1])
+    ///     .f64()
+    ///     .read(&mut bed)?;
+    ///
+    /// assert_eq_nan(&val, &nd::array![[0.0],[2.0]]);
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
     pub fn read(&self, bed: &mut Bed) -> Result<nd::Array2<TVal>, BedErrorPlus> {
         let read_options = self.build()?;
         bed.read_with_options(&read_options)
