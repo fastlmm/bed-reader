@@ -1310,13 +1310,16 @@ pub struct Bed {
     #[builder(default = "None")]
     bim_path: Option<PathBuf>,
 
+    #[builder(setter(custom))]
     #[builder(default = "true")]
     is_checked_early: bool,
 
-    #[builder(default, setter(strip_option))]
+    #[builder(setter(custom))]
+    #[builder(default = "None")]
     iid_count: Option<usize>,
 
-    #[builder(default, setter(strip_option))]
+    #[builder(setter(custom))]
+    #[builder(default = "None")]
     sid_count: Option<usize>,
 
     #[builder(setter(custom))]
@@ -1370,7 +1373,7 @@ pub struct Bed {
 }
 
 impl BedBuilder {
-    pub fn new<P: AsRef<Path>>(path: P) -> Self {
+    fn new<P: AsRef<Path>>(path: P) -> Self {
         let path: PathBuf = path.as_ref().into();
 
         Self {
@@ -1534,6 +1537,16 @@ impl BedBuilder {
         self
     }
 
+    pub fn iid_count(mut self, count: usize) -> Self {
+        self.iid_count = Some(Some(count));
+        self
+    }
+
+    pub fn sid_count(mut self, count: usize) -> Self {
+        self.sid_count = Some(Some(count));
+        self
+    }
+
     // https://stackoverflow.com/questions/38183551/concisely-initializing-a-vector-of-strings
     // https://stackoverflow.com/questions/65250496/how-to-convert-intoiteratoritem-asrefstr-to-iteratoritem-str-in-rust
     pub fn fid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, fid: I) -> Self {
@@ -1647,10 +1660,19 @@ fn to_skippable<'a, T>(lazy_or_skip: &'a LazyOrSkip<T>) -> Skippable<&'a T> {
     }
 }
 
+// !!!cmk later should bedbuilder be able to accept a metadata struct?
+
 impl Bed {
     /// Attempts to open a PLINK .bed file for reading. Supports options.
     ///
-    /// See [`Bed::new`](struct.Bed.html#method.new), which does not support options.
+    /// > Also see [`Bed::new`](struct.Bed.html#method.new), which does not support options.
+    ///
+    /// Options, [listed here](struct.BedBuilder.html#implementations), can:
+    ///  * set the path of the .fam and/or .bim file
+    ///  * override selected metadata, for example, replacing the individual ids.
+    ///  * give the number of individuals (samples) or SNPs (variants)
+    ///  * control checking the validity of the .bed file's header
+    ///  * skip reading selected metadata
     ///
     /// # Errors
     /// By default, this method will return an error if the file is missing or its header
@@ -1773,8 +1795,6 @@ impl Bed {
     /// ```text
     /// ["iid1", "iid2", "iid3"], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
     /// ```
-    /// See the [`ReadOptions::read`](struct.ReadOptions.html#method.read)
-    /// for details of reading batches via slicing and fancy indexing.
     pub fn builder<P: AsRef<Path>>(path: P) -> BedBuilder {
         BedBuilder::new(path)
     }
