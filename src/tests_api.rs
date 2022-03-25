@@ -991,3 +991,56 @@ fn fill() -> Result<(), BedErrorPlus> {
 
     Ok(())
 }
+
+#[test]
+fn bed_builder() -> Result<(), BedErrorPlus> {
+    let file_name = "bed_reader/tests/data/small.bed";
+    let mut bed = Bed::builder(file_name).build()?;
+    println!("{:?}", bed.iid()?);
+    println!("{:?}", bed.sid()?);
+    let val = bed.read::<f64>()?;
+
+    assert_eq_nan(
+        &val,
+        &nd::array![
+            [1.0, 0.0, f64::NAN, 0.0],
+            [2.0, 0.0, f64::NAN, 2.0],
+            [0.0, 1.0, 2.0, 0.0]
+        ],
+    );
+
+    let mut bed = Bed::builder(file_name).build()?;
+    let val = ReadOptions::builder().sid_index(2).f64().read(&mut bed)?;
+
+    assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
+
+    let mut bed = Bed::builder(file_name)
+        .iid(["sample1", "sample2", "sample3"])
+        .build()?;
+    println!("{:?}", bed.iid()?); // replaced
+    println!("{:?}", bed.sid()?); // same as before
+
+    let mut bed = Bed::builder(file_name).iid_count(3).sid_count(4).build()?;
+    let val = bed.read::<f64>()?;
+    assert_eq_nan(
+        &val,
+        &nd::array![
+            [1.0, 0.0, f64::NAN, 0.0],
+            [2.0, 0.0, f64::NAN, 2.0],
+            [0.0, 1.0, 2.0, 0.0]
+        ],
+    );
+
+    let mut bed = Bed::builder(file_name)
+        .skip_father()
+        .skip_mother()
+        .skip_sex()
+        .skip_pheno()
+        .skip_allele_1()
+        .skip_allele_2()
+        .build()?;
+    println!("{:?}", bed.iid()?);
+    bed.allele_2().expect_err("Can't be read");
+
+    Ok::<(), BedErrorPlus>(())
+}
