@@ -3,6 +3,8 @@ use crate::allclose;
 #[cfg(test)]
 use crate::assert_eq_nan;
 #[cfg(test)]
+use crate::tmp_path;
+#[cfg(test)]
 use crate::write;
 #[cfg(test)]
 use crate::Bed;
@@ -20,8 +22,6 @@ use crate::WriteOptions;
 use ndarray as nd;
 #[cfg(test)]
 use ndarray::s;
-#[cfg(test)]
-use temp_testdir::TempDir;
 
 #[test]
 fn rusty_bed1() -> Result<(), BedErrorPlus> {
@@ -67,11 +67,7 @@ fn rusty_bed2() -> Result<(), BedErrorPlus> {
 #[cfg(test)]
 use std::collections::HashSet;
 #[cfg(test)]
-use std::fs;
-#[cfg(test)]
 use std::panic::catch_unwind;
-#[cfg(test)]
-use std::path::PathBuf;
 
 #[test]
 fn rusty_bed3() -> Result<(), BedErrorPlus> {
@@ -514,13 +510,6 @@ fn write_docs() -> Result<(), BedErrorPlus> {
     // ["0", "0", "0", "0"], shape=[4], strides=[1], layout=CFcf (0xf), const ndim=1
 
     Ok(())
-}
-
-#[cfg(test)]
-fn tmp_path() -> Result<PathBuf, BedErrorPlus> {
-    let output_path = PathBuf::from(TempDir::default().as_ref());
-    fs::create_dir(&output_path)?;
-    Ok(output_path)
 }
 
 #[test]

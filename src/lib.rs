@@ -105,6 +105,7 @@
 //!  * [Project Website](https://fastlmm.github.io/)
 //!
 //! ## Summary
+//! cmk 0 make markdown table?
 //! ### Open for Reading Genotype Data and Metadata
 //! * [`Bed::new`](struct.Bed.html#method.new) - Open a PLINK .bed file for reading. Does not support options.
 //! * [`Bed::builder`](struct.Bed.html#method.builder) - Open a PLINK .bed file for reading. Supports options.
@@ -118,8 +119,8 @@
 //! * [`Bed::read_and_fill`](struct.Bed.html#method.read_and_fill) - Fill an existing array with genotype data.
 //! * [`Bed::read_and_fill_with_options`](struct.Bed.html#method.read_and_fill_with_options) - Fill an existing array with genotype data. Supports selection and options.
 //! ### Write Genotype Data
-//! * [`Bed::write`](struct.Bed.html#method.write) - Write genotype data.
-//! * [`WriteOptionsBuilder::write`](struct.WriteOptionsBuilder.html#method.write) - Write genotype data with options.
+//! * [`Bed::write`](struct.Bed.html#method.write) - Write genotype data. cmk 0
+//! * [`WriteOptions::builder`](struct.WriteOptions.html#method.builder) - Write values to a file in PLINK .bed format. Supports metadata and options.
 //!
 //! *Alternative:*
 //! * [`Bed::write_with_options`](struct.Bed.html#method.write_with_options) - Write genotype data with options.
@@ -152,6 +153,7 @@ mod tests;
 mod tests_api;
 
 use core::fmt::Debug;
+use derive_builder::Builder;
 use nd::ShapeBuilder;
 use ndarray as nd;
 use std::fs::{self};
@@ -164,8 +166,7 @@ use std::{
     ops::RangeFull,
     path::{Path, PathBuf},
 };
-
-use derive_builder::Builder;
+use temp_testdir::TempDir;
 // !!! might want to use this instead use typed_builder::TypedBuilder;
 
 use byteorder::{LittleEndian, ReadBytesExt};
@@ -2177,6 +2178,48 @@ impl Bed {
         self.get_some_field(&self.allele_2, "allele_2")
     }
 
+    /// Read genotype data.
+    ///
+    /// > Also see [`ReadOptions::builder`](struct.ReadOptions.html#method.builder) which supports selection and options.
+    ///
+    /// # Errors
+    /// See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
+    /// for all possible errors.
+    ///
+    /// # Examples
+    /// Read all data in a .bed file.
+    ///
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let val = bed.read::<f64>()?;
+    ///
+    /// assert_eq_nan(
+    ///     &val,
+    ///     &nd::array![
+    ///         [1.0, 0.0, f64::NAN, 0.0],
+    ///         [2.0, 0.0, f64::NAN, 2.0],
+    ///         [0.0, 1.0, 2.0, 0.0]
+    ///     ],
+    /// );
+    ///
+    /// // Your output array can be f32, f64, or i8
+    /// let val = bed.read::<i8>()?;
+    /// assert_eq_nan(
+    ///     &val,
+    ///     &nd::array![
+    ///         [1, 0, -127, 0],
+    ///         [2, 0, -127, 2],
+    ///         [0, 1, 2, 0]
+    ///     ],
+    /// );
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```    
     pub fn read<TVal: BedVal>(&mut self) -> Result<nd::Array2<TVal>, BedErrorPlus> {
         let read_options = ReadOptions::<TVal>::builder().build()?;
         self.read_with_options(&read_options)
@@ -2862,7 +2905,6 @@ impl<TVal: BedVal> ReadOptions<TVal> {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
-    /// cmk 0 add more examples from Python
     pub fn builder() -> ReadOptionsBuilder<TVal> {
         ReadOptionsBuilder::default()
     }
@@ -3001,6 +3043,70 @@ impl<TVal> WriteOptions<TVal>
 where
     TVal: BedVal,
 {
+    /// Write values to a file in PLINK .bed format. Supports metadata and options.
+    ///
+    /// > Also see [`Bed::write`](struct.Bed.html#method.write), which does not support meta data or options.
+    ///
+    /// The cmk 0 options, [listed here](struct.ReadOptionsBuilder.html#implementations), can specify the:
+    ///  * type of the array values ([`i8`](struct.ReadOptionsBuilder.html#method.i8), [`f32`](struct.ReadOptionsBuilder.html#method.f32), [`f64`](struct.ReadOptionsBuilder.html#method.f64))
+    ///  * individuals (samples) to read with [`iid_index`](struct.ReadOptionsBuilder.html#method.iid_index)
+    ///  * SNPs (variants) to read with [`sid_index`](struct.ReadOptionsBuilder.html#method.sid_index)
+    ///  * order of the output array, either Fortran (default) or C
+    ///  * value for missing data
+    ///  * number of threads used for reading
+    ///  * whether to count the first allele (default) or the second
+    ///
+    /// # Errors
+    /// See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
+    /// for all possible errors.
+    ///
+    /// # Examples
+    /// In this example, all metadata is given.
+    ///
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, WriteOptions, tmp_path};
+    ///
+    /// let output_folder = tmp_path()?;
+    /// let output_file = output_folder.join("small.bed");
+    /// let val = nd::array![
+    ///     [1.0, 0.0, f64::NAN, 0.0],
+    ///     [2.0, 0.0, f64::NAN, 2.0],
+    ///     [0.0, 1.0, 2.0, 0.0]
+    /// ];
+    /// WriteOptions::builder(output_file)
+    ///     .fid(["fid1", "fid1", "fid2"])
+    ///     .iid(["iid1", "iid2", "iid3"])
+    ///     .father(["iid23", "iid23", "iid22"])
+    ///     .mother(["iid34", "iid34", "iid33"])
+    ///     .sex([1, 2, 0])
+    ///     .pheno(["red", "red", "blue"])
+    ///     .chromosome(["1", "1", "5", "Y"])
+    ///     .sid(["sid1", "sid2", "sid3", "sid4"])
+    ///     .cm_position([100.4, 2000.5, 4000.7, 7000.9])
+    ///     .bp_position([1, 100, 1000, 1004])
+    ///     .allele_1(["A", "T", "A", "T"])
+    ///     .allele_2(["A", "C", "C", "G"])
+    ///     .write(&val)?;
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
+    /// Here, no properties are given, so default values are assigned.
+    /// If we then read the new file and list the chromosome property,
+    /// it is an array of '0's, the default chromosome value.
+    /// ```
+    /// # use ndarray as nd;
+    /// # use bed_reader::{Bed, WriteOptions, tmp_path};
+    /// # let output_folder = tmp_path()?;
+    /// let output_file2 = output_folder.join("small2.bed");
+    /// let val = nd::array![[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]];
+    /// WriteOptions::builder(&output_file2).write(&val)?;
+    /// let mut bed2 = Bed::new(&output_file2)?;
+    /// println!("{:?}", bed2.chromosome()?);
+    /// // ["0", "0", "0", "0"], shape=[4], strides=[1], layout=CFcf (0xf), const ndim=1
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
     pub fn builder<P: AsRef<Path>>(path: P) -> WriteOptionsBuilder<TVal> {
         WriteOptionsBuilder::new(path)
     }
@@ -3509,4 +3615,11 @@ pub fn allclose<
                 c <= atol
             }
         })
+}
+
+// cmk 0 document
+pub fn tmp_path() -> Result<PathBuf, BedErrorPlus> {
+    let output_path = PathBuf::from(TempDir::default().as_ref());
+    fs::create_dir(&output_path)?;
+    Ok(output_path)
 }
