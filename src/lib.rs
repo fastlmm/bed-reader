@@ -3039,22 +3039,21 @@ where
     missing_value: TVal,
 }
 
+// cmk 0 hide writeoptionsbuilder's new method
 impl<TVal> WriteOptions<TVal>
 where
     TVal: BedVal,
 {
     /// Write values to a file in PLINK .bed format. Supports metadata and options.
     ///
-    /// > Also see [`Bed::write`](struct.Bed.html#method.write), which does not support meta data or options.
+    /// > Also see [`Bed::write`](struct.Bed.html#method.write), which does not support metadata or options.
     ///
-    /// The cmk 0 options, [listed here](struct.ReadOptionsBuilder.html#implementations), can specify the:
-    ///  * type of the array values ([`i8`](struct.ReadOptionsBuilder.html#method.i8), [`f32`](struct.ReadOptionsBuilder.html#method.f32), [`f64`](struct.ReadOptionsBuilder.html#method.f64))
-    ///  * individuals (samples) to read with [`iid_index`](struct.ReadOptionsBuilder.html#method.iid_index)
-    ///  * SNPs (variants) to read with [`sid_index`](struct.ReadOptionsBuilder.html#method.sid_index)
-    ///  * order of the output array, either Fortran (default) or C
-    ///  * value for missing data
-    ///  * number of threads used for reading
-    ///  * whether to count the first allele (default) or the second
+    /// The options, [listed here](struct.WriteOptionsBuilder.html#implementations), can specify the:
+    ///  * metadata, including the individual ids and the SNP ids
+    ///  * a non-default path for the .fam and/or .bim files
+    ///  * a non-default value that represents missing data
+    ///  * whether the first allele was counted (default) or the second
+    ///  * number of threads to use for writing
     ///
     /// # Errors
     /// See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
@@ -3062,7 +3061,6 @@ where
     ///
     /// # Examples
     /// In this example, all metadata is given.
-    ///
     /// ```
     /// use ndarray as nd;
     /// use bed_reader::{Bed, WriteOptions, tmp_path};
@@ -3091,7 +3089,7 @@ where
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
-    /// Here, no properties are given, so default values are assigned.
+    /// Here, no metadata is given, so default values are assigned.
     /// If we then read the new file and list the chromosome property,
     /// it is an array of '0's, the default chromosome value.
     /// ```
@@ -3100,7 +3098,9 @@ where
     /// # let output_folder = tmp_path()?;
     /// let output_file2 = output_folder.join("small2.bed");
     /// let val = nd::array![[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]];
+    ///
     /// WriteOptions::builder(&output_file2).write(&val)?;
+    ///
     /// let mut bed2 = Bed::new(&output_file2)?;
     /// println!("{:?}", bed2.chromosome()?);
     /// // ["0", "0", "0", "0"], shape=[4], strides=[1], layout=CFcf (0xf), const ndim=1
