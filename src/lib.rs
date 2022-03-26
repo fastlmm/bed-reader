@@ -2447,13 +2447,81 @@ impl Index {
 pub(crate) type SliceInfo1 =
     nd::SliceInfo<[nd::SliceInfoElem; 1], nd::Dim<[usize; 1]>, nd::Dim<[usize; 1]>>;
 
-// Could implement an enumerator, but it is complex and requires a 'match' on each next()
-//     https://stackoverflow.com/questions/65272613/how-to-implement-intoiterator-for-an-enum-of-iterable-variants
-// !!!cmk later add docs to type typedbuilder stuff: https://docs.rs/typed-builder/latest/typed_builder/derive.TypedBuilder.html#customisation-with-attributes
-// !!!cmk should this be hidden?
-#[doc(hidden)]
+/// A specification of which individuals (samples) or SNPs (variants) to read.
+///
+/// By default, all individuals or SNPs are read.
+/// The indices can be specified as:
+///   * an unsigned index
+///   * a vector or ndarray of unsigned indices
+///   * a range
+///   * a vector or ndarray of booleans
+///   * an ndarray slice (which supports negative indexing and steps)
+///
+/// # Examples
+/// ```
+/// use ndarray as nd;
+/// use bed_reader::{Bed, ReadOptions};
+/// use bed_reader::assert_eq_nan;
+///
+/// let file_name = "bed_reader/tests/data/some_missing.bed";
+/// let mut bed = Bed::new(file_name)?;
+///
+/// // Read all individuals and all SNPs
+/// let val = ReadOptions::builder().f64().read(&mut bed)?;
+/// assert!(val.dim() == (50, 10));
+///
+/// // Read the individual at index position 10 and all SNPs
+/// let val = ReadOptions::builder().iid_index(10).f64().read(&mut bed)?;
+/// assert!(val.dim() == (1, 10));
+///
+/// // Read the individuals at index positions 0,5,10 and
+/// // the SNP at index position 3
+/// let val = ReadOptions::builder()
+///     .iid_index([0,5,10])
+///     .sid_index(5)
+///     .f64()
+///     .read(&mut bed)?;
+/// assert!(val.dim() == (3, 1));
+/// // Repeat, but with an ndarray
+/// let val = ReadOptions::builder()
+///     .iid_index(nd:array![0,5,10])
+///     .sid_index(5)
+///     .f64()
+///     .read(&mut bed)?;
+/// assert!(val.dim() == (3, 1));
+///
+/// // Create a boolean ndarray identifying SNPs in chromosome 5,
+/// // then select those SNPs.
+/// let snp_5 = bed3.chromosome()?.map(|elem| elem == "5"));
+/// let val = ReadOptions::builder()
+///     .sid_index(snp_5)
+///     .f64()
+///     .read(&mut bed)?;
+/// assert!(val.dim() == (50, 3));
+///
+/// Use ndarray's slice macro, [`s!`](https://docs.rs/ndarray/latest/ndarray/macro.s.html),
+/// to select every 2nd individual and every 3rd SNP.
+/// let val = ReadOptions::builder()
+///     .iid_index(s![..;2])
+///     .sid_index(s![..;3])
+///     .f64()
+///     .read(&mut bed)?;
+/// assert!(val.dim() == (3, 1));
+/// Use ndarray's slice macro, [`s!`](https://docs.rs/ndarray/latest/ndarray/macro.s.html),
+/// to select the 2nd to last individual (via negative indexing)
+/// and every 3rd SNP in reverse order.)
+/// let val = ReadOptions::builder()
+///     .iid_index(s![-2])
+///     .sid_index(s![..;-3])
+///     .f64()
+///     .read(&mut bed)?;
+/// assert!(val.dim() == (3, 1));
+
 #[derive(Debug, Clone)]
 pub enum Index {
+    // Could implement an enumerator, but it is complex and requires a 'match' on each next()
+    //     https://stackoverflow.com/questions/65272613/how-to-implement-intoiterator-for-an-enum-of-iterable-variants
+    // !!!cmk later add docs to type typedbuilder stuff: https://docs.rs/typed-builder/latest/typed_builder/derive.TypedBuilder.html#customisation-with-attributes
     All,
     One(usize),
     Vec(Vec<usize>),
@@ -2464,7 +2532,6 @@ pub enum Index {
     RangeAny(RangeAny),
 }
 
-#[doc(hidden)]
 #[derive(Debug, Clone)]
 pub struct RangeAny {
     start: Option<usize>,
@@ -2496,7 +2563,6 @@ impl RangeAny {
     }
 }
 
-#[doc(hidden)]
 #[derive(Debug, Clone)]
 pub struct RangeNdSlice {
     start: usize,
@@ -2836,6 +2902,7 @@ pub struct ReadOptions<TVal: BedVal> {
     #[builder(default = "TVal::missing()")]
     missing_value: TVal,
 
+    /// cmk 0 testing iid_index
     #[builder(default = "Index::All")]
     #[builder(setter(into))]
     iid_index: Index,
@@ -2876,8 +2943,8 @@ impl<TVal: BedVal> ReadOptions<TVal> {
     /// The indices can be specified as:
     ///   * an unsigned index
     ///   * a vector or ndarray of unsigned indices
-    ///   * a vector or ndarray of booleans
     ///   * a range
+    ///   * a vector or ndarray of booleans
     ///   * an ndarray slice (which supports negative indexing and steps)
     /// cmk 0 somewhere describe all the indexing possibilities
     ///
