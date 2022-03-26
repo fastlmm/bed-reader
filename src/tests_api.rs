@@ -5,8 +5,6 @@ use crate::assert_eq_nan;
 #[cfg(test)]
 use crate::tmp_path;
 #[cfg(test)]
-use crate::write;
-#[cfg(test)]
 use crate::Bed;
 #[cfg(test)]
 use crate::BedError;
@@ -504,7 +502,7 @@ fn write_docs() -> Result<(), BedErrorPlus> {
     //     ['0' '0' '0' '0']
     let output_file2 = output_folder.join("small2.bed");
     let val = nd::array![[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]];
-    write(&val, &output_file2)?;
+    Bed::write(&val, &output_file2)?;
     let mut bed2 = Bed::new(&output_file2)?;
     println!("{:?}", bed2.chromosome()?);
     // ["0", "0", "0", "0"], shape=[4], strides=[1], layout=CFcf (0xf), const ndim=1

@@ -105,7 +105,6 @@
 //!  * [Project Website](https://fastlmm.github.io/)
 //!
 //! ## Summary
-//! cmk 0 make markdown table?
 //! ### Open for Reading Genotype Data and Metadata
 //! * [`Bed::new`](struct.Bed.html#method.new) - Open a PLINK .bed file for reading. Does not support options.
 //! * [`Bed::builder`](struct.Bed.html#method.builder) - Open a PLINK .bed file for reading. Supports options.
@@ -119,11 +118,11 @@
 //! * [`Bed::read_and_fill`](struct.Bed.html#method.read_and_fill) - Fill an existing array with genotype data.
 //! * [`Bed::read_and_fill_with_options`](struct.Bed.html#method.read_and_fill_with_options) - Fill an existing array with genotype data. Supports selection and options.
 //! ### Write Genotype Data
-//! * [`Bed::write`](struct.Bed.html#method.write) - Write genotype data. cmk 0
 //! * [`WriteOptions::builder`](struct.WriteOptions.html#method.builder) - Write values to a file in PLINK .bed format. Supports metadata and options.
 //!
-//! *Alternative:*
+//! *Alternatives:*
 //! * [`Bed::write_with_options`](struct.Bed.html#method.write_with_options) - Write genotype data with options.
+//! * [`Bed::write`](struct.Bed.html#method.write) - Write genotype data with default metadata.
 //! ### Read Metadata
 //! * [`Bed::iid_count`](struct.Bed.html#method.iid_count) - Number of individuals (samples)
 //! * [`Bed::sid_count`](struct.Bed.html#method.sid_count) - Number of SNPs (variants)
@@ -142,7 +141,7 @@
 //! * [`Bed::allele2`](struct.Bed.html#method.allele2) - Second allele of each SNP (variant)
 //! * [`Bed::metadata`](struct.Bed.html#method.metadata) - All the metadata returned as a [`struct.Metadata`](struct.Metadata.html)
 //!
-//! ## Utilities
+//! ## Utilities cmk 0 may not need this listed below
 //! * [`assert_eq_nan`](fn.assert_eq_nan.html) - Assert that two arrays are equal, ignoring NaN values.
 //! * [`allclose`](fn.allclose.html) - Assert that two array views are nearly equal, optionally ignoring NaN values.
 
@@ -1864,6 +1863,80 @@ impl Bed {
         Bed::builder(path).build()
     }
 
+    /// Write genotype data with default metadata.
+    ///
+    /// > Also see [`WriteOptions::builder`](struct.WriteOptions.html#method.builder), which supports metadata and options.
+    ///
+    /// # Errors
+    /// See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
+    /// for all possible errors.
+    ///
+    /// # Example
+    /// In this example, write genotype data using default metadata.
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, WriteOptions, tmp_path};
+    ///
+    /// let output_folder = tmp_path()?;
+    /// let output_file = output_folder.join("small.bed");
+    ///
+    /// let val = nd::array![[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]];
+    /// Bed::write(&val, &output_file)?;
+    ///
+    /// // If we then read the new file and list the chromosome property,
+    /// // it is an array of '0's, the default chromosome value.
+    /// let mut bed2 = Bed::new(&output_file)?;
+    /// println!("{:?}", bed2.chromosome()?);
+    /// // ["0", "0", "0", "0"], shape=[4], strides=[1], layout=CFcf (0xf), const ndim=1
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
+    pub fn write<S: nd::Data<Elem = TVal>, TVal: BedVal>(
+        val: &nd::ArrayBase<S, nd::Ix2>,
+        path: &Path,
+    ) -> Result<(), BedErrorPlus> {
+        WriteOptions::builder(path).write(val)
+    }
+    pub fn write_with_options<S, TVal>(
+        val: &nd::ArrayBase<S, nd::Ix2>,
+        write_options: &WriteOptions<TVal>,
+    ) -> Result<(), BedErrorPlus>
+    where
+        S: nd::Data<Elem = TVal>,
+        TVal: BedVal,
+    {
+        // !!!cmk later can this be done in one step??
+        let shape = val.shape();
+        let iid_count = shape[0];
+        let sid_count = shape[1];
+        let path = &write_options.path;
+
+        let num_threads = compute_num_threads(write_options.num_threads)?;
+        write_val(
+            path,
+            val,
+            write_options.is_a1_counted,
+            write_options.missing_value,
+            num_threads,
+        )?;
+
+        let fam_path = to_metadata_path(path, &write_options.fam_path, "fam");
+        if let Err(e) = fam_write_internal(write_options, iid_count, &fam_path) {
+            // Clean up the file
+            let _ = fs::remove_file(fam_path);
+            return Err(e);
+        }
+
+        let bim_path = to_metadata_path(path, &write_options.bim_path, "bim");
+        if let Err(e) = bim_write_internal(write_options, sid_count, &bim_path) {
+            // Clean up the file
+            let _ = fs::remove_file(bim_path);
+            return Err(e);
+        }
+
+        Ok(())
+    }
+
     pub fn fam_path(&mut self) -> Result<PathBuf, BedErrorPlus> {
         if let Some(path) = &self.fam_path {
             Ok(path.clone())
@@ -3039,7 +3112,6 @@ where
     missing_value: TVal,
 }
 
-// cmk 0 hide writeoptionsbuilder's new method
 impl<TVal> WriteOptions<TVal>
 where
     TVal: BedVal,
@@ -3219,12 +3291,12 @@ where
         val: &nd::ArrayBase<S, nd::Ix2>,
     ) -> Result<(), BedErrorPlus> {
         let write_options = self.build()?;
-        write_with_options(val, &write_options)?;
+        Bed::write_with_options(val, &write_options)?;
 
         Ok(())
     }
 
-    pub fn new<P: AsRef<Path>>(path: P) -> Self {
+    fn new<P: AsRef<Path>>(path: P) -> Self {
         Self {
             path: Some(path.as_ref().into()),
             fam_path: None,
@@ -3402,13 +3474,6 @@ where
     }
 }
 
-pub fn write<S: nd::Data<Elem = TVal>, TVal: BedVal>(
-    val: &nd::ArrayBase<S, nd::Ix2>,
-    path: &Path,
-) -> Result<(), BedErrorPlus> {
-    WriteOptions::builder(path).write(val)
-}
-
 // !!!cmk later do this without a "clone"
 fn compute_field<T, F>(field: &Skippable<nd::Array1<T>>, count: usize, lambda: F) -> nd::Array1<T>
 where
@@ -3419,46 +3484,6 @@ where
         Skippable::Some(array) => array.clone(),
         Skippable::Skip => (0..count).map(|_| lambda(0)).collect::<nd::Array1<T>>(),
     }
-}
-
-pub fn write_with_options<S, TVal>(
-    val: &nd::ArrayBase<S, nd::Ix2>,
-    write_options: &WriteOptions<TVal>,
-) -> Result<(), BedErrorPlus>
-where
-    S: nd::Data<Elem = TVal>,
-    TVal: BedVal,
-{
-    // !!!cmk later can this be done in one step??
-    let shape = val.shape();
-    let iid_count = shape[0];
-    let sid_count = shape[1];
-    let path = &write_options.path;
-
-    let num_threads = compute_num_threads(write_options.num_threads)?;
-    write_val(
-        path,
-        val,
-        write_options.is_a1_counted,
-        write_options.missing_value,
-        num_threads,
-    )?;
-
-    let fam_path = to_metadata_path(path, &write_options.fam_path, "fam");
-    if let Err(e) = fam_write_internal(write_options, iid_count, &fam_path) {
-        // Clean up the file
-        let _ = fs::remove_file(fam_path);
-        return Err(e);
-    }
-
-    let bim_path = to_metadata_path(path, &write_options.bim_path, "bim");
-    if let Err(e) = bim_write_internal(write_options, sid_count, &bim_path) {
-        // Clean up the file
-        let _ = fs::remove_file(bim_path);
-        return Err(e);
-    }
-
-    Ok(())
 }
 
 fn bim_write_internal<TVal: BedVal>(
