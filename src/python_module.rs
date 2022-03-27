@@ -49,8 +49,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         iid_count: usize,
         sid_count: usize,
         is_a1_counted: bool,
-        iid_index: &PyArray1<usize>,
-        sid_index: &PyArray1<usize>,
+        iid_index: &PyArray1<isize>,
+        sid_index: &PyArray1<isize>,
         val: &PyArray2<f64>,
         num_threads: usize,
     ) -> Result<(), PyErr> {
@@ -84,8 +84,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         iid_count: usize,
         sid_count: usize,
         is_a1_counted: bool,
-        iid_index: &PyArray1<usize>,
-        sid_index: &PyArray1<usize>,
+        iid_index: &PyArray1<isize>,
+        sid_index: &PyArray1<isize>,
         val: &PyArray2<f32>,
         num_threads: usize,
     ) -> Result<(), PyErr> {
@@ -119,8 +119,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         iid_count: usize,
         sid_count: usize,
         is_a1_counted: bool,
-        iid_index: &PyArray1<usize>,
-        sid_index: &PyArray1<usize>,
+        iid_index: &PyArray1<isize>,
+        sid_index: &PyArray1<isize>,
         val: &PyArray2<i8>,
         num_threads: usize,
     ) -> Result<(), PyErr> {

@@ -139,6 +139,7 @@ fn reference_val(is_a1_counted: bool) -> nd::Array2<f64> {
     val
 }
 
+// !!!cmk 0
 #[test]
 fn index() {
     let filename = "bed_reader/tests/data/some_missing.bed";
@@ -155,7 +156,7 @@ fn index() {
         .unwrap();
 
     assert!(allclose(
-        &(ref_val_float.slice(nd::s![.., 2..3])),
+        &(ref_val_float.slice(nd::s![.., 2usize..3])),
         &val.view(),
         1e-08,
         true
@@ -168,7 +169,7 @@ fn index() {
         .read(&mut bed)
         .unwrap();
     assert!(allclose(
-        &ref_val_float.slice(nd::s![1..2, 2..3]),
+        &ref_val_float.slice(nd::s![1usize..2, 2usize..3]),
         &val.view(),
         1e-08,
         true
@@ -176,7 +177,7 @@ fn index() {
 
     // val = bed.read([2, -2])
     let val = ReadOptions::builder()
-        .sid_index([2, bed.sid_count().unwrap() - 2])
+        .sid_index([2, -2])
         .f32()
         .read(&mut bed)
         .unwrap();
@@ -187,7 +188,7 @@ fn index() {
     assert!(allclose(&expected.view(), &val.view(), 1e-08, true));
 
     let result = ReadOptions::builder()
-        .iid_index(usize::MAX)
+        .iid_index(isize::MAX)
         .sid_index(2)
         .f32()
         .read(&mut bed);
@@ -221,7 +222,7 @@ fn index() {
     let mut bed = Bed::new(filename).unwrap();
     let result4 = ReadOptions::builder()
         .iid_index(2)
-        .sid_index(usize::MAX)
+        .sid_index(isize::MAX)
         .f32()
         .read(&mut bed);
     match result4 {
@@ -237,8 +238,8 @@ fn index() {
         usize::MAX,
         usize::MAX,
         true,
-        &[usize::MAX - 1],
-        &[usize::MAX - 1],
+        &[isize::MAX - 1],
+        &[isize::MAX - 1],
         f64::NAN,
         &mut ignore_val.view_mut(),
     );
@@ -254,7 +255,7 @@ fn index() {
     };
 }
 
-// Python has more tests, but they aren't needed in Rust until it gets fancy indexing
+// cmk 0 Python has more tests, but they aren't needed in Rust until it gets fancy indexing
 
 #[test]
 fn writer() {
@@ -555,10 +556,10 @@ fn standardize_beta() {
 
 #[test]
 fn read_errors() {
-    let iid_count = 100;
+    let iid_count = 100usize;
     let sid_count = 200;
-    let iid_index = (0..iid_count).collect::<Vec<usize>>();
-    let sid_index = (0..iid_count).collect::<Vec<usize>>();
+    let iid_index = (0..iid_count as isize).collect::<Vec<isize>>();
+    let sid_index = (0..iid_count as isize).collect::<Vec<isize>>();
     let output_is_orderf = true;
     let shape = ShapeBuilder::set_f((iid_index.len(), sid_index.len()), output_is_orderf);
     let mut val = nd::Array2::<f64>::default(shape);

@@ -245,10 +245,10 @@ pub enum BedError {
     IllegalSnpMean,
 
     #[error("Index to individual larger than the number of individuals. (Index value {0})")]
-    IidIndexTooBig(usize),
+    IidIndexTooBig(isize),
 
     #[error("Index to SNP larger than the number of SNPs. (Index value {0})")]
-    SidIndexTooBig(usize),
+    SidIndexTooBig(isize),
 
     #[error("Length of iid_index ({0}) and sid_index ({1}) must match dimensions of output array ({2},{3}).")]
     IndexMismatch(usize, usize, usize, usize),
@@ -320,8 +320,8 @@ fn read_no_alloc<TVal: BedVal, P: AsRef<Path>>(
     iid_count: usize,
     sid_count: usize,
     is_a1_counted: bool,
-    iid_index: &[usize],
-    sid_index: &[usize],
+    iid_index: &[isize],
+    sid_index: &[isize],
     missing_value: TVal,
     num_threads: usize,
     val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
@@ -449,17 +449,18 @@ fn internal_read_no_alloc<TVal: BedVal, P: AsRef<Path>>(
     in_iid_count: usize,
     in_sid_count: usize,
     is_a1_counted: bool,
-    iid_index: &[usize],
-    sid_index: &[usize],
+    iid_index: &[isize],
+    sid_index: &[isize],
     missing_value: TVal,
     out_val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
 ) -> Result<(), BedErrorPlus> {
     // Find the largest in_iid_i (if any) and check its size.
-    if let Some(in_max_iid_i) = iid_index.iter().max() {
-        if *in_max_iid_i >= in_iid_count {
-            return Err(BedError::IidIndexTooBig(*in_max_iid_i).into());
-        }
-    }
+    // !!!cmk 0 check for smallest, too
+    // if let Some(in_max_iid_i) = iid_index.iter().max() {
+    //     if *in_max_iid_i >= in_iid_count {
+    //         return Err(BedError::IidIndexTooBig(*in_max_iid_i).into());
+    //     }
+    // }
 
     let (in_iid_count_div4, in_iid_count_div4_u64) =
         try_div_4(in_iid_count, in_sid_count, CB_HEADER_U64)?;
@@ -473,18 +474,29 @@ fn internal_read_no_alloc<TVal: BedVal, P: AsRef<Path>>(
         return Err(BedError::IllFormed(PathBuf::from(path.as_ref()).display().to_string()).into());
     }
 
+    let lower_iid_count = -(in_iid_count as isize);
+    let upper_iid_count: isize = (in_iid_count as isize) - 1;
+    let lower_sid_count = -(in_sid_count as isize);
+    let upper_sid_count: isize = (in_sid_count as isize) - 1;
+
     // See https://morestina.net/blog/1432/parallel-stream-processing-with-rayon
     // Possible optimization: We could try to read only the iid info needed
     // Possible optimization: We could read snp in their input order instead of their output order
     sid_index
         .iter()
         // Read all the iid info for one snp from the disk
-        .map(|in_sid_i| {
-            if in_sid_i >= &in_sid_count {
-                return Err(BedErrorPlus::BedError(BedError::SidIndexTooBig(*in_sid_i)));
-            }
+        .map(|in_sid_i_signed| {
+            let in_sid_i = if (0..=upper_sid_count).contains(in_sid_i_signed) {
+                *in_sid_i_signed as u64
+            } else if (lower_sid_count..=-1).contains(in_sid_i_signed) {
+                (in_sid_count - ((-in_sid_i_signed) as usize)) as u64
+            } else {
+                return Err(BedErrorPlus::BedError(BedError::SidIndexTooBig(
+                    *in_sid_i_signed,
+                )));
+            };
             let mut bytes_vector: Vec<u8> = vec![0; in_iid_count_div4];
-            let pos: u64 = (*in_sid_i as u64) * in_iid_count_div4_u64 + CB_HEADER_U64; // "as" and math is safe because of early checks
+            let pos: u64 = in_sid_i * in_iid_count_div4_u64 + CB_HEADER_U64; // "as" and math is safe because of early checks
             buf_reader.seek(SeekFrom::Start(pos))?;
             buf_reader.read_exact(&mut bytes_vector)?;
             Ok(bytes_vector)
@@ -497,8 +509,18 @@ fn internal_read_no_alloc<TVal: BedVal, P: AsRef<Path>>(
             match bytes_vector_result {
                 Err(e) => Err(e),
                 Ok(bytes_vector) => {
-                    for (out_iid_i, in_iid_i) in iid_index.iter().enumerate() {
-                        // Possible optimization: We could pre-compute the conversion, the division, the mod, and the multiply*2
+                    for (out_iid_i, in_iid_i_signed) in iid_index.iter().enumerate() {
+                        let in_iid_i = if (0..=upper_iid_count).contains(in_iid_i_signed) {
+                            *in_iid_i_signed as usize
+                        } else if (lower_iid_count..=-1).contains(in_iid_i_signed) {
+                            (in_iid_count - ((-in_iid_i_signed) as usize)) as usize
+                        } else {
+                            return Err(BedErrorPlus::BedError(BedError::IidIndexTooBig(
+                                *in_iid_i_signed,
+                            )));
+                        };
+
+                        // cmk 0 Possible optimization: We could pre-compute the conversion, the division, the mod, and the multiply*2
                         let i_div_4 = in_iid_i / 4;
                         let i_mod_4 = in_iid_i % 4;
                         let genotype_byte: u8 = (bytes_vector[i_div_4] >> (i_mod_4 * 2)) & 0x03;
@@ -2402,9 +2424,10 @@ impl Index {
     // We can't define a 'From' because we want to add count at the last moment.
     // Would be nice to not always allocate a new vec, maybe with Rc<[T]>?
     // Even better would be to support an iterator from Index (an enum with fields).
-    pub fn to_vec(&self, count: usize) -> Result<Vec<usize>, BedErrorPlus> {
+    pub fn to_vec(&self, count: usize) -> Result<Vec<isize>, BedErrorPlus> {
+        let count_signed = count as isize;
         match self {
-            Index::All => Ok((0..count).collect()),
+            Index::All => Ok((0..count_signed).collect()),
             Index::Vec(vec) => Ok(vec.to_vec()),
             Index::NDArrayBool(nd_array_bool) => {
                 if nd_array_bool.len() != count {
@@ -2416,7 +2439,7 @@ impl Index {
                     .iter()
                     .enumerate()
                     .filter(|(_, b)| **b)
-                    .map(|(i, _)| i)
+                    .map(|(i, _)| i as isize)
                     .collect())
             }
             // !!!cmk later can we implement this without two allocations?
@@ -2425,7 +2448,7 @@ impl Index {
             }
             Index::RangeAny(range_any) => {
                 let range = range_any.to_range(count)?;
-                Ok(range.collect::<Vec<usize>>())
+                Ok(range.map(|i| i as isize).collect::<Vec<isize>>())
             }
             Index::NDArray(nd_array) => Ok(nd_array.to_vec()),
             Index::One(one) => Ok(vec![*one]),
@@ -2437,7 +2460,7 @@ impl Index {
                     .iter()
                     .enumerate()
                     .filter(|(_, b)| **b)
-                    .map(|(i, _)| i)
+                    .map(|(i, _)| i as isize)
                     .collect())
             }
         }
@@ -2523,9 +2546,9 @@ pub enum Index {
     //     https://stackoverflow.com/questions/65272613/how-to-implement-intoiterator-for-an-enum-of-iterable-variants
     // !!!cmk later add docs to type typedbuilder stuff: https://docs.rs/typed-builder/latest/typed_builder/derive.TypedBuilder.html#customisation-with-attributes
     All,
-    One(usize),
-    Vec(Vec<usize>),
-    NDArray(nd::Array1<usize>),
+    One(isize),
+    Vec(Vec<isize>),
+    NDArray(nd::Array1<isize>),
     VecBool(Vec<bool>),
     NDArrayBool(nd::Array1<bool>),
     NDSliceInfo(SliceInfo1),
@@ -2586,11 +2609,14 @@ impl RangeNdSlice {
     }
 
     // https://docs.rs/ndarray/0.15.4/ndarray/struct.ArrayBase.html#slicing
-    fn to_vec(&self) -> Vec<usize> {
+    fn to_vec(&self) -> Vec<isize> {
         if self.start > self.end {
             Vec::new()
         } else {
-            let mut vec: Vec<usize> = (self.start..self.end).step_by(self.step).collect();
+            let mut vec: Vec<isize> = (self.start..self.end)
+                .step_by(self.step)
+                .map(|i| i as isize)
+                .collect();
             if self.is_reversed {
                 vec.reverse();
             }
@@ -2800,32 +2826,32 @@ impl From<RangeToInclusive<usize>> for Index {
     }
 }
 
-impl From<&[usize]> for Index {
-    fn from(array: &[usize]) -> Index {
+impl From<&[isize]> for Index {
+    fn from(array: &[isize]) -> Index {
         Index::Vec(array.to_vec())
     }
 }
 
-impl<const N: usize> From<[usize; N]> for Index {
-    fn from(array: [usize; N]) -> Index {
+impl<const N: usize> From<[isize; N]> for Index {
+    fn from(array: [isize; N]) -> Index {
         Index::Vec(array.to_vec())
     }
 }
 
-impl<const N: usize> From<&[usize; N]> for Index {
-    fn from(array: &[usize; N]) -> Index {
+impl<const N: usize> From<&[isize; N]> for Index {
+    fn from(array: &[isize; N]) -> Index {
         Index::Vec(array.to_vec())
     }
 }
 
-impl From<&nd::ArrayView1<'_, usize>> for Index {
-    fn from(view: &nd::ArrayView1<usize>) -> Index {
+impl From<&nd::ArrayView1<'_, isize>> for Index {
+    fn from(view: &nd::ArrayView1<isize>) -> Index {
         Index::NDArray(view.to_owned())
     }
 }
 
-impl From<&Vec<usize>> for Index {
-    fn from(vec_ref: &Vec<usize>) -> Index {
+impl From<&Vec<isize>> for Index {
+    fn from(vec_ref: &Vec<isize>) -> Index {
         Index::Vec(vec_ref.clone())
     }
 }
@@ -2861,19 +2887,19 @@ impl<const N: usize> From<&[bool; N]> for Index {
     }
 }
 
-impl From<usize> for Index {
-    fn from(one: usize) -> Index {
+impl From<isize> for Index {
+    fn from(one: isize) -> Index {
         Index::One(one)
     }
 }
 
-impl From<Vec<usize>> for Index {
-    fn from(vec: Vec<usize>) -> Index {
+impl From<Vec<isize>> for Index {
+    fn from(vec: Vec<isize>) -> Index {
         Index::Vec(vec)
     }
 }
-impl From<nd::Array1<usize>> for Index {
-    fn from(nd_array: nd::Array1<usize>) -> Index {
+impl From<nd::Array1<isize>> for Index {
+    fn from(nd_array: nd::Array1<isize>) -> Index {
         Index::NDArray(nd_array)
     }
 }
