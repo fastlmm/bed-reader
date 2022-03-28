@@ -139,7 +139,6 @@ fn reference_val(is_a1_counted: bool) -> nd::Array2<f64> {
     val
 }
 
-// !!!cmk 0
 #[test]
 fn index() {
     let filename = "bed_reader/tests/data/some_missing.bed";

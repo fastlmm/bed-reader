@@ -3052,8 +3052,8 @@ impl<TVal: BedVal> ReadOptions<TVal> {
     ///
     /// // Read last and 2nd-to-last individuals and the last SNP
     /// let val = ReadOptions::builder()
-    ///     .iid_index(s![-2..=-1;-1])
-    ///     .sid_index(s![-1..=-1])
+    ///     .iid_index([-1,-2]])
+    ///     .sid_index(-1)
     ///     .f64()
     ///     .read(&mut bed)?;
     /// assert_eq_nan(&val, &nd::array![[0.0],[2.0]]);

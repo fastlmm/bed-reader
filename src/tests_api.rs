@@ -670,7 +670,7 @@ fn into_iter() -> Result<(), BedErrorPlus> {
 #[cfg(test)]
 fn rt1<R>(range_thing: R) -> Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>
 where
-    R: std::ops::RangeBounds<isize>
+    R: std::ops::RangeBounds<usize>
         + std::fmt::Debug
         + Clone
         + std::slice::SliceIndex<[isize], Output = [isize]>
@@ -817,51 +817,51 @@ fn assert_same_result(
 }
 
 // cmk 0
-// #[test]
-// fn range_same() -> Result<(), BedErrorPlus> {
-//     assert_same_result(rt1(3..0), rt23((3..0).into()));
-//     assert_same_result(rt1(1000..), rt23((1000..).into()));
+#[test]
+fn range_same() -> Result<(), BedErrorPlus> {
+    assert_same_result(rt1(3..0), rt23((3..0).into()));
+    assert_same_result(rt1(1000..), rt23((1000..).into()));
 
-//     assert_same_result(rt1(..), rt23((..).into()));
-//     assert_same_result(rt1(..3), rt23((..3).into()));
-//     assert_same_result(rt1(..=3), rt23((..=3).into()));
-//     assert_same_result(rt1(1..), rt23((1..).into()));
-//     assert_same_result(rt1(1..3), rt23((1..3).into()));
-//     assert_same_result(rt1(1..=3), rt23((1..=3).into()));
-//     assert_same_result(rt1(2..=2), rt23((2..=2).into()));
-//     Ok(())
-// }
+    assert_same_result(rt1(..), rt23((..).into()));
+    assert_same_result(rt1(..3), rt23((..3).into()));
+    assert_same_result(rt1(..=3), rt23((..=3).into()));
+    assert_same_result(rt1(1..), rt23((1..).into()));
+    assert_same_result(rt1(1..3), rt23((1..3).into()));
+    assert_same_result(rt1(1..=3), rt23((1..=3).into()));
+    assert_same_result(rt1(2..=2), rt23((2..=2).into()));
+    Ok(())
+}
 
-// #[test]
-// fn nd_slice_same() -> Result<(), BedErrorPlus> {
-//     assert_same_result(nds1(s![1000..]), rt23(s![1000..].into()));
-//     assert_same_result(nds1(s![..1000]), rt23(s![..1000].into()));
-//     assert_same_result(nds1(s![999..1000]), rt23(s![999..1000].into()));
-//     assert_same_result(nds1(s![-1000..]), rt23(s![-1000..].into()));
-//     assert_same_result(nds1(s![..-1000]), rt23(s![..-1000].into()));
-//     assert_same_result(nds1(s![-999..-1000]), rt23(s![-999..-1000].into()));
-//     assert_same_result(nds1(s![3..0]), rt23(s![3..0].into()));
-//     assert_same_result(nds1(s![-1..-2]), rt23(s![-1..-2].into()));
+#[test]
+fn nd_slice_same() -> Result<(), BedErrorPlus> {
+    assert_same_result(nds1(s![1000..]), rt23(s![1000..].into()));
+    assert_same_result(nds1(s![..1000]), rt23(s![..1000].into()));
+    assert_same_result(nds1(s![999..1000]), rt23(s![999..1000].into()));
+    assert_same_result(nds1(s![-1000..]), rt23(s![-1000..].into()));
+    assert_same_result(nds1(s![..-1000]), rt23(s![..-1000].into()));
+    assert_same_result(nds1(s![-999..-1000]), rt23(s![-999..-1000].into()));
+    assert_same_result(nds1(s![3..0]), rt23(s![3..0].into()));
+    assert_same_result(nds1(s![-1..-2]), rt23(s![-1..-2].into()));
 
-//     assert_same_result(nds1(s![..-3]), rt23(s![..-3].into()));
-//     assert_same_result(nds1(s![..=-3]), rt23(s![..=-3].into()));
-//     assert_same_result(nds1(s![-1..]), rt23(s![-1..].into()));
-//     assert_same_result(nds1(s![-3..-1]), rt23(s![-3..-1].into()));
-//     assert_same_result(nds1(s![-3..=-1]), rt23(s![-3..=-1].into()));
-//     assert_same_result(nds1(s![-3..=-1]), rt23(s![-3..=-1].into()));
-//     assert_same_result(nds1(s![-2..=-2]), rt23(s![-2..=-2].into()));
-//     assert_same_result(nds1(s![1..-1]), rt23(s![1..-1].into()));
+    assert_same_result(nds1(s![..-3]), rt23(s![..-3].into()));
+    assert_same_result(nds1(s![..=-3]), rt23(s![..=-3].into()));
+    assert_same_result(nds1(s![-1..]), rt23(s![-1..].into()));
+    assert_same_result(nds1(s![-3..-1]), rt23(s![-3..-1].into()));
+    assert_same_result(nds1(s![-3..=-1]), rt23(s![-3..=-1].into()));
+    assert_same_result(nds1(s![-3..=-1]), rt23(s![-3..=-1].into()));
+    assert_same_result(nds1(s![-2..=-2]), rt23(s![-2..=-2].into()));
+    assert_same_result(nds1(s![1..-1]), rt23(s![1..-1].into()));
 
-//     assert_same_result(nds1(s![..]), rt23((s![..]).into()));
-//     assert_same_result(nds1(s![..3]), rt23((s![..3]).into()));
-//     assert_same_result(nds1(s![..=3]), rt23((s![..=3]).into()));
-//     assert_same_result(nds1(s![1..]), rt23((s![1..]).into()));
-//     assert_same_result(nds1(s![1..3]), rt23((s![1..3]).into()));
-//     assert_same_result(nds1(s![1..=3]), rt23((s![1..=3]).into()));
-//     assert_same_result(nds1(s![2..=2]), rt23(s![2..=2].into()));
+    assert_same_result(nds1(s![..]), rt23((s![..]).into()));
+    assert_same_result(nds1(s![..3]), rt23((s![..3]).into()));
+    assert_same_result(nds1(s![..=3]), rt23((s![..=3]).into()));
+    assert_same_result(nds1(s![1..]), rt23((s![1..]).into()));
+    assert_same_result(nds1(s![1..3]), rt23((s![1..3]).into()));
+    assert_same_result(nds1(s![1..=3]), rt23((s![1..=3]).into()));
+    assert_same_result(nds1(s![2..=2]), rt23(s![2..=2].into()));
 
-//     Ok(())
-// }
+    Ok(())
+}
 
 #[test]
 fn counts_and_files() -> Result<(), BedErrorPlus> {
@@ -1043,8 +1043,8 @@ fn read_options_builder() -> Result<(), BedErrorPlus> {
 
     // Read last and 2nd-to-last individuals and the last SNPs
     let val = ReadOptions::builder()
-        .iid_index(s![-2..=-1;-1])
-        .sid_index(s![-1..=-1])
+        .iid_index([-1, -2])
+        .sid_index(-1)
         .f64()
         .read(&mut bed)?;
 
