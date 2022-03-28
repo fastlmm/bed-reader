@@ -479,6 +479,25 @@ fn internal_read_no_alloc<TVal: BedVal, P: AsRef<Path>>(
     let lower_sid_count = -(in_sid_count as isize);
     let upper_sid_count: isize = (in_sid_count as isize) - 1;
 
+    // !!!cmk 0 parallelize, and reduce size of 2nd array
+    let mut i_div_4 = vec![0usize; iid_index.len()];
+    let mut i_mod_4_times_2 = vec![0usize; iid_index.len()];
+    for (out_iid_i, in_iid_i_signed) in iid_index.iter().enumerate() {
+        let in_iid_i = if (0..=upper_iid_count).contains(in_iid_i_signed) {
+            *in_iid_i_signed as usize
+        } else if (lower_iid_count..=-1).contains(in_iid_i_signed) {
+            (in_iid_count - ((-in_iid_i_signed) as usize)) as usize
+        } else {
+            return Err(BedErrorPlus::BedError(BedError::IidIndexTooBig(
+                *in_iid_i_signed,
+            )));
+        };
+
+        // cmk 0 Possible optimization: We could pre-compute the conversion, the division, the mod, and the multiply*2
+        i_div_4[out_iid_i] = in_iid_i / 4;
+        i_mod_4_times_2[out_iid_i] = in_iid_i % 4 * 2;
+    }
+
     // See https://morestina.net/blog/1432/parallel-stream-processing-with-rayon
     // Possible optimization: We could try to read only the iid info needed
     // Possible optimization: We could read snp in their input order instead of their output order
@@ -505,29 +524,15 @@ fn internal_read_no_alloc<TVal: BedVal, P: AsRef<Path>>(
         .zip(out_val.axis_iter_mut(nd::Axis(1)))
         // In parallel, decompress the iid info and put it in its column
         .par_bridge() // This seems faster that parallel zip
-        .try_for_each(|(bytes_vector_result, mut col)| {
-            match bytes_vector_result {
-                Err(e) => Err(e),
-                Ok(bytes_vector) => {
-                    for (out_iid_i, in_iid_i_signed) in iid_index.iter().enumerate() {
-                        let in_iid_i = if (0..=upper_iid_count).contains(in_iid_i_signed) {
-                            *in_iid_i_signed as usize
-                        } else if (lower_iid_count..=-1).contains(in_iid_i_signed) {
-                            (in_iid_count - ((-in_iid_i_signed) as usize)) as usize
-                        } else {
-                            return Err(BedErrorPlus::BedError(BedError::IidIndexTooBig(
-                                *in_iid_i_signed,
-                            )));
-                        };
-
-                        // cmk 0 Possible optimization: We could pre-compute the conversion, the division, the mod, and the multiply*2
-                        let i_div_4 = in_iid_i / 4;
-                        let i_mod_4 = in_iid_i % 4;
-                        let genotype_byte: u8 = (bytes_vector[i_div_4] >> (i_mod_4 * 2)) & 0x03;
-                        col[out_iid_i] = from_two_bits_to_value[genotype_byte as usize];
-                    }
-                    Ok(())
+        .try_for_each(|(bytes_vector_result, mut col)| match bytes_vector_result {
+            Err(e) => Err(e),
+            Ok(bytes_vector) => {
+                for out_iid_i in 0..iid_index.len() {
+                    let genotype_byte: u8 =
+                        (bytes_vector[i_div_4[out_iid_i]] >> i_mod_4_times_2[out_iid_i]) & 0x03;
+                    col[out_iid_i] = from_two_bits_to_value[genotype_byte as usize];
                 }
+                Ok(())
             }
         })?;
 
