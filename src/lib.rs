@@ -454,14 +454,6 @@ fn internal_read_no_alloc<TVal: BedVal, P: AsRef<Path>>(
     missing_value: TVal,
     out_val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
 ) -> Result<(), BedErrorPlus> {
-    // Find the largest in_iid_i (if any) and check its size.
-    // !!!cmk 0 check for smallest, too
-    // if let Some(in_max_iid_i) = iid_index.iter().max() {
-    //     if *in_max_iid_i >= in_iid_count {
-    //         return Err(BedError::IidIndexTooBig(*in_max_iid_i).into());
-    //     }
-    // }
-
     let (in_iid_count_div4, in_iid_count_div4_u64) =
         try_div_4(in_iid_count, in_sid_count, CB_HEADER_U64)?;
 
@@ -479,24 +471,56 @@ fn internal_read_no_alloc<TVal: BedVal, P: AsRef<Path>>(
     let lower_sid_count = -(in_sid_count as isize);
     let upper_sid_count: isize = (in_sid_count as isize) - 1;
 
-    // !!!cmk 0 parallelize, and reduce size of 2nd array
-    let mut i_div_4 = vec![0usize; iid_index.len()];
-    let mut i_mod_4_times_2 = vec![0usize; iid_index.len()];
-    for (out_iid_i, in_iid_i_signed) in iid_index.iter().enumerate() {
+    let mut i_div_4_array = nd::Array1::<usize>::zeros(iid_index.len());
+    let mut i_mod_4_times_2_array = nd::Array1::<u8>::zeros(iid_index.len());
+    let mut result_list: Vec<Result<(), BedError>> = vec![Ok(()); iid_index.len()];
+    nd::par_azip!((in_iid_i_signed in iid_index,
+        i_div_4 in &mut i_div_4_array,
+        i_mod_4_times_2 in &mut i_mod_4_times_2_array,
+        result in &mut result_list
+    )
+    {
         let in_iid_i = if (0..=upper_iid_count).contains(in_iid_i_signed) {
+            *result = Ok(());
             *in_iid_i_signed as usize
         } else if (lower_iid_count..=-1).contains(in_iid_i_signed) {
+            *result = Ok(());
             (in_iid_count - ((-in_iid_i_signed) as usize)) as usize
         } else {
-            return Err(BedErrorPlus::BedError(BedError::IidIndexTooBig(
+            // !!!cmk 0 test this and sid
+            *result = Err(BedError::IidIndexTooBig(
                 *in_iid_i_signed,
-            )));
+            ));
+            0
         };
 
-        // cmk 0 Possible optimization: We could pre-compute the conversion, the division, the mod, and the multiply*2
-        i_div_4[out_iid_i] = in_iid_i / 4;
-        i_mod_4_times_2[out_iid_i] = in_iid_i % 4 * 2;
-    }
+        *i_div_4 = in_iid_i / 4;
+        *i_mod_4_times_2 = (in_iid_i % 4 * 2) as u8;
+    });
+
+    // Check the result list for errors
+    result_list
+        .iter()
+        .par_bridge()
+        .try_for_each(|x| (*x).clone())?;
+
+    // // !!!cmk 0 parallelize
+    // let mut i_div_4_vec = vec![0usize; iid_index.len()];
+    // let mut i_mod_4_times_2_vec = vec![0u8; iid_index.len()];
+    // for (out_iid_i, in_iid_i_signed) in iid_index.iter().enumerate() {
+    //     let in_iid_i = if (0..=upper_iid_count).contains(in_iid_i_signed) {
+    //         *in_iid_i_signed as usize
+    //     } else if (lower_iid_count..=-1).contains(in_iid_i_signed) {
+    //         (in_iid_count - ((-in_iid_i_signed) as usize)) as usize
+    //     } else {
+    //         return Err(BedErrorPlus::BedError(BedError::IidIndexTooBig(
+    //             *in_iid_i_signed,
+    //         )));
+    //     };
+
+    //     i_div_4_vec[out_iid_i] = in_iid_i / 4;
+    //     i_mod_4_times_2_vec[out_iid_i] = (in_iid_i % 4 * 2) as u8;
+    // }
 
     // See https://morestina.net/blog/1432/parallel-stream-processing-with-rayon
     // Possible optimization: We could try to read only the iid info needed
@@ -528,8 +552,9 @@ fn internal_read_no_alloc<TVal: BedVal, P: AsRef<Path>>(
             Err(e) => Err(e),
             Ok(bytes_vector) => {
                 for out_iid_i in 0..iid_index.len() {
-                    let genotype_byte: u8 =
-                        (bytes_vector[i_div_4[out_iid_i]] >> i_mod_4_times_2[out_iid_i]) & 0x03;
+                    let i_div_4 = i_div_4_array[out_iid_i];
+                    let i_mod_4_times_2 = i_mod_4_times_2_array[out_iid_i];
+                    let genotype_byte: u8 = (bytes_vector[i_div_4] >> i_mod_4_times_2) & 0x03;
                     col[out_iid_i] = from_two_bits_to_value[genotype_byte as usize];
                 }
                 Ok(())
