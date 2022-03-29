@@ -816,7 +816,6 @@ fn assert_same_result(
     assert!(result1.shape()[0] == result3, "not same length");
 }
 
-// cmk 0
 #[test]
 fn range_same() -> Result<(), BedErrorPlus> {
     assert_same_result(rt1(3..0), rt23((3..0).into()));
@@ -1104,4 +1103,133 @@ fn bed_builder() -> Result<(), BedErrorPlus> {
     bed.allele_2().expect_err("Can't be read");
 
     Ok::<(), BedErrorPlus>(())
+}
+
+#[test]
+fn negative_indexing() -> Result<(), BedErrorPlus> {
+    let file_name = "bed_reader/tests/data/small.bed";
+    let mut bed = Bed::new(file_name)?;
+    // println!("{:?}", bed.read::<f64>()?);
+    // [[1.0, 0.0, NaN, 0.0],
+    // [2.0, 0.0, NaN, 2.0],
+    // [0.0, 1.0, 2.0, 0.0]], shape=[3, 4], strides=[1, 3], layout=Ff (0xa), const ndim=2
+    //  iid range is -4ERROR -3 -2 -1 0 1 2 3ERROR
+    //  sid range is -5ERROR -4 ... 3 4ERROR
+    for index in [-4, 3] {
+        match ReadOptions::builder().iid_index(index).i8().read(&mut bed) {
+            Err(BedErrorPlus::BedError(BedError::IidIndexTooBig(x))) => {
+                assert_eq!(x, index);
+            }
+            _ => panic!("Expected specific error"),
+        };
+    }
+    for index in [-3, 0] {
+        let val = ReadOptions::builder()
+            .iid_index(index)
+            .i8()
+            .read(&mut bed)?;
+        // println!("{:?}", val);
+        assert!(val[[0, 0]] == 1,);
+    }
+    for index in [-1, 2] {
+        let val = ReadOptions::builder()
+            .iid_index(index)
+            .i8()
+            .read(&mut bed)?;
+        // println!("{:?}", val);
+        assert!(val[[0, 0]] == 0,);
+    }
+
+    for index in [-5, 4] {
+        match ReadOptions::builder().sid_index(index).i8().read(&mut bed) {
+            Err(BedErrorPlus::BedError(BedError::SidIndexTooBig(x))) => {
+                assert_eq!(x, index);
+            }
+            _ => panic!("Expected specific error"),
+        };
+    }
+    for index in [-4, 0] {
+        let val = ReadOptions::builder()
+            .sid_index(index)
+            .i8()
+            .read(&mut bed)?;
+        // println!("{:?}", val);
+        assert!(val[[0, 0]] == 1,);
+    }
+    for index in [-1, 3] {
+        let val = ReadOptions::builder()
+            .sid_index(index)
+            .i8()
+            .read(&mut bed)?;
+        // println!("{:?}", val);
+        assert!(val[[0, 0]] == 0,);
+    }
+
+    Ok(())
+}
+
+#[test]
+fn index_doc() -> Result<(), BedErrorPlus> {
+    let file_name = "bed_reader/tests/data/some_missing.bed";
+    let mut bed = Bed::new(file_name)?;
+    println!("{:?}", bed.dim()?); // prints (100, 100)
+
+    // Read all individuals and all SNPs
+    let val = ReadOptions::builder().f64().read(&mut bed)?;
+    assert!(val.dim() == (100, 100));
+
+    // Read the individual at index position 10 and all SNPs
+    let val = ReadOptions::builder().iid_index(10).f64().read(&mut bed)?;
+    assert!(val.dim() == (1, 100));
+
+    // Read the individuals at index positions 0,5, 1st-from-the-end and
+    // the SNP at index position 3
+    let val = ReadOptions::builder()
+        .iid_index(vec![0, 5, -1])
+        .sid_index(3)
+        .f64()
+        .read(&mut bed)?;
+    assert!(val.dim() == (3, 1));
+    // Repeat, but with an ndarray
+    let val = ReadOptions::builder()
+        .iid_index(nd::array![0, 5, -1])
+        .sid_index(3)
+        .f64()
+        .read(&mut bed)?;
+    assert!(val.dim() == (3, 1));
+    // Repeat, but with an Rust array
+    let val = ReadOptions::builder()
+        .iid_index([0, 5, -1])
+        .sid_index(3)
+        .f64()
+        .read(&mut bed)?;
+    assert!(val.dim() == (3, 1));
+
+    // Create a boolean ndarray identifying SNPs in chromosome 5,
+    // then select those SNPs.
+    let snp_5 = bed.chromosome()?.map(|elem| elem == "5");
+    let val = ReadOptions::builder()
+        .sid_index(snp_5)
+        .f64()
+        .read(&mut bed)?;
+    assert!(val.dim() == (100, 6));
+
+    // Use ndarray's slice macro, [`s!`](https://docs.rs/ndarray/latest/ndarray/macro.s.html),
+    // to select every 2nd individual and every 3rd SNP.
+    let val = ReadOptions::builder()
+        .iid_index(s![..;2])
+        .sid_index(s![..;3])
+        .f64()
+        .read(&mut bed)?;
+    assert!(val.dim() == (50, 34));
+    // Use ndarray's slice macro, [`s!`](https://docs.rs/ndarray/latest/ndarray/macro.s.html),
+    // to select the 10th-from-last individual to the last, in reverse order,
+    // and every 3rd SNP in reverse order.)
+    let val = ReadOptions::builder()
+        .iid_index(s![-10..;-1])
+        .sid_index(s![..;-3])
+        .f64()
+        .read(&mut bed)?;
+    assert!(val.dim() == (10, 34));
+    Ok(())
 }

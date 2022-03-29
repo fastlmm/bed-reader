@@ -547,7 +547,6 @@ fn check_and_precompute_iid_index(
             *result = Ok(());
             (in_iid_count - ((-in_iid_i_signed) as usize)) as usize
         } else {
-            // !!!cmk 0 test this and sid
             *result = Err(BedError::IidIndexTooBig(
                 *in_iid_i_signed,
             ));
@@ -2504,71 +2503,83 @@ pub(crate) type SliceInfo1 =
 ///
 /// By default, all individuals or SNPs are read.
 /// The indices can be specified as:
-///   * an unsigned index
-///   * a vector or ndarray of unsigned indices
-///   * a range
+///   * an index (negative numbers count from the end)
+///   * a vector or ndarray of indices
+///   * a Rust range (negatives not allowed)
 ///   * a vector or ndarray of booleans
-///   * an ndarray slice (which supports negative indexing and steps)
+///   * an ndarray slice (negative indexing and steps allowed)
 ///
 /// # Examples
 /// ```
 /// use ndarray as nd;
 /// use bed_reader::{Bed, ReadOptions};
 /// use bed_reader::assert_eq_nan;
+/// use ndarray::s;
 ///
 /// let file_name = "bed_reader/tests/data/some_missing.bed";
 /// let mut bed = Bed::new(file_name)?;
+/// println!("{:?}", bed.dim()?); // prints (100, 100)
 ///
 /// // Read all individuals and all SNPs
 /// let val = ReadOptions::builder().f64().read(&mut bed)?;
-/// assert!(val.dim() == (50, 10));
+/// assert!(val.dim() == (100, 100));
 ///
 /// // Read the individual at index position 10 and all SNPs
 /// let val = ReadOptions::builder().iid_index(10).f64().read(&mut bed)?;
-/// assert!(val.dim() == (1, 10));
+/// assert!(val.dim() == (1, 100));
 ///
-/// // Read the individuals at index positions 0,5,10 and
+/// // Read the individuals at index positions 0,5, 1st-from-the-end and
 /// // the SNP at index position 3
 /// let val = ReadOptions::builder()
-///     .iid_index([0,5,10])
-///     .sid_index(5)
+///     .iid_index(vec![0, 5, -1])
+///     .sid_index(3)
 ///     .f64()
 ///     .read(&mut bed)?;
 /// assert!(val.dim() == (3, 1));
 /// // Repeat, but with an ndarray
 /// let val = ReadOptions::builder()
-///     .iid_index(nd:array![0,5,10])
-///     .sid_index(5)
+///     .iid_index(nd::array![0, 5, -1])
+///     .sid_index(3)
 ///     .f64()
 ///     .read(&mut bed)?;
 /// assert!(val.dim() == (3, 1));
-///
+/// // Repeat, but with an Rust array
+/// let val = ReadOptions::builder()
+///     .iid_index([0, 5, -1])
+///     .sid_index(3)
+///     .f64()
+///     .read(&mut bed)?;
+/// assert!(val.dim() == (3, 1));
+
 /// // Create a boolean ndarray identifying SNPs in chromosome 5,
 /// // then select those SNPs.
-/// let snp_5 = bed3.chromosome()?.map(|elem| elem == "5"));
+/// let snp_5 = bed.chromosome()?.map(|elem| elem == "5");
 /// let val = ReadOptions::builder()
 ///     .sid_index(snp_5)
 ///     .f64()
 ///     .read(&mut bed)?;
-/// assert!(val.dim() == (50, 3));
-///
-/// Use ndarray's slice macro, [`s!`](https://docs.rs/ndarray/latest/ndarray/macro.s.html),
-/// to select every 2nd individual and every 3rd SNP.
+/// assert!(val.dim() == (100, 6));
+
+/// // Use ndarray's slice macro, [`s!`](https://docs.rs/ndarray/latest/ndarray/macro.s.html),
+/// // to select every 2nd individual and every 3rd SNP.
 /// let val = ReadOptions::builder()
 ///     .iid_index(s![..;2])
 ///     .sid_index(s![..;3])
 ///     .f64()
 ///     .read(&mut bed)?;
-/// assert!(val.dim() == (3, 1));
-/// Use ndarray's slice macro, [`s!`](https://docs.rs/ndarray/latest/ndarray/macro.s.html),
-/// to select the 2nd to last individual (via negative indexing)
-/// and every 3rd SNP in reverse order.)
+/// assert!(val.dim() == (50, 34));
+/// // Use ndarray's slice macro, [`s!`](https://docs.rs/ndarray/latest/ndarray/macro.s.html),
+/// // to select the 10th-from-last individual to the last, in reverse order,
+/// // and every 3rd SNP in reverse order.)
 /// let val = ReadOptions::builder()
-///     .iid_index(s![-2])
+///     .iid_index(s![-10..;-1])
 ///     .sid_index(s![..;-3])
 ///     .f64()
 ///     .read(&mut bed)?;
-/// assert!(val.dim() == (3, 1));
+/// assert!(val.dim() == (10, 34));
+/// # use bed_reader::BedErrorPlus;
+/// # Ok::<(), BedErrorPlus>(())
+/// ```
 
 #[derive(Debug, Clone)]
 pub enum Index {
@@ -2997,11 +3008,11 @@ impl<TVal: BedVal> ReadOptions<TVal> {
     /// To read selected SNPs (variants)
     /// use [`sid_index`](struct.ReadOptionsBuilder.html#method.sid_index).
     /// The indices can be specified as:
-    ///   * an unsigned index
-    ///   * a vector or ndarray of unsigned indices
-    ///   * a range
+    ///   * an index (negative numbers count from the end)
+    ///   * a vector or ndarray of indices
+    ///   * a Rust range (negatives not allowed)
     ///   * a vector or ndarray of booleans
-    ///   * an ndarray slice (which supports negative indexing and steps)
+    ///   * an ndarray slice (negative indexing and steps allowed)
     /// cmk 0 somewhere describe all the indexing possibilities
     ///
     /// # Errors
@@ -3082,7 +3093,7 @@ impl<TVal: BedVal> ReadOptions<TVal> {
     ///
     /// // Read last and 2nd-to-last individuals and the last SNP
     /// let val = ReadOptions::builder()
-    ///     .iid_index([-1,-2]])
+    ///     .iid_index([-1,-2])
     ///     .sid_index(-1)
     ///     .f64()
     ///     .read(&mut bed)?;
