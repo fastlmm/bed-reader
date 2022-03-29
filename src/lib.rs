@@ -24,12 +24,12 @@
 //!
 //! ```
 //! use ndarray as nd;
-//! use bed_reader::Bed;
+//! use bed_reader::{Bed, ReadOptions};
 //! use bed_reader::assert_eq_nan;
 //!
 //! let file_name = "bed_reader/tests/data/small.bed";
 //! let mut bed = Bed::new(file_name)?;
-//! let val = bed.read::<f64>()?;
+//! let val = ReadOptions::builder().f64().read(&mut bed)?;
 //!
 //! assert_eq_nan(
 //!     &val,
@@ -52,15 +52,15 @@
 //! use bed_reader::ReadOptions;
 //! use ndarray::s;
 //!
-//! let file_name2 = "bed_reader/tests/data/some_missing.bed";
-//! let mut bed2 = Bed::new(file_name2)?;
-//! let val2 = ReadOptions::builder()
+//! let file_name = "bed_reader/tests/data/some_missing.bed";
+//! let mut bed = Bed::new(file_name)?;
+//! let val = ReadOptions::builder()
 //!     .f64()
 //!     .iid_index(s![..;2])
 //!     .sid_index(20..30)
-//!     .read(&mut bed2)?;
+//!     .read(&mut bed)?;
 //!
-//! assert!(val2.dim() == (50, 10));
+//! assert!(val.dim() == (50, 10));
 //! # use bed_reader::BedErrorPlus;
 //! # Ok::<(), BedErrorPlus>(())
 //! ```
@@ -74,26 +74,21 @@
 //! # use bed_reader::assert_eq_nan;
 //! # use bed_reader::ReadOptions;
 //! # use ndarray::s;
-//! # let file_name2 = "bed_reader/tests/data/some_missing.bed";
+//! # let file_name = "bed_reader/tests/data/some_missing.bed";
 //! use std::collections::HashSet;
 //!
-//! let mut bed3 = Bed::new(file_name2)?;
-//! println!("{:?}", bed3.iid()?.slice(s![..5]));
-//! println!("{:?}", bed3.sid()?.slice(s![..5]));
-//! println!("{:?}", bed3.chromosome()?.iter().collect::<HashSet<_>>());
-//! let val3 = ReadOptions::builder()
-//!     .sid_index(bed3.chromosome()?.map(|elem| elem == "5"))
+//! let mut bed = Bed::new(file_name)?;
+//! println!("{:?}", bed.iid()?.slice(s![..5])); // Outputs: ["iid_0", "iid_1", "iid_2", "iid_3", "iid_4"]
+//! println!("{:?}", bed.sid()?.slice(s![..5])); // Outputs: ["sid_0", "sid_1", "sid_2", "sid_3", "sid_4"]
+//! println!("{:?}", bed.chromosome()?.iter().collect::<HashSet<_>>());
+//! // Outputs: {"12", "10", "4", "8", "19", "21", "9", "15", "6", "16", "13", "7", "17", "18", "1", "22", "11", "2", "20", "3", "5", "14"}
+//! let val = ReadOptions::builder()
+//!     .sid_index(bed.chromosome()?.map(|elem| elem == "5"))
 //!     .f64()
-//!     .read(&mut bed3)?;
-//! assert!(val3.dim() == (100, 6));
+//!     .read(&mut bed)?;
+//! assert!(val.dim() == (100, 6));
 //! # use bed_reader::BedErrorPlus;
 //! # Ok::<(), BedErrorPlus>(())
-//! ```
-//! *This outputs:*
-//! ```text
-//! ["iid_0", "iid_1", "iid_2", "iid_3", "iid_4"], shape=[5], strides=[1], layout=CFcf (0xf), const ndim=1
-//! ["sid_0", "sid_1", "sid_2", "sid_3", "sid_4"], shape=[5], strides=[1], layout=CFcf (0xf), const ndim=1
-//! {"12", "10", "4", "8", "19", "21", "9", "15", "6", "16", "13", "7", "17", "18", "1", "22", "11", "2", "20", "3", "5", "14"}
 //! ```
 //!
 //!  ## Project Links
@@ -101,49 +96,62 @@
 //!  * Questions to [fastlmm-dev@python.org](mailto://fastlmm-dev@python.org)
 //!  * [Source code](https://github.com/fastlmm/bed-reader)
 //!  * [Bug Reports](https://github.com/fastlmm/bed-reader/issues)
+// !!!cmk 0 use github discussion instead?
 //!  * [Mailing list](https://mail.python.org/mailman3/lists/fastlmm-user.python.org)
 //!  * [Project Website](https://fastlmm.github.io/)
 //!
-//! ## Summary
-//! ### Open for Reading Genotype Data and Metadata
-//! * [`Bed::new`](struct.Bed.html#method.new) - Open a PLINK .bed file for reading. Does not support options.
-//! * [`Bed::builder`](struct.Bed.html#method.builder) - Open a PLINK .bed file for reading. Supports options.
-//! ### Read Genotype Data
-//! * [`Bed::read`](struct.Bed.html#method.read) - Read all genotype data.
-//! * [`ReadOptions::builder`](struct.ReadOptions.html#method.builder) - Read genotype data. Supports selection and options.
-//! * cmk[`ReadOptionsBuilder::read_and_fill`](struct.ReadOptionsBuilder.html#method.read_and_fill) - Fill an existing array with genotype data. Supports selection and options.
+//! ## Main Functions
 //!
-//! *Alternatives:*
-//! * [`Bed::read_with_options`](struct.Bed.html#method.read_with_options) - Read genotype data. Supports selection and options.
-//! * [`Bed::read_and_fill`](struct.Bed.html#method.read_and_fill) - Fill an existing array with genotype data.
-//! * [`Bed::read_and_fill_with_options`](struct.Bed.html#method.read_and_fill_with_options) - Fill an existing array with genotype data. Supports selection and options.
-//! ### Write Genotype Data
-//! * [`WriteOptions::builder`](struct.WriteOptions.html#method.builder) - Write values to a file in PLINK .bed format. Supports metadata and options.
+//! | Function | Description |
+//! | -------- | ----------- |
+//! | [`Bed::new`](struct.Bed.html#method.new) | Open a PLINK .bed file for reading genotype data and metadata. |
+//! | [`ReadOptions::builder`](struct.ReadOptions.html#method.builder) | Read genotype data. Supports indexing and options. |
+//! | [`WriteOptions::builder`](struct.WriteOptions.html#method.builder) | Write values to a file in PLINK .bed format. Supports metadata and options. |
 //!
-//! *Alternatives:*
-//! * [`Bed::write_with_options`](struct.Bed.html#method.write_with_options) - Write genotype data with options.
-//! * [`Bed::write`](struct.Bed.html#method.write) - Write genotype data with default metadata.
-//! ### Read Metadata
-//! * [`Bed::iid_count`](struct.Bed.html#method.iid_count) - Number of individuals (samples)
-//! * [`Bed::sid_count`](struct.Bed.html#method.sid_count) - Number of SNPs (variants)
-//! * [`Bed::shape`](struct.Bed.html#method.shape) - Number of individuals (samples) and SNPs (variants)
-//! * [`Bed::fid`](struct.Bed.html#method.fid) - Family id of each individual (sample)
-//! * [`Bed::iid`](struct.Bed.html#method.iid) - Individual id of each individual (sample)
-//! * [`Bed::father`](struct.Bed.html#method.father) - Father id of each individual (sample)
-//! * [`Bed::mother`](struct.Bed.html#method.mother) - Mother id of each individual (sample)
-//! * [`Bed::sex`](struct.Bed.html#method.sex) - Sex of each individual (sample)
-//! * [`Bed::pheno`](struct.Bed.html#method.pheno) - A phenotype for each individual (sample) (seldom used)
-//! * [`Bed::chromosome`](struct.Bed.html#method.chromosome) - Chromosome of each SNP (variant)
-//! * [`Bed::sid`](struct.Bed.html#method.sid) - SNP Id of each SNP (variant)
-//! * [`Bed::cm_position`](struct.Bed.html#method.cm_position) - Centimorgan position of each SNP (variant)
-//! * [`Bed::bp_position`](struct.Bed.html#method.bp_position) - Base-pair position of each SNP (variant)
-//! * [`Bed::allele1`](struct.Bed.html#method.allele1) - First allele of each SNP (variant)
-//! * [`Bed::allele2`](struct.Bed.html#method.allele2) - Second allele of each SNP (variant)
-//! * [`Bed::metadata`](struct.Bed.html#method.metadata) - All the metadata returned as a [`struct.Metadata`](struct.Metadata.html)
-//!
-//! ## Utilities cmk 0 may not need this listed below
-//! * [`assert_eq_nan`](fn.assert_eq_nan.html) - Assert that two arrays are equal, ignoring NaN values.
-//! * [`allclose`](fn.allclose.html) - Assert that two array views are nearly equal, optionally ignoring NaN values.
+// !!!cmk 0 move these to the three main functions as "also see"
+// ! ### Open for Reading Genotype Data and Metadata
+// ! * [`Bed::new`](struct.Bed.html#method.new) - Open a PLINK .bed file for reading. Does not support options.
+// ! ### Read Genotype Data
+// ! * [`ReadOptions::builder`](struct.ReadOptions.html#method.builder) - Read genotype data. Supports selection and options.
+// ! ### Write Genotype Data
+// ! * [`WriteOptions::builder`](struct.WriteOptions.html#method.builder) - Write values to a file in PLINK .bed format. Supports metadata and options.
+// !
+// ! * [`Bed::builder`](struct.Bed.html#method.builder) - Open a PLINK .bed file for reading. Supports options.
+// ! * [`Bed::read`](struct.Bed.html#method.read) - Read all genotype data.
+// !!!cmk 0 change "selection" to "indexing" ???
+// ! * cmk[`ReadOptionsBuilder::read_and_fill`](struct.ReadOptionsBuilder.html#method.read_and_fill) - Fill an existing array with genotype data. Supports selection and options.
+// !
+// ! *Alternatives:*
+// ! * [`Bed::read_with_options`](struct.Bed.html#method.read_with_options) - Read genotype data. Supports selection and options.
+// ! * [`Bed::read_and_fill`](struct.Bed.html#method.read_and_fill) - Fill an existing array with genotype data.
+// ! * [`Bed::read_and_fill_with_options`](struct.Bed.html#method.read_and_fill_with_options) - Fill an existing array with genotype data. Supports selection and options.
+// !
+// ! *Alternatives:*
+// ! * [`Bed::write_with_options`](struct.Bed.html#method.write_with_options) - Write genotype data with options.
+// ! * [`Bed::write`](struct.Bed.html#method.write) - Write genotype data with default metadata.
+//! ### Metadata Methods
+//! | Method | Description |
+//! | -------- | ----------- |
+//! | [`Bed::iid_count`](struct.Bed.html#method.iid_count) | Number of individuals (samples) |
+//! | [`Bed::sid_count`](struct.Bed.html#method.sid_count) | Number of SNPs (variants) |
+//! | [`Bed::dim`](struct.Bed.html#method.dim) | Number of individuals and SNPs |
+//! | [`Bed::fid`](struct.Bed.html#method.fid) | Family id of each of individual (sample) |
+//! | [`Bed::iid`](struct.Bed.html#method.iid) | Individual id of each of individual (sample) |
+//! | [`Bed::father`](struct.Bed.html#method.father) | Father id of each of individual (sample) |
+//! | [`Bed::mother`](struct.Bed.html#method.mother) | Mother id of each of individual (sample) |
+//! | [`Bed::sex`](struct.Bed.html#method.sex) | Sex of each individual (sample) |
+//! | [`Bed::pheno`](struct.Bed.html#method.pheno) | A phenotype for each individual (seldom used) |
+//! | [`Bed::chromosome`](struct.Bed.html#method.chromosome) | Chromosome of each SNP (variant) |
+//! | [`Bed::sid`](struct.Bed.html#method.sid) | SNP Id of each SNP (variant) |
+//! | [`Bed::cm_position`](struct.Bed.html#method.cm_position) | Centimorgan position of each SNP (variant) |
+//! | [`Bed::bp_position`](struct.Bed.html#method.bp_position) | Base-pair position of each SNP (variant) |
+//! | [`Bed::allele_1`](struct.Bed.html#method.allele_1) | First allele of each SNP (variant) |
+//! | [`Bed::allele_2`](struct.Bed.html#method.allele_2) | Second allele of each SNP (variant) |
+//! | [`Bed::metadata`](struct.Bed.html#method.metadata) | All the metadata returned as a [`struct.Metadata`](struct.Metadata.html) |
+// !
+// ! ## Utilities cmk 0 may not need this listed below
+// ! * [`assert_eq_nan`](fn.assert_eq_nan.html) - Assert that two arrays are equal, ignoring NaN values.
+// ! * [`allclose`](fn.allclose.html) - Assert that two array views are nearly equal, optionally ignoring NaN values.
 
 // !!!cmk later Environment  variables
 
@@ -1720,6 +1728,7 @@ impl Bed {
     ///
     /// The options, [listed here](struct.BedBuilder.html#implementations), can:
     ///  * set the path of the .fam and/or .bim file
+    // !!!cmk 0 'selected' -> some,  "replacing" -> replace
     ///  * override selected metadata, for example, replacing the individual ids.
     ///  * give the number of individuals (samples) or SNPs (variants)
     ///  * control checking the validity of the .bed file's header
@@ -2302,6 +2311,8 @@ impl Bed {
         self.get_some_field(&self.allele_2, "allele_2")
     }
 
+    // !!!cmk 0 change this to one line.
+    // !!!cmk 0 somewhere say that reading metadata is lazy
     /// Read genotype data.
     ///
     /// > Also see [`ReadOptions::builder`](struct.ReadOptions.html#method.builder) which supports selection and options.
@@ -3040,10 +3051,12 @@ impl<TVal: BedVal> ReadOptions<TVal> {
     ///     ],
     /// );
     ///
+    // !!!cmk 0 add a space before the asserts
     /// // Read the SNPs indexed by 2.
     /// let val = ReadOptions::builder().sid_index(2).f64().read(&mut bed)?;
     /// assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
     ///
+    // !!!cmk 0 give a -1 index???
     /// // Read the SNPs indexed by 2, 3, and 0.
     /// let val = ReadOptions::builder()
     ///     .sid_index([2, 3, 0])

@@ -401,8 +401,8 @@ fn readme_examples() -> Result<(), BedErrorPlus> {
         .iid_index(s![..;2])
         .sid_index(20..30)
         .read(&mut bed2)?;
-    println!("{:?}", val2.shape());
-    // [50, 10]
+    println!("{:?}", val2.shape()); // !!!cmk0 on val's use shape instead of dim where possible???
+                                    // [50, 10]
 
     // List the first 5 individual (sample) ids, the first 5 SNP (variant) ids, and every unique chromosome. Then, read every value in chromosome 5.
 
