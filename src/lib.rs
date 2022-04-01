@@ -20,7 +20,7 @@
 //!
 //! ## Usage
 //!
-//! Read genotype data from a .bed file.
+//! Read all genotype data from a .bed file.
 //!
 //! ```
 //! use ndarray as nd;
@@ -43,7 +43,7 @@
 //! # Ok::<(), BedErrorPlus>(())
 //! ```
 //!
-//! Read every second individual and SNPs (variants) from 20 to 30.
+//! Read individual (samples) from 20 to 30 and every second SNP (variant).
 //!
 //! ```
 //! # use ndarray as nd;
@@ -56,8 +56,8 @@
 //! let mut bed = Bed::new(file_name)?;
 //! let val = ReadOptions::builder()
 //!     .f64()
-//!     .iid_index(s![..;2])
-//!     .sid_index(20..30)
+//!     .iid_index(20..30)
+//!     .sid_index(s![..;2])
 //!     .read(&mut bed)?;
 //!
 //! assert!(val.dim() == (50, 10));
@@ -78,14 +78,15 @@
 //! use std::collections::HashSet;
 //!
 //! let mut bed = Bed::new(file_name)?;
-//! println!("{:?}", bed.iid()?.slice(s![..5])); // Outputs: ["iid_0", "iid_1", "iid_2", "iid_3", "iid_4"]
-//! println!("{:?}", bed.sid()?.slice(s![..5])); // Outputs: ["sid_0", "sid_1", "sid_2", "sid_3", "sid_4"]
+//! println!("{:?}", bed.iid()?.slice(s![..5])); // Outputs ndarray: ["iid_0", "iid_1", "iid_2", "iid_3", "iid_4"]
+//! println!("{:?}", bed.sid()?.slice(s![..5])); // Outputs ndarray: ["sid_0", "sid_1", "sid_2", "sid_3", "sid_4"]
 //! println!("{:?}", bed.chromosome()?.iter().collect::<HashSet<_>>());
 //! // Outputs: {"12", "10", "4", "8", "19", "21", "9", "15", "6", "16", "13", "7", "17", "18", "1", "22", "11", "2", "20", "3", "5", "14"}
 //! let val = ReadOptions::builder()
 //!     .sid_index(bed.chromosome()?.map(|elem| elem == "5"))
 //!     .f64()
 //!     .read(&mut bed)?;
+//!
 //! assert!(val.dim() == (100, 6));
 //! # use bed_reader::BedErrorPlus;
 //! # Ok::<(), BedErrorPlus>(())
@@ -108,28 +109,11 @@
 //! | [`ReadOptions::builder`](struct.ReadOptions.html#method.builder) | Read genotype data. Supports indexing and options. |
 //! | [`WriteOptions::builder`](struct.WriteOptions.html#method.builder) | Write values to a file in PLINK .bed format. Supports metadata and options. |
 //!
-// !!!cmk 0 move these to the three main functions as "also see"
-// ! ### Open for Reading Genotype Data and Metadata
-// ! * [`Bed::new`](struct.Bed.html#method.new) - Open a PLINK .bed file for reading. Does not support options.
-// ! ### Read Genotype Data
-// ! * [`ReadOptions::builder`](struct.ReadOptions.html#method.builder) - Read genotype data. Supports selection and options.
-// ! ### Write Genotype Data
-// ! * [`WriteOptions::builder`](struct.WriteOptions.html#method.builder) - Write values to a file in PLINK .bed format. Supports metadata and options.
-// !
-// ! * [`Bed::builder`](struct.Bed.html#method.builder) - Open a PLINK .bed file for reading. Supports options.
-// ! * [`Bed::read`](struct.Bed.html#method.read) - Read all genotype data.
-// !!!cmk 0 change "selection" to "indexing" ???
-// ! * cmk[`ReadOptionsBuilder::read_and_fill`](struct.ReadOptionsBuilder.html#method.read_and_fill) - Fill an existing array with genotype data. Supports selection and options.
-// !
-// ! *Alternatives:*
-// ! * [`Bed::read_with_options`](struct.Bed.html#method.read_with_options) - Read genotype data. Supports selection and options.
-// ! * [`Bed::read_and_fill`](struct.Bed.html#method.read_and_fill) - Fill an existing array with genotype data.
-// ! * [`Bed::read_and_fill_with_options`](struct.Bed.html#method.read_and_fill_with_options) - Fill an existing array with genotype data. Supports selection and options.
-// !
-// ! *Alternatives:*
-// ! * [`Bed::write_with_options`](struct.Bed.html#method.write_with_options) - Write genotype data with options.
-// ! * [`Bed::write`](struct.Bed.html#method.write) - Write genotype data with default metadata.
-//! ### Metadata Methods
+//! ### `Bed` Metadata Methods
+//!
+//! After using [`Bed::new`](struct.Bed.html#method.new) to open a PLINK .bed file for reading, use
+//! these methods to get metadata.
+//!
 //! | Method | Description |
 //! | -------- | ----------- |
 //! | [`Bed::iid_count`](struct.Bed.html#method.iid_count) | Number of individuals (samples) |
@@ -148,10 +132,52 @@
 //! | [`Bed::allele_1`](struct.Bed.html#method.allele_1) | First allele of each SNP (variant) |
 //! | [`Bed::allele_2`](struct.Bed.html#method.allele_2) | Second allele of each SNP (variant) |
 //! | [`Bed::metadata`](struct.Bed.html#method.metadata) | All the metadata returned as a [`struct.Metadata`](struct.Metadata.html) |
-// !
-// ! ## Utilities cmk 0 may not need this listed below
-// ! * [`assert_eq_nan`](fn.assert_eq_nan.html) - Assert that two arrays are equal, ignoring NaN values.
-// ! * [`allclose`](fn.allclose.html) - Assert that two array views are nearly equal, optionally ignoring NaN values.
+//!
+//! ### `ReadOptionsBuilder` Options
+//!
+//! When using [`ReadOptions::builder`](struct.ReadOptions.html#method.builder) to read genotype data, use these options to
+//! specify a desired type,
+//! which individuals (samples) to read, which SNPs (variants) to read, etc.
+//!
+//! | Option | Description |
+//! | -------- | ----------- |
+//! | [`ReadOptionsBuilder::i8`](struct.ReadOptionsBuilder.html#method.i8) | Read values as i8 |
+//! | [`ReadOptionsBuilder::f32`](struct.ReadOptionsBuilder.html#method.f32) | Read values as f32 |
+//! | [`ReadOptionsBuilder::f64`](struct.ReadOptionsBuilder.html#method.f64) | Read values as f64 |
+//! | [`ReadOptionsBuilder::iid_index`](struct.ReadOptionsBuilder.html#method.iid_index) | Index of individuals (samples) to read (defaults to all)|
+//! | [`ReadOptionsBuilder::sid_index`](struct.ReadOptionsBuilder.html#method.sid_index) | Index of SNPs(variants) to read (defaults to all) |
+//! | [`ReadOptionsBuilder::f`](struct.ReadOptionsBuilder.html#method.f) | Order of the output array, Fortran (default) |
+//! | [`ReadOptionsBuilder::c`](struct.ReadOptionsBuilder.html#method.c) | Order of the output array, C |
+//! | [`ReadOptionsBuilder::is_f`](struct.ReadOptionsBuilder.html#method.is_f) | Is order of the output array Fortran? (defaults to true)|
+//! | [`ReadOptionsBuilder::missing_value`](struct.ReadOptionsBuilder.html#method.missing_value) | Value to use for missing values (defaults to -127 or NaN) |
+//! | [`ReadOptionsBuilder::count_a1`](struct.ReadOptionsBuilder.html#method.count_a1) | Count number allele 1 (default) |
+//! | [`ReadOptionsBuilder::count_a2`](struct.ReadOptionsBuilder.html#method.count_a2) | Count number allele 2 |
+//! | [`ReadOptionsBuilder::is_a1_counted`](struct.ReadOptionsBuilder.html#method.is_a1_counted) | Is allele 1 counted? (defaults to true) |
+//! | [`ReadOptionsBuilder::num_threads`](struct.ReadOptionsBuilder.html#method.num_threads) | Number of threads to use (defaults to all) |
+//!
+//! ### [`Index`](enum.Index.html) Options
+//!
+//! When using [`ReadOptions::builder`](struct.ReadOptions.html#method.builder) to read genotype data with
+//! [`iid_index`](struct.ReadOptionsBuilder.html#method.iid_index) and/or
+//! [`sid_index`](struct.ReadOptionsBuilder.html#method.sid_index), select
+//! which individuals (samples) and SNPs (variants) to read by using these expressions.
+//!
+//! | Example | Type | Description |
+//! | -------- | --- | ----------- |
+//! | nothing | `()` | All |
+//! | `2` | `isize` | Index position 2 |
+//! | `-1` | `isize` | Last index position |
+//! | `vec![0, 10, -2]` | `Vec<isize>` | Index positions 0, 10, and 2nd from last |
+//! | `[0, 10, -2]` | `[isize]` | Index positions 0, 10, and 2nd from last |
+//! | `ndarray::array!([0, 10, -2])` | `ndarray::Array1<isize>` | Index positions 0, 10, and 2nd from last |
+//! | `10..20` | `Range<usize>` | Index positions 10 (inclusive) to 20 (exclusive). *Note: Rust ranges don't support negatives* |
+//! | `..=19` | `RangeToInclusive<usize>` | Index positions 0 (inclusive) to 19 (inclusive). *Note: Rust ranges don't support negatives* |
+//! | *any Rust ranges* | `Range*<usize>` | *Note: Rust ranges don't support negatives* |
+//! | `s![10..20;2]` | `ndarray::SliceInfo1<isize>` | Index positions 10 (inclusive) to 20 (exclusive) in steps of 2 |
+//! | `s![-20..-10;-2]` | `ndarray::SliceInfo1<isize>` | 20th from the last to 10 from the last, steps of 2, reversed |
+//! | `vec![true, false, true]` | `Vec<bool>`| Index positions 0 and 2. |
+//! | `[true, false, true]` | `[bool]`| Index positions 0 and 2.|
+//! | `ndarray::array!([true, false, true])` | `ndarray::Array1<bool>`| Index positions 0 and 2.|
 
 // !!!cmk later Environment  variables
 
@@ -1882,8 +1908,8 @@ impl Bed {
     ///
     /// let file_name = "bed_reader/tests/data/small.bed";
     /// let mut bed = Bed::new(file_name)?;
-    /// println!("{:?}", bed.iid()?);
-    /// println!("{:?}", bed.sid()?);
+    /// println!("{:?}", bed.iid()?); // Outputs ndarray: ["iid1", "iid2", "iid3"]
+    /// println!("{:?}", bed.sid()?); // Outputs ndarray: ["sid1", "sid2", "sid3", "sid4"]
     /// let val = bed.read::<f64>()?;
     ///
     /// assert_eq_nan(
@@ -1896,11 +1922,6 @@ impl Bed {
     /// );
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
-    /// ```
-    /// *This outputs:*
-    /// ```text
-    /// ["iid1", "iid2", "iid3"], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
-    /// ["sid1", "sid2", "sid3", "sid4"], shape=[4], strides=[1], layout=CFcf (0xf), const ndim=1  
     /// ```
     ///
     /// Open the file and read data for one SNP (variant)
@@ -2824,8 +2845,21 @@ impl From<Range<usize>> for RangeAny {
     }
 }
 
+impl From<&Range<usize>> for RangeAny {
+    fn from(range_thing: &Range<usize>) -> RangeAny {
+        let range_thing = range_thing.clone();
+        to_range_any(range_thing)
+    }
+}
+
 impl From<Range<usize>> for Index {
     fn from(range_thing: Range<usize>) -> Index {
+        Index::RangeAny(range_thing.into())
+    }
+}
+
+impl From<&Range<usize>> for Index {
+    fn from(range_thing: &Range<usize>) -> Index {
         Index::RangeAny(range_thing.into())
     }
 }
@@ -2953,6 +2987,13 @@ impl From<Vec<isize>> for Index {
 impl From<nd::Array1<isize>> for Index {
     fn from(nd_array: nd::Array1<isize>) -> Index {
         Index::NDArray(nd_array)
+    }
+}
+
+// !!!cmk 0 did we miss any of these?
+impl From<&nd::Array1<isize>> for Index {
+    fn from(nd_array: &nd::Array1<isize>) -> Index {
+        Index::NDArray(nd_array.to_owned())
     }
 }
 
