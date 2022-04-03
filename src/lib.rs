@@ -171,10 +171,10 @@
 //! | `[0, 10, -2]` | `[isize]` | Index positions 0, 10, and 2nd from last |
 //! | `ndarray::array!([0, 10, -2])` | `ndarray::Array1<isize>` | Index positions 0, 10, and 2nd from last |
 //! | `10..20` | `Range<usize>` | Index positions 10 (inclusive) to 20 (exclusive). *Note: Rust ranges don't support negatives* |
-//! | `..=19` | `RangeToInclusive<usize>` | Index positions 0 (inclusive) to 19 (inclusive). *Note: Rust ranges don't support negatives* |
+//! | `..=19` | `RangeInclusive<usize>` | Index positions 0 (inclusive) to 19 (inclusive). *Note: Rust ranges don't support negatives* |
 //! | *any Rust ranges* | `Range*<usize>` | *Note: Rust ranges don't support negatives* |
-//! | `s![10..20;2]` | `ndarray::SliceInfo1<isize>` | Index positions 10 (inclusive) to 20 (exclusive) in steps of 2 |
-//! | `s![-20..-10;-2]` | `ndarray::SliceInfo1<isize>` | 20th from the last to 10 from the last, steps of 2, reversed |
+//! | `s![10..20;2]` | `ndarray::SliceInfo1` | Index positions 10 (inclusive) to 20 (exclusive) in steps of 2 |
+//! | `s![-20..-10;-2]` | `ndarray::SliceInfo1` | 20th from the last to 10 from the last, steps of 2, reversed |
 //! | `vec![true, false, true]` | `Vec<bool>`| Index positions 0 and 2. |
 //! | `[true, false, true]` | `[bool]`| Index positions 0 and 2.|
 //! | `ndarray::array!([true, false, true])` | `ndarray::Array1<bool>`| Index positions 0 and 2.|
@@ -2686,14 +2686,24 @@ impl RangeNdSlice {
         if self.start > self.end {
             Vec::new()
         } else {
-            let mut vec: Vec<isize> = (self.start..self.end)
-                .step_by(self.step)
-                .map(|i| i as isize)
-                .collect();
-            if self.is_reversed {
-                vec.reverse();
+            if !self.is_reversed {
+                (self.start..self.end)
+                    .step_by(self.step)
+                    .map(|i| i as isize)
+                    .collect()
+            } else {
+                // https://docs.rs/ndarray/latest/ndarray/macro.s.html
+                let mut vec: Vec<isize> = Vec::<isize>::new(); // !!! cmk 0 allocate the right size
+                let mut i = self.end - 1;
+                while i >= self.start {
+                    vec.push(i as isize);
+                    if i < self.step {
+                        break;
+                    }
+                    i -= self.step;
+                }
+                vec
             }
-            vec
         }
     }
 
@@ -2839,6 +2849,17 @@ impl From<RangeFull> for Index {
     }
 }
 
+impl From<&RangeFull> for RangeAny {
+    fn from(range_thing: &RangeFull) -> RangeAny {
+        to_range_any(range_thing.clone())
+    }
+}
+
+impl From<&RangeFull> for Index {
+    fn from(range_thing: &RangeFull) -> Index {
+        Index::RangeAny(range_thing.into())
+    }
+}
 impl From<Range<usize>> for RangeAny {
     fn from(range_thing: Range<usize>) -> RangeAny {
         to_range_any(range_thing)
@@ -2876,6 +2897,18 @@ impl From<RangeFrom<usize>> for Index {
     }
 }
 
+impl From<&RangeFrom<usize>> for RangeAny {
+    fn from(range_thing: &RangeFrom<usize>) -> RangeAny {
+        to_range_any(range_thing.clone())
+    }
+}
+
+impl From<&RangeFrom<usize>> for Index {
+    fn from(range_thing: &RangeFrom<usize>) -> Index {
+        Index::RangeAny(range_thing.into())
+    }
+}
+
 impl From<RangeInclusive<usize>> for RangeAny {
     fn from(range_thing: RangeInclusive<usize>) -> RangeAny {
         to_range_any(range_thing)
@@ -2884,6 +2917,18 @@ impl From<RangeInclusive<usize>> for RangeAny {
 
 impl From<RangeInclusive<usize>> for Index {
     fn from(range_thing: RangeInclusive<usize>) -> Index {
+        Index::RangeAny(range_thing.into())
+    }
+}
+
+impl From<&RangeInclusive<usize>> for RangeAny {
+    fn from(range_thing: &RangeInclusive<usize>) -> RangeAny {
+        to_range_any(range_thing.clone())
+    }
+}
+
+impl From<&RangeInclusive<usize>> for Index {
+    fn from(range_thing: &RangeInclusive<usize>) -> Index {
         Index::RangeAny(range_thing.into())
     }
 }
@@ -2900,6 +2945,18 @@ impl From<RangeTo<usize>> for Index {
     }
 }
 
+impl From<&RangeTo<usize>> for RangeAny {
+    fn from(range_thing: &RangeTo<usize>) -> RangeAny {
+        to_range_any(range_thing.clone())
+    }
+}
+
+impl From<&RangeTo<usize>> for Index {
+    fn from(range_thing: &RangeTo<usize>) -> Index {
+        Index::RangeAny(range_thing.into())
+    }
+}
+
 impl From<RangeToInclusive<usize>> for RangeAny {
     fn from(range_thing: RangeToInclusive<usize>) -> RangeAny {
         to_range_any(range_thing)
@@ -2908,6 +2965,17 @@ impl From<RangeToInclusive<usize>> for RangeAny {
 
 impl From<RangeToInclusive<usize>> for Index {
     fn from(range_thing: RangeToInclusive<usize>) -> Index {
+        Index::RangeAny(range_thing.into())
+    }
+}
+impl From<&RangeToInclusive<usize>> for RangeAny {
+    fn from(range_thing: &RangeToInclusive<usize>) -> RangeAny {
+        to_range_any(range_thing.clone())
+    }
+}
+
+impl From<&RangeToInclusive<usize>> for Index {
+    fn from(range_thing: &RangeToInclusive<usize>) -> Index {
         Index::RangeAny(range_thing.into())
     }
 }

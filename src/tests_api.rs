@@ -740,7 +740,7 @@ fn rt2(range_thing: crate::Index) -> Result<Result<nd::Array2<i8>, BedErrorPlus>
     let result2 = catch_unwind(|| {
         let mut bed = Bed::new(file_name).unwrap();
         ReadOptions::builder()
-            .iid_index(range_thing.clone())
+            .iid_index(range_thing)
             .i8()
             .read(&mut bed)
     });
@@ -760,7 +760,7 @@ fn rt3(range_thing: crate::Index) -> Result<Result<usize, BedErrorPlus>, BedErro
 
     let result3 = catch_unwind(|| {
         let mut bed = Bed::new(file_name).unwrap();
-        range_thing.clone().len(bed.iid_count().unwrap()).unwrap()
+        range_thing.len(bed.iid_count().unwrap()).unwrap()
     });
     if result3.is_err() {
         return Err(BedError::PanickedThread().into());
@@ -1299,6 +1299,20 @@ fn index_options() -> Result<(), BedErrorPlus> {
         "not close"
     );
 
+    let val = ReadOptions::builder()
+        .iid_index([0, 10, -2])
+        .sid_index([0, 10, -2])
+        .f64()
+        .read(&mut bed)?;
+    let expected_index = vec![0, 10, 98usize];
+    let expected = all
+        .select(nd::Axis(0), expected_index.as_slice())
+        .select(nd::Axis(1), expected_index.as_slice());
+    assert!(
+        allclose(&val.view(), &expected.view(), 1e-08, true),
+        "not close"
+    );
+
     let index: nd::Array1<isize> = nd::array![0, 10, -2];
     let val = ReadOptions::builder()
         .iid_index(&index)
@@ -1320,7 +1334,81 @@ fn index_options() -> Result<(), BedErrorPlus> {
         .sid_index(index)
         .f64()
         .read(&mut bed)?;
-    let expected = all.slice(s![10..20, 10..20]);
+    let expected = all.slice(s![10usize..20, 10usize..20]);
+    assert!(
+        allclose(&val.view(), &expected.view(), 1e-08, true),
+        "not close"
+    );
+
+    let index: std::ops::RangeFrom<usize> = 50..;
+    let val = ReadOptions::builder()
+        .iid_index(&index)
+        .sid_index(index)
+        .f64()
+        .read(&mut bed)?;
+    let expected = all.slice(s![50usize.., 50usize..]);
+    assert!(
+        allclose(&val.view(), &expected.view(), 1e-08, true),
+        "not close"
+    );
+
+    let index: std::ops::RangeFull = ..;
+    let val = ReadOptions::builder()
+        .iid_index(&index)
+        .sid_index(index)
+        .f64()
+        .read(&mut bed)?;
+    let expected = all.slice(s![.., ..]);
+    assert!(
+        allclose(&val.view(), &expected.view(), 1e-08, true),
+        "not close"
+    );
+
+    let index: std::ops::RangeTo<usize> = ..3;
+    let val = ReadOptions::builder()
+        .iid_index(&index)
+        .sid_index(index)
+        .f64()
+        .read(&mut bed)?;
+    let expected = all.slice(s![..3, ..3]);
+    assert!(
+        allclose(&val.view(), &expected.view(), 1e-08, true),
+        "not close"
+    );
+
+    let index: std::ops::RangeToInclusive<usize> = ..=19;
+    let val = ReadOptions::builder()
+        .iid_index(&index)
+        .sid_index(index)
+        .f64()
+        .read(&mut bed)?;
+    let expected = all.slice(s![..=19, ..=19]);
+    assert!(
+        allclose(&val.view(), &expected.view(), 1e-08, true),
+        "not close"
+    );
+
+    let index: std::ops::RangeInclusive<usize> = 1..=3;
+    let val = ReadOptions::builder()
+        .iid_index(&index)
+        .sid_index(index)
+        .f64()
+        .read(&mut bed)?;
+    let expected = all.slice(s![1..=3, 1..=3]);
+    assert!(
+        allclose(&val.view(), &expected.view(), 1e-08, true),
+        "not close"
+    );
+
+    let index: SliceInfo1 = s![-20..-10;-2];
+    let val = ReadOptions::builder()
+        .iid_index(index)
+        .sid_index(index)
+        .f64()
+        .read(&mut bed)?;
+    println!("{:?}", val);
+    let expected = all.slice(s![-20..-10;-2,-20..-10;-2]);
+    println!("{:?}", expected);
     assert!(
         allclose(&val.view(), &expected.view(), 1e-08, true),
         "not close"
