@@ -1236,14 +1236,34 @@ fn index_doc() -> Result<(), BedErrorPlus> {
 
 #[test]
 fn index_options() -> Result<(), BedErrorPlus> {
-    let mut bed = Bed::new("bed_reader/tests/data/some_missing.bed")?;
+    let mut bed = Bed::new("bed_reader/tests/data/some_missing.bed")?;  
     let index: () = ();
+
     let all = ReadOptions::builder()
         .iid_index(index)
         .sid_index(index)
         .f64()
         .read(&mut bed)?;
     assert!(all.dim() == (100, 100));
+
+    let mut index: Vec<bool> = vec![false;100];
+    index[0]=true;
+    index[2]=true;
+    let val = ReadOptions::builder()
+        .iid_index(&index)
+        .sid_index(index)
+        .f64()
+        .read(&mut bed);
+    println!("{:?}", val);
+    let val = val?;
+    let expected = all
+        .select(nd::Axis(0), [0, 2].as_slice())
+        .select(nd::Axis(1), [0, 2].as_slice());
+    println!("{:?}", expected);
+    assert!(
+        allclose(&val.view(), &expected.view(), 1e-08, true),
+        "not close"
+    );
 
     let index: isize = 2;
     let val = ReadOptions::builder()
@@ -1406,9 +1426,7 @@ fn index_options() -> Result<(), BedErrorPlus> {
         .sid_index(index)
         .f64()
         .read(&mut bed)?;
-    println!("{:?}", val);
     let expected = all.slice(s![-20..-10;-2,-20..-10;-2]);
-    println!("{:?}", expected);
     assert!(
         allclose(&val.view(), &expected.view(), 1e-08, true),
         "not close"

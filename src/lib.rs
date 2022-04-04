@@ -174,7 +174,7 @@
 //! | `..=19` | `RangeInclusive<usize>` | Index positions 0 (inclusive) to 19 (inclusive). *Note: Rust ranges don't support negatives* |
 //! | *any Rust ranges* | `Range*<usize>` | *Note: Rust ranges don't support negatives* |
 //! | `s![10..20;2]` | `ndarray::SliceInfo1` | Index positions 10 (inclusive) to 20 (exclusive) in steps of 2 |
-//! | `s![-20..-10;-2]` | `ndarray::SliceInfo1` | 20th from the last to 10 from the last, steps of 2, reversed |
+//! | `s![-20..-10;-2]` | `ndarray::SliceInfo1` | 10 from the last to 20th from the last, steps of -2 |
 //! | `vec![true, false, true]` | `Vec<bool>`| Index positions 0 and 2. |
 //! | `[true, false, true]` | `[bool]`| Index positions 0 and 2.|
 //! | `ndarray::array!([true, false, true])` | `ndarray::Array1<bool>`| Index positions 0 and 2.|
