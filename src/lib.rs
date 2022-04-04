@@ -56,8 +56,8 @@
 //! let mut bed = Bed::new(file_name)?;
 //! let val = ReadOptions::builder()
 //!     .f64()
-//!     .iid_index(20..30)
-//!     .sid_index(s![..;2])
+//!     .iid_index(s![..;2])
+//!     .sid_index(20..30)
 //!     .read(&mut bed)?;
 //!
 //! assert!(val.dim() == (50, 10));
@@ -141,6 +141,7 @@
 //!
 //! | Option | Description |
 //! | -------- | ----------- |
+// !!!cmk 0 kill these prefixes and above, too
 //! | [`ReadOptionsBuilder::i8`](struct.ReadOptionsBuilder.html#method.i8) | Read values as i8 |
 //! | [`ReadOptionsBuilder::f32`](struct.ReadOptionsBuilder.html#method.f32) | Read values as f32 |
 //! | [`ReadOptionsBuilder::f64`](struct.ReadOptionsBuilder.html#method.f64) | Read values as f64 |
@@ -155,7 +156,7 @@
 //! | [`ReadOptionsBuilder::is_a1_counted`](struct.ReadOptionsBuilder.html#method.is_a1_counted) | Is allele 1 counted? (defaults to true) |
 //! | [`ReadOptionsBuilder::num_threads`](struct.ReadOptionsBuilder.html#method.num_threads) | Number of threads to use (defaults to all) |
 //!
-//! ### [`Index`](enum.Index.html) Options
+//! ### [`Index`](enum.Index.html) Options cmk 0 expressions
 //!
 //! When using [`ReadOptions::builder`](struct.ReadOptions.html#method.builder) to read genotype data with
 //! [`iid_index`](struct.ReadOptionsBuilder.html#method.iid_index) and/or
@@ -174,7 +175,7 @@
 //! | `..=19` | `RangeInclusive<usize>` | Index positions 0 (inclusive) to 19 (inclusive). *Note: Rust ranges don't support negatives* |
 //! | *any Rust ranges* | `Range*<usize>` | *Note: Rust ranges don't support negatives* |
 //! | `s![10..20;2]` | `ndarray::SliceInfo1` | Index positions 10 (inclusive) to 20 (exclusive) in steps of 2 |
-//! | `s![-20..-10;-2]` | `ndarray::SliceInfo1` | 10th from last (inclusive) to 20th from last (exclusive), in steps of -2 |
+//! | `s![-20..-10;-2]` | `ndarray::SliceInfo1` | 10th from last (exclusive) to 20th from last (inclusive), in steps of -2 |
 //! | `vec![true, false, true]` | `Vec<bool>`| Index positions 0 and 2. |
 //! | `[true, false, true]` | `[bool]`| Index positions 0 and 2.|
 //! | `ndarray::array![true, false, true]` | `ndarray::Array1<bool>`| Index positions 0 and 2.|
