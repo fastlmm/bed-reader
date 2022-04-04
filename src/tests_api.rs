@@ -1246,6 +1246,38 @@ fn index_options() -> Result<(), BedErrorPlus> {
         .read(&mut bed)?;
     assert!(all.dim() == (100, 100));
 
+    let mut index: [bool; 100] = [false;100];
+    index[0]=true;
+    index[2]=true;
+    let val = ReadOptions::builder()
+        .iid_index(index)
+        .sid_index(index)
+        .f64()
+        .read(&mut bed)?;
+    let expected = all
+        .select(nd::Axis(0), [0, 2].as_slice())
+        .select(nd::Axis(1), [0, 2].as_slice());
+    assert!(
+        allclose(&val.view(), &expected.view(), 1e-08, true),
+        "not close"
+    );
+
+    let mut index: nd::Array1<bool> = nd::Array::from_elem(100,false);
+    index[0]=true;
+    index[2]=true;
+    let val = ReadOptions::builder()
+        .iid_index(&index)
+        .sid_index(index)
+        .f64()
+        .read(&mut bed)?;
+    let expected = all
+        .select(nd::Axis(0), [0, 2].as_slice())
+        .select(nd::Axis(1), [0, 2].as_slice());
+    assert!(
+        allclose(&val.view(), &expected.view(), 1e-08, true),
+        "not close"
+    );
+
     let mut index: Vec<bool> = vec![false;100];
     index[0]=true;
     index[2]=true;
@@ -1253,13 +1285,10 @@ fn index_options() -> Result<(), BedErrorPlus> {
         .iid_index(&index)
         .sid_index(index)
         .f64()
-        .read(&mut bed);
-    println!("{:?}", val);
-    let val = val?;
+        .read(&mut bed)?;
     let expected = all
         .select(nd::Axis(0), [0, 2].as_slice())
         .select(nd::Axis(1), [0, 2].as_slice());
-    println!("{:?}", expected);
     assert!(
         allclose(&val.view(), &expected.view(), 1e-08, true),
         "not close"

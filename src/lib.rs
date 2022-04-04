@@ -169,15 +169,15 @@
 //! | `-1` | `isize` | Last index position |
 //! | `vec![0, 10, -2]` | `Vec<isize>` | Index positions 0, 10, and 2nd from last |
 //! | `[0, 10, -2]` | `[isize]` | Index positions 0, 10, and 2nd from last |
-//! | `ndarray::array!([0, 10, -2])` | `ndarray::Array1<isize>` | Index positions 0, 10, and 2nd from last |
+//! | `ndarray::array![0, 10, -2]` | `ndarray::Array1<isize>` | Index positions 0, 10, and 2nd from last |
 //! | `10..20` | `Range<usize>` | Index positions 10 (inclusive) to 20 (exclusive). *Note: Rust ranges don't support negatives* |
 //! | `..=19` | `RangeInclusive<usize>` | Index positions 0 (inclusive) to 19 (inclusive). *Note: Rust ranges don't support negatives* |
 //! | *any Rust ranges* | `Range*<usize>` | *Note: Rust ranges don't support negatives* |
 //! | `s![10..20;2]` | `ndarray::SliceInfo1` | Index positions 10 (inclusive) to 20 (exclusive) in steps of 2 |
-//! | `s![-20..-10;-2]` | `ndarray::SliceInfo1` | 10 from the last to 20th from the last, steps of -2 |
+//! | `s![-20..-10;-2]` | `ndarray::SliceInfo1` | 10th from last (inclusive) to 20th from last (exclusive), in steps of -2 |
 //! | `vec![true, false, true]` | `Vec<bool>`| Index positions 0 and 2. |
 //! | `[true, false, true]` | `[bool]`| Index positions 0 and 2.|
-//! | `ndarray::array!([true, false, true])` | `ndarray::Array1<bool>`| Index positions 0 and 2.|
+//! | `ndarray::array![true, false, true]` | `ndarray::Array1<bool>`| Index positions 0 and 2.|
 
 // !!!cmk later Environment  variables
 
@@ -3068,6 +3068,12 @@ impl From<&nd::Array1<isize>> for Index {
 impl From<nd::Array1<bool>> for Index {
     fn from(nd_array_bool: nd::Array1<bool>) -> Index {
         Index::NDArrayBool(nd_array_bool)
+    }
+}
+
+impl From<&nd::Array1<bool>> for Index {
+    fn from(nd_array_bool: &nd::Array1<bool>) -> Index {
+        Index::NDArrayBool(nd_array_bool.clone())
     }
 }
 
