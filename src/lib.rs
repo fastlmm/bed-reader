@@ -116,22 +116,22 @@
 //!
 //! | Method | Description |
 //! | -------- | ----------- |
-//! | [`Bed::iid_count`](struct.Bed.html#method.iid_count) | Number of individuals (samples) |
-//! | [`Bed::sid_count`](struct.Bed.html#method.sid_count) | Number of SNPs (variants) |
-//! | [`Bed::dim`](struct.Bed.html#method.dim) | Number of individuals and SNPs |
-//! | [`Bed::fid`](struct.Bed.html#method.fid) | Family id of each of individual (sample) |
-//! | [`Bed::iid`](struct.Bed.html#method.iid) | Individual id of each of individual (sample) |
-//! | [`Bed::father`](struct.Bed.html#method.father) | Father id of each of individual (sample) |
-//! | [`Bed::mother`](struct.Bed.html#method.mother) | Mother id of each of individual (sample) |
-//! | [`Bed::sex`](struct.Bed.html#method.sex) | Sex of each individual (sample) |
-//! | [`Bed::pheno`](struct.Bed.html#method.pheno) | A phenotype for each individual (seldom used) |
-//! | [`Bed::chromosome`](struct.Bed.html#method.chromosome) | Chromosome of each SNP (variant) |
-//! | [`Bed::sid`](struct.Bed.html#method.sid) | SNP Id of each SNP (variant) |
-//! | [`Bed::cm_position`](struct.Bed.html#method.cm_position) | Centimorgan position of each SNP (variant) |
-//! | [`Bed::bp_position`](struct.Bed.html#method.bp_position) | Base-pair position of each SNP (variant) |
-//! | [`Bed::allele_1`](struct.Bed.html#method.allele_1) | First allele of each SNP (variant) |
-//! | [`Bed::allele_2`](struct.Bed.html#method.allele_2) | Second allele of each SNP (variant) |
-//! | [`Bed::metadata`](struct.Bed.html#method.metadata) | All the metadata returned as a [`struct.Metadata`](struct.Metadata.html) |
+//! | [`iid_count`](struct.Bed.html#method.iid_count) | Number of individuals (samples) |
+//! | [`sid_count`](struct.Bed.html#method.sid_count) | Number of SNPs (variants) |
+//! | [`dim`](struct.Bed.html#method.dim) | Number of individuals and SNPs |
+//! | [`fid`](struct.Bed.html#method.fid) | Family id of each of individual (sample) |
+//! | [`iid`](struct.Bed.html#method.iid) | Individual id of each of individual (sample) |
+//! | [`father`](struct.Bed.html#method.father) | Father id of each of individual (sample) |
+//! | [`mother`](struct.Bed.html#method.mother) | Mother id of each of individual (sample) |
+//! | [`sex`](struct.Bed.html#method.sex) | Sex of each individual (sample) |
+//! | [`pheno`](struct.Bed.html#method.pheno) | A phenotype for each individual (seldom used) |
+//! | [`chromosome`](struct.Bed.html#method.chromosome) | Chromosome of each SNP (variant) |
+//! | [`sid`](struct.Bed.html#method.sid) | SNP Id of each SNP (variant) |
+//! | [`cm_position`](struct.Bed.html#method.cm_position) | Centimorgan position of each SNP (variant) |
+//! | [`bp_position`](struct.Bed.html#method.bp_position) | Base-pair position of each SNP (variant) |
+//! | [`allele_1`](struct.Bed.html#method.allele_1) | First allele of each SNP (variant) |
+//! | [`allele_2`](struct.Bed.html#method.allele_2) | Second allele of each SNP (variant) |
+//! | [`metadata`](struct.Bed.html#method.metadata) | All the metadata returned as a [`struct.Metadata`](struct.Metadata.html) |
 //!
 //! ### `ReadOptionsBuilder` Options
 //!
@@ -141,22 +141,21 @@
 //!
 //! | Option | Description |
 //! | -------- | ----------- |
-// !!!cmk 0 kill these prefixes and above, too
-//! | [`ReadOptionsBuilder::i8`](struct.ReadOptionsBuilder.html#method.i8) | Read values as i8 |
-//! | [`ReadOptionsBuilder::f32`](struct.ReadOptionsBuilder.html#method.f32) | Read values as f32 |
-//! | [`ReadOptionsBuilder::f64`](struct.ReadOptionsBuilder.html#method.f64) | Read values as f64 |
-//! | [`ReadOptionsBuilder::iid_index`](struct.ReadOptionsBuilder.html#method.iid_index) | Index of individuals (samples) to read (defaults to all)|
-//! | [`ReadOptionsBuilder::sid_index`](struct.ReadOptionsBuilder.html#method.sid_index) | Index of SNPs(variants) to read (defaults to all) |
-//! | [`ReadOptionsBuilder::f`](struct.ReadOptionsBuilder.html#method.f) | Order of the output array, Fortran (default) |
-//! | [`ReadOptionsBuilder::c`](struct.ReadOptionsBuilder.html#method.c) | Order of the output array, C |
-//! | [`ReadOptionsBuilder::is_f`](struct.ReadOptionsBuilder.html#method.is_f) | Is order of the output array Fortran? (defaults to true)|
-//! | [`ReadOptionsBuilder::missing_value`](struct.ReadOptionsBuilder.html#method.missing_value) | Value to use for missing values (defaults to -127 or NaN) |
-//! | [`ReadOptionsBuilder::count_a1`](struct.ReadOptionsBuilder.html#method.count_a1) | Count number allele 1 (default) |
-//! | [`ReadOptionsBuilder::count_a2`](struct.ReadOptionsBuilder.html#method.count_a2) | Count number allele 2 |
-//! | [`ReadOptionsBuilder::is_a1_counted`](struct.ReadOptionsBuilder.html#method.is_a1_counted) | Is allele 1 counted? (defaults to true) |
-//! | [`ReadOptionsBuilder::num_threads`](struct.ReadOptionsBuilder.html#method.num_threads) | Number of threads to use (defaults to all) |
+//! | [`i8`](struct.ReadOptionsBuilder.html#method.i8) | Read values as i8 |
+//! | [`f32`](struct.ReadOptionsBuilder.html#method.f32) | Read values as f32 |
+//! | [`f64`](struct.ReadOptionsBuilder.html#method.f64) | Read values as f64 |
+//! | [`iid_index`](struct.ReadOptionsBuilder.html#method.iid_index) | Index of individuals (samples) to read (defaults to all)|
+//! | [`sid_index`](struct.ReadOptionsBuilder.html#method.sid_index) | Index of SNPs(variants) to read (defaults to all) |
+//! | [`f`](struct.ReadOptionsBuilder.html#method.f) | Order of the output array, Fortran (default) |
+//! | [`c`](struct.ReadOptionsBuilder.html#method.c) | Order of the output array, C |
+//! | [`is_f`](struct.ReadOptionsBuilder.html#method.is_f) | Is order of the output array Fortran? (defaults to true)|
+//! | [`missing_value`](struct.ReadOptionsBuilder.html#method.missing_value) | Value to use for missing values (defaults to -127 or NaN) |
+//! | [`count_a1`](struct.ReadOptionsBuilder.html#method.count_a1) | Count number allele 1 (default) |
+//! | [`count_a2`](struct.ReadOptionsBuilder.html#method.count_a2) | Count number allele 2 |
+//! | [`is_a1_counted`](struct.ReadOptionsBuilder.html#method.is_a1_counted) | Is allele 1 counted? (defaults to true) |
+//! | [`num_threads`](struct.ReadOptionsBuilder.html#method.num_threads) | Number of threads to use (defaults to all) |
 //!
-//! ### [`Index`](enum.Index.html) Options cmk 0 expressions
+//! ### [`Index`](enum.Index.html) Expressions
 //!
 //! When using [`ReadOptions::builder`](struct.ReadOptions.html#method.builder) to read genotype data with
 //! [`iid_index`](struct.ReadOptionsBuilder.html#method.iid_index) and/or
@@ -1755,8 +1754,7 @@ impl Bed {
     ///
     /// The options, [listed here](struct.BedBuilder.html#implementations), can:
     ///  * set the path of the .fam and/or .bim file
-    // !!!cmk 0 'selected' -> some,  "replacing" -> replace
-    ///  * override selected metadata, for example, replacing the individual ids.
+    ///  * override some metadata, for example, replace the individual ids.
     ///  * give the number of individuals (samples) or SNPs (variants)
     ///  * control checking the validity of the .bed file's header
     ///  * skip reading selected metadata
@@ -2694,7 +2692,8 @@ impl RangeNdSlice {
                     .collect()
             } else {
                 // https://docs.rs/ndarray/latest/ndarray/macro.s.html
-                let mut vec: Vec<isize> = Vec::<isize>::new(); // !!! cmk 0 allocate the right size
+                let size = self.len();
+                let mut vec: Vec<isize> = Vec::<isize>::with_capacity(size);
                 let mut i = self.end - 1;
                 while i >= self.start {
                     vec.push(i as isize);
@@ -3059,7 +3058,6 @@ impl From<nd::Array1<isize>> for Index {
     }
 }
 
-// !!!cmk 0 did we miss any of these?
 impl From<&nd::Array1<isize>> for Index {
     fn from(nd_array: &nd::Array1<isize>) -> Index {
         Index::NDArray(nd_array.to_owned())
@@ -3096,7 +3094,6 @@ pub struct ReadOptions<TVal: BedVal> {
     #[builder(default = "TVal::missing()")]
     missing_value: TVal,
 
-    /// cmk 0 testing iid_index
     #[builder(default = "Index::All")]
     #[builder(setter(into))]
     iid_index: Index,
@@ -3167,17 +3164,17 @@ impl<TVal: BedVal> ReadOptions<TVal> {
     ///     ],
     /// );
     ///
-    // !!!cmk 0 add a space before the asserts
     /// // Read the SNPs indexed by 2.
     /// let val = ReadOptions::builder().sid_index(2).f64().read(&mut bed)?;
+    ///
     /// assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
     ///
-    // !!!cmk 0 give a -1 index???
-    /// // Read the SNPs indexed by 2, 3, and 0.
+    /// // Read the SNPs indexed by 2, 3, and 4th from last.
     /// let val = ReadOptions::builder()
-    ///     .sid_index([2, 3, 0])
+    ///     .sid_index([2, 3, -4])
     ///     .f64()
     ///     .read(&mut bed)?;
+    ///
     /// assert_eq_nan(
     ///     &val,
     ///     &nd::array![[f64::NAN, 0.0, 1.0], [f64::NAN, 2.0, 2.0], [2.0, 0.0, 0.0]],
