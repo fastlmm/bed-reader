@@ -1,3 +1,24 @@
+// !!!cmk 0 BedBuilder document and give examples for all e.g. fam_path, skip_iid
+// !!!cmk 0 all metadata methods (e.g. iid_count) have doc and examples
+// !!!cmk later add a ReadOptions option called "metadata"
+// !!!cmk 0 all ReadOptions methods (e.g. i8) have doc and examples
+// !!!cmk 0 document Bed
+// !!!cmk 0 document BedBuilder
+// !!!cmk 0 document Metadata
+// !!!cmk 0 document RangeAny
+// !!!cmk 0 document RangeNDSlice
+// !!!cmk 0 document ReadOptions
+// !!!cmk 0 document ReadOptionsBuilder
+// !!!cmk 0 document WriteOptions
+// !!!cmk 0 document BedError/Plus/ReadOptionsBuilderError
+// !!!cmk 0 document Index
+// !!!cmk 0 document Skippable
+// !!!cmk 0 document BedVal
+// !!!cmk 0 document Missing
+// !!!cmk 0 document three functions
+// !!!cmk 0 doc the also sees: ReadOptions::builder::build lists other options and they list it. all have examples
+// !!!cmk 0 doc Bedbuilder Bed
+
 // Inspired by C++ version by Chris Widmer and Carl Kadie
 
 // See: https://towardsdatascience.com/nine-rules-for-writing-python-extensions-in-rust-d35ea3a4ec29?sk=f8d808d5f414154fdb811e4137011437
@@ -55,9 +76,9 @@
 //! let file_name = "bed_reader/tests/data/some_missing.bed";
 //! let mut bed = Bed::new(file_name)?;
 //! let val = ReadOptions::builder()
-//!     .f64()
 //!     .iid_index(s![..;2])
 //!     .sid_index(20..30)
+//!     .f64()
 //!     .read(&mut bed)?;
 //!
 //! assert!(val.dim() == (50, 10));
@@ -105,13 +126,13 @@
 //!
 //! | Function | Description |
 //! | -------- | ----------- |
-//! | [`Bed::new`](struct.Bed.html#method.new) | Open a PLINK .bed file for reading genotype data and metadata. |
+//! | [`Bed::new`](struct.Bed.html#method.new) or [`Bed::builder`](struct.Bed.html#method.builder) | Open a PLINK .bed file for reading genotype data and metadata. |
 //! | [`ReadOptions::builder`](struct.ReadOptions.html#method.builder) | Read genotype data. Supports indexing and options. |
 //! | [`WriteOptions::builder`](struct.WriteOptions.html#method.builder) | Write values to a file in PLINK .bed format. Supports metadata and options. |
 //!
 //! ### `Bed` Metadata Methods
 //!
-//! After using [`Bed::new`](struct.Bed.html#method.new) to open a PLINK .bed file for reading, use
+//! After using [`Bed::new`](struct.Bed.html#method.new) or [`Bed::builder`](struct.Bed.html#method.builder) to open a PLINK .bed file for reading, use
 //! these methods to get metadata.
 //!
 //! | Method | Description |
@@ -133,7 +154,7 @@
 //! | [`allele_2`](struct.Bed.html#method.allele_2) | Second allele of each SNP (variant) |
 //! | [`metadata`](struct.Bed.html#method.metadata) | All the metadata returned as a [`struct.Metadata`](struct.Metadata.html) |
 //!
-//! ### `ReadOptionsBuilder` Options
+//! ### `ReadOptions`
 //!
 //! When using [`ReadOptions::builder`](struct.ReadOptions.html#method.builder) to read genotype data, use these options to
 //! specify a desired type,
@@ -157,10 +178,9 @@
 //!
 //! ### [`Index`](enum.Index.html) Expressions
 //!
-//! When using [`ReadOptions::builder`](struct.ReadOptions.html#method.builder) to read genotype data with
+//! Select which individuals (samples) and SNPs (variants) to read by using these
 //! [`iid_index`](struct.ReadOptionsBuilder.html#method.iid_index) and/or
-//! [`sid_index`](struct.ReadOptionsBuilder.html#method.sid_index), select
-//! which individuals (samples) and SNPs (variants) to read by using these expressions.
+//! [`sid_index`](struct.ReadOptionsBuilder.html#method.sid_index) expressions.
 //!
 //! | Example | Type | Description |
 //! | -------- | --- | ----------- |
@@ -1549,84 +1569,198 @@ impl BedBuilder {
         Ok(bed)
     }
 
+    /// Set the path to the .fam file.
+    ///
+    /// If not set, the .fam file will be assumed
+    /// have the same name as the .bed file, but with the extension .fam.
+    ///
+    /// In this example, we read .bed, .fam, and .bim files with non-standard names.
+    /// ```
+    /// use bed_reader::{Bed, ReadOptions};
+    /// let mut bed = Bed::builder("bed_reader/tests/data/small.deb")
+    ///    .fam_path("bed_reader/tests/data/small.maf")
+    ///    .bim_path("bed_reader/tests/data/small.mib")
+    ///    .build()?;
+    /// println!("{:?}", bed.iid()?); // Outputs ndarray ["iid1", "iid2", "iid3"]
+    /// println!("{:?}", bed.sid()?); // Outputs ndarray ["sid1", "sid2", "sid3", "sid4"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
     pub fn fam_path<P: AsRef<Path>>(mut self, path: P) -> Self {
         self.fam_path = Some(Some(path.as_ref().into()));
         self
     }
 
+    /// Set the path to the .bim file.
+    ///
+    /// If not set, the .bim file will be assumed
+    /// have the same name as the .bed file, but with the extension .bim.
+    ///
+    /// In this example, we read .bed, .fam, and .bim files with non-standard names.
+    /// ```
+    /// use bed_reader::{Bed, ReadOptions};
+    /// let mut bed = Bed::builder("bed_reader/tests/data/small.deb")
+    ///    .fam_path("bed_reader/tests/data/small.maf")
+    ///    .bim_path("bed_reader/tests/data/small.mib")
+    ///    .build()?;
+    /// println!("{:?}", bed.iid()?); // Outputs ndarray ["iid1", "iid2", "iid3"]
+    /// println!("{:?}", bed.sid()?); // Outputs ndarray ["sid1", "sid2", "sid3", "sid4"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
     pub fn bim_path<P: AsRef<Path>>(mut self, path: P) -> Self {
         self.bim_path = Some(Some(path.as_ref().into()));
         self
     }
 
+    /// Don't check the header of the .bed file until and unless the file is actually read.
+    ///
+    /// By default, when a [`Bed`](struct.Bed.html) struct is created, the .bed
+    /// file header is checked. This stops that early check.
     pub fn skip_early_check(mut self) -> Self {
         self.is_checked_early = Some(false);
         self
     }
 
+    /// Don't read the iid information from the .fam file.
+    ///
+    /// By default, when the .fam is read, the iid (the individual id) is recorded.
+    /// This stops that recording. This is useful if the iid is not needed.
+    /// Asking for the iid after skipping it results in an error.
     pub fn skip_iid(mut self) -> Self {
         self.iid = Some(LazyOrSkip::Skip);
         self
     }
 
+    /// Don't read the fid information from the .fam file.
+    ///
+    /// By default, when the .fam is read, the fid (the family id) is recorded.
+    /// This stops that recording. This is useful if the fid is not needed.
+    /// Asking for the fid after skipping it results in an error.    
     pub fn skip_fid(mut self) -> Self {
         self.fid = Some(LazyOrSkip::Skip);
         self
     }
+
+    /// Don't read the father information from the .fam file.
+    ///
+    /// By default, when the .fam is read, the father id is recorded.
+    /// This stops that recording. This is useful if the father id is not needed.
+    /// Asking for the father id after skipping it results in an error.    
     pub fn skip_father(mut self) -> Self {
         self.father = Some(LazyOrSkip::Skip);
         self
     }
 
+    /// Don't read the mother information from the .fam file.
+    ///
+    /// By default, when the .fam is read, the mother id is recorded.
+    /// This stops that recording. This is useful if the mother id is not needed.
+    /// Asking for the mother id after skipping it results in an error.    
     pub fn skip_mother(mut self) -> Self {
         self.mother = Some(LazyOrSkip::Skip);
         self
     }
 
+    /// Don't read the sex information from the .fam file.
+    ///
+    /// By default, when the .fam is read, the sex is recorded.
+    /// This stops that recording. This is useful if sex is not needed.
+    /// Asking for sex after skipping it results in an error.    
     pub fn skip_sex(mut self) -> Self {
         self.sex = Some(LazyOrSkip::Skip);
         self
     }
 
+    /// Don't read the phenotype information from the .fam file.
+    ///
+    /// Note that the phenotype information in the .fam file is
+    /// seldom used.
+    ///
+    /// By default, when the .fam is read, the phenotype is recorded.
+    /// This stops that recording. This is useful if this phenotype
+    /// information is not needed.
+    /// Asking for the phenotype after skipping it results in an error.    
     pub fn skip_pheno(mut self) -> Self {
         self.pheno = Some(LazyOrSkip::Skip);
         self
     }
 
+    /// Don't read the chromosome information from the .bim file.
+    ///
+    /// By default, when the .bim is read, the chromosome is recorded.
+    /// This stops that recording. This is useful if the chromosome is not needed.
+    /// Asking for the chromosome after skipping it results in an error.    
     pub fn skip_chromosome(mut self) -> Self {
         self.chromosome = Some(LazyOrSkip::Skip);
         self
     }
 
+    /// Don't read the SNP id information from the .bim file.
+    ///
+    /// By default, when the .bim is read, the sid (SNP id) is recorded.
+    /// This stops that recording. This is useful if the sid is not needed.
+    /// Asking for the sid after skipping it results in an error.    
     pub fn skip_sid(mut self) -> Self {
         self.sid = Some(LazyOrSkip::Skip);
         self
     }
 
+    /// Don't read the centimorgan position information from the .bim file.
+    ///
+    /// By default, when the .bim is read, the cm position is recorded.
+    /// This stops that recording. This is useful if the cm position is not needed.
+    /// Asking for the cm position after skipping it results in an error.    
     pub fn skip_cm_position(mut self) -> Self {
         self.cm_position = Some(LazyOrSkip::Skip);
         self
     }
 
+    /// Don't read the base-pair position information from the .bim file.
+    ///
+    /// By default, when the .bim is read, the bp position is recorded.
+    /// This stops that recording. This is useful if the bp position is not needed.
+    /// Asking for the cp position after skipping it results in an error.    
     pub fn skip_bp_position(mut self) -> Self {
         self.bp_position = Some(LazyOrSkip::Skip);
         self
     }
+
+    /// Don't read the allele 1 information from the .bim file.
+    ///
+    /// By default, when the .bim is read, allele 1 is recorded.
+    /// This stops that recording. This is useful if allele 1 is not needed.
+    /// Asking for allele 1 after skipping it results in an error.    
     pub fn skip_allele_1(mut self) -> Self {
         self.allele_1 = Some(LazyOrSkip::Skip);
         self
     }
 
+    /// Don't read the allele 2 information from the .bim file.
+    ///
+    /// By default, when the .bim is read, allele 2 is recorded.
+    /// This stops that recording. This is useful if allele 2 is not needed.
+    /// Asking for allele 2 after skipping it results in an error.    
     pub fn skip_allele_2(mut self) -> Self {
         self.allele_2 = Some(LazyOrSkip::Skip);
         self
     }
 
+    /// Set the number of individuals in the data.
+    ///
+    /// By default, if this number is needed, it will be found
+    /// by opening the .fam file and quickly counting the number
+    /// of lines. Providing the number thus avoids a file read.
     pub fn iid_count(mut self, count: usize) -> Self {
         self.iid_count = Some(Some(count));
         self
     }
 
+    /// Set the number of SNPs in the data.
+    ///
+    /// By default, if this number is needed, it will be found
+    /// by opening the .bim file and quickly counting the number
+    /// of lines. Providing the number thus avoids a file read.
     pub fn sid_count(mut self, count: usize) -> Self {
         self.sid_count = Some(Some(count));
         self
@@ -1634,6 +1768,12 @@ impl BedBuilder {
 
     // https://stackoverflow.com/questions/38183551/concisely-initializing-a-vector-of-strings
     // https://stackoverflow.com/questions/65250496/how-to-convert-intoiteratoritem-asrefstr-to-iteratoritem-str-in-rust
+
+    /// Override the family id (fid) values found in the .fam file.
+    ///
+    /// By default, if fid values are needed and haven't already been found,
+    /// they will be read from the .fam file.
+    /// Providing them here avoids that file read and provides a way to give different values.
     pub fn fid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, fid: I) -> Self {
         self.fid = Some(LazyOrSkip::Some(
             fid.into_iter().map(|s| s.as_ref().to_string()).collect(),
@@ -1641,6 +1781,25 @@ impl BedBuilder {
         self
     }
 
+    /// Override the individual id (iid) values found in the .fam file.
+    ///
+    /// By default, if iid values are needed and haven't already been found,
+    /// they will be read from the .fam file.
+    /// Providing them here avoids that file read and provides a way to give different values.
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::Bed;
+    /// use bed_reader::assert_eq_nan;
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// use bed_reader::ReadOptions;
+    ///
+    /// let mut bed = Bed::builder(file_name)
+    ///    .iid(["sample1", "sample2", "sample3"])
+    ///    .build()?;
+    /// println!("{:?}", bed.iid()?); // Outputs ndarray ["sample1", "sample2", "sample3"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
     pub fn iid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, iid: I) -> Self {
         self.iid = Some(LazyOrSkip::Some(
             iid.into_iter().map(|s| s.as_ref().to_string()).collect(),
@@ -1648,12 +1807,24 @@ impl BedBuilder {
 
         self
     }
+
+    /// Override the father values found in the .fam file.
+    ///
+    /// By default, if father values are needed and haven't already been found,
+    /// they will be read from the .fam file.
+    /// Providing them here avoids that file read and provides a way to give different values.
     pub fn father<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, father: I) -> Self {
         self.father = Some(LazyOrSkip::Some(
             father.into_iter().map(|s| s.as_ref().to_string()).collect(),
         ));
         self
     }
+
+    /// Override the mother values found in the .fam file.
+    ///
+    /// By default, if mother values are needed and haven't already been found,
+    /// they will be read from the .fam file.
+    /// Providing them here avoids that file read and provides a way to give different values.
     pub fn mother<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, mother: I) -> Self {
         self.mother = Some(LazyOrSkip::Some(
             mother.into_iter().map(|s| s.as_ref().to_string()).collect(),
@@ -1661,11 +1832,22 @@ impl BedBuilder {
         self
     }
 
+    /// Override the sex values found in the .fam file.
+    ///
+    /// By default, if sex values are needed and haven't already been found,
+    /// they will be read from the .fam file.
+    /// Providing them here avoids that file read and provides a way to give different values.
     pub fn sex<I: IntoIterator<Item = i32>>(mut self, sex: I) -> Self {
         self.sex = Some(LazyOrSkip::Some(sex.into_iter().map(|s| s).collect()));
         self
     }
 
+    /// Override the phenotype values found in the .fam file.
+    ///
+    /// Note that the phenotype values in the .fam file are seldom used.
+    /// By default, if phenotype values are needed and haven't already been found,
+    /// they will be read from the .fam file.
+    /// Providing them here avoids that file read and provides a way to give different values.
     pub fn pheno<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, pheno: I) -> Self {
         self.pheno = Some(LazyOrSkip::Some(
             pheno.into_iter().map(|s| s.as_ref().to_string()).collect(),
@@ -1673,6 +1855,11 @@ impl BedBuilder {
         self
     }
 
+    /// Override the chromosome values found in the .bim file.
+    ///
+    /// By default, if chromosome values are needed and haven't already been found,
+    /// they will be read from the .bim file.
+    /// Providing them here avoids that file read and provides a way to give different values.
     pub fn chromosome<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, chromosome: I) -> Self {
         self.chromosome = Some(LazyOrSkip::Some(
             chromosome
@@ -1683,6 +1870,25 @@ impl BedBuilder {
         self
     }
 
+    /// Override the SNP id (sid) values found in the .fam file.
+    ///
+    /// By default, if sid values are needed and haven't already been found,
+    /// they will be read from the .bim file.
+    /// Providing them here avoids that file read and provides a way to give different values.
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::Bed;
+    /// use bed_reader::assert_eq_nan;
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// use bed_reader::ReadOptions;
+    ///
+    /// let mut bed = Bed::builder(file_name)
+    ///    .sid(["SNP1", "SNP2", "SNP3", "SNP4"])
+    ///    .build()?;
+    /// println!("{:?}", bed.sid()?); // Outputs ndarray ["SNP1", "SNP2", "SNP3", "SNP4"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
     pub fn sid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, sid: I) -> Self {
         self.sid = Some(LazyOrSkip::Some(
             sid.into_iter().map(|s| s.as_ref().to_string()).collect(),
@@ -1690,6 +1896,11 @@ impl BedBuilder {
         self
     }
 
+    /// Override the centimorgan position values found in the .bim file.
+    ///
+    /// By default, if centimorgan position values are needed and haven't already been found,
+    /// they will be read from the .bim file.
+    /// Providing them here avoids that file read and provides a way to give different values.
     pub fn cm_position<I: IntoIterator<Item = f32>>(mut self, cm_position: I) -> Self {
         self.cm_position = Some(LazyOrSkip::Some(
             cm_position.into_iter().map(|s| s).collect(),
@@ -1697,6 +1908,11 @@ impl BedBuilder {
         self
     }
 
+    /// Override the base-pair position values found in the .bim file.
+    ///
+    /// By default, if base-pair position values are needed and haven't already been found,
+    /// they will be read from the .bim file.
+    /// Providing them here avoids that file read and provides a way to give different values.
     pub fn bp_position<I: IntoIterator<Item = i32>>(mut self, bp_position: I) -> Self {
         self.bp_position = Some(LazyOrSkip::Some(
             bp_position.into_iter().map(|s| s).collect(),
@@ -1704,6 +1920,11 @@ impl BedBuilder {
         self
     }
 
+    /// Override the allele 1 values found in the .bim file.
+    ///
+    /// By default, if allele 1 values are needed and haven't already been found,
+    /// they will be read from the .bim file.
+    /// Providing them here avoids that file read and provides a way to give different values.
     pub fn allele_1<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, allele_1: I) -> Self {
         self.allele_1 = Some(LazyOrSkip::Some(
             allele_1
@@ -1714,6 +1935,11 @@ impl BedBuilder {
         self
     }
 
+    /// Override the allele 2 values found in the .bim file.
+    ///
+    /// By default, if allele 2 values are needed and haven't already been found,
+    /// they will be read from the .bim file.
+    /// Providing them here avoids that file read and provides a way to give different values.
     pub fn allele_2<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, allele_2: I) -> Self {
         self.allele_2 = Some(LazyOrSkip::Some(
             allele_2
@@ -1755,7 +1981,7 @@ impl Bed {
     /// The options, [listed here](struct.BedBuilder.html#implementations), can:
     ///  * set the path of the .fam and/or .bim file
     ///  * override some metadata, for example, replace the individual ids.
-    ///  * give the number of individuals (samples) or SNPs (variants)
+    ///  * set the number of individuals (samples) or SNPs (variants)
     ///  * control checking the validity of the .bed file's header
     ///  * skip reading selected metadata
     ///
@@ -1777,8 +2003,8 @@ impl Bed {
     ///
     /// let file_name = "bed_reader/tests/data/small.bed";
     /// let mut bed = Bed::builder(file_name).build()?;
-    /// println!("{:?}", bed.iid()?);
-    /// println!("{:?}", bed.sid()?);
+    /// println!("{:?}", bed.iid()?); // Outputs ndarray ["iid1", "iid2", "iid3"]
+    /// println!("{:?}", bed.sid()?); // Outputs ndarray ["snp1", "snp2", "snp3", "snp4"]
     /// let val = bed.read::<f64>()?;
     ///
     /// assert_eq_nan(
@@ -1789,28 +2015,6 @@ impl Bed {
     ///         [0.0, 1.0, 2.0, 0.0]
     ///     ],
     /// );
-    /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
-    /// ```
-    /// *This outputs:*
-    /// ```text
-    /// ["iid1", "iid2", "iid3"], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
-    /// ["sid1", "sid2", "sid3", "sid4"], shape=[4], strides=[1], layout=CFcf (0xf), const ndim=1  
-    /// ```
-    ///
-    /// Open the file and read data for one SNP (variant)
-    /// at index position 2.
-    /// ```
-    /// # use ndarray as nd;
-    /// # use bed_reader::Bed;
-    /// # use bed_reader::assert_eq_nan;
-    /// # let file_name = "bed_reader/tests/data/small.bed";
-    /// use bed_reader::ReadOptions;
-    ///
-    /// let mut bed = Bed::builder(file_name).build()?;
-    /// let val = ReadOptions::builder().sid_index(2).f64().read(&mut bed)?;
-    ///
-    /// assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
@@ -1831,7 +2035,7 @@ impl Bed {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
-    /// *This outputs:*
+    /// *This outputs ndarrays:*
     /// ```text
     /// ["sample1", "sample2", "sample3"], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1    
     /// ["sid1", "sid2", "sid3", "sid4"], shape=[4], strides=[1], layout=CFcf (0xf), const ndim=1
@@ -1873,15 +2077,12 @@ impl Bed {
     ///     .skip_allele_1()
     ///     .skip_allele_2()
     ///     .build()?;
-    /// println!("{:?}", bed.iid()?);
+    /// println!("{:?}", bed.iid()?); // Outputs ndarray ["iid1", "iid2", "iid3"]
     /// bed.allele_2().expect_err("Can't be read");
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
-    /// *This outputs:*
-    /// ```text
-    /// ["iid1", "iid2", "iid3"], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
-    /// ```
+    ///
     pub fn builder<P: AsRef<Path>>(path: P) -> BedBuilder {
         BedBuilder::new(path)
     }
@@ -1964,10 +2165,9 @@ impl Bed {
     /// Bed::write(&val, &output_file)?;
     ///
     /// // If we then read the new file and list the chromosome property,
-    /// // it is an array of '0's, the default chromosome value.
+    /// // it is an array of zeros, the default chromosome value.
     /// let mut bed2 = Bed::new(&output_file)?;
-    /// println!("{:?}", bed2.chromosome()?);
-    /// // ["0", "0", "0", "0"], shape=[4], strides=[1], layout=CFcf (0xf), const ndim=1
+    /// println!("{:?}", bed2.chromosome()?); // Outputs ndarray ["0", "0", "0", "0"]
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
@@ -3115,29 +3315,15 @@ pub struct ReadOptions<TVal: BedVal> {
 impl<TVal: BedVal> ReadOptions<TVal> {
     /// Read genotype data. Supports selection and options.
     ///
-    /// > Also see [`Bed::read`](struct.Bed.html#method.read), which does not support options.
+    /// > Also see [`Bed::read`](struct.Bed.html#method.read), without options, read.
     ///
-    /// The options, [listed here](struct.ReadOptionsBuilder.html#implementations), can specify the:
-    ///  * type of the array values ([`i8`](struct.ReadOptionsBuilder.html#method.i8), [`f32`](struct.ReadOptionsBuilder.html#method.f32), [`f64`](struct.ReadOptionsBuilder.html#method.f64))
-    ///  * individuals (samples) to read with [`iid_index`](struct.ReadOptionsBuilder.html#method.iid_index)
-    ///  * SNPs (variants) to read with [`sid_index`](struct.ReadOptionsBuilder.html#method.sid_index)
-    ///  * order of the output array, either Fortran (default) or C
-    ///  * value for missing data
-    ///  * number of threads used for reading
-    ///  * whether to count the first allele (default) or the second
+    /// > To fill a preallocated ndarray, see:
+    /// > * [`ReadOptionsBuilder::read_and_fill`](struct.ReadOptionsBuilder.html#method.read_and_fill), with options, read into preallocated ndarray.
+    /// > * [`Bed::read_and_fill`](struct.Bed.html#method.read_and_fill), without options, read into preallocated ndarray
+    /// > * [`Bed::read_and_fill_with_options`](struct.Bed.html#method.read_and_fill_with_options), with options, read into preallocated ndarray.
     ///
-    /// # Indexing
-    /// To read selected individuals (samples)
-    /// use [`iid_index`](struct.ReadOptionsBuilder.html#method.iid_index).
-    /// To read selected SNPs (variants)
-    /// use [`sid_index`](struct.ReadOptionsBuilder.html#method.sid_index).
-    /// The indices can be specified as:
-    ///   * an index (negative numbers count from the end)
-    ///   * a vector or ndarray of indices
-    ///   * a Rust range (negatives not allowed)
-    ///   * a vector or ndarray of booleans
-    ///   * an ndarray slice (negative indexing and steps allowed)
-    /// cmk 0 somewhere describe all the indexing possibilities
+    /// [This table](index.html#readoptions) lists the options.
+    /// [This table](index.html#index-expressions) describes how to select individuals (samples) and SNPs (variants).
     ///
     /// # Errors
     /// See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
@@ -3185,6 +3371,7 @@ impl<TVal: BedVal> ReadOptions<TVal> {
     ///     .sid_index(1..4)
     ///     .f64()
     ///     .read(&mut bed)?;
+    ///
     /// assert_eq_nan(
     ///     &val,
     ///     &nd::array![[0.0, f64::NAN, 0.0], [0.0, f64::NAN, 2.0], [1.0, 2.0, 0.0]],
@@ -3199,6 +3386,7 @@ impl<TVal: BedVal> ReadOptions<TVal> {
     ///     .sid_index(bed.chromosome()?.map(|elem| elem == "5"))
     ///     .f64()
     ///     .read(&mut bed)?;
+    ///
     /// assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
     ///
     /// // Read 1st individual (across all SNPs).
@@ -3225,7 +3413,7 @@ impl<TVal: BedVal> ReadOptions<TVal> {
     ///     .read(&mut bed)?;
     /// assert_eq_nan(&val, &nd::array![[0.0],[2.0]]);
     ///
-    /// // Your output array can be f32, f64, or i8
+    /// // The output array can be f32, f64, or i8
     /// let val = ReadOptions::builder().i8().read(&mut bed)?;
     /// assert_eq_nan(
     ///     &val,
@@ -3423,7 +3611,7 @@ where
     /// ```
     /// Here, no metadata is given, so default values are assigned.
     /// If we then read the new file and list the chromosome property,
-    /// it is an array of '0's, the default chromosome value.
+    /// it is an array of zeros, the default chromosome value.
     /// ```
     /// # use ndarray as nd;
     /// # use bed_reader::{Bed, WriteOptions, tmp_path};
@@ -3434,8 +3622,7 @@ where
     /// WriteOptions::builder(&output_file2).write(&val)?;
     ///
     /// let mut bed2 = Bed::new(&output_file2)?;
-    /// println!("{:?}", bed2.chromosome()?);
-    /// // ["0", "0", "0", "0"], shape=[4], strides=[1], layout=CFcf (0xf), const ndim=1
+    /// println!("{:?}", bed2.chromosome()?); // Outputs ndarray ["0", "0", "0", "0"]
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```

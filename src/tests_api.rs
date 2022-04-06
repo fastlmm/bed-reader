@@ -352,6 +352,8 @@ fn fam_and_bim() -> Result<(), BedErrorPlus> {
         .bim_path("bed_reader/tests/data/small.mib")
         .build()?;
 
+    println!("{:?}", bed.iid()?);
+    println!("{:?}", bed.sid()?);
     let val: nd::Array2<i8> = bed.read()?;
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     println!("{:?}", mean);
@@ -1236,7 +1238,7 @@ fn index_doc() -> Result<(), BedErrorPlus> {
 
 #[test]
 fn index_options() -> Result<(), BedErrorPlus> {
-    let mut bed = Bed::new("bed_reader/tests/data/some_missing.bed")?;  
+    let mut bed = Bed::new("bed_reader/tests/data/some_missing.bed")?;
     let index: () = ();
 
     let all = ReadOptions::builder()
@@ -1246,9 +1248,9 @@ fn index_options() -> Result<(), BedErrorPlus> {
         .read(&mut bed)?;
     assert!(all.dim() == (100, 100));
 
-    let mut index: [bool; 100] = [false;100];
-    index[0]=true;
-    index[2]=true;
+    let mut index: [bool; 100] = [false; 100];
+    index[0] = true;
+    index[2] = true;
     let val = ReadOptions::builder()
         .iid_index(index)
         .sid_index(index)
@@ -1262,9 +1264,9 @@ fn index_options() -> Result<(), BedErrorPlus> {
         "not close"
     );
 
-    let mut index: nd::Array1<bool> = nd::Array::from_elem(100,false);
-    index[0]=true;
-    index[2]=true;
+    let mut index: nd::Array1<bool> = nd::Array::from_elem(100, false);
+    index[0] = true;
+    index[2] = true;
     let val = ReadOptions::builder()
         .iid_index(&index)
         .sid_index(index)
@@ -1278,9 +1280,9 @@ fn index_options() -> Result<(), BedErrorPlus> {
         "not close"
     );
 
-    let mut index: Vec<bool> = vec![false;100];
-    index[0]=true;
-    index[2]=true;
+    let mut index: Vec<bool> = vec![false; 100];
+    index[0] = true;
+    index[2] = true;
     let val = ReadOptions::builder()
         .iid_index(&index)
         .sid_index(index)
