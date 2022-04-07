@@ -11,7 +11,11 @@ use crate::BedError;
 #[cfg(test)]
 use crate::BedErrorPlus;
 #[cfg(test)]
+use crate::Metadata;
+#[cfg(test)]
 use crate::ReadOptions;
+#[cfg(test)]
+use crate::Skippable;
 #[cfg(test)]
 use crate::SliceInfo1;
 #[cfg(test)]
@@ -1462,6 +1466,48 @@ fn index_options() -> Result<(), BedErrorPlus> {
         allclose(&val.view(), &expected.view(), 1e-08, true),
         "not close"
     );
+
+    Ok(())
+}
+
+#[test]
+fn set_metadata() -> Result<(), BedErrorPlus> {
+    let file_name = "bed_reader/tests/data/small.bed";
+
+    let iid = nd::array!["iid1".to_string(), "iid2".to_string(), "iid3".to_string()];
+    let sid = nd::array![
+        "sid1".to_string(),
+        "sid2".to_string(),
+        "sid3".to_string(),
+        "sid4".to_string()
+    ];
+    let metadata = Metadata {
+        fid: Skippable::Skip,
+        iid: Skippable::Some(&iid),
+        father: Skippable::Skip,
+        mother: Skippable::Skip,
+        sex: Skippable::Skip,
+        pheno: Skippable::Skip,
+
+        chromosome: Skippable::Skip,
+        sid: Skippable::Some(&sid),
+        cm_position: Skippable::Skip,
+        bp_position: Skippable::Skip,
+        allele_1: Skippable::Skip,
+        allele_2: Skippable::Skip,
+    };
+
+    let mut bed = Bed::builder(file_name).metadata(metadata).build()?;
+    let metadata2 = bed.metadata()?;
+    println!("{metadata2:?}");
+
+    let mut bed = Bed::new(file_name)?;
+    let metadata = bed.metadata()?;
+    println!("{:?}", metadata);
+
+    let mut bed = Bed::builder(file_name).metadata(metadata).build()?;
+    let metadata2 = bed.metadata()?;
+    println!("{:?}", metadata2);
 
     Ok(())
 }

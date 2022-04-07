@@ -1,5 +1,3 @@
-// !!!cmk 0 BedBuilder document and give examples for all e.g. fam_path, skip_iid
-// !!!cmk 0 all metadata methods (e.g. iid_count) have doc and examples
 // !!!cmk later add a ReadOptions option called "metadata"
 // !!!cmk 0 all ReadOptions methods (e.g. i8) have doc and examples
 // !!!cmk 0 document Bed
@@ -17,7 +15,7 @@
 // !!!cmk 0 document Missing
 // !!!cmk 0 document three functions
 // !!!cmk 0 doc the also sees: ReadOptions::builder::build lists other options and they list it. all have examples
-// !!!cmk 0 doc Bedbuilder Bed
+// !!!cmk 0 doc BedBuilder Bed
 
 // Inspired by C++ version by Chris Widmer and Carl Kadie
 
@@ -1746,6 +1744,60 @@ impl BedBuilder {
         self
     }
 
+    /// Use the given metadata information.
+    ///
+    /// This means that no metadata information will be read the .fam or .bim file.
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, Metadata, Skippable};
+    ///
+    /// let iid = nd::array!["iid1".to_string(), "iid2".to_string(), "iid3".to_string()];
+    /// let sid = nd::array![
+    ///     "sid1".to_string(),
+    ///     "sid2".to_string(),
+    ///     "sid3".to_string(),
+    ///     "sid4".to_string()
+    /// ];
+    /// let metadata = Metadata {
+    ///     fid: Skippable::Skip,
+    ///     iid: Skippable::Some(&iid),
+    ///     father: Skippable::Skip,
+    ///     mother: Skippable::Skip,
+    ///     sex: Skippable::Skip,
+    ///     pheno: Skippable::Skip,
+    ///
+    ///     chromosome: Skippable::Skip,
+    ///     sid: Skippable::Some(&sid),
+    ///     cm_position: Skippable::Skip,
+    ///     bp_position: Skippable::Skip,
+    ///     allele_1: Skippable::Skip,
+    ///     allele_2: Skippable::Skip,
+    /// };
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::builder(file_name).metadata(metadata).build()?;
+    /// let metadata2 = bed.metadata()?;
+    /// println!("{metadata2:?}"); // Outputs a copy of input metadata
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
+    pub fn metadata(mut self, metadata: Metadata) -> Self {
+        self.fid = Some(to_lazy_or_skip_clone(&metadata.fid));
+        self.iid = Some(to_lazy_or_skip_clone(&metadata.iid));
+        self.father = Some(to_lazy_or_skip_clone(&metadata.father));
+        self.mother = Some(to_lazy_or_skip_clone(&metadata.mother));
+        self.sex = Some(to_lazy_or_skip_clone(&metadata.sex));
+        self.pheno = Some(to_lazy_or_skip_clone(&metadata.pheno));
+
+        self.chromosome = Some(to_lazy_or_skip_clone(&metadata.chromosome));
+        self.sid = Some(to_lazy_or_skip_clone(&metadata.sid));
+        self.cm_position = Some(to_lazy_or_skip_clone(&metadata.cm_position));
+        self.bp_position = Some(to_lazy_or_skip_clone(&metadata.bp_position));
+        self.allele_1 = Some(to_lazy_or_skip_clone(&metadata.allele_1));
+        self.allele_2 = Some(to_lazy_or_skip_clone(&metadata.allele_2));
+        self
+    }
+
     /// Set the number of individuals in the data.
     ///
     /// By default, if this number is needed, it will be found
@@ -1968,6 +2020,15 @@ fn to_skippable<'a, T>(lazy_or_skip: &'a LazyOrSkip<T>) -> Skippable<&'a T> {
         LazyOrSkip::Lazy => panic!("assert: impossible"),
         LazyOrSkip::Skip => Skippable::Skip,
         LazyOrSkip::Some(some) => Skippable::Some(some),
+    }
+}
+
+fn to_lazy_or_skip_clone<T: Clone>(
+    skippable: &Skippable<&nd::Array1<T>>,
+) -> LazyOrSkip<nd::Array1<T>> {
+    match *skippable {
+        Skippable::Some(f) => LazyOrSkip::Some(f.clone()),
+        Skippable::Skip => LazyOrSkip::Skip,
     }
 }
 
