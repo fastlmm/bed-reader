@@ -1,4 +1,3 @@
-// !!!cmk later add a ReadOptions option called "metadata"
 // !!!cmk 0 all ReadOptions methods (e.g. i8) have doc and examples
 // !!!cmk 0 document Bed
 // !!!cmk 0 document BedBuilder
@@ -16,6 +15,7 @@
 // !!!cmk 0 document three functions
 // !!!cmk 0 doc the also sees: ReadOptions::builder::build lists other options and they list it. all have examples
 // !!!cmk 0 doc BedBuilder Bed
+// !!!cmk later look at all {:?}
 
 // Inspired by C++ version by Chris Widmer and Carl Kadie
 
@@ -169,8 +169,8 @@
 //! | [`c`](struct.ReadOptionsBuilder.html#method.c) | Order of the output array, C |
 //! | [`is_f`](struct.ReadOptionsBuilder.html#method.is_f) | Is order of the output array Fortran? (defaults to true)|
 //! | [`missing_value`](struct.ReadOptionsBuilder.html#method.missing_value) | Value to use for missing values (defaults to -127 or NaN) |
-//! | [`count_a1`](struct.ReadOptionsBuilder.html#method.count_a1) | Count number allele 1 (default) |
-//! | [`count_a2`](struct.ReadOptionsBuilder.html#method.count_a2) | Count number allele 2 |
+//! | [`count_a1`](struct.ReadOptionsBuilder.html#method.count_a1) | Count the number allele 1 (default) |
+//! | [`count_a2`](struct.ReadOptionsBuilder.html#method.count_a2) | Count the number allele 2 |
 //! | [`is_a1_counted`](struct.ReadOptionsBuilder.html#method.is_a1_counted) | Is allele 1 counted? (defaults to true) |
 //! | [`num_threads`](struct.ReadOptionsBuilder.html#method.num_threads) | Number of threads to use (defaults to all) |
 //!
@@ -3352,6 +3352,31 @@ impl From<()> for Index {
 // See https://nullderef.com/blog/rust-parameters/
 #[derive(Debug, Clone, Builder)]
 pub struct ReadOptions<TVal: BedVal> {
+    /// Value to use for missing values (defaults to -127 or NaN)
+    ///
+    /// -127 is the default for i8 and NaN is the default for f32 and f64.
+    ///
+    /// Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let val = ReadOptions::builder().missing_value(-1).i8().read(&mut bed)?;
+    ///
+    /// assert_eq_nan(
+    ///     &val,
+    ///     &nd::array![
+    ///         [1, 0, -1, 0],
+    ///         [2, 0, -1, 2],
+    ///         [0, 1, 2, 0]
+    ///     ],
+    /// );
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
     #[builder(default = "TVal::missing()")]
     missing_value: TVal,
 
@@ -3363,11 +3388,44 @@ pub struct ReadOptions<TVal: BedVal> {
     #[builder(setter(into))]
     sid_index: Index,
 
+    /// Should the order of the output array be Fortran (default)?
+    ///
+    /// "Fortran order" is also called "column-major order" [Wikipedia](https://en.wikipedia.org/wiki/Row-_and_column-major_order).
+    /// Also see [`f`](struct.ReadOptionsBuilder.html#method.f) and [`c`](struct.ReadOptionsBuilder.html#method.c).
     #[builder(default = "true")]
     is_f: bool,
 
+    /// Should allele 1 be counted?
+    ///
+    /// Also see [`count_a1`](struct.ReadOptionsBuilder.html#method.count_a1) and [`count_a2`](struct.ReadOptionsBuilder.html#method.count_a2).
     #[builder(default = "true")]
     is_a1_counted: bool,
+
+    /// Number of threads to use (defaults to all)
+    ///
+    /// Can also be set with an environment variable. See cmk 0.
+    ///
+    /// Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let val = ReadOptions::builder().num_threads(1).i8().read(&mut bed)?;
+    ///
+    /// assert_eq_nan(
+    ///     &val,
+    ///     &nd::array![
+    ///         [1, 0, -127, 0],
+    ///         [2, 0, -127, 2],
+    ///         [0, 1, 2, 0]
+    ///     ],
+    /// );
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
 
     #[builder(default, setter(strip_option))]
     pub num_threads: Option<usize>,
@@ -3472,10 +3530,12 @@ impl<TVal: BedVal> ReadOptions<TVal> {
     ///     .sid_index(-1)
     ///     .f64()
     ///     .read(&mut bed)?;
+    ///
     /// assert_eq_nan(&val, &nd::array![[0.0],[2.0]]);
     ///
     /// // The output array can be f32, f64, or i8
     /// let val = ReadOptions::builder().i8().read(&mut bed)?;
+    ///
     /// assert_eq_nan(
     ///     &val,
     ///     &nd::array![
@@ -3507,21 +3567,79 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
         bed.read_and_fill_with_options(val, &read_options)
     }
 
+    /// Order of the output array, Fortran (default)
+    ///
+    /// Also called "column-major order" [Wikipedia](https://en.wikipedia.org/wiki/Row-_and_column-major_order).
+    /// Also see [`is_f`](struct.ReadOptionsBuilder.html#method.is_f) and [`c`](struct.ReadOptionsBuilder.html#method.c).
     pub fn f(&mut self) -> &mut Self {
         self.is_f(true);
         self
     }
 
+    /// Order of the output array, C (default)
+    ///
+    /// Also called "row-major order" [Wikipedia](https://en.wikipedia.org/wiki/Row-_and_column-major_order).
+    /// Also see [`is_f`](struct.ReadOptionsBuilder.html#method.is_f) and [`f`](struct.ReadOptionsBuilder.html#method.f).
     pub fn c(&mut self) -> &mut Self {
         self.is_f(false);
         self
     }
 
+    /// Count the number allele 1 (default and PLINK standard).
+    ///
+    /// Also see [`is_a1_counted`](struct.ReadOptionsBuilder.html#method.is_a1_counted) and [`count_a2`](struct.ReadOptionsBuilder.html#method.count_a2).
+    ///
+    /// For example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let val = ReadOptions::builder().count_a1().i8().read(&mut bed)?;
+    ///
+    /// assert_eq_nan(
+    ///     &val,
+    ///     &nd::array![
+    ///         [1, 0, -127, 0],
+    ///         [2, 0, -127, 2],
+    ///         [0, 1, 2, 0]
+    ///     ],
+    /// );
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
     pub fn count_a1(&mut self) -> &mut Self {
         self.is_a1_counted = Some(true);
         self
     }
 
+    /// Count the number allele 2.
+    ///
+    /// Also see [`is_a1_counted`](struct.ReadOptionsBuilder.html#method.is_a1_counted) and [`count_a1`](struct.ReadOptionsBuilder.html#method.count_a1).
+    ///
+    /// For example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let val = ReadOptions::builder().count_a2().i8().read(&mut bed)?;
+    ///
+    /// assert_eq_nan(
+    ///     &val,
+    ///     &nd::array![
+    ///         [1, 2, -127, 2],
+    ///         [0, 2, -127, 0],
+    ///         [2, 1, 0, 2]
+    ///     ],
+    /// );
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
     pub fn count_a2(&mut self) -> &mut Self {
         self.is_a1_counted = Some(false);
         self
@@ -3529,18 +3647,87 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
 }
 
 impl ReadOptionsBuilder<i8> {
+    /// Output an ndarray of i8.
+    ///
+    /// For example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let val = ReadOptions::builder().i8().read(&mut bed)?;
+    ///
+    /// assert_eq_nan(
+    ///     &val,
+    ///     &nd::array![
+    ///         [1, 0, -127, 0],
+    ///         [2, 0, -127, 2],
+    ///         [0, 1, 2, 0]
+    ///     ],
+    /// );
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
     pub fn i8(&mut self) -> &mut Self {
         self
     }
 }
 
 impl ReadOptionsBuilder<f32> {
+    /// Output an ndarray of f32.
+    ///
+    /// For example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let val = ReadOptions::builder().f32().read(&mut bed)?;
+    ///
+    /// assert_eq_nan(
+    ///     &val,
+    ///     &nd::array![
+    ///         [1.0, 0.0, f32::NAN, 0.0],
+    ///         [2.0, 0.0, f32::NAN, 2.0],
+    ///         [0.0, 1.0, 2.0, 0.0]
+    ///     ],
+    /// );
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```    
     pub fn f32(&mut self) -> &mut Self {
         self
     }
 }
 
 impl ReadOptionsBuilder<f64> {
+    /// Output an ndarray of f64.
+    ///
+    /// For example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let val = ReadOptions::builder().f64().read(&mut bed)?;
+    ///
+    /// assert_eq_nan(
+    ///     &val,
+    ///     &nd::array![
+    ///         [1.0, 0.0, f64::NAN, 0.0],
+    ///         [2.0, 0.0, f64::NAN, 2.0],
+    ///         [0.0, 1.0, 2.0, 0.0]
+    ///     ],
+    /// );
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```    
     pub fn f64(&mut self) -> &mut Self {
         self
     }
