@@ -2652,7 +2652,24 @@ impl Bed {
 
         let num_threads = compute_num_threads(read_options.num_threads)?;
 
-        let iid_index = read_options.iid_index.to_vec(iid_count)?;
+        // let iid_index = read_options.iid_index.to_vec(iid_count)?;
+
+        let hold: Option<Vec<isize>> = if let Index::Vec(_) = read_options.iid_index {
+            None
+        } else {
+            Some(read_options.iid_index.to_vec(iid_count)?)
+        };
+        let iid_index = if let Index::Vec(vec) = &read_options.iid_index {
+            vec
+        } else {
+            if let Some(hold) = &hold {
+                hold
+            } else {
+                panic!("impossible");
+            }
+        };
+
+        // read_options.iid_index.to_vec(iid_count)?;
         let sid_index = read_options.sid_index.to_vec(sid_count)?;
 
         let shape = val.shape();

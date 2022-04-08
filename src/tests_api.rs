@@ -1511,3 +1511,6 @@ fn set_metadata() -> Result<(), BedErrorPlus> {
 
     Ok(())
 }
+
+// !!!cmk 0 in docs explain that vec<isize> given to *_index will move it.
+// !!!cmk 0 other things (like a borrow) will clone it.
