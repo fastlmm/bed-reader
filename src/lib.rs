@@ -2693,16 +2693,20 @@ impl Bed {
 
         let iid_count = self.iid_count()?;
         let sid_count = self.sid_count()?;
-        let iid_index = read_options.iid_index.to_vec(iid_count)?;
-        let sid_index = read_options.sid_index.to_vec(sid_count)?;
+
+        let iid_hold = Hold::new(&read_options.iid_index, iid_count)?;
+        let iid_index = iid_hold.as_ref();
+
+        let sid_hold = Hold::new(&read_options.sid_index, sid_count)?;
+        let sid_index = sid_hold.as_ref();
 
         read_no_alloc(
             &self.path,
             iid_count,
             sid_count,
             read_options.is_a1_counted,
-            &iid_index,
-            &sid_index,
+            iid_index,
+            sid_index,
             read_options.missing_value,
             num_threads,
             &mut val.view_mut(),
