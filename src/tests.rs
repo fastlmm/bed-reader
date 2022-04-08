@@ -739,10 +739,10 @@ fn file_ata_small() {
     let filename = "bed_reader/tests/data/small_array.memmap";
     let mut out_val = nd::Array2::<f64>::from_elem((3, 3), f64::NAN);
     file_ata(filename, 0, 2, 3, 2, &mut out_val.view_mut()).unwrap();
-    println!("{:?}", out_val);
+    println!("{out_val:?}");
 
     let expected = nd::arr2(&[[17., 22., 27.], [22., 29., 36.], [27., 36., 45.]]);
-    println!("{:?}", expected);
+    println!("{expected:?}");
     assert!(allclose(&expected.view(), &out_val.view(), 1e-08, true));
 }
 
@@ -813,8 +813,6 @@ fn file_b_less_aatbx_medium() {
         10,
     )
     .unwrap();
-    // println!("{:?}", atb);
-    // println!("{:?}", aatb);
 
     println!("{:?}", atb[(1, 1)]);
     assert!(abs(atb[(1, 1)] - 499.00749503747534) < 1e-11);
@@ -828,10 +826,10 @@ fn file_aat_small() {
     let filename = "bed_reader/tests/data/small_array.memmap";
     let mut out_val = nd::Array2::<f64>::from_elem((2, 2), f64::NAN);
     file_aat(filename, 0, 2, 3, 1, &mut out_val.view_mut()).unwrap();
-    println!("{:?}", out_val);
+    println!("{out_val:?}");
 
     let expected = nd::arr2(&[[14.0, 32.0], [32.0, 77.0]]);
-    println!("{:?}", expected);
+    println!("{expected:?}");
     assert!(allclose(&expected.view(), &out_val.view(), 1e-08, true));
 }
 
@@ -840,14 +838,14 @@ fn file_aat_small2() {
     let filename = "bed_reader/tests/data/small2_array.memmap";
     let mut out_val = nd::Array2::<f64>::from_elem((3, 3), f64::NAN);
     file_aat(filename, 0, 3, 4, 2, &mut out_val.view_mut()).unwrap();
-    println!("{:?}", out_val);
+    println!("{out_val:?}");
 
     let expected = nd::arr2(&[
         [30.0, 70.0, 110.0],
         [70.0, 174.0, 278.0],
         [110.0, 278.0, 446.0],
     ]);
-    println!("{:?}", expected);
+    println!("{expected:?}");
     assert!(allclose(&expected.view(), &out_val.view(), 1e-08, true));
 }
 
@@ -876,7 +874,7 @@ fn file_aat<P: AsRef<Path>>(
             iid_range_len,
             read_into_f64,
         )?;
-        println!("piece:\n{:?}", aat_piece);
+        println!("piece:\n{aat_piece:?}");
 
         for range0_index in 0..iid_count - iid_start {
             for range1_index in 0..iid_range_len {
@@ -887,7 +885,7 @@ fn file_aat<P: AsRef<Path>>(
                 }
             }
         }
-        println!("val:\n{:?}", val);
+        println!("val:\n{val:?}");
     }
     Ok(())
 }

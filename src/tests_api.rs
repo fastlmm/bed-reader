@@ -51,7 +51,7 @@ fn rusty_bed2() -> Result<(), BedErrorPlus> {
         .i8()
         .read(&mut bed)?;
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
-    println!("{:?}", mean);
+    println!("{mean:?}");
     assert!(mean == 1.0); // really shouldn't do mean on data where -127 represents missing
 
     Ok(())
@@ -84,7 +84,7 @@ fn rusty_bed3() -> Result<(), BedErrorPlus> {
         .sid_index(sid_bool)
         .read(&mut bed)?;
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
-    println!("{:?}", mean);
+    println!("{mean:?}");
     assert!(mean == -14.50344827586207); // really shouldn't do mean on data where -127 represents missing
 
     Ok(())
@@ -97,7 +97,7 @@ fn rusty_bed_allele() -> Result<(), BedErrorPlus> {
     let val = ReadOptions::builder().count_a2().i8().read(&mut bed)?;
 
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
-    println!("{:?}", mean);
+    println!("{mean:?}");
     assert!(mean == -13.274); // really shouldn't do mean on data where -127 represents missing
 
     Ok(())
@@ -110,7 +110,7 @@ fn rusty_bed_order() -> Result<(), BedErrorPlus> {
     let val = ReadOptions::builder().c().i8().read(&mut bed)?;
 
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
-    println!("{:?}", mean);
+    println!("{mean:?}");
     assert!(mean == -13.142); // really shouldn't do mean on data where -127 represents missing
 
     Ok(())
@@ -343,7 +343,7 @@ fn num_threads() -> Result<(), BedErrorPlus> {
 
     let val = ReadOptions::builder().num_threads(4).i8().read(&mut bed)?;
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
-    println!("{:?}", mean);
+    println!("{mean:?}");
     assert!(mean == -13.142); // really shouldn't do mean on data where -127 represents missing
 
     Ok(())
@@ -360,7 +360,7 @@ fn fam_and_bim() -> Result<(), BedErrorPlus> {
     println!("{:?}", bed.sid()?);
     let val: nd::Array2<i8> = bed.read()?;
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
-    println!("{:?}", mean);
+    println!("{mean:?}");
     assert!(mean == -20.5); // really shouldn't do mean on data where -127 represents missing
 
     Ok(())
@@ -387,7 +387,7 @@ fn readme_examples() -> Result<(), BedErrorPlus> {
     let file_name = "bed_reader/tests/data/small.bed";
     let mut bed = Bed::new(file_name)?;
     let val = bed.read::<f64>()?;
-    println!("{:?}", val);
+    println!("{val:?}");
     // [[1.0, 0.0, NaN, 0.0],
     // [2.0, 0.0, NaN, 2.0],
     // [0.0, 1.0, 2.0, 0.0]], shape=[3, 4], strides=[1, 3], layout=Ff (0xa), const ndim=2
@@ -428,7 +428,7 @@ fn readme_examples() -> Result<(), BedErrorPlus> {
     println!("{:?}", bed3.iid()?.slice(s![..5]));
     println!("{:?}", bed3.sid()?.slice(s![..5]));
     let unique = bed3.chromosome()?.iter().collect::<HashSet<_>>();
-    println!("{:?}", unique);
+    println!("{unique:?}");
     // let is_5 = bed3.chromosome()?.map(|elem| elem == "5");
     let is_5 = nd::Zip::from(bed3.chromosome()?).par_map_collect(|elem| elem == "5");
     let val3 = ReadOptions::builder()
@@ -526,7 +526,7 @@ fn read_write() -> Result<(), BedErrorPlus> {
     let mut bed = Bed::new(file_name)?;
     let val = bed.read::<f64>()?;
     let metadata = bed.metadata()?;
-    println!("{:?}", metadata);
+    println!("{metadata:?}");
 
     // output_file = tmp_path / "small.deb"
     // fam_file = tmp_path / "small.maf"
@@ -572,8 +572,8 @@ fn read_write() -> Result<(), BedErrorPlus> {
         allclose(&val.view(), &val2.view(), 1e-08, true),
         "not close"
     );
-    println!("{:?}", metadata);
-    println!("{:?}", metadata2);
+    println!("{metadata:?}");
+    println!("{metadata2:?}");
     assert!(metadata == metadata2, "meta not equal");
 
     Ok(())
@@ -801,9 +801,9 @@ fn assert_same_result(
 
     if err1 || err2 || err3 {
         if !err1 || !err2 || !err3 {
-            println!("{:?}", result1);
-            println!("{:?}", result2);
-            println!("{:?}", result3);
+            println!("{result1:?}");
+            println!("{result2:?}");
+            println!("{result3:?}");
             panic!("all should panic/error the same");
         }
         return;
@@ -812,9 +812,9 @@ fn assert_same_result(
     let result1 = result1.unwrap().unwrap();
     let result2 = result2.unwrap().unwrap();
     let result3 = result3.unwrap().unwrap();
-    println!("{:?}", result1);
-    println!("{:?}", result2);
-    println!("{:?}", result3);
+    println!("{result1:?}");
+    println!("{result2:?}");
+    println!("{result3:?}");
     assert!(
         allclose(&result1.view(), &result2.view(), 0, true),
         "not close"
@@ -932,7 +932,7 @@ fn bool_read() -> Result<(), BedErrorPlus> {
         .iid_index([false, false, true, false])
         .i8()
         .read(&mut bed);
-    println!("{:?}", result);
+    println!("{result:?}");
     match result {
         Err(BedErrorPlus::BedError(BedError::BoolArrayVectorWrongLength(_, _))) => {}
         _ => panic!("should be an error"),
@@ -1134,7 +1134,7 @@ fn negative_indexing() -> Result<(), BedErrorPlus> {
             .iid_index(index)
             .i8()
             .read(&mut bed)?;
-        // println!("{:?}", val);
+        // println!("{val:?}");
         assert!(val[[0, 0]] == 1,);
     }
     for index in [-1, 2] {
@@ -1142,7 +1142,7 @@ fn negative_indexing() -> Result<(), BedErrorPlus> {
             .iid_index(index)
             .i8()
             .read(&mut bed)?;
-        // println!("{:?}", val);
+        // println!("{val:?}");
         assert!(val[[0, 0]] == 0,);
     }
 
@@ -1159,7 +1159,7 @@ fn negative_indexing() -> Result<(), BedErrorPlus> {
             .sid_index(index)
             .i8()
             .read(&mut bed)?;
-        // println!("{:?}", val);
+        // println!("{val:?}");
         assert!(val[[0, 0]] == 1,);
     }
     for index in [-1, 3] {
@@ -1167,7 +1167,7 @@ fn negative_indexing() -> Result<(), BedErrorPlus> {
             .sid_index(index)
             .i8()
             .read(&mut bed)?;
-        // println!("{:?}", val);
+        // println!("{val:?}");
         assert!(val[[0, 0]] == 0,);
     }
 
@@ -1503,11 +1503,11 @@ fn set_metadata() -> Result<(), BedErrorPlus> {
 
     let mut bed = Bed::new(file_name)?;
     let metadata = bed.metadata()?;
-    println!("{:?}", metadata);
+    println!("{metadata:?}");
 
     let mut bed = Bed::builder(file_name).metadata(metadata).build()?;
     let metadata2 = bed.metadata()?;
-    println!("{:?}", metadata2);
+    println!("{metadata2:?}");
 
     Ok(())
 }

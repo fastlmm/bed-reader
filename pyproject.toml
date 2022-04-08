@@ -8,3 +8,6 @@ multi_line_output = 3
 
 [tool.black]
 line-length = 88
+
+[build]
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
