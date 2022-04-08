@@ -2652,24 +2652,12 @@ impl Bed {
 
         let num_threads = compute_num_threads(read_options.num_threads)?;
 
-        // let iid_index = read_options.iid_index.to_vec(iid_count)?;
-
-        let hold: Option<Vec<isize>> = if let Index::Vec(_) = read_options.iid_index {
-            None
-        } else {
-            Some(read_options.iid_index.to_vec(iid_count)?)
-        };
-        let iid_index = if let Index::Vec(vec) = &read_options.iid_index {
-            vec
-        } else {
-            if let Some(hold) = &hold {
-                hold
-            } else {
-                panic!("impossible");
-            }
+        let hold = fun_name(&read_options.iid_index, iid_count)?;
+        let iid_index: &Vec<isize> = match hold {
+            Hold::Ref(index) => index,
+            Hold::Copy(ref index) => &index,
         };
 
-        // read_options.iid_index.to_vec(iid_count)?;
         let sid_index = read_options.sid_index.to_vec(sid_count)?;
 
         let shape = val.shape();
@@ -2740,6 +2728,20 @@ impl Bed {
 
         Ok(val)
     }
+}
+
+enum Hold<'a> {
+    Copy(Vec<isize>),
+    Ref(&'a Vec<isize>),
+}
+
+fn fun_name(index: &Index, count: usize) -> Result<Hold, BedErrorPlus> {
+    let hold = if let Index::Vec(vec) = index {
+        Hold::Ref(vec)
+    } else {
+        Hold::Copy(index.to_vec(count)?)
+    };
+    Ok(hold)
 }
 
 fn compute_num_threads(option_num_threads: Option<usize>) -> Result<usize, BedErrorPlus> {
