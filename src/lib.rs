@@ -3356,7 +3356,7 @@ pub struct ReadOptions<TVal: BedVal> {
     ///
     /// -127 is the default for i8 and NaN is the default for f32 and f64.
     ///
-    /// Example:
+    /// In this example, the missing value is set to -1:
     /// ```
     /// use ndarray as nd;
     /// use bed_reader::{Bed, ReadOptions};
@@ -3391,6 +3391,7 @@ pub struct ReadOptions<TVal: BedVal> {
     /// Should the order of the output array be Fortran (default)?
     ///
     /// "Fortran order" is also called "column-major order" [Wikipedia](https://en.wikipedia.org/wiki/Row-_and_column-major_order).
+    ///
     /// Also see [`f`](struct.ReadOptionsBuilder.html#method.f) and [`c`](struct.ReadOptionsBuilder.html#method.c).
     #[builder(default = "true")]
     is_f: bool,
@@ -3405,7 +3406,7 @@ pub struct ReadOptions<TVal: BedVal> {
     ///
     /// Can also be set with an environment variable. See cmk 0.
     ///
-    /// Example:
+    /// In this example, we read using only one thread.
     /// ```
     /// use ndarray as nd;
     /// use bed_reader::{Bed, ReadOptions};
@@ -3570,6 +3571,7 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     /// Order of the output array, Fortran (default)
     ///
     /// Also called "column-major order" [Wikipedia](https://en.wikipedia.org/wiki/Row-_and_column-major_order).
+    ///
     /// Also see [`is_f`](struct.ReadOptionsBuilder.html#method.is_f) and [`c`](struct.ReadOptionsBuilder.html#method.c).
     pub fn f(&mut self) -> &mut Self {
         self.is_f(true);
@@ -3579,6 +3581,7 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     /// Order of the output array, C (default)
     ///
     /// Also called "row-major order" [Wikipedia](https://en.wikipedia.org/wiki/Row-_and_column-major_order).
+    ///
     /// Also see [`is_f`](struct.ReadOptionsBuilder.html#method.is_f) and [`f`](struct.ReadOptionsBuilder.html#method.f).
     pub fn c(&mut self) -> &mut Self {
         self.is_f(false);
