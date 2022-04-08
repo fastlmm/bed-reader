@@ -2652,13 +2652,11 @@ impl Bed {
 
         let num_threads = compute_num_threads(read_options.num_threads)?;
 
-        let hold = fun_name(&read_options.iid_index, iid_count)?;
-        let iid_index: &Vec<isize> = match hold {
-            Hold::Ref(index) => index,
-            Hold::Copy(ref index) => &index,
-        };
+        let iid_hold = Hold::new(&read_options.iid_index, iid_count)?;
+        let iid_index = iid_hold.as_ref();
 
-        let sid_index = read_options.sid_index.to_vec(sid_count)?;
+        let sid_hold = Hold::new(&read_options.sid_index, sid_count)?;
+        let sid_index = sid_hold.as_ref();
 
         let shape = val.shape();
         if shape.len() != 2 || (shape[0], shape[1]) != (iid_index.len(), sid_index.len()) {
@@ -2676,8 +2674,8 @@ impl Bed {
             iid_count,
             sid_count,
             read_options.is_a1_counted,
-            &iid_index,
-            &sid_index,
+            iid_index,
+            sid_index,
             read_options.missing_value,
             num_threads,
             &mut val.view_mut(),
@@ -2735,14 +2733,29 @@ enum Hold<'a> {
     Ref(&'a Vec<isize>),
 }
 
-fn fun_name(index: &Index, count: usize) -> Result<Hold, BedErrorPlus> {
-    let hold = if let Index::Vec(vec) = index {
-        Hold::Ref(vec)
-    } else {
-        Hold::Copy(index.to_vec(count)?)
-    };
-    Ok(hold)
+impl Hold<'_> {
+    fn new(index: &Index, count: usize) -> Result<Hold, BedErrorPlus> {
+        let hold = if let Index::Vec(vec) = index {
+            Hold::Ref(vec)
+        } else {
+            Hold::Copy(index.to_vec(count)?)
+        };
+        Ok(hold)
+    }
+
+    fn as_ref(&self) -> &Vec<isize> {
+        match self {
+            Hold::Ref(vec) => vec,
+            Hold::Copy(ref vec) => vec,
+        }
+    }
 }
+
+// let hold = fun_name(&read_options.iid_index, iid_count)?;
+// let iid_index: &Vec<isize> = match hold {
+//     Hold::Ref(index) => index,
+//     Hold::Copy(ref index) => &index,
+// };
 
 fn compute_num_threads(option_num_threads: Option<usize>) -> Result<usize, BedErrorPlus> {
     let num_threads = if let Some(num_threads) = option_num_threads {
