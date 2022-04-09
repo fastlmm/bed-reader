@@ -2308,7 +2308,7 @@ impl Bed {
     /// If this number is needed, it will be found
     /// by opening the .fam file and quickly counting the number
     /// of lines. Once found, the number will be remembered.
-    /// Any file read can be avoided by setting the
+    /// The file read can be avoided by setting the
     /// number with [`BedBuilder::iid_count`](struct.BedBuilder.html#method.iid_count)
     /// or, for example, [`BedBuilder::iid`](struct.BedBuilder.html#method.iid).
     ///
@@ -2341,7 +2341,7 @@ impl Bed {
     /// If this number is needed, it will be found
     /// by opening the .bim file and quickly counting the number
     /// of lines. Once found, the number will be remembered.
-    /// Any file read can be avoided by setting the
+    /// The file read can be avoided by setting the
     /// number with [`BedBuilder::sid_count`](struct.BedBuilder.html#method.sid_count)
     /// or, for example, [`BedBuilder::sid`](struct.BedBuilder.html#method.sid).
     ///
@@ -2374,7 +2374,7 @@ impl Bed {
     /// If these numbers are needed, they will be found
     /// by opening the .fam and .bim files and quickly counting the number
     /// of lines. Once found, the numbers will be remembered.
-    /// Any file read can be avoided by setting the
+    /// The file read can be avoided by setting the
     /// number with [`BedBuilder::iid_count`](struct.BedBuilder.html#method.iid_count)
     /// and [`BedBuilder::sid_count`](struct.BedBuilder.html#method.sid_count)..
     ///
@@ -2618,7 +2618,7 @@ impl Bed {
     /// If this ndarray is needed, it will be found
     /// by reading the .fam file. Once found, this ndarray
     /// and other information in the .fam file will be remembered.
-    /// Any file read can be avoided by setting the
+    /// The file read can be avoided by setting the
     /// array with [`BedBuilder::fid`](struct.BedBuilder.html#method.fid).
     ///
     /// Example:
@@ -2643,7 +2643,7 @@ impl Bed {
     /// If this ndarray is needed, it will be found
     /// by reading the .fam file. Once found, this ndarray
     /// and other information in the .fam file will be remembered.
-    /// Any file read can be avoided by setting the
+    /// The file read can be avoided by setting the
     /// array with [`BedBuilder::iid`](struct.BedBuilder.html#method.iid).
     ///
     /// Example:
@@ -2668,7 +2668,7 @@ impl Bed {
     /// If this ndarray is needed, it will be found
     /// by reading the .fam file. Once found, this ndarray
     /// and other information in the .fam file will be remembered.
-    /// Any file read can be avoided by setting the
+    /// The file read can be avoided by setting the
     /// array with [`BedBuilder::father`](struct.BedBuilder.html#method.father).
     ///
     /// Example:
@@ -2693,7 +2693,7 @@ impl Bed {
     /// If this ndarray is needed, it will be found
     /// by reading the .fam file. Once found, this ndarray
     /// and other information in the .fam file will be remembered.
-    /// Any file read can be avoided by setting the
+    /// The file read can be avoided by setting the
     /// array with [`BedBuilder::mother`](struct.BedBuilder.html#method.mother).
     ///
     /// Example:
@@ -2720,7 +2720,7 @@ impl Bed {
     /// If this ndarray is needed, it will be found
     /// by reading the .fam file. Once found, this ndarray
     /// and other information in the .fam file will be remembered.
-    /// Any file read can be avoided by setting the
+    /// The file read can be avoided by setting the
     /// array with [`BedBuilder::sex`](struct.BedBuilder.html#method.sex).
     ///
     /// Example:
@@ -2745,7 +2745,7 @@ impl Bed {
     /// If this ndarray is needed, it will be found
     /// by reading the .fam file. Once found, this ndarray
     /// and other information in the .fam file will be remembered.
-    /// Any file read can be avoided by setting the
+    /// The file read can be avoided by setting the
     /// array with [`BedBuilder::pheno`](struct.BedBuilder.html#method.pheno).
     ///
     /// Example:
@@ -2770,7 +2770,7 @@ impl Bed {
     /// If this ndarray is needed, it will be found
     /// by reading the .bim file. Once found, this ndarray
     /// and other information in the .bim file will be remembered.
-    /// Any file read can be avoided by setting the
+    /// The file read can be avoided by setting the
     /// array with [`BedBuilder::chromosome`](struct.BedBuilder.html#method.chromosome).
     ///
     /// Example:
@@ -2795,7 +2795,7 @@ impl Bed {
     /// If this ndarray is needed, it will be found
     /// by reading the .bim file. Once found, this ndarray
     /// and other information in the .bim file will be remembered.
-    /// Any file read can be avoided by setting the
+    /// The file read can be avoided by setting the
     /// array with [`BedBuilder::sid`](struct.BedBuilder.html#method.sid).
     ///
     /// Example:
@@ -2820,7 +2820,7 @@ impl Bed {
     /// If this ndarray is needed, it will be found
     /// by reading the .bim file. Once found, this ndarray
     /// and other information in the .bim file will be remembered.
-    /// Any file read can be avoided by setting the
+    /// The file read can be avoided by setting the
     /// array with [`BedBuilder::cm_position`](struct.BedBuilder.html#method.cm_position).
     ///
     /// Example:
@@ -2845,7 +2845,7 @@ impl Bed {
     /// If this ndarray is needed, it will be found
     /// by reading the .bim file. Once found, this ndarray
     /// and other information in the .bim file will be remembered.
-    /// Any file read can be avoided by setting the
+    /// The file read can be avoided by setting the
     /// array with [`BedBuilder::bp_position`](struct.BedBuilder.html#method.bp_position).
     ///
     /// Example:
@@ -2870,7 +2870,7 @@ impl Bed {
     /// If this ndarray is needed, it will be found
     /// by reading the .bim file. Once found, this ndarray
     /// and other information in the .bim file will be remembered.
-    /// Any file read can be avoided by setting the
+    /// The file read can be avoided by setting the
     /// array with [`BedBuilder::allele_1`](struct.BedBuilder.html#method.allele_1).
     ///
     /// Example:
@@ -2895,7 +2895,7 @@ impl Bed {
     /// If this ndarray is needed, it will be found
     /// by reading the .bim file. Once found, this ndarray
     /// and other information in the .bim file will be remembered.
-    /// Any file read can be avoided by setting the
+    /// The file read can be avoided by setting the
     /// array with [`BedBuilder::allele_2`](struct.BedBuilder.html#method.allele_2).
     ///
     /// Example:
@@ -3204,9 +3204,9 @@ pub(crate) type SliceInfo1 =
 
 /// // Create a boolean ndarray identifying SNPs in chromosome 5,
 /// // then select those SNPs.
-/// let snp_5 = bed.chromosome()?.map(|elem| elem == "5");
+/// let chrom_5 = bed.chromosome()?.map(|elem| elem == "5");
 /// let val = ReadOptions::builder()
-///     .sid_index(snp_5)
+///     .sid_index(chrom_5)
 ///     .f64()
 ///     .read(&mut bed)?;
 /// assert!(val.dim() == (100, 6));
@@ -3739,15 +3739,147 @@ pub struct ReadOptions<TVal: BedVal> {
     #[builder(default = "TVal::missing()")]
     missing_value: TVal,
 
+    /// Select which individual (sample) values to read -- Defaults to all.
+    ///
+    /// Can select with a signed number, various lists of signed numbers,
+    /// ranges, and various lists of booleans. [This table](index.html#index-expressions) shows
+    /// all the choices.
+    ///
+    /// # Examples:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::Bed;
+    /// use bed_reader::assert_eq_nan;
+    /// use bed_reader::ReadOptions;
+    /// use ndarray::s;
+    ///
+    /// let file_name = "bed_reader/tests/data/some_missing.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    ///
+    /// // Read the individual at index position 3
+    ///
+    /// let val = ReadOptions::builder()
+    ///     .iid_index(3)
+    ///     .f64()
+    ///     .read(&mut bed)?;
+    /// assert!(val.dim() == (1, 100));
+    ///
+    /// // Read the individuals at index positions 0, 5, and 1st-from-last.
+    ///
+    /// let val = ReadOptions::builder()
+    ///     .iid_index([0, 5, -1])
+    ///     .f64()
+    ///     .read(&mut bed)?;
+    ///
+    /// assert!(val.dim() == (3, 100));
+    ///
+    /// // Read the individuals at index positions 20 (inclusive) to 30 (exclusive).
+    ///
+    /// let val = ReadOptions::builder()
+    ///     .iid_index(20..30)
+    ///     .f64()
+    ///     .read(&mut bed)?;
+    ///
+    /// assert!(val.dim() == (10, 100));
+    ///
+    /// // Read the individuals at every 2nd index position.
+    ///
+    /// let val = ReadOptions::builder()
+    ///     .iid_index(s![..;2])
+    ///     .f64()
+    ///     .read(&mut bed)?;
+    ///
+    /// assert!(val.dim() == (50, 100));
+    ///
+    /// // Read chromosome 5 of the female individuals.
+    ///
+    /// let female = bed.sex()?.map(|elem| *elem == 2);
+    /// let chrom_5 = bed.chromosome()?.map(|elem| elem == "5");
+    /// let val = ReadOptions::builder()
+    ///     .iid_index(female)
+    ///     .sid_index(chrom_5)
+    ///     .f64()
+    ///     .read(&mut bed)?;
+    ///
+    /// assert!(val.dim() == (50, 6));
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
     #[builder(default = "Index::All")]
     #[builder(setter(into))]
     iid_index: Index,
 
+    /// Select which SNPs (variant) values to read -- Defaults to all.
+    ///
+    /// Can select with a signed number, various lists of signed numbers,
+    /// ranges, and various lists of booleans. [This table](index.html#index-expressions) shows
+    /// all the choices.
+    ///
+    /// # Examples:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::Bed;
+    /// use bed_reader::assert_eq_nan;
+    /// use bed_reader::ReadOptions;
+    /// use ndarray::s;
+    ///
+    /// let file_name = "bed_reader/tests/data/some_missing.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    ///
+    /// // Read the SNP at index position 3
+    ///
+    /// let val = ReadOptions::builder()
+    ///     .sid_index(3)
+    ///     .f64()
+    ///     .read(&mut bed)?;
+    /// assert!(val.dim() == (100, 1));
+    ///
+    /// // Read the SNPs at index positions 0, 5, and 1st-from-last.
+    ///
+    /// let val = ReadOptions::builder()
+    ///     .sid_index([0, 5, -1])
+    ///     .f64()
+    ///     .read(&mut bed)?;
+    ///
+    /// assert!(val.dim() == (100, 3));
+    ///
+    /// // Read the SNPs at index positions 20 (inclusive) to 30 (exclusive).
+    ///
+    /// let val = ReadOptions::builder()
+    ///     .sid_index(20..30)
+    ///     .f64()
+    ///     .read(&mut bed)?;
+    ///
+    /// assert!(val.dim() == (100, 10));
+    ///
+    /// // Read the SNPs at every 2nd index position.
+    ///
+    /// let val = ReadOptions::builder()
+    ///     .sid_index(s![..;2])
+    ///     .f64()
+    ///     .read(&mut bed)?;
+    ///
+    /// assert!(val.dim() == (100, 50));
+    ///
+    /// // Read chromosome 5 of the female individuals.
+    ///
+    /// let female = bed.sex()?.map(|elem| *elem == 2);
+    /// let chrom_5 = bed.chromosome()?.map(|elem| elem == "5");
+    /// let val = ReadOptions::builder()
+    ///     .iid_index(female)
+    ///     .sid_index(chrom_5)
+    ///     .f64()
+    ///     .read(&mut bed)?;
+    ///
+    /// assert!(val.dim() == (50, 6));
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
     #[builder(default = "Index::All")]
     #[builder(setter(into))]
     sid_index: Index,
 
-    /// Should the order of the output array be Fortran (default)?
+    /// Sets if the order of the output array be Fortran -- Default is true.
     ///
     /// "Fortran order" is also called "column-major order" [Wikipedia](https://en.wikipedia.org/wiki/Row-_and_column-major_order).
     ///
@@ -3755,7 +3887,7 @@ pub struct ReadOptions<TVal: BedVal> {
     #[builder(default = "true")]
     is_f: bool,
 
-    /// Should allele 1 be counted?
+    /// Sets if allele 1 be counted. Default is true.
     ///
     /// Also see [`count_a1`](struct.ReadOptionsBuilder.html#method.count_a1) and [`count_a2`](struct.ReadOptionsBuilder.html#method.count_a2).
     #[builder(default = "true")]

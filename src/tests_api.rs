@@ -1213,9 +1213,9 @@ fn index_doc() -> Result<(), BedErrorPlus> {
 
     // Create a boolean ndarray identifying SNPs in chromosome 5,
     // then select those SNPs.
-    let snp_5 = bed.chromosome()?.map(|elem| elem == "5");
+    let chrom_5 = bed.chromosome()?.map(|elem| elem == "5");
     let val = ReadOptions::builder()
-        .sid_index(snp_5)
+        .sid_index(chrom_5)
         .f64()
         .read(&mut bed)?;
     assert!(val.dim() == (100, 6));
@@ -1545,5 +1545,58 @@ fn metadata_print() -> Result<(), BedErrorPlus> {
     println!("{allele_1:?}"); // Outputs ndarray ["A", "T", "A", "T"]
     let allele_2 = bed.allele_2()?;
     println!("{allele_2:?}"); // Outputs ndarray ["A", "C", "C", "G"]
+    Ok(())
+}
+
+#[test]
+fn iid_index() -> Result<(), BedErrorPlus> {
+    let file_name = "bed_reader/tests/data/some_missing.bed";
+    let mut bed = Bed::new(file_name)?;
+
+    // Read the individual at index position 3
+
+    let val = ReadOptions::builder().iid_index(3).f64().read(&mut bed)?;
+    assert!(val.dim() == (1, 100));
+
+    // Read the individuals at index positions 0, 5, and 1st-from-last.
+
+    let val = ReadOptions::builder()
+        .iid_index([0, 5, -1])
+        .f64()
+        .read(&mut bed)?;
+
+    assert!(val.dim() == (3, 100));
+
+    // Read the individuals at index positions 20 (inclusive) to 30 (exclusive).
+
+    let val = ReadOptions::builder()
+        .iid_index(20..30)
+        .f64()
+        .read(&mut bed)?;
+
+    assert!(val.dim() == (10, 100));
+
+    // Read the individuals at every 2nd index position.
+
+    let val = ReadOptions::builder()
+        .iid_index(s![..;2])
+        .f64()
+        .read(&mut bed)?;
+
+    assert!(val.dim() == (50, 100));
+
+    // Read chromosome 5 of the the female individuals.
+
+    let female = bed.sex()?.map(|elem| *elem == 2);
+    let chrom_5 = bed.chromosome()?.map(|elem| elem == "5");
+    let val = ReadOptions::builder()
+        .iid_index(female)
+        .sid_index(chrom_5)
+        .f64()
+        .read(&mut bed)?;
+
+    println!("{:?}", val.dim());
+    assert_eq!(val.dim(), (50, 6));
+
     Ok(())
 }
