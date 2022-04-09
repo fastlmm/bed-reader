@@ -1514,3 +1514,36 @@ fn set_metadata() -> Result<(), BedErrorPlus> {
 
 // !!!cmk 0 in docs explain that vec<isize> given to *_index will move it.
 // !!!cmk 0 other things (like a borrow) will clone it.
+
+#[test]
+fn metadata_print() -> Result<(), BedErrorPlus> {
+    let file_name = "bed_reader/tests/data/small.bed";
+    let mut bed = Bed::new(file_name)?;
+
+    let fid = bed.fid()?;
+    println!("{fid:?}"); // Outputs ndarray ["fid1", "fid1", "fid2"]
+    let iid = bed.iid()?;
+    println!("{iid:?}"); // Outputs ndarray ["iid1", "iid2", "iid3"]
+    let father = bed.father()?;
+    println!("{father:?}"); // Outputs ndarray ["iid23", "iid23", "iid22"]
+    let mother = bed.mother()?;
+    println!("{mother:?}"); // Outputs ndarray ["iid34", "iid34", "iid33"]
+    let sex = bed.sex()?;
+    println!("{sex:?}"); // Outputs ndarray [1, 2, 0]
+    let pheno = bed.pheno()?;
+    println!("{pheno:?}"); // Outputs ndarray ["red", "red", "blue"]
+
+    let chromosome = bed.chromosome()?;
+    println!("{chromosome:?}"); // Outputs ndarray ["1", "1", "5", "Y"
+    let sid = bed.sid()?;
+    println!("{sid:?}"); // Outputs ndarray "sid1", "sid2", "sid3", "sid4"]
+    let cm_position = bed.cm_position()?;
+    println!("{cm_position:?}"); // Outputs ndarray [100.4, 2000.5, 4000.7, 7000.9]
+    let bp_position = bed.bp_position()?;
+    println!("{bp_position:?}"); // Outputs ndarray [1, 100, 1000, 1004]
+    let allele_1 = bed.allele_1()?;
+    println!("{allele_1:?}"); // Outputs ndarray ["A", "T", "A", "T"]
+    let allele_2 = bed.allele_2()?;
+    println!("{allele_2:?}"); // Outputs ndarray ["A", "C", "C", "G"]
+    Ok(())
+}

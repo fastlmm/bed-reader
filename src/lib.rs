@@ -1429,6 +1429,7 @@ pub struct Bed {
     #[builder(default = "LazyOrSkip::Lazy")]
     fid: LazyOrSkip<nd::Array1<String>>,
 
+    /// cmk0c
     #[builder(setter(custom))]
     #[builder(default = "LazyOrSkip::Lazy")]
     iid: LazyOrSkip<nd::Array1<String>>,
@@ -1801,6 +1802,7 @@ impl BedBuilder {
     /// Set the number of individuals in the data.
     ///
     /// By default, if this number is needed, it will be found
+    /// and remembered
     /// by opening the .fam file and quickly counting the number
     /// of lines. Providing the number thus avoids a file read.
     pub fn iid_count(mut self, count: usize) -> Self {
@@ -1811,6 +1813,7 @@ impl BedBuilder {
     /// Set the number of SNPs in the data.
     ///
     /// By default, if this number is needed, it will be found
+    /// and remembered
     /// by opening the .bim file and quickly counting the number
     /// of lines. Providing the number thus avoids a file read.
     pub fn sid_count(mut self, count: usize) -> Self {
@@ -2278,6 +2281,7 @@ impl Bed {
         Ok(())
     }
 
+    /// cmk 0
     pub fn fam_path(&mut self) -> Result<PathBuf, BedErrorPlus> {
         if let Some(path) = &self.fam_path {
             Ok(path.clone())
@@ -2288,6 +2292,7 @@ impl Bed {
         }
     }
 
+    /// cmk 0
     pub fn bim_path(&mut self) -> Result<PathBuf, BedErrorPlus> {
         if let Some(path) = &self.bim_path {
             Ok(path.clone())
@@ -2298,6 +2303,28 @@ impl Bed {
         }
     }
 
+    /// Number of individuals (samples)
+    ///
+    /// If this number is needed, it will be found
+    /// by opening the .fam file and quickly counting the number
+    /// of lines. Once found, the number will be remembered.
+    /// Any file read can be avoided by setting the
+    /// number with [`BedBuilder::iid_count`](struct.BedBuilder.html#method.iid_count)
+    /// or, for example, [`BedBuilder::iid`](struct.BedBuilder.html#method.iid).
+    ///
+    /// Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let iid_count = bed.iid_count()?;
+    ///
+    /// assert!(iid_count == 3);
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
     pub fn iid_count(&mut self) -> Result<usize, BedErrorPlus> {
         if let Some(iid_count) = self.iid_count {
             Ok(iid_count)
@@ -2308,6 +2335,29 @@ impl Bed {
             Ok(iid_count)
         }
     }
+
+    /// Number of SNPs (variants)
+    ///
+    /// If this number is needed, it will be found
+    /// by opening the .bim file and quickly counting the number
+    /// of lines. Once found, the number will be remembered.
+    /// Any file read can be avoided by setting the
+    /// number with [`BedBuilder::sid_count`](struct.BedBuilder.html#method.sid_count)
+    /// or, for example, [`BedBuilder::sid`](struct.BedBuilder.html#method.sid).
+    ///
+    /// Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let sid_count = bed.sid_count()?;
+    ///
+    /// assert!(sid_count == 4);
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
     pub fn sid_count(&mut self) -> Result<usize, BedErrorPlus> {
         if let Some(sid_count) = self.sid_count {
             Ok(sid_count)
@@ -2319,6 +2369,28 @@ impl Bed {
         }
     }
 
+    /// Number of individuals (samples) and SNPs (variants)
+    ///
+    /// If these numbers are needed, they will be found
+    /// by opening the .fam and .bim files and quickly counting the number
+    /// of lines. Once found, the numbers will be remembered.
+    /// Any file read can be avoided by setting the
+    /// number with [`BedBuilder::iid_count`](struct.BedBuilder.html#method.iid_count)
+    /// and [`BedBuilder::sid_count`](struct.BedBuilder.html#method.sid_count)..
+    ///
+    /// Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let dim = bed.dim()?;
+    ///
+    /// assert!(dim == (3,4));
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
     pub fn dim(&mut self) -> Result<(usize, usize), BedErrorPlus> {
         Ok((self.iid_count()?, self.sid_count()?))
     }
@@ -2541,52 +2613,303 @@ impl Bed {
         }
     }
 
+    /// Family id of each of individual (sample)
+    ///
+    /// If this ndarray is needed, it will be found
+    /// by reading the .fam file. Once found, this ndarray
+    /// and other information in the .fam file will be remembered.
+    /// Any file read can be avoided by setting the
+    /// array with [`BedBuilder::fid`](struct.BedBuilder.html#method.fid).
+    ///
+    /// Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let fid = bed.fid()?;
+    /// println!("{fid:?}"); // Outputs ndarray ["fid1", "fid1", "fid2"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
     pub fn fid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         self.unlazy_fam::<String>(self.fid.is_lazy())?;
         self.get_some_field(&self.fid, "fid")
     }
 
+    /// Individual id of each of individual (sample)
+    ///
+    /// If this ndarray is needed, it will be found
+    /// by reading the .fam file. Once found, this ndarray
+    /// and other information in the .fam file will be remembered.
+    /// Any file read can be avoided by setting the
+    /// array with [`BedBuilder::iid`](struct.BedBuilder.html#method.iid).
+    ///
+    /// Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let iid = bed.iid()?;    ///
+    /// println!("{iid:?}"); // Outputs ndarray ["iid1", "iid2", "iid3"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
     pub fn iid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         self.unlazy_fam::<String>(self.iid.is_lazy())?;
         self.get_some_field(&self.iid, "iid")
     }
+
+    /// Father id of each of individual (sample)
+    ///
+    /// If this ndarray is needed, it will be found
+    /// by reading the .fam file. Once found, this ndarray
+    /// and other information in the .fam file will be remembered.
+    /// Any file read can be avoided by setting the
+    /// array with [`BedBuilder::father`](struct.BedBuilder.html#method.father).
+    ///
+    /// Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let father = bed.father()?;
+    /// println!("{father:?}"); // Outputs ndarray ["iid23", "iid23", "iid22"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())    
     pub fn father(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         self.unlazy_fam::<String>(self.father.is_lazy())?;
         self.get_some_field(&self.father, "father")
     }
+
+    /// Mother id of each of individual (sample)
+    ///
+    /// If this ndarray is needed, it will be found
+    /// by reading the .fam file. Once found, this ndarray
+    /// and other information in the .fam file will be remembered.
+    /// Any file read can be avoided by setting the
+    /// array with [`BedBuilder::mother`](struct.BedBuilder.html#method.mother).
+    ///
+    /// Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let mother = bed.mother()?;
+    /// println!("{mother:?}"); // Outputs ndarray ["iid34", "iid34", "iid33"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
     pub fn mother(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         self.unlazy_fam::<String>(self.mother.is_lazy())?;
         self.get_some_field(&self.mother, "mother")
     }
+
+    /// Sex each of individual (sample)
+    ///
+    /// 0 is unknown, 1 is male, 2 is female
+    ///
+    /// If this ndarray is needed, it will be found
+    /// by reading the .fam file. Once found, this ndarray
+    /// and other information in the .fam file will be remembered.
+    /// Any file read can be avoided by setting the
+    /// array with [`BedBuilder::sex`](struct.BedBuilder.html#method.sex).
+    ///
+    /// Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let sex = bed.sex()?;
+    /// println!("{sex:?}"); // Outputs ndarray [1, 2, 0]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
     pub fn sex(&mut self) -> Result<&nd::Array1<i32>, BedErrorPlus> {
         self.unlazy_fam::<String>(self.sex.is_lazy())?;
         self.get_some_field(&self.sex, "sex")
     }
+
+    /// A phenotype for each individual (seldom used)
+    ///
+    /// If this ndarray is needed, it will be found
+    /// by reading the .fam file. Once found, this ndarray
+    /// and other information in the .fam file will be remembered.
+    /// Any file read can be avoided by setting the
+    /// array with [`BedBuilder::pheno`](struct.BedBuilder.html#method.pheno).
+    ///
+    /// Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let pheno = bed.pheno()?;
+    /// println!("{pheno:?}"); // Outputs ndarray ["red", "red", "blue"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
     pub fn pheno(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         self.unlazy_fam::<String>(self.pheno.is_lazy())?;
         self.get_some_field(&self.pheno, "pheno")
     }
 
+    /// Chromosome of each SNP (variant)
+    ///
+    /// If this ndarray is needed, it will be found
+    /// by reading the .bim file. Once found, this ndarray
+    /// and other information in the .bim file will be remembered.
+    /// Any file read can be avoided by setting the
+    /// array with [`BedBuilder::chromosome`](struct.BedBuilder.html#method.chromosome).
+    ///
+    /// Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let chromosome = bed.chromosome()?;
+    /// println!("{chromosome:?}"); // Outputs ndarray ["1", "1", "5", "Y"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
     pub fn chromosome(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         self.unlazy_bim::<String>(self.chromosome.is_lazy())?;
         self.get_some_field(&self.chromosome, "chromosome")
     }
+
+    /// SNP id of each SNP (variant)
+    ///
+    /// If this ndarray is needed, it will be found
+    /// by reading the .bim file. Once found, this ndarray
+    /// and other information in the .bim file will be remembered.
+    /// Any file read can be avoided by setting the
+    /// array with [`BedBuilder::sid`](struct.BedBuilder.html#method.sid).
+    ///
+    /// Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let sid = bed.sid()?;
+    /// println!("{sid:?}"); // Outputs ndarray "sid1", "sid2", "sid3", "sid4"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
     pub fn sid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         self.unlazy_bim::<String>(self.sid.is_lazy())?;
         self.get_some_field(&self.sid, "sid")
     }
+
+    /// Centimorgan position of each SNP (variant)
+    ///
+    /// If this ndarray is needed, it will be found
+    /// by reading the .bim file. Once found, this ndarray
+    /// and other information in the .bim file will be remembered.
+    /// Any file read can be avoided by setting the
+    /// array with [`BedBuilder::cm_position`](struct.BedBuilder.html#method.cm_position).
+    ///
+    /// Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let cm_position = bed.cm_position()?;
+    /// println!("{cm_position:?}"); // Outputs ndarray [100.4, 2000.5, 4000.7, 7000.9]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
     pub fn cm_position(&mut self) -> Result<&nd::Array1<f32>, BedErrorPlus> {
         self.unlazy_bim::<String>(self.cm_position.is_lazy())?;
         self.get_some_field(&self.cm_position, "cm_position")
     }
+
+    /// Base-pair position of each SNP (variant)
+    ///
+    /// If this ndarray is needed, it will be found
+    /// by reading the .bim file. Once found, this ndarray
+    /// and other information in the .bim file will be remembered.
+    /// Any file read can be avoided by setting the
+    /// array with [`BedBuilder::bp_position`](struct.BedBuilder.html#method.bp_position).
+    ///
+    /// Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let bp_position = bed.bp_position()?;
+    /// println!("{bp_position:?}"); // Outputs ndarray [1, 100, 1000, 1004]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
     pub fn bp_position(&mut self) -> Result<&nd::Array1<i32>, BedErrorPlus> {
         self.unlazy_bim::<String>(self.bp_position.is_lazy())?;
         self.get_some_field(&self.bp_position, "bp_position")
     }
+
+    /// First allele of each SNP (variant)
+    ///
+    /// If this ndarray is needed, it will be found
+    /// by reading the .bim file. Once found, this ndarray
+    /// and other information in the .bim file will be remembered.
+    /// Any file read can be avoided by setting the
+    /// array with [`BedBuilder::allele_1`](struct.BedBuilder.html#method.allele_1).
+    ///
+    /// Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let allele_1 = bed.allele_1()?;
+    /// println!("{allele_1:?}"); // Outputs ndarray ["A", "T", "A", "T"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
     pub fn allele_1(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         self.unlazy_bim::<String>(self.allele_1.is_lazy())?;
         self.get_some_field(&self.allele_1, "allele_1")
     }
+
+    /// Second allele of each SNP (variant)
+    ///
+    /// If this ndarray is needed, it will be found
+    /// by reading the .bim file. Once found, this ndarray
+    /// and other information in the .bim file will be remembered.
+    /// Any file read can be avoided by setting the
+    /// array with [`BedBuilder::allele_2`](struct.BedBuilder.html#method.allele_2).
+    ///
+    /// Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let allele_2 = bed.allele_2()?;
+    /// println!("{allele_2:?}"); // Outputs ndarray ["A", "C", "C", "G"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
     pub fn allele_2(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         self.unlazy_bim::<String>(self.allele_2.is_lazy())?;
         self.get_some_field(&self.allele_2, "allele_2")
@@ -3793,6 +4116,7 @@ where
     #[builder(default = "Skippable::Skip")]
     fid: Skippable<nd::Array1<String>>,
 
+    /// cmk0d
     #[builder(setter(custom))]
     #[builder(default = "Skippable::Skip")]
     iid: Skippable<nd::Array1<String>>,
@@ -3923,6 +4247,8 @@ where
             Skippable::Skip => Err(BedError::CannotUseSkippedMetadata("fid".to_string()).into()),
         }
     }
+
+    // !!!cmk 0b
     pub fn iid(&self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         match self.iid {
             Skippable::Some(ref iid) => Ok(iid),
