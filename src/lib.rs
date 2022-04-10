@@ -2312,7 +2312,7 @@ impl Bed {
     /// number with [`BedBuilder::iid_count`](struct.BedBuilder.html#method.iid_count)
     /// or, for example, [`BedBuilder::iid`](struct.BedBuilder.html#method.iid).
     ///
-    /// Example:
+    /// # Example:
     /// ```
     /// use ndarray as nd;
     /// use bed_reader::{Bed, ReadOptions};
@@ -2345,7 +2345,7 @@ impl Bed {
     /// number with [`BedBuilder::sid_count`](struct.BedBuilder.html#method.sid_count)
     /// or, for example, [`BedBuilder::sid`](struct.BedBuilder.html#method.sid).
     ///
-    /// Example:
+    /// # Example:
     /// ```
     /// use ndarray as nd;
     /// use bed_reader::{Bed, ReadOptions};
@@ -2378,7 +2378,7 @@ impl Bed {
     /// number with [`BedBuilder::iid_count`](struct.BedBuilder.html#method.iid_count)
     /// and [`BedBuilder::sid_count`](struct.BedBuilder.html#method.sid_count)..
     ///
-    /// Example:
+    /// # Example:
     /// ```
     /// use ndarray as nd;
     /// use bed_reader::{Bed, ReadOptions};
@@ -2621,7 +2621,7 @@ impl Bed {
     /// The file read can be avoided by setting the
     /// array with [`BedBuilder::fid`](struct.BedBuilder.html#method.fid).
     ///
-    /// Example:
+    /// # Example:
     /// ```
     /// use ndarray as nd;
     /// use bed_reader::{Bed, ReadOptions};
@@ -2646,7 +2646,7 @@ impl Bed {
     /// The file read can be avoided by setting the
     /// array with [`BedBuilder::iid`](struct.BedBuilder.html#method.iid).
     ///
-    /// Example:
+    /// # Example:
     /// ```
     /// use ndarray as nd;
     /// use bed_reader::{Bed, ReadOptions};
@@ -2671,7 +2671,7 @@ impl Bed {
     /// The file read can be avoided by setting the
     /// array with [`BedBuilder::father`](struct.BedBuilder.html#method.father).
     ///
-    /// Example:
+    /// # Example:
     /// ```
     /// use ndarray as nd;
     /// use bed_reader::{Bed, ReadOptions};
@@ -2696,7 +2696,7 @@ impl Bed {
     /// The file read can be avoided by setting the
     /// array with [`BedBuilder::mother`](struct.BedBuilder.html#method.mother).
     ///
-    /// Example:
+    /// # Example:
     /// ```
     /// use ndarray as nd;
     /// use bed_reader::{Bed, ReadOptions};
@@ -2723,7 +2723,7 @@ impl Bed {
     /// The file read can be avoided by setting the
     /// array with [`BedBuilder::sex`](struct.BedBuilder.html#method.sex).
     ///
-    /// Example:
+    /// # Example:
     /// ```
     /// use ndarray as nd;
     /// use bed_reader::{Bed, ReadOptions};
@@ -2748,7 +2748,7 @@ impl Bed {
     /// The file read can be avoided by setting the
     /// array with [`BedBuilder::pheno`](struct.BedBuilder.html#method.pheno).
     ///
-    /// Example:
+    /// # Example:
     /// ```
     /// use ndarray as nd;
     /// use bed_reader::{Bed, ReadOptions};
@@ -2773,7 +2773,7 @@ impl Bed {
     /// The file read can be avoided by setting the
     /// array with [`BedBuilder::chromosome`](struct.BedBuilder.html#method.chromosome).
     ///
-    /// Example:
+    /// # Example:
     /// ```
     /// use ndarray as nd;
     /// use bed_reader::{Bed, ReadOptions};
@@ -2798,7 +2798,7 @@ impl Bed {
     /// The file read can be avoided by setting the
     /// array with [`BedBuilder::sid`](struct.BedBuilder.html#method.sid).
     ///
-    /// Example:
+    /// # Example:
     /// ```
     /// use ndarray as nd;
     /// use bed_reader::{Bed, ReadOptions};
@@ -2823,7 +2823,7 @@ impl Bed {
     /// The file read can be avoided by setting the
     /// array with [`BedBuilder::cm_position`](struct.BedBuilder.html#method.cm_position).
     ///
-    /// Example:
+    /// # Example:
     /// ```
     /// use ndarray as nd;
     /// use bed_reader::{Bed, ReadOptions};
@@ -2848,7 +2848,7 @@ impl Bed {
     /// The file read can be avoided by setting the
     /// array with [`BedBuilder::bp_position`](struct.BedBuilder.html#method.bp_position).
     ///
-    /// Example:
+    /// # Example:
     /// ```
     /// use ndarray as nd;
     /// use bed_reader::{Bed, ReadOptions};
@@ -2873,7 +2873,7 @@ impl Bed {
     /// The file read can be avoided by setting the
     /// array with [`BedBuilder::allele_1`](struct.BedBuilder.html#method.allele_1).
     ///
-    /// Example:
+    /// # Example:
     /// ```
     /// use ndarray as nd;
     /// use bed_reader::{Bed, ReadOptions};
@@ -2898,7 +2898,7 @@ impl Bed {
     /// The file read can be avoided by setting the
     /// array with [`BedBuilder::allele_2`](struct.BedBuilder.html#method.allele_2).
     ///
-    /// Example:
+    /// # Example:
     /// ```
     /// use ndarray as nd;
     /// use bed_reader::{Bed, ReadOptions};
@@ -3742,8 +3742,10 @@ pub struct ReadOptions<TVal: BedVal> {
     /// Select which individual (sample) values to read -- Defaults to all.
     ///
     /// Can select with a signed number, various lists of signed numbers,
-    /// ranges, and various lists of booleans. [This table](index.html#index-expressions) shows
-    /// all the choices.
+    /// ranges, and various lists of booleans.
+    ///
+    /// See the [Table of Index Expressions](index.html#index-expressions)
+    /// for a list of the supported index expressions.
     ///
     /// # Examples:
     /// ```
@@ -3812,8 +3814,10 @@ pub struct ReadOptions<TVal: BedVal> {
     /// Select which SNPs (variant) values to read -- Defaults to all.
     ///
     /// Can select with a signed number, various lists of signed numbers,
-    /// ranges, and various lists of booleans. [This table](index.html#index-expressions) shows
-    /// all the choices.
+    /// ranges, and various lists of booleans.
+    ///
+    /// See the [Table of Index Expressions](index.html#index-expressions)
+    /// for a list of the supported index expressions.
     ///
     /// # Examples:
     /// ```
@@ -4083,7 +4087,7 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     ///
     /// Also see [`is_a1_counted`](struct.ReadOptionsBuilder.html#method.is_a1_counted) and [`count_a2`](struct.ReadOptionsBuilder.html#method.count_a2).
     ///
-    /// For example:
+    /// # Example:
     /// ```
     /// use ndarray as nd;
     /// use bed_reader::{Bed, ReadOptions};
@@ -4113,7 +4117,7 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     ///
     /// Also see [`is_a1_counted`](struct.ReadOptionsBuilder.html#method.is_a1_counted) and [`count_a1`](struct.ReadOptionsBuilder.html#method.count_a1).
     ///
-    /// For example:
+    /// # Example:
     /// ```
     /// use ndarray as nd;
     /// use bed_reader::{Bed, ReadOptions};
@@ -4143,7 +4147,7 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
 impl ReadOptionsBuilder<i8> {
     /// Output an ndarray of i8.
     ///
-    /// For example:
+    /// # Example:
     /// ```
     /// use ndarray as nd;
     /// use bed_reader::{Bed, ReadOptions};
@@ -4172,7 +4176,7 @@ impl ReadOptionsBuilder<i8> {
 impl ReadOptionsBuilder<f32> {
     /// Output an ndarray of f32.
     ///
-    /// For example:
+    /// # Example:
     /// ```
     /// use ndarray as nd;
     /// use bed_reader::{Bed, ReadOptions};
@@ -4201,7 +4205,7 @@ impl ReadOptionsBuilder<f32> {
 impl ReadOptionsBuilder<f64> {
     /// Output an ndarray of f64.
     ///
-    /// For example:
+    /// # Example:
     /// ```
     /// use ndarray as nd;
     /// use bed_reader::{Bed, ReadOptions};
