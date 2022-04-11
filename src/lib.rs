@@ -2270,7 +2270,7 @@ impl Bed {
     }
     pub fn write_with_options<S, TVal>(
         val: &nd::ArrayBase<S, nd::Ix2>,
-        write_options: &WriteOptions<TVal>,
+        write_options: &mut WriteOptions<TVal>,
     ) -> Result<(), BedErrorPlus>
     where
         S: nd::Data<Elem = TVal>,
@@ -2280,26 +2280,26 @@ impl Bed {
         let shape = val.shape();
         let iid_count = shape[0];
         let sid_count = shape[1];
-        let path = &write_options.path;
+        let path = write_options.path.clone(); // !!!cmk 00 this is a clone, is this ok?
 
         let num_threads = compute_num_threads(write_options.num_threads)?;
         write_val(
-            path,
+            &path,
             val,
             write_options.is_a1_counted,
             write_options.missing_value,
             num_threads,
         )?;
 
-        let fam_path = to_metadata_path(path, &write_options.fam_path, "fam");
-        if let Err(e) = fam_write_internal(write_options, iid_count, &fam_path) {
+        let fam_path = to_metadata_path(&path, &write_options.fam_path, "fam");
+        if let Err(e) = write_options.fam_write(iid_count, &fam_path, false) {
             // Clean up the file
             let _ = fs::remove_file(fam_path);
             return Err(e);
         }
 
-        let bim_path = to_metadata_path(path, &write_options.bim_path, "bim");
-        if let Err(e) = bim_write_internal(write_options, sid_count, &bim_path) {
+        let bim_path = to_metadata_path(&path, &write_options.bim_path, "bim");
+        if let Err(e) = write_options.bim_write(sid_count, &bim_path, false) {
             // Clean up the file
             let _ = fs::remove_file(bim_path);
             return Err(e);
@@ -4574,17 +4574,18 @@ where
     pub missing_value: TVal,
 }
 
-fn to_skippable2<'a, T>(option: &'a Option<T>) -> Skippable<&'a T> {
-    match option {
-        None => Skippable::Skip,
-        Some(some) => Skippable::Some(some),
-    }
-}
-
 impl<TVal> WriteOptions<TVal>
 where
     TVal: BedVal,
 {
+    // !!! cmk00
+    // fn to_skippable2<'a, T>(option: &'a Option<T>) -> Skippable<&'a T> {
+    //     match option {
+    //         None => Skippable::Skip,
+    //         Some(some) => Skippable::Some(some),
+    //     }
+    // }
+
     /// Write values to a file in PLINK .bed format. Supports metadata and options.
     ///
     /// > Also see [`Bed::write`](struct.Bed.html#method.write), which does not support metadata or options.
@@ -4651,26 +4652,183 @@ where
     pub fn builder<P: AsRef<Path>>(path: P) -> WriteOptionsBuilder<TVal> {
         WriteOptionsBuilder::new(path)
     }
-    pub fn metadata(&mut self) -> Result<Metadata, BedErrorPlus> {
-        let metadata = Metadata {
-            fid: to_skippable2(&self.fid),
-            iid: to_skippable2(&self.iid),
-            father: to_skippable2(&self.father),
-            mother: to_skippable2(&self.mother),
-            sex: to_skippable2(&self.sex),
-            pheno: to_skippable2(&self.pheno),
 
-            chromosome: to_skippable2(&self.chromosome),
-            sid: to_skippable2(&self.sid),
-            cm_position: to_skippable2(&self.cm_position),
-            bp_position: to_skippable2(&self.bp_position),
-            allele_1: to_skippable2(&self.allele_1),
-            allele_2: to_skippable2(&self.allele_2),
-        };
-        Ok(metadata)
+    // fn compute_field<T, F>(count: usize, lambda: F) -> nd::Array1<T>
+    // where
+    //     T: Clone + Default + Debug,
+    //     F: Fn(usize) -> T,
+    // {
+    //     (0..count).map(|_| lambda(0)).collect::<nd::Array1<T>>()
+    // }
+
+    fn compute_field<T, F: Fn(usize) -> T>(
+        field: &mut Option<nd::Array1<T>>,
+        count: usize,
+        lambda: F,
+    ) -> &nd::Array1<T> {
+        if let Some(array) = field {
+            array
+        } else {
+            *field = Some((0..count).map(|_| lambda(0)).collect::<nd::Array1<T>>());
+            &field.as_ref().unwrap()
+        }
     }
-}
 
+    fn fam_write(
+        &mut self,
+        iid_count: usize,
+        fam_path: &PathBuf,
+        skip_write: bool,
+    ) -> Result<(), BedErrorPlus> {
+        let fid =
+            WriteOptions::<TVal>::compute_field(&mut self.fid, iid_count, |_| "0".to_string());
+        let iid = WriteOptions::<TVal>::compute_field(&mut self.iid, iid_count, |i| {
+            format!("iid{}", i + 1)
+        });
+        let father =
+            WriteOptions::<TVal>::compute_field(&mut self.father, iid_count, |_| "0".to_string());
+        let mother =
+            WriteOptions::<TVal>::compute_field(&mut self.mother, iid_count, |_| "0".to_string());
+        let sex = WriteOptions::<TVal>::compute_field(&mut self.sex, iid_count, |_| 0);
+        let pheno =
+            WriteOptions::<TVal>::compute_field(&mut self.pheno, iid_count, |_| "0".to_string());
+
+        if !skip_write {
+            let file = File::create(fam_path)?;
+            let mut writer = BufWriter::new(file);
+            let mut result: Result<(), BedErrorPlus> = Ok(());
+            nd::azip!((fid in fid, iid in iid, father in father, mother in mother, sex in sex, pheno in pheno)
+            {
+                if result.is_ok() {
+                    if let Err(e) = writeln!(
+                    writer,
+                    "{}\t{}\t{}\t{}\t{}\t{}",
+                    *fid, *iid, *father, *mother, *sex, *pheno
+                )
+                {
+                result = Err(BedErrorPlus::IOError(e)); // !!!cmk later test this
+                }
+            }});
+            result?;
+        }
+
+        Ok(())
+    }
+
+    fn bim_write(
+        &mut self,
+        sid_count: usize,
+        bim_path: &PathBuf,
+        skip_write: bool,
+    ) -> Result<(), BedErrorPlus> {
+        let chromosome =
+            WriteOptions::<TVal>::compute_field(&mut self.chromosome, sid_count, |_| {
+                "0".to_string()
+            });
+        let sid = WriteOptions::<TVal>::compute_field(&mut self.sid, sid_count, |i| {
+            format!("sid{}", i + 1)
+        });
+        let cm_position =
+            WriteOptions::<TVal>::compute_field(&mut self.cm_position, sid_count, |_| 0.0);
+        let bp_position =
+            WriteOptions::<TVal>::compute_field(&mut self.bp_position, sid_count, |_| 0);
+        let allele_1 = WriteOptions::<TVal>::compute_field(&mut self.allele_1, sid_count, |_| {
+            "A1".to_string()
+        });
+        let allele_2 = WriteOptions::<TVal>::compute_field(&mut self.allele_2, sid_count, |_| {
+            "A2".to_string()
+        });
+
+        if !skip_write {
+            let file = File::create(bim_path)?;
+            let mut writer = BufWriter::new(file);
+            let mut result: Result<(), BedErrorPlus> = Ok(());
+            nd::azip!((chromosome in chromosome, sid in sid, cm_position in cm_position, bp_position in bp_position, allele_1 in allele_1, allele_2 in allele_2)
+            {
+                // !!!cmk later should these be \t?
+                if result.is_ok() {
+                    if let Err(e) = writeln!(
+                    writer,
+                    "{}\t{}\t{}\t{}\t{}\t{}",
+                    *chromosome, *sid, *cm_position, *bp_position, *allele_1, *allele_2
+                )
+                {
+                result = Err(BedErrorPlus::IOError(e)); // !!!cmk later test this
+                }
+            }});
+            result?;
+        }
+
+        Ok(())
+    }
+    // !!!cmk 00
+    // pub fn metadata(&mut self) -> Result<Metadata, BedErrorPlus> {
+    //     let metadata = Metadata {
+    //         fid: to_skippable2(&self.fid),
+    //         iid: to_skippable2(&self.iid),
+    //         father: to_skippable2(&self.father),
+    //         mother: to_skippable2(&self.mother),
+    //         sex: to_skippable2(&self.sex),
+    //         pheno: to_skippable2(&self.pheno),
+
+    //         chromosome: to_skippable2(&self.chromosome),
+    //         sid: to_skippable2(&self.sid),
+    //         cm_position: to_skippable2(&self.cm_position),
+    //         bp_position: to_skippable2(&self.bp_position),
+    //         allele_1: to_skippable2(&self.allele_1),
+    //         allele_2: to_skippable2(&self.allele_2),
+    //     };
+    //     Ok(metadata)
+    // }
+    // // !!!cmk later do this without a "clone"
+    // fn compute_field<T, F>(field: &Option<nd::Array1<T>>, count: usize, lambda: F) -> nd::Array1<T>
+    // where
+    //     T: Clone + Default + Debug,
+    //     F: Fn(usize) -> T,
+    // {
+    //     match field {
+    //         Some(array) => array.clone(), // !!!cmk 00 kill clone
+    //         None => (0..count).map(|_| lambda(0)).collect::<nd::Array1<T>>(),
+    //     }
+    // }
+
+    // fn fill_with_fam_default(&mut self, sid_count: usize) {
+    //     let chromosome =
+    //         WriteOptions::compute_field(&self.chromosome, sid_count, |_| "0".to_string());
+    //     let sid = WriteOptions::compute_field(&self.sid, sid_count, |i| format!("sid{}", i + 1));
+    //     let cm_position = WriteOptions::compute_field(&self.cm_position, sid_count, |_| 0.0);
+    //     let bp_position = WriteOptions::compute_field(&self.bp_position, sid_count, |_| 0);
+    //     let allele_1 = WriteOptions::compute_field(&self.allele_1, sid_count, |_| "A1".to_string());
+    //     let allele_2 = WriteOptions::compute_field(&self.allele_2, sid_count, |_| "A2".to_string());
+    // }
+
+    // // !!!cmk 00 make an impl
+
+    // fn bim_write_internal(
+    //     &mut self,
+    //     sid_count: usize,
+    //     bim_path: &PathBuf,
+    // ) -> Result<(), BedErrorPlus> {
+    //     let file = File::create(bim_path)?;
+    //     let mut writer = BufWriter::new(file);
+    //     let mut result: Result<(), BedErrorPlus> = Ok(());
+    //     nd::azip!((chromosome in &chromosome, sid in &sid, cm_position in &cm_position, bp_position in &bp_position, allele_1 in &allele_1, allele_2 in &allele_2)
+    //     {
+    //         // !!!cmk later should these be \t?
+    //         if result.is_ok() {
+    //             if let Err(e) = writeln!(
+    //             writer,
+    //             "{}\t{}\t{}\t{}\t{}\t{}",
+    //             *chromosome, *sid, *cm_position, *bp_position, *allele_1, *allele_2
+    //         )
+    //         {
+    //         result = Err(BedErrorPlus::IOError(e)); // !!!cmk later test this
+    //         }
+    //     }});
+    //     result?;
+    //     Ok(())
+    // }
+}
 impl<TVal> WriteOptionsBuilder<TVal>
 where
     TVal: BedVal,
@@ -4688,8 +4846,8 @@ where
         &self,
         val: &nd::ArrayBase<S, nd::Ix2>,
     ) -> Result<(), BedErrorPlus> {
-        let write_options = self.build()?;
-        Bed::write_with_options(val, &write_options)?;
+        let mut write_options = self.build()?;
+        Bed::write_with_options(val, &mut write_options)?;
 
         Ok(())
     }
@@ -4872,79 +5030,6 @@ where
         self.is_a1_counted = Some(false);
         self
     }
-}
-
-// !!!cmk later do this without a "clone"
-fn compute_field<T, F>(field: &Option<nd::Array1<T>>, count: usize, lambda: F) -> nd::Array1<T>
-where
-    T: Clone + Default + Debug,
-    F: Fn(usize) -> T,
-{
-    match field {
-        Some(array) => array.clone(),
-        None => (0..count).map(|_| lambda(0)).collect::<nd::Array1<T>>(),
-    }
-}
-
-fn bim_write_internal<TVal: BedVal>(
-    write_options: &WriteOptions<TVal>,
-    sid_count: usize,
-    bim_path: &PathBuf,
-) -> Result<(), BedErrorPlus> {
-    let chromosome = compute_field(&write_options.chromosome, sid_count, |_| "0".to_string());
-    let sid = compute_field(&write_options.sid, sid_count, |i| format!("sid{}", i + 1));
-    let cm_position = compute_field(&write_options.cm_position, sid_count, |_| 0.0);
-    let bp_position = compute_field(&write_options.bp_position, sid_count, |_| 0);
-    let allele_1 = compute_field(&write_options.allele_1, sid_count, |_| "A1".to_string());
-    let allele_2 = compute_field(&write_options.allele_2, sid_count, |_| "A2".to_string());
-    let file = File::create(bim_path)?;
-    let mut writer = BufWriter::new(file);
-    let mut result: Result<(), BedErrorPlus> = Ok(());
-    nd::azip!((chromosome in &chromosome, sid in &sid, cm_position in &cm_position, bp_position in &bp_position, allele_1 in &allele_1, allele_2 in &allele_2)
-    {
-        // !!!cmk later should these be \t?
-        if result.is_ok() {
-            if let Err(e) = writeln!(
-            writer,
-            "{}\t{}\t{}\t{}\t{}\t{}",
-            *chromosome, *sid, *cm_position, *bp_position, *allele_1, *allele_2
-        )
-        {
-         result = Err(BedErrorPlus::IOError(e)); // !!!cmk later test this
-        }
-     }});
-    result?;
-    Ok(())
-}
-
-fn fam_write_internal<TVal: BedVal>(
-    write_options: &WriteOptions<TVal>,
-    iid_count: usize,
-    fam_path: &PathBuf,
-) -> Result<(), BedErrorPlus> {
-    let fid = compute_field(&write_options.fid, iid_count, |_| "0".to_string());
-    let iid = compute_field(&write_options.iid, iid_count, |i| format!("iid{}", i + 1));
-    let father = compute_field(&write_options.father, iid_count, |_| "0".to_string());
-    let mother = compute_field(&write_options.mother, iid_count, |_| "0".to_string());
-    let sex = compute_field(&write_options.sex, iid_count, |_| 0);
-    let pheno = compute_field(&write_options.pheno, iid_count, |_| "0".to_string());
-    let file = File::create(fam_path)?;
-    let mut writer = BufWriter::new(file);
-    let mut result: Result<(), BedErrorPlus> = Ok(());
-    nd::azip!((fid in &fid, iid in &iid, father in &father, mother in &mother, sex in &sex, pheno in &pheno)
-    {
-        if result.is_ok() {
-            if let Err(e) = writeln!(
-            writer,
-            "{}\t{}\t{}\t{}\t{}\t{}",
-            *fid, *iid, *father, *mother, *sex, *pheno
-        )
-        {
-         result = Err(BedErrorPlus::IOError(e)); // !!!cmk later test this
-        }
-     }});
-    result?;
-    Ok(())
 }
 
 trait FromStringArray<T> {
