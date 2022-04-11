@@ -2276,29 +2276,27 @@ impl Bed {
         S: nd::Data<Elem = TVal>,
         TVal: BedVal,
     {
-        // !!!cmk later can this be done in one step??
         let shape = val.shape();
         let iid_count = shape[0];
         let sid_count = shape[1];
-        let path = write_options.path.clone(); // !!!cmk 00 this is a clone, is this ok?
 
         let num_threads = compute_num_threads(write_options.num_threads)?;
         write_val(
-            &path,
+            &write_options.path,
             val,
             write_options.is_a1_counted,
             write_options.missing_value,
             num_threads,
         )?;
 
-        let fam_path = to_metadata_path(&path, &write_options.fam_path, "fam");
+        let fam_path = to_metadata_path(&write_options.path, &write_options.fam_path, "fam");
         if let Err(e) = write_options.fam_write(iid_count, &fam_path, false) {
             // Clean up the file
             let _ = fs::remove_file(fam_path);
             return Err(e);
         }
 
-        let bim_path = to_metadata_path(&path, &write_options.bim_path, "bim");
+        let bim_path = to_metadata_path(&write_options.path, &write_options.bim_path, "bim");
         if let Err(e) = write_options.bim_write(sid_count, &bim_path, false) {
             // Clean up the file
             let _ = fs::remove_file(bim_path);
@@ -4761,73 +4759,33 @@ where
 
         Ok(())
     }
-    // !!!cmk 00
-    // pub fn metadata(&mut self) -> Result<Metadata, BedErrorPlus> {
-    //     let metadata = Metadata {
-    //         fid: to_skippable2(&self.fid),
-    //         iid: to_skippable2(&self.iid),
-    //         father: to_skippable2(&self.father),
-    //         mother: to_skippable2(&self.mother),
-    //         sex: to_skippable2(&self.sex),
-    //         pheno: to_skippable2(&self.pheno),
+    pub fn metadata(
+        &mut self,
+        iid_count: usize,
+        sid_count: usize,
+    ) -> Result<Metadata, BedErrorPlus> {
+        // !!!cmk 00 there should be a fam_path method, etc
+        let fam_path = to_metadata_path(&self.path, &self.fam_path, "fam");
+        self.fam_write(iid_count, &fam_path, true)?;
+        let bim_path = to_metadata_path(&self.path, &self.bim_path, "bim");
+        self.bim_write(sid_count, &bim_path, true)?;
+        let metadata = Metadata {
+            fid: Skippable::Some(self.fid.as_ref().unwrap()),
+            iid: Skippable::Some(self.iid.as_ref().unwrap()),
+            father: Skippable::Some(self.father.as_ref().unwrap()),
+            mother: Skippable::Some(self.mother.as_ref().unwrap()),
+            sex: Skippable::Some(self.sex.as_ref().unwrap()),
+            pheno: Skippable::Some(self.pheno.as_ref().unwrap()),
 
-    //         chromosome: to_skippable2(&self.chromosome),
-    //         sid: to_skippable2(&self.sid),
-    //         cm_position: to_skippable2(&self.cm_position),
-    //         bp_position: to_skippable2(&self.bp_position),
-    //         allele_1: to_skippable2(&self.allele_1),
-    //         allele_2: to_skippable2(&self.allele_2),
-    //     };
-    //     Ok(metadata)
-    // }
-    // // !!!cmk later do this without a "clone"
-    // fn compute_field<T, F>(field: &Option<nd::Array1<T>>, count: usize, lambda: F) -> nd::Array1<T>
-    // where
-    //     T: Clone + Default + Debug,
-    //     F: Fn(usize) -> T,
-    // {
-    //     match field {
-    //         Some(array) => array.clone(), // !!!cmk 00 kill clone
-    //         None => (0..count).map(|_| lambda(0)).collect::<nd::Array1<T>>(),
-    //     }
-    // }
-
-    // fn fill_with_fam_default(&mut self, sid_count: usize) {
-    //     let chromosome =
-    //         WriteOptions::compute_field(&self.chromosome, sid_count, |_| "0".to_string());
-    //     let sid = WriteOptions::compute_field(&self.sid, sid_count, |i| format!("sid{}", i + 1));
-    //     let cm_position = WriteOptions::compute_field(&self.cm_position, sid_count, |_| 0.0);
-    //     let bp_position = WriteOptions::compute_field(&self.bp_position, sid_count, |_| 0);
-    //     let allele_1 = WriteOptions::compute_field(&self.allele_1, sid_count, |_| "A1".to_string());
-    //     let allele_2 = WriteOptions::compute_field(&self.allele_2, sid_count, |_| "A2".to_string());
-    // }
-
-    // // !!!cmk 00 make an impl
-
-    // fn bim_write_internal(
-    //     &mut self,
-    //     sid_count: usize,
-    //     bim_path: &PathBuf,
-    // ) -> Result<(), BedErrorPlus> {
-    //     let file = File::create(bim_path)?;
-    //     let mut writer = BufWriter::new(file);
-    //     let mut result: Result<(), BedErrorPlus> = Ok(());
-    //     nd::azip!((chromosome in &chromosome, sid in &sid, cm_position in &cm_position, bp_position in &bp_position, allele_1 in &allele_1, allele_2 in &allele_2)
-    //     {
-    //         // !!!cmk later should these be \t?
-    //         if result.is_ok() {
-    //             if let Err(e) = writeln!(
-    //             writer,
-    //             "{}\t{}\t{}\t{}\t{}\t{}",
-    //             *chromosome, *sid, *cm_position, *bp_position, *allele_1, *allele_2
-    //         )
-    //         {
-    //         result = Err(BedErrorPlus::IOError(e)); // !!!cmk later test this
-    //         }
-    //     }});
-    //     result?;
-    //     Ok(())
-    // }
+            chromosome: Skippable::Some(self.chromosome.as_ref().unwrap()),
+            sid: Skippable::Some(self.sid.as_ref().unwrap()),
+            cm_position: Skippable::Some(self.cm_position.as_ref().unwrap()),
+            bp_position: Skippable::Some(self.bp_position.as_ref().unwrap()),
+            allele_1: Skippable::Some(self.allele_1.as_ref().unwrap()),
+            allele_2: Skippable::Some(self.allele_2.as_ref().unwrap()),
+        };
+        Ok(metadata)
+    }
 }
 impl<TVal> WriteOptionsBuilder<TVal>
 where
