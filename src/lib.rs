@@ -1,4 +1,3 @@
-// !!!cmk 0 all ReadOptions methods (e.g. i8) have doc and examples
 // !!!cmk 0 document Bed
 // !!!cmk 0 document BedBuilder
 // !!!cmk 0 document Metadata
@@ -263,9 +262,6 @@ pub enum BedErrorPlus {
 
     #[error(transparent)]
     ParseIntError(#[from] ParseIntError),
-
-    #[error(transparent)]
-    ReadOptionsBuilderError(#[from] ReadOptionsBuilderError),
 
     #[error(transparent)]
     UninitializedFieldError(#[from] ::derive_builder::UninitializedFieldError),
@@ -1393,10 +1389,41 @@ fn option_count<T>(array: &LazyOrSkip<nd::Array1<T>>) -> Option<usize> {
     }
 }
 
+// !!!cmk later update these comments:
 // https://crates.io/crates/typed-builder
 // (or https://docs.rs/derive_builder/latest/derive_builder/)
 // Somehow ndarray can do this: 	Array::zeros((3, 4, 5).f())
 //       see https://docs.rs/ndarray/latest/ndarray/doc/ndarray_for_numpy_users/index.html
+
+/// Represents a PLINK .bed file that is open for reading genotype data and metadata.
+///
+/// Construct with [`Bed::new`](struct.Bed.html#method.new) or [`Bed::builder`](struct.Bed.html#method.builder).
+///
+/// # Example
+///
+/// Open a file for reading. Then, read the individual (sample) ids
+/// and all the genotype data.
+/// ```
+/// use ndarray as nd;
+/// use bed_reader::{Bed, ReadOptions};
+/// use bed_reader::assert_eq_nan;
+///
+/// let file_name = "bed_reader/tests/data/small.bed";
+/// let mut bed = Bed::new(file_name)?;
+/// println!("{:?}", bed.iid()?); // Outputs ndarray ["iid1", "iid2", "iid3"]
+/// let val = ReadOptions::builder().f64().read(&mut bed)?;
+///
+/// assert_eq_nan(
+///     &val,
+///     &nd::array![
+///         [1.0, 0.0, f64::NAN, 0.0],
+///         [2.0, 0.0, f64::NAN, 2.0],
+///         [0.0, 1.0, 2.0, 0.0]
+///     ],
+/// );
+/// # use bed_reader::BedErrorPlus;
+/// # Ok::<(), BedErrorPlus>(())
+/// ```
 #[derive(Clone, Debug, Builder)]
 #[builder(build_fn(private, name = "build_no_file_check", error = "BedErrorPlus"))]
 pub struct Bed {
@@ -3709,7 +3736,118 @@ impl From<()> for Index {
 }
 
 // See https://nullderef.com/blog/rust-parameters/
+
+/// Represents options for reading genotype data from a PLINK .bed file.
+///
+/// Construct with [`ReadOptions::builder`](struct.ReadOptions.html#method.builder).
+///
+/// See the [Table of ReadOptions](index.html#readoptions)
+/// for a list of the supported options.
+/// See the [Table of Index Expressions](index.html#index-expressions)
+/// for a list of expressions for selecting individuals (sample)
+/// and SNPs (variants).
+///
+/// # Examples
+///
+/// ```
+/// use ndarray as nd;
+/// use bed_reader::{Bed, ReadOptions};
+/// use bed_reader::assert_eq_nan;
+///
+/// // Read all data from a .bed file into an ndarray of f64.
+/// let file_name = "bed_reader/tests/data/small.bed";
+/// let mut bed = Bed::new(file_name)?;
+/// let val = ReadOptions::builder().f64().read(&mut bed)?;
+///
+/// assert_eq_nan(
+///     &val,
+///     &nd::array![
+///         [1.0, 0.0, f64::NAN, 0.0],
+///         [2.0, 0.0, f64::NAN, 2.0],
+///         [0.0, 1.0, 2.0, 0.0]
+///     ],
+/// );
+///
+/// // Read the SNPs indexed by 2.
+/// let val = ReadOptions::builder().sid_index(2).f64().read(&mut bed)?;
+///
+/// assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
+///
+/// // Read the SNPs indexed by 2, 3, and 4th from last.
+/// let val = ReadOptions::builder()
+///     .sid_index([2, 3, -4])
+///     .f64()
+///     .read(&mut bed)?;
+///
+/// assert_eq_nan(
+///     &val,
+///     &nd::array![[f64::NAN, 0.0, 1.0], [f64::NAN, 2.0, 2.0], [2.0, 0.0, 0.0]],
+/// );
+///
+/// //  Read SNPs from 1 (inclusive) to 4 (exclusive).
+/// let val = ReadOptions::builder()
+///     .sid_index(1..4)
+///     .f64()
+///     .read(&mut bed)?;
+///
+/// assert_eq_nan(
+///     &val,
+///     &nd::array![[0.0, f64::NAN, 0.0], [0.0, f64::NAN, 2.0], [1.0, 2.0, 0.0]],
+/// );
+///
+/// // Print unique chrom values. Then, read all SNPs in chrom 5.
+/// use std::collections::HashSet;
+///
+/// println!("{:?}", bed.chromosome()?.iter().collect::<HashSet<_>>());
+/// // This outputs: {"1", "5", "Y"}.
+/// let val = ReadOptions::builder()
+///     .sid_index(bed.chromosome()?.map(|elem| elem == "5"))
+///     .f64()
+///     .read(&mut bed)?;
+///
+/// assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
+///
+/// // Read 1st individual (across all SNPs).
+/// let val = ReadOptions::builder().iid_index(0).f64().read(&mut bed)?;
+/// assert_eq_nan(&val, &nd::array![[1.0, 0.0, f64::NAN, 0.0]]);
+///
+/// // Read every 2nd individual.
+/// use ndarray::s;
+///
+/// let val = ReadOptions::builder()
+///     .iid_index(s![..;2])
+///     .f64()
+///     .read(&mut bed)?;
+/// assert_eq_nan(
+///     &val,
+///     &nd::array![[1.0, 0.0, f64::NAN, 0.0], [0.0, 1.0, 2.0, 0.0]],
+/// );
+///
+/// // Read last and 2nd-to-last individuals and the last SNP
+/// let val = ReadOptions::builder()
+///     .iid_index([-1,-2])
+///     .sid_index(-1)
+///     .f64()
+///     .read(&mut bed)?;
+///
+/// assert_eq_nan(&val, &nd::array![[0.0],[2.0]]);
+///
+/// // The output array can be f32, f64, or i8
+/// let val = ReadOptions::builder().i8().read(&mut bed)?;
+///
+/// assert_eq_nan(
+///     &val,
+///     &nd::array![
+///         [1, 0, -127, 0],
+///         [2, 0, -127, 2],
+///         [0, 1, 2, 0]
+///     ],
+/// );
+/// # use bed_reader::BedErrorPlus;
+/// # Ok::<(), BedErrorPlus>(())
+/// ```
 #[derive(Debug, Clone, Builder)]
+#[builder(build_fn(error = "BedErrorPlus"))]
 pub struct ReadOptions<TVal: BedVal> {
     /// Value to use for missing values (defaults to -127 or NaN)
     ///
@@ -3883,7 +4021,7 @@ pub struct ReadOptions<TVal: BedVal> {
     #[builder(setter(into))]
     sid_index: Index,
 
-    /// Sets if the order of the output array be Fortran -- Default is true.
+    /// Sets if the order of the output array is Fortran -- Default is true.
     ///
     /// "Fortran order" is also called "column-major order" [Wikipedia](https://en.wikipedia.org/wiki/Row-_and_column-major_order).
     ///
@@ -3891,7 +4029,7 @@ pub struct ReadOptions<TVal: BedVal> {
     #[builder(default = "true")]
     is_f: bool,
 
-    /// Sets if allele 1 be counted. Default is true.
+    /// Sets if allele 1 is counted. Default is true.
     ///
     /// Also see [`count_a1`](struct.ReadOptionsBuilder.html#method.count_a1) and [`count_a2`](struct.ReadOptionsBuilder.html#method.count_a2).
     #[builder(default = "true")]
@@ -3937,21 +4075,24 @@ impl<TVal: BedVal> ReadOptions<TVal> {
     /// > * [`Bed::read_and_fill`](struct.Bed.html#method.read_and_fill), without options, read into preallocated ndarray
     /// > * [`Bed::read_and_fill_with_options`](struct.Bed.html#method.read_and_fill_with_options), with options, read into preallocated ndarray.
     ///
-    /// [This table](index.html#readoptions) lists the options.
-    /// [This table](index.html#index-expressions) describes how to select individuals (samples) and SNPs (variants).
+    /// See the [Table of ReadOptions](index.html#readoptions)
+    /// for a list of the supported options.
+    /// See the [Table of Index Expressions](index.html#index-expressions)
+    /// for a list of expressions for selecting individuals (sample)
+    /// and SNPs (variants).
     ///
     /// # Errors
     /// See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
     /// for all possible errors.
     ///
     /// # Examples
-    /// Read all data in a .bed file.
     ///
     /// ```
     /// use ndarray as nd;
     /// use bed_reader::{Bed, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
+    /// // Read all data from a .bed file into an ndarray of f64.
     /// let file_name = "bed_reader/tests/data/small.bed";
     /// let mut bed = Bed::new(file_name)?;
     /// let val = ReadOptions::builder().f64().read(&mut bed)?;
@@ -4231,6 +4372,65 @@ impl ReadOptionsBuilder<f64> {
     }
 }
 
+/// Represents options for writing genotype data and metadata to a PLINK .bed file.
+///
+/// Construct with [`WriteOptions::builder`](struct.WriteOptions.html#method.builder).
+///
+/// The options, [listed here](struct.WriteOptionsBuilder.html#implementations), can specify the:
+///  * items of metadata, for example the individual ids and the SNP ids
+///  * a non-default path for the .fam and/or .bim files
+///  * a non-default value that represents missing data
+///  * whether the first allele was counted (default) or the second
+///  * number of threads to use for writing
+///  * a [metadata struct](struct.Metadata.html)
+///
+/// # Examples
+/// In this example, all metadata is given one item at a time.
+/// ```
+/// use ndarray as nd;
+/// use bed_reader::{Bed, WriteOptions, tmp_path};
+///
+/// let output_folder = tmp_path()?;
+/// let output_file = output_folder.join("small.bed");
+/// let val = nd::array![
+///     [1.0, 0.0, f64::NAN, 0.0],
+///     [2.0, 0.0, f64::NAN, 2.0],
+///     [0.0, 1.0, 2.0, 0.0]
+/// ];
+/// WriteOptions::builder(output_file)
+///     .fid(["fid1", "fid1", "fid2"])
+///     .iid(["iid1", "iid2", "iid3"])
+///     .father(["iid23", "iid23", "iid22"])
+///     .mother(["iid34", "iid34", "iid33"])
+///     .sex([1, 2, 0])
+///     .pheno(["red", "red", "blue"])
+///     .chromosome(["1", "1", "5", "Y"])
+///     .sid(["sid1", "sid2", "sid3", "sid4"])
+///     .cm_position([100.4, 2000.5, 4000.7, 7000.9])
+///     .bp_position([1, 100, 1000, 1004])
+///     .allele_1(["A", "T", "A", "T"])
+///     .allele_2(["A", "C", "C", "G"])
+///     .write(&val)?;
+/// # use bed_reader::BedErrorPlus;
+/// # Ok::<(), BedErrorPlus>(())
+/// ```
+/// Here, no metadata is given, so default values are assigned.
+/// If we then read the new file and list the chromosome property,
+/// it is an array of zeros, the default chromosome value.
+/// ```
+/// # use ndarray as nd;
+/// # use bed_reader::{Bed, WriteOptions, tmp_path};
+/// # let output_folder = tmp_path()?;
+/// let output_file2 = output_folder.join("small2.bed");
+/// let val = nd::array![[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]];
+///
+/// WriteOptions::builder(&output_file2).write(&val)?;
+///
+/// let mut bed2 = Bed::new(&output_file2)?;
+/// println!("{:?}", bed2.chromosome()?); // Outputs ndarray ["0", "0", "0", "0"]
+/// # use bed_reader::BedErrorPlus;
+/// # Ok::<(), BedErrorPlus>(())
+/// ```
 #[derive(Clone, Debug, Builder)]
 #[builder(build_fn(private, name = "write_no_file_check", error = "BedErrorPlus"))]
 pub struct WriteOptions<TVal>
@@ -4248,58 +4448,126 @@ where
     #[builder(default = "None")]
     bim_path: Option<PathBuf>,
 
+    /// Family id of each of individual (sample)
+    ///
+    /// If this ndarray is not given, the default (zeros) is used.
     #[builder(setter(custom))]
     #[builder(default = "Skippable::Skip")]
     fid: Skippable<nd::Array1<String>>,
 
-    /// cmk0d
+    /// Individual id of each of individual (sample)
+    ///
+    /// If this ndarray is not given the default
+    /// (["iid0", "iid1", ...]) is used.
     #[builder(setter(custom))]
     #[builder(default = "Skippable::Skip")]
     iid: Skippable<nd::Array1<String>>,
 
+    /// Father id of each of individual (sample)
+    ///
+    /// If this ndarray is not given, the default
+    /// (["sid0", "sid1", ...]) is used.
     #[builder(setter(custom))]
     #[builder(default = "Skippable::Skip")]
     father: Skippable<nd::Array1<String>>,
 
+    /// Mother id of each of individual (sample)
+    ///
+    /// If this ndarray is not given, the default (zeros) is used.
     #[builder(setter(custom))]
     #[builder(default = "Skippable::Skip")]
     mother: Skippable<nd::Array1<String>>,
 
+    /// Sex of each of individual (sample)
+    ///
+    /// 0 is unknown, 1 is male, 2 is female
+    ///
+    /// If this ndarray is not given, the default (zeros) is used.
     #[builder(setter(custom))]
     #[builder(default = "Skippable::Skip")]
     sex: Skippable<nd::Array1<i32>>,
 
+    /// Phenotype value for each of individual (sample). Seldom used.
+    ///
+    /// If this ndarray is not given, the default (zeros) is used.
     #[builder(setter(custom))]
     #[builder(default = "Skippable::Skip")]
     pheno: Skippable<nd::Array1<String>>,
 
+    /// Chromosome of each SNP (variant)
+    ///
+    /// If this ndarray is not given, the default (zeros) is used.
     #[builder(setter(custom))]
     #[builder(default = "Skippable::Skip")]
     chromosome: Skippable<nd::Array1<String>>,
 
+    /// SNP id of each SNP (variant)
+    ///
+    /// If this ndarray is not given, the default
+    /// (["sid0", "sid1", "sid2", ...] is used.
     #[builder(setter(custom))]
     #[builder(default = "Skippable::Skip")]
     sid: Skippable<nd::Array1<String>>,
 
+    /// Centimorgan position of each SNP (variant)
+    ///
+    /// If this ndarray is not given, the default (0.0) is used.
     #[builder(setter(custom))]
     #[builder(default = "Skippable::Skip")]
     cm_position: Skippable<nd::Array1<f32>>,
 
+    /// Base-pair position of each SNP (variant)
+    ///
+    /// If this ndarray is not given, the default (zeros) is used.
     #[builder(setter(custom))]
     #[builder(default = "Skippable::Skip")]
     bp_position: Skippable<nd::Array1<i32>>,
 
+    /// Allele 1 for each SNP (variant)
+    ///
+    /// If this ndarray is not given, the default ("A1") is used.
     #[builder(setter(custom))]
     #[builder(default = "Skippable::Skip")]
     allele_1: Skippable<nd::Array1<String>>,
 
+    /// Allele 2 for each SNP (variant)
+    ///
+    /// If this ndarray is not given, the default ("A2") is used.
     #[builder(setter(custom))]
     #[builder(default = "Skippable::Skip")]
     allele_2: Skippable<nd::Array1<String>>,
 
+    /// Sets if allele 1 is counted. Default is true.
+    ///
+    /// Also see [`count_a1`](struct.WriteOptionsBuilder.html#method.count_a1) and [`count_a2`](struct.WroteOptionsBuilder.html#method.count_a2).    
     #[builder(default = "true")]
     is_a1_counted: bool,
 
+    /// Number of threads to use (defaults to all)
+    ///
+    /// Can also be set with an environment variable. See cmk 0.
+    ///
+    /// In this example, we write using only one thread.
+    /// ```cmk 0 fix example to write
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, WriteOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let val = WriteOptions::builder().num_threads(1).i8().read(&mut bed)?;
+    ///
+    /// assert_eq_nan(
+    ///     &val,
+    ///     &nd::array![
+    ///         [1, 0, -127, 0],
+    ///         [2, 0, -127, 2],
+    ///         [0, 1, 2, 0]
+    ///     ],
+    /// );
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
     #[builder(default, setter(strip_option))]
     pub num_threads: Option<usize>,
 
@@ -4316,18 +4584,19 @@ where
     /// > Also see [`Bed::write`](struct.Bed.html#method.write), which does not support metadata or options.
     ///
     /// The options, [listed here](struct.WriteOptionsBuilder.html#implementations), can specify the:
-    ///  * metadata, including the individual ids and the SNP ids
+    ///  * items of metadata, for example the individual ids and the SNP ids
     ///  * a non-default path for the .fam and/or .bim files
     ///  * a non-default value that represents missing data
     ///  * whether the first allele was counted (default) or the second
     ///  * number of threads to use for writing
+    ///  * a [metadata struct](struct.Metadata.html)
     ///
     /// # Errors
     /// See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
     /// for all possible errors.
     ///
     /// # Examples
-    /// In this example, all metadata is given.
+    /// In this example, all metadata is given one item at a time.
     /// ```
     /// use ndarray as nd;
     /// use bed_reader::{Bed, WriteOptions, tmp_path};
@@ -4384,7 +4653,6 @@ where
         }
     }
 
-    // !!!cmk 0b
     pub fn iid(&self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         match self.iid {
             Skippable::Some(ref iid) => Ok(iid),
@@ -4659,11 +4927,17 @@ where
         self
     }
 
+    /// Count the number allele 1 (default and PLINK standard).
+    ///
+    /// Also see [`is_a1_counted`](struct.WriteOptionsBuilder.html#method.is_a1_counted) and [`count_a2`](struct.WriteOptionsBuilder.html#method.count_a2).
     pub fn count_a1(&mut self) -> &mut Self {
         self.is_a1_counted = Some(true);
         self
     }
 
+    /// Count the number allele 2.
+    ///
+    /// Also see [`is_a1_counted`](struct.WriteOptionsBuilder.html#method.is_a1_counted) and [`count_a1`](struct.WriteOptionsBuilder.html#method.count_a1).
     pub fn count_a2(&mut self) -> &mut Self {
         self.is_a1_counted = Some(false);
         self
