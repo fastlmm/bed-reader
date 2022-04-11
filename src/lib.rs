@@ -1,5 +1,10 @@
-// !!!cmk 0 document Bed
-// !!!cmk 0 document BedBuilder
+// !!!cmk0 document Bed: read_and_* (3 of them)
+// !!!cmk0 document Bed: fam_path, bim_path
+// !!!cmk0 document BedBuilder:: build
+// !!!cmk0 document WriteOptions:: path, fam_path, bim_path, missing_value
+// !!!cmk0 document WriteOptions: add metadata method
+
+// !!!cmk0 document bed::metadata:
 // !!!cmk 0 document Metadata
 // !!!cmk 0 document RangeAny
 // !!!cmk 0 document RangeNDSlice
@@ -1429,6 +1434,7 @@ fn option_count<T>(array: &LazyOrSkip<nd::Array1<T>>) -> Option<usize> {
 pub struct Bed {
     // https://stackoverflow.com/questions/32730714/what-is-the-right-way-to-store-an-immutable-path-in-a-struct
     // don't emit a setter, but keep the field declaration on the builder
+    /// The file name or path of the .bed file.
     #[builder(setter(custom))]
     pub path: PathBuf, // !!!cmk later always clone?
 
@@ -2121,15 +2127,9 @@ impl Bed {
     /// let mut bed = Bed::builder(file_name)
     ///    .iid(["sample1", "sample2", "sample3"])
     ///    .build()?;
-    /// println!("{:?}", bed.iid()?); // replaced
-    /// println!("{:?}", bed.sid()?); // same as before
+    /// println!("{:?}", bed.iid()?); // Outputs ndarray ["sample1", "sample2", "sample3"]
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
-    /// ```
-    /// *This outputs ndarrays:*
-    /// ```text
-    /// ["sample1", "sample2", "sample3"], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1    
-    /// ["sid1", "sid2", "sid3", "sid4"], shape=[4], strides=[1], layout=CFcf (0xf), const ndim=1
     /// ```
     /// Give the number of individuals (samples) and SNPs (variants) so that the .fam and
     /// .bim files need never be opened.
@@ -2309,24 +2309,24 @@ impl Bed {
     }
 
     /// cmk 0
-    pub fn fam_path(&mut self) -> Result<PathBuf, BedErrorPlus> {
+    pub fn fam_path(&mut self) -> PathBuf {
         if let Some(path) = &self.fam_path {
-            Ok(path.clone())
+            path.clone()
         } else {
             let path = to_metadata_path(&self.path, &self.fam_path, "fam");
             self.fam_path = Some(path.clone());
-            Ok(path)
+            path
         }
     }
 
     /// cmk 0
-    pub fn bim_path(&mut self) -> Result<PathBuf, BedErrorPlus> {
+    pub fn bim_path(&mut self) -> PathBuf {
         if let Some(path) = &self.bim_path {
-            Ok(path.clone())
+            path.clone()
         } else {
             let path = to_metadata_path(&self.path, &self.bim_path, "bim");
             self.bim_path = Some(path.clone());
-            Ok(path)
+            path
         }
     }
 
@@ -2356,7 +2356,7 @@ impl Bed {
         if let Some(iid_count) = self.iid_count {
             Ok(iid_count)
         } else {
-            let fam_path = self.fam_path()?;
+            let fam_path = self.fam_path();
             let iid_count = count_lines(fam_path)?;
             self.iid_count = Some(iid_count);
             Ok(iid_count)
@@ -2389,7 +2389,7 @@ impl Bed {
         if let Some(sid_count) = self.sid_count {
             Ok(sid_count)
         } else {
-            let bim_path = self.bim_path()?;
+            let bim_path = self.bim_path();
             let sid_count = count_lines(bim_path)?;
             self.sid_count = Some(sid_count);
             Ok(sid_count)
@@ -2465,7 +2465,7 @@ impl Bed {
             field_vec.push(5);
         }
 
-        let fam_path = self.fam_path()?;
+        let fam_path = self.fam_path();
         let (mut vec_of_vec, count) = self.read_fam_or_bim(&field_vec, &fam_path)?;
         match self.iid_count {
             Some(iid_count) => {
@@ -2528,7 +2528,7 @@ impl Bed {
             field_vec.push(5);
         }
 
-        let bim_path = self.bim_path()?;
+        let bim_path = self.bim_path();
         let (mut vec_of_vec, count) = self.read_fam_or_bim(&field_vec, &bim_path)?;
         match self.sid_count {
             Some(sid_count) => {
@@ -3875,7 +3875,7 @@ pub struct ReadOptions<TVal: BedVal> {
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     #[builder(default = "TVal::missing()")]
-    missing_value: TVal,
+    pub missing_value: TVal,
 
     /// Select which individual (sample) values to read -- Defaults to all.
     ///
@@ -3947,7 +3947,7 @@ pub struct ReadOptions<TVal: BedVal> {
     /// ```
     #[builder(default = "Index::All")]
     #[builder(setter(into))]
-    iid_index: Index,
+    pub iid_index: Index,
 
     /// Select which SNPs (variant) values to read -- Defaults to all.
     ///
@@ -4019,7 +4019,7 @@ pub struct ReadOptions<TVal: BedVal> {
     /// ```
     #[builder(default = "Index::All")]
     #[builder(setter(into))]
-    sid_index: Index,
+    pub sid_index: Index,
 
     /// Sets if the order of the output array is Fortran -- Default is true.
     ///
@@ -4027,13 +4027,13 @@ pub struct ReadOptions<TVal: BedVal> {
     ///
     /// Also see [`f`](struct.ReadOptionsBuilder.html#method.f) and [`c`](struct.ReadOptionsBuilder.html#method.c).
     #[builder(default = "true")]
-    is_f: bool,
+    pub is_f: bool,
 
     /// Sets if allele 1 is counted. Default is true.
     ///
     /// Also see [`count_a1`](struct.ReadOptionsBuilder.html#method.count_a1) and [`count_a2`](struct.ReadOptionsBuilder.html#method.count_a2).
     #[builder(default = "true")]
-    is_a1_counted: bool,
+    pub is_a1_counted: bool,
 
     /// Number of threads to use (defaults to all)
     ///
@@ -4060,7 +4060,6 @@ pub struct ReadOptions<TVal: BedVal> {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
-
     #[builder(default, setter(strip_option))]
     pub num_threads: Option<usize>,
 }
@@ -4377,10 +4376,10 @@ impl ReadOptionsBuilder<f64> {
 /// Construct with [`WriteOptions::builder`](struct.WriteOptions.html#method.builder).
 ///
 /// The options, [listed here](struct.WriteOptionsBuilder.html#implementations), can specify the:
-///  * items of metadata, for example the individual ids and the SNP ids
+///  * items of metadata, for example the individual ids or the SNP ids
 ///  * a non-default path for the .fam and/or .bim files
 ///  * a non-default value that represents missing data
-///  * whether the first allele was counted (default) or the second
+///  * whether the first allele is counted (default) or the second
 ///  * number of threads to use for writing
 ///  * a [metadata struct](struct.Metadata.html)
 ///
@@ -4442,41 +4441,41 @@ where
 
     #[builder(setter(custom))]
     #[builder(default = "None")]
-    fam_path: Option<PathBuf>,
+    pub fam_path: Option<PathBuf>,
 
     #[builder(setter(custom))]
     #[builder(default = "None")]
-    bim_path: Option<PathBuf>,
+    pub bim_path: Option<PathBuf>,
 
     /// Family id of each of individual (sample)
     ///
     /// If this ndarray is not given, the default (zeros) is used.
     #[builder(setter(custom))]
-    #[builder(default = "Skippable::Skip")]
-    fid: Skippable<nd::Array1<String>>,
+    #[builder(default = "None")]
+    pub fid: Option<nd::Array1<String>>,
 
     /// Individual id of each of individual (sample)
     ///
     /// If this ndarray is not given the default
     /// (["iid0", "iid1", ...]) is used.
     #[builder(setter(custom))]
-    #[builder(default = "Skippable::Skip")]
-    iid: Skippable<nd::Array1<String>>,
+    #[builder(default = "None")]
+    pub iid: Option<nd::Array1<String>>,
 
     /// Father id of each of individual (sample)
     ///
     /// If this ndarray is not given, the default
     /// (["sid0", "sid1", ...]) is used.
     #[builder(setter(custom))]
-    #[builder(default = "Skippable::Skip")]
-    father: Skippable<nd::Array1<String>>,
+    #[builder(default = "None")]
+    pub father: Option<nd::Array1<String>>,
 
     /// Mother id of each of individual (sample)
     ///
     /// If this ndarray is not given, the default (zeros) is used.
     #[builder(setter(custom))]
-    #[builder(default = "Skippable::Skip")]
-    mother: Skippable<nd::Array1<String>>,
+    #[builder(default = "None")]
+    pub mother: Option<nd::Array1<String>>,
 
     /// Sex of each of individual (sample)
     ///
@@ -4484,64 +4483,64 @@ where
     ///
     /// If this ndarray is not given, the default (zeros) is used.
     #[builder(setter(custom))]
-    #[builder(default = "Skippable::Skip")]
-    sex: Skippable<nd::Array1<i32>>,
+    #[builder(default = "None")]
+    pub sex: Option<nd::Array1<i32>>,
 
     /// Phenotype value for each of individual (sample). Seldom used.
     ///
     /// If this ndarray is not given, the default (zeros) is used.
     #[builder(setter(custom))]
-    #[builder(default = "Skippable::Skip")]
-    pheno: Skippable<nd::Array1<String>>,
+    #[builder(default = "None")]
+    pub pheno: Option<nd::Array1<String>>,
 
     /// Chromosome of each SNP (variant)
     ///
     /// If this ndarray is not given, the default (zeros) is used.
     #[builder(setter(custom))]
-    #[builder(default = "Skippable::Skip")]
-    chromosome: Skippable<nd::Array1<String>>,
+    #[builder(default = "None")]
+    pub chromosome: Option<nd::Array1<String>>,
 
     /// SNP id of each SNP (variant)
     ///
     /// If this ndarray is not given, the default
     /// (["sid0", "sid1", "sid2", ...] is used.
     #[builder(setter(custom))]
-    #[builder(default = "Skippable::Skip")]
-    sid: Skippable<nd::Array1<String>>,
+    #[builder(default = "None")]
+    pub sid: Option<nd::Array1<String>>,
 
     /// Centimorgan position of each SNP (variant)
     ///
     /// If this ndarray is not given, the default (0.0) is used.
     #[builder(setter(custom))]
-    #[builder(default = "Skippable::Skip")]
-    cm_position: Skippable<nd::Array1<f32>>,
+    #[builder(default = "None")]
+    pub cm_position: Option<nd::Array1<f32>>,
 
     /// Base-pair position of each SNP (variant)
     ///
     /// If this ndarray is not given, the default (zeros) is used.
     #[builder(setter(custom))]
-    #[builder(default = "Skippable::Skip")]
-    bp_position: Skippable<nd::Array1<i32>>,
+    #[builder(default = "None")]
+    pub bp_position: Option<nd::Array1<i32>>,
 
     /// Allele 1 for each SNP (variant)
     ///
     /// If this ndarray is not given, the default ("A1") is used.
     #[builder(setter(custom))]
-    #[builder(default = "Skippable::Skip")]
-    allele_1: Skippable<nd::Array1<String>>,
+    #[builder(default = "None")]
+    pub allele_1: Option<nd::Array1<String>>,
 
     /// Allele 2 for each SNP (variant)
     ///
     /// If this ndarray is not given, the default ("A2") is used.
     #[builder(setter(custom))]
-    #[builder(default = "Skippable::Skip")]
-    allele_2: Skippable<nd::Array1<String>>,
+    #[builder(default = "None")]
+    pub allele_2: Option<nd::Array1<String>>,
 
     /// Sets if allele 1 is counted. Default is true.
     ///
     /// Also see [`count_a1`](struct.WriteOptionsBuilder.html#method.count_a1) and [`count_a2`](struct.WroteOptionsBuilder.html#method.count_a2).    
     #[builder(default = "true")]
-    is_a1_counted: bool,
+    pub is_a1_counted: bool,
 
     /// Number of threads to use (defaults to all)
     ///
@@ -4572,7 +4571,14 @@ where
     pub num_threads: Option<usize>,
 
     #[builder(default = "TVal::missing()")]
-    missing_value: TVal,
+    pub missing_value: TVal,
+}
+
+fn to_skippable2<'a, T>(option: &'a Option<T>) -> Skippable<&'a T> {
+    match option {
+        None => Skippable::Skip,
+        Some(some) => Skippable::Some(some),
+    }
 }
 
 impl<TVal> WriteOptions<TVal>
@@ -4584,10 +4590,10 @@ where
     /// > Also see [`Bed::write`](struct.Bed.html#method.write), which does not support metadata or options.
     ///
     /// The options, [listed here](struct.WriteOptionsBuilder.html#implementations), can specify the:
-    ///  * items of metadata, for example the individual ids and the SNP ids
+    ///  * items of metadata, for example the individual ids or the SNP ids
     ///  * a non-default path for the .fam and/or .bim files
     ///  * a non-default value that represents missing data
-    ///  * whether the first allele was counted (default) or the second
+    ///  * whether the first allele is counted (default) or the second
     ///  * number of threads to use for writing
     ///  * a [metadata struct](struct.Metadata.html)
     ///
@@ -4645,95 +4651,23 @@ where
     pub fn builder<P: AsRef<Path>>(path: P) -> WriteOptionsBuilder<TVal> {
         WriteOptionsBuilder::new(path)
     }
+    pub fn metadata(&mut self) -> Result<Metadata, BedErrorPlus> {
+        let metadata = Metadata {
+            fid: to_skippable2(&self.fid),
+            iid: to_skippable2(&self.iid),
+            father: to_skippable2(&self.father),
+            mother: to_skippable2(&self.mother),
+            sex: to_skippable2(&self.sex),
+            pheno: to_skippable2(&self.pheno),
 
-    pub fn fid(&self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        match self.fid {
-            Skippable::Some(ref fid) => Ok(fid),
-            Skippable::Skip => Err(BedError::CannotUseSkippedMetadata("fid".to_string()).into()),
-        }
-    }
-
-    pub fn iid(&self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        match self.iid {
-            Skippable::Some(ref iid) => Ok(iid),
-            Skippable::Skip => Err(BedError::CannotUseSkippedMetadata("iid".to_string()).into()),
-        }
-    }
-    pub fn father(&self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        match self.father {
-            Skippable::Some(ref father) => Ok(father),
-            Skippable::Skip => Err(BedError::CannotUseSkippedMetadata("father".to_string()).into()),
-        }
-    }
-    pub fn mother(&self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        match self.mother {
-            Skippable::Some(ref mother) => Ok(mother),
-            Skippable::Skip => Err(BedError::CannotUseSkippedMetadata("mother".to_string()).into()),
-        }
-    }
-    pub fn sex(&self) -> Result<&nd::Array1<i32>, BedErrorPlus> {
-        match self.sex {
-            Skippable::Some(ref sex) => Ok(sex),
-            Skippable::Skip => Err(BedError::CannotUseSkippedMetadata("sex".to_string()).into()),
-        }
-    }
-    pub fn pheno(&self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        match self.pheno {
-            Skippable::Some(ref pheno) => Ok(pheno),
-            Skippable::Skip => Err(BedError::CannotUseSkippedMetadata("pheno".to_string()).into()),
-        }
-    }
-
-    pub fn chromosome(&self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        match self.chromosome {
-            Skippable::Some(ref chromosome) => Ok(chromosome),
-            Skippable::Skip => {
-                Err(BedError::CannotUseSkippedMetadata("chromosome".to_string()).into())
-            }
-        }
-    }
-    pub fn sid(&self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        match self.sid {
-            Skippable::Some(ref sid) => Ok(sid),
-            Skippable::Skip => Err(BedError::CannotUseSkippedMetadata("sid".to_string()).into()),
-        }
-    }
-    pub fn cm_position(&self) -> Result<&nd::Array1<f32>, BedErrorPlus> {
-        match self.cm_position {
-            Skippable::Some(ref cm_position) => Ok(cm_position),
-            Skippable::Skip => {
-                Err(BedError::CannotUseSkippedMetadata("cm_position".to_string()).into())
-            }
-        }
-    }
-
-    pub fn bp_position(&self) -> Result<&nd::Array1<i32>, BedErrorPlus> {
-        match self.bp_position {
-            Skippable::Some(ref bp_position) => Ok(bp_position),
-            Skippable::Skip => {
-                Err(BedError::CannotUseSkippedMetadata("bp_position".to_string()).into())
-            }
-        }
-    }
-    pub fn allele_1(&self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        match self.allele_1 {
-            Skippable::Some(ref allele_1) => Ok(allele_1),
-            Skippable::Skip => {
-                Err(BedError::CannotUseSkippedMetadata("allele_1".to_string()).into())
-            }
-        }
-    }
-    pub fn allele_2(&self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        match self.allele_2 {
-            Skippable::Some(ref allele_2) => Ok(allele_2),
-            Skippable::Skip => {
-                Err(BedError::CannotUseSkippedMetadata("allele_2".to_string()).into())
-            }
-        }
-    }
-
-    pub fn is_a1_counted(&self) -> bool {
-        self.is_a1_counted
+            chromosome: to_skippable2(&self.chromosome),
+            sid: to_skippable2(&self.sid),
+            cm_position: to_skippable2(&self.cm_position),
+            bp_position: to_skippable2(&self.bp_position),
+            allele_1: to_skippable2(&self.allele_1),
+            allele_2: to_skippable2(&self.allele_2),
+        };
+        Ok(metadata)
     }
 }
 
@@ -4799,85 +4733,85 @@ where
     // !!!cmk later can we also extract a metadata property from write options?
     pub fn metadata(mut self, metadata: &Metadata) -> Self {
         if let Skippable::Some(fid) = &metadata.fid {
-            self.fid = Some(Skippable::Some((*fid).clone()));
+            self.fid = Some(Some((*fid).clone()));
         }
         if let Skippable::Some(iid) = &metadata.iid {
-            self.iid = Some(Skippable::Some((*iid).clone()));
+            self.iid = Some(Some((*iid).clone()));
         }
         if let Skippable::Some(father) = &metadata.father {
-            self.father = Some(Skippable::Some((*father).clone()));
+            self.father = Some(Some((*father).clone()));
         }
         if let Skippable::Some(mother) = &metadata.mother {
-            self.mother = Some(Skippable::Some((*mother).clone()));
+            self.mother = Some(Some((*mother).clone()));
         }
         if let Skippable::Some(sex) = &metadata.sex {
-            self.sex = Some(Skippable::Some((*sex).clone()));
+            self.sex = Some(Some((*sex).clone()));
         }
         if let Skippable::Some(pheno) = &metadata.pheno {
-            self.pheno = Some(Skippable::Some((*pheno).clone()));
+            self.pheno = Some(Some((*pheno).clone()));
         }
 
         if let Skippable::Some(chromosome) = &metadata.chromosome {
-            self.chromosome = Some(Skippable::Some((*chromosome).clone()));
+            self.chromosome = Some(Some((*chromosome).clone()));
         }
         if let Skippable::Some(sid) = &metadata.sid {
-            self.sid = Some(Skippable::Some((*sid).clone()));
+            self.sid = Some(Some((*sid).clone()));
         }
         if let Skippable::Some(cm_position) = &metadata.cm_position {
-            self.cm_position = Some(Skippable::Some((*cm_position).clone()));
+            self.cm_position = Some(Some((*cm_position).clone()));
         }
         if let Skippable::Some(bp_position) = &metadata.bp_position {
-            self.bp_position = Some(Skippable::Some((*bp_position).clone()));
+            self.bp_position = Some(Some((*bp_position).clone()));
         }
         if let Skippable::Some(allele_1) = &metadata.allele_1 {
-            self.allele_1 = Some(Skippable::Some((*allele_1).clone()));
+            self.allele_1 = Some(Some((*allele_1).clone()));
         }
         if let Skippable::Some(allele_2) = &metadata.allele_2 {
-            self.allele_2 = Some(Skippable::Some((*allele_2).clone()));
+            self.allele_2 = Some(Some((*allele_2).clone()));
         }
         self
     }
 
     pub fn fid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, fid: I) -> Self {
-        self.fid = Some(Skippable::Some(
+        self.fid = Some(Some(
             fid.into_iter().map(|s| s.as_ref().to_string()).collect(),
         ));
         self
     }
 
     pub fn iid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, iid: I) -> Self {
-        self.iid = Some(Skippable::Some(
+        self.iid = Some(Some(
             iid.into_iter().map(|s| s.as_ref().to_string()).collect(),
         ));
         self
     }
     pub fn father<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, father: I) -> Self {
-        self.father = Some(Skippable::Some(
+        self.father = Some(Some(
             father.into_iter().map(|s| s.as_ref().to_string()).collect(),
         ));
         self
     }
     pub fn mother<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, mother: I) -> Self {
-        self.mother = Some(Skippable::Some(
+        self.mother = Some(Some(
             mother.into_iter().map(|s| s.as_ref().to_string()).collect(),
         ));
         self
     }
 
     pub fn sex<I: IntoIterator<Item = i32>>(mut self, sex: I) -> Self {
-        self.sex = Some(Skippable::Some(sex.into_iter().map(|i| i).collect()));
+        self.sex = Some(Some(sex.into_iter().map(|i| i).collect()));
         self
     }
 
     pub fn pheno<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, pheno: I) -> Self {
-        self.pheno = Some(Skippable::Some(
+        self.pheno = Some(Some(
             pheno.into_iter().map(|s| s.as_ref().to_string()).collect(),
         ));
         self
     }
 
     pub fn chromosome<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, chromosome: I) -> Self {
-        self.chromosome = Some(Skippable::Some(
+        self.chromosome = Some(Some(
             chromosome
                 .into_iter()
                 .map(|s| s.as_ref().to_string())
@@ -4887,28 +4821,24 @@ where
     }
 
     pub fn sid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, sid: I) -> Self {
-        self.sid = Some(Skippable::Some(
+        self.sid = Some(Some(
             sid.into_iter().map(|s| s.as_ref().to_string()).collect(),
         ));
         self
     }
 
     pub fn cm_position<I: IntoIterator<Item = f32>>(mut self, cm_position: I) -> Self {
-        self.cm_position = Some(Skippable::Some(
-            cm_position.into_iter().map(|s| s).collect(),
-        ));
+        self.cm_position = Some(Some(cm_position.into_iter().map(|s| s).collect()));
         self
     }
 
     pub fn bp_position<I: IntoIterator<Item = i32>>(mut self, bp_position: I) -> Self {
-        self.bp_position = Some(Skippable::Some(
-            bp_position.into_iter().map(|s| s).collect(),
-        ));
+        self.bp_position = Some(Some(bp_position.into_iter().map(|s| s).collect()));
         self
     }
 
     pub fn allele_1<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, allele_1: I) -> Self {
-        self.allele_1 = Some(Skippable::Some(
+        self.allele_1 = Some(Some(
             allele_1
                 .into_iter()
                 .map(|s| s.as_ref().to_string())
@@ -4918,7 +4848,7 @@ where
     }
 
     pub fn allele_2<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, allele_2: I) -> Self {
-        self.allele_2 = Some(Skippable::Some(
+        self.allele_2 = Some(Some(
             allele_2
                 .into_iter()
                 .map(|s| s.as_ref().to_string())
@@ -4945,14 +4875,14 @@ where
 }
 
 // !!!cmk later do this without a "clone"
-fn compute_field<T, F>(field: &Skippable<nd::Array1<T>>, count: usize, lambda: F) -> nd::Array1<T>
+fn compute_field<T, F>(field: &Option<nd::Array1<T>>, count: usize, lambda: F) -> nd::Array1<T>
 where
     T: Clone + Default + Debug,
     F: Fn(usize) -> T,
 {
     match field {
-        Skippable::Some(array) => array.clone(),
-        Skippable::Skip => (0..count).map(|_| lambda(0)).collect::<nd::Array1<T>>(),
+        Some(array) => array.clone(),
+        None => (0..count).map(|_| lambda(0)).collect::<nd::Array1<T>>(),
     }
 }
 
