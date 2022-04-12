@@ -1832,6 +1832,7 @@ impl BedBuilder {
         self
     }
 
+    /// !!!cmk 00 how come this doesn't check that size is consistent?
     /// Set the number of individuals in the data.
     ///
     /// By default, if this number is needed, it will be found
@@ -4445,6 +4446,14 @@ where
     #[builder(default = "None")]
     pub bim_path: Option<PathBuf>,
 
+    #[builder(setter(custom))]
+    #[builder(default = "None")]
+    pub iid_count: Option<usize>,
+
+    #[builder(setter(custom))]
+    #[builder(default = "None")]
+    pub sid_count: Option<usize>,
+
     /// Family id of each of individual (sample)
     ///
     /// If this ndarray is not given, the default (zeros) is used.
@@ -4759,16 +4768,13 @@ where
 
         Ok(())
     }
-    pub fn metadata(
-        &mut self,
-        iid_count: usize,
-        sid_count: usize,
-    ) -> Result<Metadata, BedErrorPlus> {
+    pub fn metadata(&mut self) -> Result<Metadata, BedErrorPlus> {
         // !!!cmk 00 there should be a fam_path method, etc
+        // !!!cmk 00 remove the unwrap
         let fam_path = to_metadata_path(&self.path, &self.fam_path, "fam");
-        self.fam_write(iid_count, &fam_path, true)?;
+        self.fam_write(self.iid_count.unwrap(), &fam_path, true)?;
         let bim_path = to_metadata_path(&self.path, &self.bim_path, "bim");
-        self.bim_write(sid_count, &bim_path, true)?;
+        self.bim_write(self.sid_count.unwrap(), &bim_path, true)?;
         let metadata = Metadata {
             fid: Skippable::Some(self.fid.as_ref().unwrap()),
             iid: Skippable::Some(self.iid.as_ref().unwrap()),
@@ -4791,6 +4797,41 @@ impl<TVal> WriteOptionsBuilder<TVal>
 where
     TVal: BedVal,
 {
+    // !!!cmk 00 should the other one of these be &mut?
+    pub fn iid_count(&mut self, count: usize) -> &mut Self {
+        match self.iid_count {
+            Some(option_size) => match option_size {
+                Some(count_old) => {
+                    if count_old != count {
+                        panic!("cmk00 iid_count already set to {}", count);
+                    }
+                }
+                None => self.iid_count = Some(Some(count)),
+            },
+            None => {
+                self.iid_count = Some(Some(count));
+            }
+        };
+        self
+    }
+
+    pub fn sid_count(&mut self, count: usize) -> &mut Self {
+        match self.sid_count {
+            Some(option_size) => match option_size {
+                Some(count_old) => {
+                    if count_old != count {
+                        panic!("cmk00 sid_count already set to {}", count);
+                    }
+                }
+                None => self.sid_count = Some(Some(count)),
+            },
+            None => {
+                self.sid_count = Some(Some(count));
+            }
+        };
+        self
+    }
+
     // !!! cmk later just use the default builder?
     pub fn build(&self) -> Result<WriteOptions<TVal>, BedErrorPlus> {
         let write_options = self.write_no_file_check()?;
@@ -4833,6 +4874,9 @@ where
             is_a1_counted: None,
             num_threads: None,
             missing_value: None,
+
+            iid_count: None,
+            sid_count: None,
         }
     }
 
@@ -4888,88 +4932,98 @@ where
         self
     }
 
+    // !!!cmk00 add the _count check to all
     pub fn fid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, fid: I) -> Self {
-        self.fid = Some(Some(
-            fid.into_iter().map(|s| s.as_ref().to_string()).collect(),
-        ));
+        let array: nd::Array1<String> = fid.into_iter().map(|s| s.as_ref().to_string()).collect();
+        self.iid_count(array.len());
+        self.fid = Some(Some(array));
         self
     }
 
     pub fn iid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, iid: I) -> Self {
-        self.iid = Some(Some(
-            iid.into_iter().map(|s| s.as_ref().to_string()).collect(),
-        ));
+        let array: nd::Array1<String> = iid.into_iter().map(|s| s.as_ref().to_string()).collect();
+        self.iid_count(array.len());
+        self.iid = Some(Some(array));
         self
     }
     pub fn father<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, father: I) -> Self {
-        self.father = Some(Some(
-            father.into_iter().map(|s| s.as_ref().to_string()).collect(),
-        ));
+        let array: nd::Array1<String> =
+            father.into_iter().map(|s| s.as_ref().to_string()).collect();
+        self.iid_count(array.len());
+        self.father = Some(Some(array));
         self
     }
     pub fn mother<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, mother: I) -> Self {
-        self.mother = Some(Some(
-            mother.into_iter().map(|s| s.as_ref().to_string()).collect(),
-        ));
+        let array: nd::Array1<String> =
+            mother.into_iter().map(|s| s.as_ref().to_string()).collect();
+        self.iid_count(array.len());
+        self.mother = Some(Some(array));
         self
     }
 
     pub fn sex<I: IntoIterator<Item = i32>>(mut self, sex: I) -> Self {
-        self.sex = Some(Some(sex.into_iter().map(|i| i).collect()));
+        let array: nd::Array1<i32> = sex.into_iter().map(|i| i).collect();
+        self.iid_count(array.len());
+        self.sex = Some(Some(array));
+
         self
     }
 
     pub fn pheno<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, pheno: I) -> Self {
-        self.pheno = Some(Some(
-            pheno.into_iter().map(|s| s.as_ref().to_string()).collect(),
-        ));
+        let array: nd::Array1<String> = pheno.into_iter().map(|s| s.as_ref().to_string()).collect();
+        self.iid_count(array.len());
+        self.pheno = Some(Some(array));
         self
     }
 
     pub fn chromosome<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, chromosome: I) -> Self {
-        self.chromosome = Some(Some(
-            chromosome
-                .into_iter()
-                .map(|s| s.as_ref().to_string())
-                .collect(),
-        ));
+        let array: nd::Array1<String> = chromosome
+            .into_iter()
+            .map(|s| s.as_ref().to_string())
+            .collect();
+        self.sid_count(array.len());
+        self.chromosome = Some(Some(array));
         self
     }
 
     pub fn sid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, sid: I) -> Self {
-        self.sid = Some(Some(
-            sid.into_iter().map(|s| s.as_ref().to_string()).collect(),
-        ));
+        let array: nd::Array1<String> = sid.into_iter().map(|s| s.as_ref().to_string()).collect();
+        self.sid_count(array.len());
+        self.sid = Some(Some(array));
         self
     }
 
     pub fn cm_position<I: IntoIterator<Item = f32>>(mut self, cm_position: I) -> Self {
-        self.cm_position = Some(Some(cm_position.into_iter().map(|s| s).collect()));
+        let array: nd::Array1<f32> = cm_position.into_iter().map(|s| s).collect();
+        self.sid_count(array.len());
+        self.cm_position = Some(Some(array));
         self
     }
 
     pub fn bp_position<I: IntoIterator<Item = i32>>(mut self, bp_position: I) -> Self {
-        self.bp_position = Some(Some(bp_position.into_iter().map(|s| s).collect()));
+        let array: nd::Array1<i32> = bp_position.into_iter().map(|s| s).collect();
+        self.sid_count(array.len());
+        self.bp_position = Some(Some(array));
         self
     }
 
     pub fn allele_1<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, allele_1: I) -> Self {
-        self.allele_1 = Some(Some(
-            allele_1
-                .into_iter()
-                .map(|s| s.as_ref().to_string())
-                .collect(),
-        ));
+        let array: nd::Array1<String> = allele_1
+            .into_iter()
+            .map(|s| s.as_ref().to_string())
+            .collect();
+        self.sid_count(array.len());
+        self.allele_1 = Some(Some(array));
         self
     }
 
     pub fn allele_2<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, allele_2: I) -> Self {
-        self.allele_2 = Some(Some(
-            allele_2
-                .into_iter()
-                .map(|s| s.as_ref().to_string())
-                .collect(),
-        ));
+        let array: nd::Array1<String> = allele_2
+            .into_iter()
+            .map(|s| s.as_ref().to_string())
+            .collect();
+        self.sid_count(array.len());
+        self.allele_2 = Some(Some(array));
         self
     }
 
@@ -5090,4 +5144,22 @@ pub fn tmp_path() -> Result<PathBuf, BedErrorPlus> {
     let output_path = PathBuf::from(TempDir::default().as_ref());
     fs::create_dir(&output_path)?;
     Ok(output_path)
+}
+
+impl WriteOptionsBuilder<i8> {
+    pub fn i8(&mut self) -> &mut Self {
+        self
+    }
+}
+
+impl WriteOptionsBuilder<f32> {
+    pub fn f32(&mut self) -> &mut Self {
+        self
+    }
+}
+
+impl WriteOptionsBuilder<f64> {
+    pub fn f64(&mut self) -> &mut Self {
+        self
+    }
 }

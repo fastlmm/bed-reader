@@ -1600,3 +1600,39 @@ fn iid_index() -> Result<(), BedErrorPlus> {
 
     Ok(())
 }
+
+#[test]
+fn write_options_metadata() -> Result<(), BedErrorPlus> {
+    let output_folder = tmp_path()?;
+
+    let output_file = output_folder.join("small.bed");
+    let val = nd::array![
+        [1.0, 0.0, f64::NAN, 0.0],
+        [2.0, 0.0, f64::NAN, 2.0],
+        [0.0, 1.0, 2.0, 0.0]
+    ];
+
+    // !!!cmk 00 don't like that consistency of lengths is not checked
+    let mut write_options = WriteOptions::builder(output_file)
+        .fid(["fid1", "fid1", "fid2"])
+        .iid(["iid1", "iid2", "iid3"])
+        .father(["iid23", "iid23", "iid22"])
+        .mother(["iid34", "iid34", "iid33"])
+        .sex([1, 2, 0])
+        .pheno(["red", "red", "blue"])
+        .chromosome(["1", "1", "5", "Y"])
+        .sid(["sid1", "sid2", "sid3", "sid4"])
+        .cm_position([100.4, 2000.5, 4000.7, 7000.9])
+        .bp_position([1, 100, 1000, 1004])
+        .f32()
+        // .iid_count(3)
+        // !!!cmk00 show that this would give an error
+        // !!!cmk00 note the allele's have default values
+        // .sid_count(5)
+        .build()?;
+
+    let metadata = write_options.metadata()?;
+    println!("{metadata:?}");
+
+    Ok(())
+}
