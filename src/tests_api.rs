@@ -1688,12 +1688,42 @@ fn write_options_metadata() -> Result<(), BedErrorPlus> {
     };
 
     // AB late inconsistent
-    // BC early inconsistent
-    // BC late inconsistent
-    // ABC early consistent
-    // ABC late consistent
+    let mut write_options = WriteOptions::builder(&output_file)
+        .iid(["iid1", "iid2", "iid3", "iid4"])
+        .build()?;
+    let result = Bed::write_with_options(&val, &mut write_options);
+    match result {
+        Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => (),
+        _ => panic!("test failure"),
+    };
 
-    println!("cmk00");
+    // BC early inconsistent
+    let result = WriteOptions::builder(&output_file).iid_count(4).write(&val);
+    match result {
+        Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => (),
+        _ => panic!("test failure"),
+    };
+
+    // BC late inconsistent
+    let mut write_options = WriteOptions::builder(&output_file).iid_count(4).build()?;
+    let result = Bed::write_with_options(&val, &mut write_options);
+    match result {
+        Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => (),
+        _ => panic!("test failure"),
+    };
+
+    // ABC early consistent
+    WriteOptions::builder(&output_file)
+        .sid(["sid1", "sid2", "sid3", "sid4"])
+        .sid_count(4)
+        .write(&val)?;
+
+    // ABC late consistent
+    let mut write_options = WriteOptions::builder(&output_file)
+        .sid(["sid1", "sid2", "sid3", "sid4"])
+        .sid_count(4)
+        .build()?;
+    Bed::write_with_options(&val, &mut write_options)?;
 
     // let mut write_options = WriteOptions::builder(output_file)
     //     .fid(["fid1", "fid1", "fid2"])

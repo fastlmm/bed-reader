@@ -2263,8 +2263,6 @@ impl Bed {
         write_options.set_iid_count(shape[0])?;
         write_options.set_sid_count(shape[1])?;
 
-        // !!!cmk00 make sure these are consistent with metadata. Also, set the counts in metadata.
-
         let num_threads = compute_num_threads(write_options.num_threads)?;
         write_val(
             &write_options.path,
