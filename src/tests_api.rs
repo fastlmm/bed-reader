@@ -1603,14 +1603,10 @@ fn iid_index() -> Result<(), BedErrorPlus> {
 
 #[test]
 fn write_options_metadata() -> Result<(), BedErrorPlus> {
-    // !!!cmk00 three ways to get count (that be inconsistent)
+    // This test check interesting combinations of these options:
     // A: setting metadata (twice?)
     // B: giving val (early, late)
     // C: setting iid_count
-    // !!!cmk00 ways to get type (that be inconsistent)
-    // f32()
-    // val (early, late)
-    // ::<f32>::
 
     let output_folder = tmp_path()?;
     let output_file = output_folder.join("small.bed");
@@ -1659,6 +1655,16 @@ fn write_options_metadata() -> Result<(), BedErrorPlus> {
     let sid_count_result = write_options.sid_count();
     println!("{sid_count_result:?}");
     assert_eq!(4, sid_count_result?);
+
+    // BB inconsistent
+    let val2 = nd::array![[1.0, 0.0, f64::NAN, 0.0], [0.0, 1.0, 2.0, 0.0]];
+    let mut write_options = WriteOptions::<f64>::builder(&output_file).build()?;
+    Bed::write_with_options(&val, &mut write_options)?;
+    let result = Bed::write_with_options(&val2, &mut write_options);
+    match result {
+        Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => (),
+        _ => panic!("test failure"),
+    };
 
     // C
     let write_options_result = WriteOptions::<f32>::builder(&output_file)
@@ -1738,7 +1744,6 @@ fn write_options_metadata() -> Result<(), BedErrorPlus> {
     //     .bp_position([1, 100, 1000, 1004])
     //     .f32()
     //     // .iid_count(3)
-    //     // !!!cmk00 show that this would give an error
     //     // !!!cmk00 note the allele's have default values
     //     // .sid_count(5)
     //     .build()?;

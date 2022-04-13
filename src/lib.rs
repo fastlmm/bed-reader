@@ -2272,17 +2272,15 @@ impl Bed {
             num_threads,
         )?;
 
-        let fam_path = to_metadata_path(&write_options.path, &write_options.fam_path, "fam");
-        if let Err(e) = write_options.fam_write(&fam_path, false) {
+        if let Err(e) = write_options.fam_gather_optional_write(true) {
             // Clean up the file
-            let _ = fs::remove_file(fam_path);
+            let _ = fs::remove_file(write_options.fam_path());
             return Err(e);
         }
 
-        let bim_path = to_metadata_path(&write_options.path, &write_options.bim_path, "bim");
-        if let Err(e) = write_options.bim_write(&bim_path, false) {
+        if let Err(e) = write_options.bim_gather_optional_write(true) {
             // Clean up the file
-            let _ = fs::remove_file(bim_path);
+            let _ = fs::remove_file(write_options.bim_path());
             return Err(e);
         }
 
@@ -4422,19 +4420,19 @@ where
 
     #[builder(setter(custom))]
     #[builder(default = "None")]
-    pub fam_path: Option<PathBuf>,
+    fam_path: Option<PathBuf>,
 
     #[builder(setter(custom))]
     #[builder(default = "None")]
-    pub bim_path: Option<PathBuf>,
+    bim_path: Option<PathBuf>,
 
     #[builder(setter(custom))]
     #[builder(default = "None")]
-    pub iid_count: Option<usize>,
+    iid_count: Option<usize>,
 
     #[builder(setter(custom))]
     #[builder(default = "None")]
-    pub sid_count: Option<usize>,
+    sid_count: Option<usize>,
 
     /// Family id of each of individual (sample)
     ///
@@ -4642,6 +4640,14 @@ where
         }
     }
 
+    pub fn sid_count(&mut self) -> Result<usize, BedErrorPlus> {
+        if let Some(sid_count) = self.sid_count {
+            Ok(sid_count)
+        } else {
+            Err(BedError::CountNotSet("sid".to_string()).into())
+        }
+    }
+
     fn set_iid_count(&mut self, count: usize) -> Result<(), BedErrorPlus> {
         match self.iid_count {
             Some(iid_count) => {
@@ -4656,14 +4662,6 @@ where
             }
         }
         Ok(())
-    }
-
-    pub fn sid_count(&mut self) -> Result<usize, BedErrorPlus> {
-        if let Some(sid_count) = self.sid_count {
-            Ok(sid_count)
-        } else {
-            Err(BedError::CountNotSet("sid".to_string()).into())
-        }
     }
 
     fn set_sid_count(&mut self, count: usize) -> Result<(), BedErrorPlus> {
@@ -4682,6 +4680,28 @@ where
         Ok(())
     }
 
+    /// cmk 0
+    pub fn fam_path(&mut self) -> PathBuf {
+        if let Some(path) = &self.fam_path {
+            path.clone()
+        } else {
+            let path = to_metadata_path(&self.path, &self.fam_path, "fam");
+            self.fam_path = Some(path.clone());
+            path
+        }
+    }
+
+    /// cmk 0
+    pub fn bim_path(&mut self) -> PathBuf {
+        if let Some(path) = &self.bim_path {
+            path.clone()
+        } else {
+            let path = to_metadata_path(&self.path, &self.bim_path, "bim");
+            self.bim_path = Some(path.clone());
+            path
+        }
+    }
+
     fn compute_field<T, F: Fn(usize) -> T>(
         field: &mut Option<nd::Array1<T>>,
         count: usize,
@@ -4695,8 +4715,9 @@ where
         }
     }
 
-    fn fam_write(&mut self, fam_path: &PathBuf, skip_write: bool) -> Result<(), BedErrorPlus> {
+    fn fam_gather_optional_write(&mut self, do_write: bool) -> Result<(), BedErrorPlus> {
         let iid_count = self.iid_count()?;
+        let fam_path = &self.fam_path();
 
         let fid =
             WriteOptions::<TVal>::compute_field(&mut self.fid, iid_count, |_| "0".to_string());
@@ -4711,7 +4732,7 @@ where
         let pheno =
             WriteOptions::<TVal>::compute_field(&mut self.pheno, iid_count, |_| "0".to_string());
 
-        if !skip_write {
+        if do_write {
             let file = File::create(fam_path)?;
             let mut writer = BufWriter::new(file);
             let mut result: Result<(), BedErrorPlus> = Ok(());
@@ -4733,8 +4754,9 @@ where
         Ok(())
     }
 
-    fn bim_write(&mut self, bim_path: &PathBuf, skip_write: bool) -> Result<(), BedErrorPlus> {
+    fn bim_gather_optional_write(&mut self, do_write: bool) -> Result<(), BedErrorPlus> {
         let sid_count = self.sid_count()?;
+        let bim_path = &self.bim_path();
 
         let chromosome =
             WriteOptions::<TVal>::compute_field(&mut self.chromosome, sid_count, |_| {
@@ -4754,7 +4776,7 @@ where
             "A2".to_string()
         });
 
-        if !skip_write {
+        if do_write {
             let file = File::create(bim_path)?;
             let mut writer = BufWriter::new(file);
             let mut result: Result<(), BedErrorPlus> = Ok(());
@@ -4777,12 +4799,10 @@ where
         Ok(())
     }
     pub fn metadata(&mut self) -> Result<Metadata, BedErrorPlus> {
-        // !!!cmk00 there should be a fam_path method, etc
-        // !!!cmk00 remove the unwrap
-        let fam_path = to_metadata_path(&self.path, &self.fam_path, "fam");
-        self.fam_write(&fam_path, true)?;
-        let bim_path = to_metadata_path(&self.path, &self.bim_path, "bim");
-        self.bim_write(&bim_path, true)?;
+        self.fam_gather_optional_write(false)?;
+        self.bim_gather_optional_write(false)?;
+
+        // These unwraps are OK because we just created any needed arrays.
         let metadata = Metadata {
             fid: Skippable::Some(self.fid.as_ref().unwrap()),
             iid: Skippable::Some(self.iid.as_ref().unwrap()),
