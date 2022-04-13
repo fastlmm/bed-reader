@@ -345,6 +345,9 @@ pub enum BedError {
     #[error("{0}_count values of {1} and {2} are inconsistent")]
     InconsistentCount(String, usize, usize),
 
+    #[error("{0}_count not set")]
+    CountNotSet(String),
+
     #[error("Expect bool arrays and vectors to be length {0}, not {1}")]
     BoolArrayVectorWrongLength(usize, usize),
 
@@ -1386,11 +1389,18 @@ pub struct Metadata<'a> {
     pub allele_2: Skippable<&'a nd::Array1<String>>,
 }
 
-fn option_count<T>(array: &LazyOrSkip<nd::Array1<T>>) -> Option<usize> {
+fn lazy_or_skip_count<T>(array: &LazyOrSkip<nd::Array1<T>>) -> Option<usize> {
     match array {
         LazyOrSkip::Some(array) => Some(array.len()),
         LazyOrSkip::Skip => None,
         LazyOrSkip::Lazy => None,
+    }
+}
+
+fn option_count<T>(array: &Option<nd::Array1<T>>) -> Option<usize> {
+    match array {
+        Some(array) => Some(array.len()),
+        None => None,
     }
 }
 
@@ -1538,33 +1548,6 @@ impl BedBuilder {
         }
     }
 
-    fn check_counts(
-        count_vec: Vec<Option<usize>>,
-        option_xid_count: &mut Option<usize>,
-        prefix: &str,
-    ) -> Result<(), BedErrorPlus> {
-        for option_count in count_vec {
-            if let Some(count) = option_count {
-                match option_xid_count {
-                    Some(xid_count) => {
-                        if *xid_count != count {
-                            return Err(BedError::InconsistentCount(
-                                prefix.to_string(),
-                                *xid_count,
-                                count,
-                            )
-                            .into());
-                        }
-                    }
-                    None => {
-                        *option_xid_count = Some(count);
-                    }
-                }
-            }
-        }
-        Ok(())
-    }
-
     pub fn build(&self) -> Result<Bed, BedErrorPlus> {
         let mut bed = self.build_no_file_check()?;
 
@@ -1572,27 +1555,27 @@ impl BedBuilder {
             open_and_check(&bed.path)?;
         }
 
-        BedBuilder::check_counts(
+        check_counts(
             vec![
-                option_count(&bed.fid),
-                option_count(&bed.iid),
-                option_count(&bed.father),
-                option_count(&bed.mother),
-                option_count(&bed.sex),
-                option_count(&bed.pheno),
+                lazy_or_skip_count(&bed.fid),
+                lazy_or_skip_count(&bed.iid),
+                lazy_or_skip_count(&bed.father),
+                lazy_or_skip_count(&bed.mother),
+                lazy_or_skip_count(&bed.sex),
+                lazy_or_skip_count(&bed.pheno),
             ],
             &mut bed.iid_count,
             "iid",
         )?;
 
-        BedBuilder::check_counts(
+        check_counts(
             vec![
-                option_count(&bed.chromosome),
-                option_count(&bed.sid),
-                option_count(&bed.cm_position),
-                option_count(&bed.bp_position),
-                option_count(&bed.allele_1),
-                option_count(&bed.allele_2),
+                lazy_or_skip_count(&bed.chromosome),
+                lazy_or_skip_count(&bed.sid),
+                lazy_or_skip_count(&bed.cm_position),
+                lazy_or_skip_count(&bed.bp_position),
+                lazy_or_skip_count(&bed.allele_1),
+                lazy_or_skip_count(&bed.allele_2),
             ],
             &mut bed.sid_count,
             "sid",
@@ -1832,7 +1815,6 @@ impl BedBuilder {
         self
     }
 
-    /// !!!cmk 00 how come this doesn't check that size is consistent?
     /// Set the number of individuals in the data.
     ///
     /// By default, if this number is needed, it will be found
@@ -2278,8 +2260,10 @@ impl Bed {
         TVal: BedVal,
     {
         let shape = val.shape();
-        let iid_count = shape[0];
-        let sid_count = shape[1];
+        write_options.set_iid_count(shape[0])?;
+        write_options.set_sid_count(shape[1])?;
+
+        // !!!cmk00 make sure these are consistent with metadata. Also, set the counts in metadata.
 
         let num_threads = compute_num_threads(write_options.num_threads)?;
         write_val(
@@ -2291,14 +2275,14 @@ impl Bed {
         )?;
 
         let fam_path = to_metadata_path(&write_options.path, &write_options.fam_path, "fam");
-        if let Err(e) = write_options.fam_write(iid_count, &fam_path, false) {
+        if let Err(e) = write_options.fam_write(&fam_path, false) {
             // Clean up the file
             let _ = fs::remove_file(fam_path);
             return Err(e);
         }
 
         let bim_path = to_metadata_path(&write_options.path, &write_options.bim_path, "bim");
-        if let Err(e) = write_options.bim_write(sid_count, &bim_path, false) {
+        if let Err(e) = write_options.bim_write(&bim_path, false) {
             // Clean up the file
             let _ = fs::remove_file(bim_path);
             return Err(e);
@@ -4430,7 +4414,7 @@ impl ReadOptionsBuilder<f64> {
 /// # Ok::<(), BedErrorPlus>(())
 /// ```
 #[derive(Clone, Debug, Builder)]
-#[builder(build_fn(private, name = "write_no_file_check", error = "BedErrorPlus"))]
+#[builder(build_fn(private, name = "build_internal", error = "BedErrorPlus"))]
 pub struct WriteOptions<TVal>
 where
     TVal: BedVal,
@@ -4585,14 +4569,6 @@ impl<TVal> WriteOptions<TVal>
 where
     TVal: BedVal,
 {
-    // !!! cmk00
-    // fn to_skippable2<'a, T>(option: &'a Option<T>) -> Skippable<&'a T> {
-    //     match option {
-    //         None => Skippable::Skip,
-    //         Some(some) => Skippable::Some(some),
-    //     }
-    // }
-
     /// Write values to a file in PLINK .bed format. Supports metadata and options.
     ///
     /// > Also see [`Bed::write`](struct.Bed.html#method.write), which does not support metadata or options.
@@ -4660,13 +4636,53 @@ where
         WriteOptionsBuilder::new(path)
     }
 
-    // fn compute_field<T, F>(count: usize, lambda: F) -> nd::Array1<T>
-    // where
-    //     T: Clone + Default + Debug,
-    //     F: Fn(usize) -> T,
-    // {
-    //     (0..count).map(|_| lambda(0)).collect::<nd::Array1<T>>()
-    // }
+    pub fn iid_count(&self) -> Result<usize, BedErrorPlus> {
+        if let Some(iid_count) = self.iid_count {
+            Ok(iid_count)
+        } else {
+            Err(BedError::CountNotSet("iid".to_string()).into())
+        }
+    }
+
+    fn set_iid_count(&mut self, count: usize) -> Result<(), BedErrorPlus> {
+        match self.iid_count {
+            Some(iid_count) => {
+                if iid_count != count {
+                    return Err(
+                        BedError::InconsistentCount("iid".to_string(), iid_count, count).into(),
+                    );
+                }
+            }
+            None => {
+                self.iid_count = Some(count);
+            }
+        }
+        Ok(())
+    }
+
+    pub fn sid_count(&mut self) -> Result<usize, BedErrorPlus> {
+        if let Some(sid_count) = self.sid_count {
+            Ok(sid_count)
+        } else {
+            Err(BedError::CountNotSet("sid".to_string()).into())
+        }
+    }
+
+    fn set_sid_count(&mut self, count: usize) -> Result<(), BedErrorPlus> {
+        match self.sid_count {
+            Some(sid_count) => {
+                if sid_count != count {
+                    return Err(
+                        BedError::InconsistentCount("sid".to_string(), sid_count, count).into(),
+                    );
+                }
+            }
+            None => {
+                self.sid_count = Some(count);
+            }
+        }
+        Ok(())
+    }
 
     fn compute_field<T, F: Fn(usize) -> T>(
         field: &mut Option<nd::Array1<T>>,
@@ -4681,12 +4697,9 @@ where
         }
     }
 
-    fn fam_write(
-        &mut self,
-        iid_count: usize,
-        fam_path: &PathBuf,
-        skip_write: bool,
-    ) -> Result<(), BedErrorPlus> {
+    fn fam_write(&mut self, fam_path: &PathBuf, skip_write: bool) -> Result<(), BedErrorPlus> {
+        let iid_count = self.iid_count()?;
+
         let fid =
             WriteOptions::<TVal>::compute_field(&mut self.fid, iid_count, |_| "0".to_string());
         let iid = WriteOptions::<TVal>::compute_field(&mut self.iid, iid_count, |i| {
@@ -4722,12 +4735,9 @@ where
         Ok(())
     }
 
-    fn bim_write(
-        &mut self,
-        sid_count: usize,
-        bim_path: &PathBuf,
-        skip_write: bool,
-    ) -> Result<(), BedErrorPlus> {
+    fn bim_write(&mut self, bim_path: &PathBuf, skip_write: bool) -> Result<(), BedErrorPlus> {
+        let sid_count = self.sid_count()?;
+
         let chromosome =
             WriteOptions::<TVal>::compute_field(&mut self.chromosome, sid_count, |_| {
                 "0".to_string()
@@ -4769,12 +4779,12 @@ where
         Ok(())
     }
     pub fn metadata(&mut self) -> Result<Metadata, BedErrorPlus> {
-        // !!!cmk 00 there should be a fam_path method, etc
-        // !!!cmk 00 remove the unwrap
+        // !!!cmk00 there should be a fam_path method, etc
+        // !!!cmk00 remove the unwrap
         let fam_path = to_metadata_path(&self.path, &self.fam_path, "fam");
-        self.fam_write(self.iid_count.unwrap(), &fam_path, true)?;
+        self.fam_write(&fam_path, true)?;
         let bim_path = to_metadata_path(&self.path, &self.bim_path, "bim");
-        self.bim_write(self.sid_count.unwrap(), &bim_path, true)?;
+        self.bim_write(&bim_path, true)?;
         let metadata = Metadata {
             fid: Skippable::Some(self.fid.as_ref().unwrap()),
             iid: Skippable::Some(self.iid.as_ref().unwrap()),
@@ -4797,44 +4807,44 @@ impl<TVal> WriteOptionsBuilder<TVal>
 where
     TVal: BedVal,
 {
-    // !!!cmk 00 should the other one of these be &mut?
-    pub fn iid_count(&mut self, count: usize) -> &mut Self {
-        match self.iid_count {
-            Some(option_size) => match option_size {
-                Some(count_old) => {
-                    if count_old != count {
-                        panic!("cmk00 iid_count already set to {}", count);
-                    }
-                }
-                None => self.iid_count = Some(Some(count)),
-            },
-            None => {
-                self.iid_count = Some(Some(count));
-            }
-        };
+    pub fn iid_count(mut self, count: usize) -> Self {
+        self.iid_count = Some(Some(count));
         self
     }
 
-    pub fn sid_count(&mut self, count: usize) -> &mut Self {
-        match self.sid_count {
-            Some(option_size) => match option_size {
-                Some(count_old) => {
-                    if count_old != count {
-                        panic!("cmk00 sid_count already set to {}", count);
-                    }
-                }
-                None => self.sid_count = Some(Some(count)),
-            },
-            None => {
-                self.sid_count = Some(Some(count));
-            }
-        };
+    pub fn sid_count(mut self, count: usize) -> Self {
+        self.sid_count = Some(Some(count));
         self
     }
 
-    // !!! cmk later just use the default builder?
     pub fn build(&self) -> Result<WriteOptions<TVal>, BedErrorPlus> {
-        let write_options = self.write_no_file_check()?;
+        let mut write_options = self.build_internal()?;
+
+        check_counts(
+            vec![
+                option_count(&write_options.fid),
+                option_count(&write_options.iid),
+                option_count(&write_options.father),
+                option_count(&write_options.mother),
+                option_count(&write_options.sex),
+                option_count(&write_options.pheno),
+            ],
+            &mut write_options.iid_count,
+            "iid",
+        )?;
+
+        check_counts(
+            vec![
+                option_count(&write_options.chromosome),
+                option_count(&write_options.sid),
+                option_count(&write_options.cm_position),
+                option_count(&write_options.bp_position),
+                option_count(&write_options.allele_1),
+                option_count(&write_options.allele_2),
+            ],
+            &mut write_options.sid_count,
+            "sid",
+        )?;
 
         Ok(write_options)
     }
@@ -4932,38 +4942,32 @@ where
         self
     }
 
-    // !!!cmk00 add the _count check to all
     pub fn fid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, fid: I) -> Self {
         let array: nd::Array1<String> = fid.into_iter().map(|s| s.as_ref().to_string()).collect();
-        self.iid_count(array.len());
         self.fid = Some(Some(array));
         self
     }
 
     pub fn iid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, iid: I) -> Self {
         let array: nd::Array1<String> = iid.into_iter().map(|s| s.as_ref().to_string()).collect();
-        self.iid_count(array.len());
         self.iid = Some(Some(array));
         self
     }
     pub fn father<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, father: I) -> Self {
         let array: nd::Array1<String> =
             father.into_iter().map(|s| s.as_ref().to_string()).collect();
-        self.iid_count(array.len());
         self.father = Some(Some(array));
         self
     }
     pub fn mother<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, mother: I) -> Self {
         let array: nd::Array1<String> =
             mother.into_iter().map(|s| s.as_ref().to_string()).collect();
-        self.iid_count(array.len());
         self.mother = Some(Some(array));
         self
     }
 
     pub fn sex<I: IntoIterator<Item = i32>>(mut self, sex: I) -> Self {
         let array: nd::Array1<i32> = sex.into_iter().map(|i| i).collect();
-        self.iid_count(array.len());
         self.sex = Some(Some(array));
 
         self
@@ -4971,7 +4975,6 @@ where
 
     pub fn pheno<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, pheno: I) -> Self {
         let array: nd::Array1<String> = pheno.into_iter().map(|s| s.as_ref().to_string()).collect();
-        self.iid_count(array.len());
         self.pheno = Some(Some(array));
         self
     }
@@ -4981,28 +4984,24 @@ where
             .into_iter()
             .map(|s| s.as_ref().to_string())
             .collect();
-        self.sid_count(array.len());
         self.chromosome = Some(Some(array));
         self
     }
 
     pub fn sid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, sid: I) -> Self {
         let array: nd::Array1<String> = sid.into_iter().map(|s| s.as_ref().to_string()).collect();
-        self.sid_count(array.len());
         self.sid = Some(Some(array));
         self
     }
 
     pub fn cm_position<I: IntoIterator<Item = f32>>(mut self, cm_position: I) -> Self {
         let array: nd::Array1<f32> = cm_position.into_iter().map(|s| s).collect();
-        self.sid_count(array.len());
         self.cm_position = Some(Some(array));
         self
     }
 
     pub fn bp_position<I: IntoIterator<Item = i32>>(mut self, bp_position: I) -> Self {
         let array: nd::Array1<i32> = bp_position.into_iter().map(|s| s).collect();
-        self.sid_count(array.len());
         self.bp_position = Some(Some(array));
         self
     }
@@ -5012,7 +5011,6 @@ where
             .into_iter()
             .map(|s| s.as_ref().to_string())
             .collect();
-        self.sid_count(array.len());
         self.allele_1 = Some(Some(array));
         self
     }
@@ -5022,7 +5020,6 @@ where
             .into_iter()
             .map(|s| s.as_ref().to_string())
             .collect();
-        self.sid_count(array.len());
         self.allele_2 = Some(Some(array));
         self
     }
@@ -5147,19 +5144,45 @@ pub fn tmp_path() -> Result<PathBuf, BedErrorPlus> {
 }
 
 impl WriteOptionsBuilder<i8> {
-    pub fn i8(&mut self) -> &mut Self {
+    pub fn i8(self) -> Self {
         self
     }
 }
 
 impl WriteOptionsBuilder<f32> {
-    pub fn f32(&mut self) -> &mut Self {
+    pub fn f32(self) -> Self {
         self
     }
 }
 
 impl WriteOptionsBuilder<f64> {
-    pub fn f64(&mut self) -> &mut Self {
+    pub fn f64(self) -> Self {
         self
     }
+}
+fn check_counts(
+    count_vec: Vec<Option<usize>>,
+    option_xid_count: &mut Option<usize>,
+    prefix: &str,
+) -> Result<(), BedErrorPlus> {
+    for option_count in count_vec {
+        if let Some(count) = option_count {
+            match option_xid_count {
+                Some(xid_count) => {
+                    if *xid_count != count {
+                        return Err(BedError::InconsistentCount(
+                            prefix.to_string(),
+                            *xid_count,
+                            count,
+                        )
+                        .into());
+                    }
+                }
+                None => {
+                    *option_xid_count = Some(count);
+                }
+            }
+        }
+    }
+    Ok(())
 }

@@ -1603,36 +1603,118 @@ fn iid_index() -> Result<(), BedErrorPlus> {
 
 #[test]
 fn write_options_metadata() -> Result<(), BedErrorPlus> {
-    let output_folder = tmp_path()?;
+    // !!!cmk00 three ways to get count (that be inconsistent)
+    // A: setting metadata (twice?)
+    // B: giving val (early, late)
+    // C: setting iid_count
+    // !!!cmk00 ways to get type (that be inconsistent)
+    // f32()
+    // val (early, late)
+    // ::<f32>::
 
+    let output_folder = tmp_path()?;
     let output_file = output_folder.join("small.bed");
+
+    // <none>
+    let write_options_result = WriteOptions::<f32>::builder(&output_file).build();
+    println!("{write_options_result:?}"); // Outputs fields of None
+    let write_options = write_options_result?;
+    let iid_count_result = write_options.iid_count();
+    match iid_count_result {
+        Err(BedErrorPlus::BedError(BedError::CountNotSet(_))) => (),
+        _ => panic!("test failure"),
+    };
+
+    // A
+    let write_options_result = WriteOptions::<f32>::builder(&output_file)
+        .iid(["iid1", "iid2", "iid3"])
+        .build();
+    println!("{write_options_result:?}"); // Outputs field of iid
+    let iid_count = write_options_result?.iid_count()?;
+    assert_eq!(iid_count, 3);
+
+    // AA
+    let write_options_result = WriteOptions::<f32>::builder(&output_file)
+        .chromosome(["1", "1", "1"])
+        .sid(["sid1", "sid2", "sid3", "sid4"])
+        .build();
+    println!("{write_options_result:?}"); // Outputs field of iid
+    match write_options_result {
+        Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => (),
+        _ => panic!("test failure"),
+    };
+
+    // B early
     let val = nd::array![
         [1.0, 0.0, f64::NAN, 0.0],
         [2.0, 0.0, f64::NAN, 2.0],
         [0.0, 1.0, 2.0, 0.0]
     ];
+    WriteOptions::builder(&output_file).write(&val)?;
+    assert_eq!(3, Bed::new(&output_file)?.iid_count()?);
 
-    // !!!cmk 00 don't like that consistency of lengths is not checked
-    let mut write_options = WriteOptions::builder(output_file)
-        .fid(["fid1", "fid1", "fid2"])
+    // B late
+    let mut write_options = WriteOptions::<f64>::builder(&output_file).build()?;
+    Bed::write_with_options(&val, &mut write_options)?;
+    let sid_count_result = write_options.sid_count();
+    println!("{sid_count_result:?}");
+    assert_eq!(4, sid_count_result?);
+
+    // C
+    let write_options_result = WriteOptions::<f32>::builder(&output_file)
+        .sid_count(4)
+        .build();
+    println!("{write_options_result:?}"); // Outputs field of iid
+    let sid_count = write_options_result?.sid_count()?;
+    assert_eq!(sid_count, 4);
+
+    // AC inconsistent
+    let write_options_result = WriteOptions::<f32>::builder(&output_file)
         .iid(["iid1", "iid2", "iid3"])
-        .father(["iid23", "iid23", "iid22"])
-        .mother(["iid34", "iid34", "iid33"])
-        .sex([1, 2, 0])
-        .pheno(["red", "red", "blue"])
-        .chromosome(["1", "1", "5", "Y"])
-        .sid(["sid1", "sid2", "sid3", "sid4"])
-        .cm_position([100.4, 2000.5, 4000.7, 7000.9])
-        .bp_position([1, 100, 1000, 1004])
-        .f32()
-        // .iid_count(3)
-        // !!!cmk00 show that this would give an error
-        // !!!cmk00 note the allele's have default values
-        // .sid_count(5)
-        .build()?;
+        .iid_count(4)
+        .build();
+    match write_options_result {
+        Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => (),
+        _ => panic!("test failure"),
+    };
 
-    let metadata = write_options.metadata()?;
-    println!("{metadata:?}");
+    // AB early inconsistent
+    let result = WriteOptions::builder(&output_file)
+        .iid(["iid1", "iid2", "iid3", "iid4"])
+        .write(&val);
+    match result {
+        Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => (),
+        _ => panic!("test failure"),
+    };
+
+    // AB late inconsistent
+    // BC early inconsistent
+    // BC late inconsistent
+    // ABC early consistent
+    // ABC late consistent
+
+    println!("cmk00");
+
+    // let mut write_options = WriteOptions::builder(output_file)
+    //     .fid(["fid1", "fid1", "fid2"])
+    //     .iid(["iid1", "iid2", "iid3"])
+    //     .father(["iid23", "iid23", "iid22"])
+    //     .mother(["iid34", "iid34", "iid33"])
+    //     .sex([1, 2, 0])
+    //     .pheno(["red", "red", "blue"])
+    //     .chromosome(["1", "1", "5", "Y"])
+    //     .sid(["sid1", "sid2", "sid3", "sid4"])
+    //     .cm_position([100.4, 2000.5, 4000.7, 7000.9])
+    //     .bp_position([1, 100, 1000, 1004])
+    //     .f32()
+    //     // .iid_count(3)
+    //     // !!!cmk00 show that this would give an error
+    //     // !!!cmk00 note the allele's have default values
+    //     // .sid_count(5)
+    //     .build()?;
+
+    // let metadata = write_options.metadata()?;
+    // println!("{metadata:?}");
 
     Ok(())
 }
