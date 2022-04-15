@@ -208,7 +208,7 @@ mod tests;
 mod tests_api;
 
 use core::fmt::Debug;
-use derive_builder::Builder;
+use derive_builder::{Builder, UninitializedFieldError};
 use nd::ShapeBuilder;
 use ndarray as nd;
 use std::fs::{self};
@@ -344,9 +344,6 @@ pub enum BedError {
 
     #[error("{0}_count values of {1} and {2} are inconsistent")]
     InconsistentCount(String, usize, usize),
-
-    #[error("{0}_count not set")]
-    CountNotSet(String),
 
     #[error("Expect bool arrays and vectors to be length {0}, not {1}")]
     BoolArrayVectorWrongLength(usize, usize),
@@ -1397,13 +1394,6 @@ fn lazy_or_skip_count<T>(array: &LazyOrSkip<nd::Array1<T>>) -> Option<usize> {
     }
 }
 
-fn option_count<T>(array: &Option<nd::Array1<T>>) -> Option<usize> {
-    match array {
-        Some(array) => Some(array.len()),
-        None => None,
-    }
-}
-
 // !!!cmk later update these comments:
 // https://crates.io/crates/typed-builder
 // (or https://docs.rs/derive_builder/latest/derive_builder/)
@@ -2253,15 +2243,28 @@ impl Bed {
     }
     pub fn write_with_options<S, TVal>(
         val: &nd::ArrayBase<S, nd::Ix2>,
-        write_options: &mut WriteOptions<TVal>,
+        write_options: &WriteOptions<TVal>,
     ) -> Result<(), BedErrorPlus>
     where
         S: nd::Data<Elem = TVal>,
         TVal: BedVal,
     {
-        let shape = val.shape();
-        write_options.set_iid_count(shape[0])?;
-        write_options.set_sid_count(shape[1])?;
+        if val.shape()[0] != write_options.iid_count() {
+            return Err(BedError::InconsistentCount(
+                "iid".to_string(),
+                write_options.iid_count(),
+                val.shape()[0],
+            )
+            .into());
+        }
+        if val.shape()[1] != write_options.sid_count() {
+            return Err(BedError::InconsistentCount(
+                "sid".to_string(),
+                write_options.sid_count(),
+                val.shape()[1],
+            )
+            .into());
+        }
 
         let num_threads = compute_num_threads(write_options.num_threads)?;
         write_val(
@@ -2272,15 +2275,15 @@ impl Bed {
             num_threads,
         )?;
 
-        if let Err(e) = write_options.fam_gather_optional_write(true) {
+        if let Err(e) = write_options.fam_write() {
             // Clean up the file
-            let _ = fs::remove_file(write_options.fam_path());
+            let _ = fs::remove_file(&write_options.fam_path);
             return Err(e);
         }
 
-        if let Err(e) = write_options.bim_gather_optional_write(true) {
+        if let Err(e) = write_options.bim_write() {
             // Clean up the file
-            let _ = fs::remove_file(write_options.bim_path());
+            let _ = fs::remove_file(&write_options.bim_path);
             return Err(e);
         }
 
@@ -3826,7 +3829,7 @@ impl From<()> for Index {
 /// # Ok::<(), BedErrorPlus>(())
 /// ```
 #[derive(Debug, Clone, Builder)]
-#[builder(build_fn(error = "BedErrorPlus"))]
+#[builder(build_fn(private, error = "BedErrorPlus"))]
 pub struct ReadOptions<TVal: BedVal> {
     /// Value to use for missing values (defaults to -127 or NaN)
     ///
@@ -4410,7 +4413,8 @@ impl ReadOptionsBuilder<f64> {
 /// # Ok::<(), BedErrorPlus>(())
 /// ```
 #[derive(Clone, Debug, Builder)]
-#[builder(build_fn(private, name = "build_internal", error = "BedErrorPlus"))]
+// cmk00 #[builder(build_fn(private, name = "build_internal", error = "BedErrorPlus"))]
+#[builder(build_fn(skip))]
 pub struct WriteOptions<TVal>
 where
     TVal: BedVal,
@@ -4419,50 +4423,42 @@ where
     pub path: PathBuf, // !!!cmk later always clone?
 
     #[builder(setter(custom))]
-    #[builder(default = "None")]
-    fam_path: Option<PathBuf>,
+    pub fam_path: PathBuf,
 
     #[builder(setter(custom))]
-    #[builder(default = "None")]
-    bim_path: Option<PathBuf>,
+    pub bim_path: PathBuf,
 
     #[builder(setter(custom))]
-    #[builder(default = "None")]
-    iid_count: Option<usize>,
+    pub iid_count: usize,
 
     #[builder(setter(custom))]
-    #[builder(default = "None")]
-    sid_count: Option<usize>,
+    pub sid_count: usize,
 
     /// Family id of each of individual (sample)
     ///
     /// If this ndarray is not given, the default (zeros) is used.
     #[builder(setter(custom))]
-    #[builder(default = "None")]
-    pub fid: Option<nd::Array1<String>>,
+    pub fid: nd::Array1<String>,
 
     /// Individual id of each of individual (sample)
     ///
     /// If this ndarray is not given the default
     /// (["iid0", "iid1", ...]) is used.
     #[builder(setter(custom))]
-    #[builder(default = "None")]
-    pub iid: Option<nd::Array1<String>>,
+    pub iid: nd::Array1<String>,
 
     /// Father id of each of individual (sample)
     ///
     /// If this ndarray is not given, the default
     /// (["sid0", "sid1", ...]) is used.
     #[builder(setter(custom))]
-    #[builder(default = "None")]
-    pub father: Option<nd::Array1<String>>,
+    pub father: nd::Array1<String>,
 
     /// Mother id of each of individual (sample)
     ///
     /// If this ndarray is not given, the default (zeros) is used.
     #[builder(setter(custom))]
-    #[builder(default = "None")]
-    pub mother: Option<nd::Array1<String>>,
+    pub mother: nd::Array1<String>,
 
     /// Sex of each of individual (sample)
     ///
@@ -4470,63 +4466,54 @@ where
     ///
     /// If this ndarray is not given, the default (zeros) is used.
     #[builder(setter(custom))]
-    #[builder(default = "None")]
-    pub sex: Option<nd::Array1<i32>>,
+    pub sex: nd::Array1<i32>,
 
     /// Phenotype value for each of individual (sample). Seldom used.
     ///
     /// If this ndarray is not given, the default (zeros) is used.
     #[builder(setter(custom))]
-    #[builder(default = "None")]
-    pub pheno: Option<nd::Array1<String>>,
+    pub pheno: nd::Array1<String>,
 
     /// Chromosome of each SNP (variant)
     ///
     /// If this ndarray is not given, the default (zeros) is used.
     #[builder(setter(custom))]
-    #[builder(default = "None")]
-    pub chromosome: Option<nd::Array1<String>>,
+    pub chromosome: nd::Array1<String>,
 
     /// SNP id of each SNP (variant)
     ///
     /// If this ndarray is not given, the default
     /// (["sid0", "sid1", "sid2", ...] is used.
     #[builder(setter(custom))]
-    #[builder(default = "None")]
-    pub sid: Option<nd::Array1<String>>,
+    pub sid: nd::Array1<String>,
 
     /// Centimorgan position of each SNP (variant)
     ///
     /// If this ndarray is not given, the default (0.0) is used.
     #[builder(setter(custom))]
-    #[builder(default = "None")]
-    pub cm_position: Option<nd::Array1<f32>>,
+    pub cm_position: nd::Array1<f32>,
 
     /// Base-pair position of each SNP (variant)
     ///
     /// If this ndarray is not given, the default (zeros) is used.
     #[builder(setter(custom))]
-    #[builder(default = "None")]
-    pub bp_position: Option<nd::Array1<i32>>,
+    pub bp_position: nd::Array1<i32>,
 
     /// Allele 1 for each SNP (variant)
     ///
     /// If this ndarray is not given, the default ("A1") is used.
     #[builder(setter(custom))]
-    #[builder(default = "None")]
-    pub allele_1: Option<nd::Array1<String>>,
+    pub allele_1: nd::Array1<String>,
 
     /// Allele 2 for each SNP (variant)
     ///
     /// If this ndarray is not given, the default ("A2") is used.
     #[builder(setter(custom))]
-    #[builder(default = "None")]
-    pub allele_2: Option<nd::Array1<String>>,
+    pub allele_2: nd::Array1<String>,
 
     /// Sets if allele 1 is counted. Default is true.
     ///
     /// Also see [`count_a1`](struct.WriteOptionsBuilder.html#method.count_a1) and [`count_a2`](struct.WroteOptionsBuilder.html#method.count_a2).    
-    #[builder(default = "true")]
     pub is_a1_counted: bool,
 
     /// Number of threads to use (defaults to all)
@@ -4632,191 +4619,77 @@ where
         WriteOptionsBuilder::new(path)
     }
 
-    pub fn iid_count(&self) -> Result<usize, BedErrorPlus> {
-        if let Some(iid_count) = self.iid_count {
-            Ok(iid_count)
-        } else {
-            Err(BedError::CountNotSet("iid".to_string()).into())
-        }
+    pub fn iid_count(&self) -> usize {
+        self.iid.len()
     }
 
-    pub fn sid_count(&mut self) -> Result<usize, BedErrorPlus> {
-        if let Some(sid_count) = self.sid_count {
-            Ok(sid_count)
-        } else {
-            Err(BedError::CountNotSet("sid".to_string()).into())
-        }
+    pub fn sid_count(&self) -> usize {
+        self.sid.len()
     }
 
-    fn set_iid_count(&mut self, count: usize) -> Result<(), BedErrorPlus> {
-        match self.iid_count {
-            Some(iid_count) => {
-                if iid_count != count {
-                    return Err(
-                        BedError::InconsistentCount("iid".to_string(), iid_count, count).into(),
-                    );
-                }
-            }
-            None => {
-                self.iid_count = Some(count);
-            }
-        }
-        Ok(())
+    // !!!cmk 0 understand dim vs shape
+    pub fn dim(&self) -> (usize, usize) {
+        (self.iid_count(), self.sid_count())
     }
 
-    fn set_sid_count(&mut self, count: usize) -> Result<(), BedErrorPlus> {
-        match self.sid_count {
-            Some(sid_count) => {
-                if sid_count != count {
-                    return Err(
-                        BedError::InconsistentCount("sid".to_string(), sid_count, count).into(),
-                    );
-                }
-            }
-            None => {
-                self.sid_count = Some(count);
-            }
-        }
-        Ok(())
-    }
-
-    /// cmk 0
-    pub fn fam_path(&mut self) -> PathBuf {
-        if let Some(path) = &self.fam_path {
-            path.clone()
-        } else {
-            let path = to_metadata_path(&self.path, &self.fam_path, "fam");
-            self.fam_path = Some(path.clone());
-            path
-        }
-    }
-
-    /// cmk 0
-    pub fn bim_path(&mut self) -> PathBuf {
-        if let Some(path) = &self.bim_path {
-            path.clone()
-        } else {
-            let path = to_metadata_path(&self.path, &self.bim_path, "bim");
-            self.bim_path = Some(path.clone());
-            path
-        }
-    }
-
-    fn compute_field<T, F: Fn(usize) -> T>(
-        field: &mut Option<nd::Array1<T>>,
-        count: usize,
-        lambda: F,
-    ) -> &nd::Array1<T> {
-        if let Some(array) = field {
-            array
-        } else {
-            *field = Some((0..count).map(|_| lambda(0)).collect::<nd::Array1<T>>());
-            &field.as_ref().unwrap()
-        }
-    }
-
-    fn fam_gather_optional_write(&mut self, do_write: bool) -> Result<(), BedErrorPlus> {
-        let iid_count = self.iid_count()?;
-        let fam_path = &self.fam_path();
-
-        let fid =
-            WriteOptions::<TVal>::compute_field(&mut self.fid, iid_count, |_| "0".to_string());
-        let iid = WriteOptions::<TVal>::compute_field(&mut self.iid, iid_count, |i| {
-            format!("iid{}", i + 1)
-        });
-        let father =
-            WriteOptions::<TVal>::compute_field(&mut self.father, iid_count, |_| "0".to_string());
-        let mother =
-            WriteOptions::<TVal>::compute_field(&mut self.mother, iid_count, |_| "0".to_string());
-        let sex = WriteOptions::<TVal>::compute_field(&mut self.sex, iid_count, |_| 0);
-        let pheno =
-            WriteOptions::<TVal>::compute_field(&mut self.pheno, iid_count, |_| "0".to_string());
-
-        if do_write {
-            let file = File::create(fam_path)?;
-            let mut writer = BufWriter::new(file);
-            let mut result: Result<(), BedErrorPlus> = Ok(());
-            nd::azip!((fid in fid, iid in iid, father in father, mother in mother, sex in sex, pheno in pheno)
+    fn fam_write(&self) -> Result<(), BedErrorPlus> {
+        let file = File::create(&self.fam_path)?;
+        let mut writer = BufWriter::new(file);
+        let mut result: Result<(), BedErrorPlus> = Ok(());
+        nd::azip!((fid in &self.fid, iid in &self.iid, father in &self.father, mother in &self.mother, sex in &self.sex, pheno in &self.pheno)
+        {
+            if result.is_ok() {
+                if let Err(e) = writeln!(
+                writer,
+                "{}\t{}\t{}\t{}\t{}\t{}",
+                *fid, *iid, *father, *mother, *sex, *pheno
+            )
             {
-                if result.is_ok() {
-                    if let Err(e) = writeln!(
-                    writer,
-                    "{}\t{}\t{}\t{}\t{}\t{}",
-                    *fid, *iid, *father, *mother, *sex, *pheno
-                )
-                {
-                result = Err(BedErrorPlus::IOError(e)); // !!!cmk later test this
-                }
-            }});
-            result?;
-        }
+            result = Err(BedErrorPlus::IOError(e)); // !!!cmk later test this
+            }
+        }});
+        result?;
 
         Ok(())
     }
 
-    fn bim_gather_optional_write(&mut self, do_write: bool) -> Result<(), BedErrorPlus> {
-        let sid_count = self.sid_count()?;
-        let bim_path = &self.bim_path();
-
-        let chromosome =
-            WriteOptions::<TVal>::compute_field(&mut self.chromosome, sid_count, |_| {
-                "0".to_string()
-            });
-        let sid = WriteOptions::<TVal>::compute_field(&mut self.sid, sid_count, |i| {
-            format!("sid{}", i + 1)
-        });
-        let cm_position =
-            WriteOptions::<TVal>::compute_field(&mut self.cm_position, sid_count, |_| 0.0);
-        let bp_position =
-            WriteOptions::<TVal>::compute_field(&mut self.bp_position, sid_count, |_| 0);
-        let allele_1 = WriteOptions::<TVal>::compute_field(&mut self.allele_1, sid_count, |_| {
-            "A1".to_string()
-        });
-        let allele_2 = WriteOptions::<TVal>::compute_field(&mut self.allele_2, sid_count, |_| {
-            "A2".to_string()
-        });
-
-        if do_write {
-            let file = File::create(bim_path)?;
-            let mut writer = BufWriter::new(file);
-            let mut result: Result<(), BedErrorPlus> = Ok(());
-            nd::azip!((chromosome in chromosome, sid in sid, cm_position in cm_position, bp_position in bp_position, allele_1 in allele_1, allele_2 in allele_2)
+    fn bim_write(&self) -> Result<(), BedErrorPlus> {
+        let file = File::create(&self.bim_path)?;
+        let mut writer = BufWriter::new(file);
+        let mut result: Result<(), BedErrorPlus> = Ok(());
+        nd::azip!((chromosome in &self.chromosome, sid in &self.sid, cm_position in &self.cm_position, bp_position in &self.bp_position, allele_1 in &self.allele_1, allele_2 in &self.allele_2)
+        {
+            // !!!cmk later should these be \t?
+            if result.is_ok() {
+                if let Err(e) = writeln!(
+                writer,
+                "{}\t{}\t{}\t{}\t{}\t{}",
+                *chromosome, *sid, *cm_position, *bp_position, *allele_1, *allele_2
+            )
             {
-                // !!!cmk later should these be \t?
-                if result.is_ok() {
-                    if let Err(e) = writeln!(
-                    writer,
-                    "{}\t{}\t{}\t{}\t{}\t{}",
-                    *chromosome, *sid, *cm_position, *bp_position, *allele_1, *allele_2
-                )
-                {
-                result = Err(BedErrorPlus::IOError(e)); // !!!cmk later test this
-                }
-            }});
-            result?;
-        }
+            result = Err(BedErrorPlus::IOError(e)); // !!!cmk later test this
+            }
+        }});
+        result?;
 
         Ok(())
     }
+
     pub fn metadata(&mut self) -> Result<Metadata, BedErrorPlus> {
-        self.fam_gather_optional_write(false)?;
-        self.bim_gather_optional_write(false)?;
-
-        // These unwraps are OK because we just created any needed arrays.
         let metadata = Metadata {
-            fid: Skippable::Some(self.fid.as_ref().unwrap()),
-            iid: Skippable::Some(self.iid.as_ref().unwrap()),
-            father: Skippable::Some(self.father.as_ref().unwrap()),
-            mother: Skippable::Some(self.mother.as_ref().unwrap()),
-            sex: Skippable::Some(self.sex.as_ref().unwrap()),
-            pheno: Skippable::Some(self.pheno.as_ref().unwrap()),
+            fid: Skippable::Some(&self.fid),
+            iid: Skippable::Some(&self.iid),
+            father: Skippable::Some(&self.father),
+            mother: Skippable::Some(&self.mother),
+            sex: Skippable::Some(&self.sex),
+            pheno: Skippable::Some(&self.pheno),
 
-            chromosome: Skippable::Some(self.chromosome.as_ref().unwrap()),
-            sid: Skippable::Some(self.sid.as_ref().unwrap()),
-            cm_position: Skippable::Some(self.cm_position.as_ref().unwrap()),
-            bp_position: Skippable::Some(self.bp_position.as_ref().unwrap()),
-            allele_1: Skippable::Some(self.allele_1.as_ref().unwrap()),
-            allele_2: Skippable::Some(self.allele_2.as_ref().unwrap()),
+            chromosome: Skippable::Some(&self.chromosome),
+            sid: Skippable::Some(&self.sid),
+            cm_position: Skippable::Some(&self.cm_position),
+            bp_position: Skippable::Some(&self.bp_position),
+            allele_1: Skippable::Some(&self.allele_1),
+            allele_2: Skippable::Some(&self.allele_2),
         };
         Ok(metadata)
     }
@@ -4825,44 +4698,75 @@ impl<TVal> WriteOptionsBuilder<TVal>
 where
     TVal: BedVal,
 {
-    pub fn iid_count(mut self, count: usize) -> Self {
-        self.iid_count = Some(Some(count));
-        self
-    }
+    pub fn build(
+        &mut self,
+        iid_count: usize,
+        sid_count: usize,
+    ) -> Result<WriteOptions<TVal>, BedErrorPlus> {
+        let path_buf = match self.path {
+            Some(ref path_buf) => path_buf,
+            None => {
+                return Err(UninitializedFieldError::from("path").into());
+            }
+        };
+        let write_options = WriteOptions {
+            path: path_buf.clone(),
+            fam_path: to_metadata_path(path_buf, &self.fam_path, "fam"),
+            bim_path: to_metadata_path(path_buf, &self.bim_path, "bim"),
+            is_a1_counted: self.is_a1_counted.unwrap_or(true),
+            num_threads: self.num_threads.unwrap_or(None),
+            missing_value: self.missing_value.unwrap_or_else(|| TVal::missing()),
 
-    pub fn sid_count(mut self, count: usize) -> Self {
-        self.sid_count = Some(Some(count));
-        self
-    }
+            iid_count: iid_count,
+            sid_count: sid_count,
+            fid: compute_field("fid", &mut self.fid, iid_count, |_| "0".to_string())?,
+            iid: compute_field("iid", &mut self.iid, iid_count, |i| {
+                format!("iid{}", i + 1).to_string()
+            })?,
+            father: compute_field("father", &mut self.father, iid_count, |_| "0".to_string())?,
+            mother: compute_field("mother", &mut self.mother, iid_count, |_| "0".to_string())?,
+            sex: compute_field("sex", &mut self.sex, iid_count, |_| 0)?,
+            pheno: compute_field("pheno", &mut self.pheno, iid_count, |_| "0".to_string())?,
+            chromosome: compute_field("chromosome", &mut self.chromosome, sid_count, |_| {
+                "0".to_string()
+            })?,
+            sid: compute_field("sid", &mut self.sid, sid_count, |i| {
+                format!("sid{}", i + 1).to_string()
+            })?,
+            cm_position: compute_field("cm_position", &mut self.cm_position, sid_count, |_| 0.0)?,
+            bp_position: compute_field("bp_position", &mut self.bp_position, sid_count, |_| 0)?,
+            allele_1: compute_field("allele_1", &mut self.allele_1, sid_count, |_| {
+                "A1".to_string()
+            })?,
+            allele_2: compute_field("allele_2", &mut self.allele_2, sid_count, |_| {
+                "A2".to_string()
+            })?,
+        };
+        // check_counts(
+        //     vec![
+        //         option_count(&write_options.fid),
+        //         option_count(&write_options.iid),
+        //         option_count(&write_options.father),
+        //         option_count(&write_options.mother),
+        //         option_count(&write_options.sex),
+        //         option_count(&write_options.pheno),
+        //     ],
+        //     &mut write_options.iid_count,
+        //     "iid",
+        // )?;
 
-    pub fn build(&self) -> Result<WriteOptions<TVal>, BedErrorPlus> {
-        let mut write_options = self.build_internal()?;
-
-        check_counts(
-            vec![
-                option_count(&write_options.fid),
-                option_count(&write_options.iid),
-                option_count(&write_options.father),
-                option_count(&write_options.mother),
-                option_count(&write_options.sex),
-                option_count(&write_options.pheno),
-            ],
-            &mut write_options.iid_count,
-            "iid",
-        )?;
-
-        check_counts(
-            vec![
-                option_count(&write_options.chromosome),
-                option_count(&write_options.sid),
-                option_count(&write_options.cm_position),
-                option_count(&write_options.bp_position),
-                option_count(&write_options.allele_1),
-                option_count(&write_options.allele_2),
-            ],
-            &mut write_options.sid_count,
-            "sid",
-        )?;
+        // check_counts(
+        //     vec![
+        //         option_count(&write_options.chromosome),
+        //         option_count(&write_options.sid),
+        //         option_count(&write_options.cm_position),
+        //         option_count(&write_options.bp_position),
+        //         option_count(&write_options.allele_1),
+        //         option_count(&write_options.allele_2),
+        //     ],
+        //     &mut write_options.sid_count,
+        //     "sid",
+        // )?;
 
         Ok(write_options)
     }
@@ -4870,11 +4774,12 @@ where
     // !!!cmk later should check that metadata agrees with val size
     // !!!cmk later maybe use the default builder?
     pub fn write<S: nd::Data<Elem = TVal>>(
-        &self,
+        &mut self,
         val: &nd::ArrayBase<S, nd::Ix2>,
     ) -> Result<(), BedErrorPlus> {
-        let mut write_options = self.build()?;
-        Bed::write_with_options(val, &mut write_options)?;
+        let (iid_count, sid_count) = val.dim();
+        let write_options = self.build(iid_count, sid_count)?;
+        Bed::write_with_options(val, &write_options)?;
 
         Ok(())
     }
@@ -4909,91 +4814,91 @@ where
     }
 
     pub fn fam_path<P: AsRef<Path>>(mut self, path: P) -> Self {
-        self.fam_path = Some(Some(path.as_ref().into()));
+        self.fam_path = Some(path.as_ref().into());
         self
     }
 
     pub fn bim_path<P: AsRef<Path>>(mut self, path: P) -> Self {
-        self.bim_path = Some(Some(path.as_ref().into()));
+        self.bim_path = Some(path.as_ref().into());
         self
     }
 
     // !!!cmk later can we also extract a metadata property from write options?
     pub fn metadata(mut self, metadata: &Metadata) -> Self {
         if let Skippable::Some(fid) = &metadata.fid {
-            self.fid = Some(Some((*fid).clone()));
+            self.fid = Some((*fid).clone());
         }
         if let Skippable::Some(iid) = &metadata.iid {
-            self.iid = Some(Some((*iid).clone()));
+            self.iid = Some((*iid).clone());
         }
         if let Skippable::Some(father) = &metadata.father {
-            self.father = Some(Some((*father).clone()));
+            self.father = Some((*father).clone());
         }
         if let Skippable::Some(mother) = &metadata.mother {
-            self.mother = Some(Some((*mother).clone()));
+            self.mother = Some((*mother).clone());
         }
         if let Skippable::Some(sex) = &metadata.sex {
-            self.sex = Some(Some((*sex).clone()));
+            self.sex = Some((*sex).clone());
         }
         if let Skippable::Some(pheno) = &metadata.pheno {
-            self.pheno = Some(Some((*pheno).clone()));
+            self.pheno = Some((*pheno).clone());
         }
 
         if let Skippable::Some(chromosome) = &metadata.chromosome {
-            self.chromosome = Some(Some((*chromosome).clone()));
+            self.chromosome = Some((*chromosome).clone());
         }
         if let Skippable::Some(sid) = &metadata.sid {
-            self.sid = Some(Some((*sid).clone()));
+            self.sid = Some((*sid).clone());
         }
         if let Skippable::Some(cm_position) = &metadata.cm_position {
-            self.cm_position = Some(Some((*cm_position).clone()));
+            self.cm_position = Some((*cm_position).clone());
         }
         if let Skippable::Some(bp_position) = &metadata.bp_position {
-            self.bp_position = Some(Some((*bp_position).clone()));
+            self.bp_position = Some((*bp_position).clone());
         }
         if let Skippable::Some(allele_1) = &metadata.allele_1 {
-            self.allele_1 = Some(Some((*allele_1).clone()));
+            self.allele_1 = Some((*allele_1).clone());
         }
         if let Skippable::Some(allele_2) = &metadata.allele_2 {
-            self.allele_2 = Some(Some((*allele_2).clone()));
+            self.allele_2 = Some((*allele_2).clone());
         }
         self
     }
 
     pub fn fid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, fid: I) -> Self {
         let array: nd::Array1<String> = fid.into_iter().map(|s| s.as_ref().to_string()).collect();
-        self.fid = Some(Some(array));
+        self.fid = Some(array);
         self
     }
 
     pub fn iid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, iid: I) -> Self {
         let array: nd::Array1<String> = iid.into_iter().map(|s| s.as_ref().to_string()).collect();
-        self.iid = Some(Some(array));
+        self.iid = Some(array);
         self
     }
     pub fn father<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, father: I) -> Self {
         let array: nd::Array1<String> =
             father.into_iter().map(|s| s.as_ref().to_string()).collect();
-        self.father = Some(Some(array));
+        self.father = Some(array);
         self
     }
     pub fn mother<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, mother: I) -> Self {
         let array: nd::Array1<String> =
             mother.into_iter().map(|s| s.as_ref().to_string()).collect();
-        self.mother = Some(Some(array));
+        self.mother = Some(array);
         self
     }
 
     pub fn sex<I: IntoIterator<Item = i32>>(mut self, sex: I) -> Self {
         let array: nd::Array1<i32> = sex.into_iter().map(|i| i).collect();
-        self.sex = Some(Some(array));
+        self.sex = Some(array);
 
         self
     }
 
     pub fn pheno<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, pheno: I) -> Self {
         let array: nd::Array1<String> = pheno.into_iter().map(|s| s.as_ref().to_string()).collect();
-        self.pheno = Some(Some(array));
+        self.pheno = Some(array);
         self
     }
 
@@ -5002,25 +4907,25 @@ where
             .into_iter()
             .map(|s| s.as_ref().to_string())
             .collect();
-        self.chromosome = Some(Some(array));
+        self.chromosome = Some(array);
         self
     }
 
     pub fn sid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, sid: I) -> Self {
         let array: nd::Array1<String> = sid.into_iter().map(|s| s.as_ref().to_string()).collect();
-        self.sid = Some(Some(array));
+        self.sid = Some(array);
         self
     }
 
     pub fn cm_position<I: IntoIterator<Item = f32>>(mut self, cm_position: I) -> Self {
         let array: nd::Array1<f32> = cm_position.into_iter().map(|s| s).collect();
-        self.cm_position = Some(Some(array));
+        self.cm_position = Some(array);
         self
     }
 
     pub fn bp_position<I: IntoIterator<Item = i32>>(mut self, bp_position: I) -> Self {
         let array: nd::Array1<i32> = bp_position.into_iter().map(|s| s).collect();
-        self.bp_position = Some(Some(array));
+        self.bp_position = Some(array);
         self
     }
 
@@ -5029,7 +4934,7 @@ where
             .into_iter()
             .map(|s| s.as_ref().to_string())
             .collect();
-        self.allele_1 = Some(Some(array));
+        self.allele_1 = Some(array);
         self
     }
 
@@ -5038,7 +4943,7 @@ where
             .into_iter()
             .map(|s| s.as_ref().to_string())
             .collect();
-        self.allele_2 = Some(Some(array));
+        self.allele_2 = Some(array);
         self
     }
 
@@ -5203,4 +5108,25 @@ fn check_counts(
         }
     }
     Ok(())
+}
+// According to https://docs.rs/derive_builder/latest/derive_builder/
+// "clone" is OK because "Luckily Rust is clever enough to optimize these
+// clone-calls away in release builds for your every-day use cases.
+// Thats quite a safe bet - we checked this for you. ;-)"
+fn compute_field<T: Clone, F: Fn(usize) -> T>(
+    field_name: &str,
+    field: &mut Option<nd::Array1<T>>,
+    count: usize,
+    lambda: F,
+) -> Result<nd::Array1<T>, BedErrorPlus> {
+    if let Some(array) = field {
+        if array.len() != count {
+            return Err(
+                BedError::InconsistentCount(field_name.to_string(), array.len(), count).into(),
+            );
+        }
+        Ok(array.clone())
+    } else {
+        Ok((0..count).map(|_| lambda(0)).collect::<nd::Array1<T>>())
+    }
 }
