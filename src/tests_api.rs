@@ -1487,14 +1487,14 @@ fn set_metadata() -> Result<(), BedErrorPlus> {
     ];
     let metadata = Metadata {
         fid: Skippable::Skip,
-        iid: Skippable::Some(&iid),
+        iid: Skippable::Some(iid),
         father: Skippable::Skip,
         mother: Skippable::Skip,
         sex: Skippable::Skip,
         pheno: Skippable::Skip,
 
         chromosome: Skippable::Skip,
-        sid: Skippable::Some(&sid),
+        sid: Skippable::Some(sid),
         cm_position: Skippable::Skip,
         bp_position: Skippable::Skip,
         allele_1: Skippable::Skip,

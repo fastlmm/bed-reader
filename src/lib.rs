@@ -1377,20 +1377,20 @@ pub enum Skippable<T> {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Metadata<'a> {
-    pub fid: Skippable<&'a nd::Array1<String>>,
-    pub iid: Skippable<&'a nd::Array1<String>>,
-    pub father: Skippable<&'a nd::Array1<String>>,
-    pub mother: Skippable<&'a nd::Array1<String>>,
-    pub sex: Skippable<&'a nd::Array1<i32>>,
-    pub pheno: Skippable<&'a nd::Array1<String>>,
+pub struct Metadata {
+    pub fid: Skippable<nd::Array1<String>>,
+    pub iid: Skippable<nd::Array1<String>>,
+    pub father: Skippable<nd::Array1<String>>,
+    pub mother: Skippable<nd::Array1<String>>,
+    pub sex: Skippable<nd::Array1<i32>>,
+    pub pheno: Skippable<nd::Array1<String>>,
 
-    pub chromosome: Skippable<&'a nd::Array1<String>>,
-    pub sid: Skippable<&'a nd::Array1<String>>,
-    pub cm_position: Skippable<&'a nd::Array1<f32>>,
-    pub bp_position: Skippable<&'a nd::Array1<i32>>,
-    pub allele_1: Skippable<&'a nd::Array1<String>>,
-    pub allele_2: Skippable<&'a nd::Array1<String>>,
+    pub chromosome: Skippable<nd::Array1<String>>,
+    pub sid: Skippable<nd::Array1<String>>,
+    pub cm_position: Skippable<nd::Array1<f32>>,
+    pub bp_position: Skippable<nd::Array1<i32>>,
+    pub allele_1: Skippable<nd::Array1<String>>,
+    pub allele_2: Skippable<nd::Array1<String>>,
 }
 
 fn lazy_or_skip_count<T>(array: &LazyOrSkip<nd::Array1<T>>) -> Option<usize> {
@@ -2031,19 +2031,19 @@ fn to_metadata_path(
     }
 }
 
-fn to_skippable<'a, T>(lazy_or_skip: &'a LazyOrSkip<T>) -> Skippable<&'a T> {
+fn to_skippable<T: Clone>(lazy_or_skip: &LazyOrSkip<T>) -> Skippable<T> {
     match lazy_or_skip {
         LazyOrSkip::Lazy => panic!("assert: impossible"),
         LazyOrSkip::Skip => Skippable::Skip,
-        LazyOrSkip::Some(some) => Skippable::Some(some),
+        LazyOrSkip::Some(some) => Skippable::Some(some.to_owned()),
     }
 }
 
 fn to_lazy_or_skip_clone<T: Clone>(
-    skippable: &Skippable<&nd::Array1<T>>,
+    skippable: &Skippable<nd::Array1<T>>,
 ) -> LazyOrSkip<nd::Array1<T>> {
-    match *skippable {
-        Skippable::Some(f) => LazyOrSkip::Some(f.clone()),
+    match skippable {
+        Skippable::Some(f) => LazyOrSkip::Some(f.to_owned()),
         Skippable::Skip => LazyOrSkip::Skip,
     }
 }
@@ -4704,19 +4704,19 @@ where
 
     pub fn metadata(&mut self) -> Result<Metadata, BedErrorPlus> {
         let metadata = Metadata {
-            fid: Skippable::Some(&self.fid),
-            iid: Skippable::Some(&self.iid),
-            father: Skippable::Some(&self.father),
-            mother: Skippable::Some(&self.mother),
-            sex: Skippable::Some(&self.sex),
-            pheno: Skippable::Some(&self.pheno),
+            fid: Skippable::Some(self.fid.to_owned()),
+            iid: Skippable::Some(self.iid.to_owned()),
+            father: Skippable::Some(self.father.to_owned()),
+            mother: Skippable::Some(self.mother.to_owned()),
+            sex: Skippable::Some(self.sex.to_owned()),
+            pheno: Skippable::Some(self.pheno.to_owned()),
 
-            chromosome: Skippable::Some(&self.chromosome),
-            sid: Skippable::Some(&self.sid),
-            cm_position: Skippable::Some(&self.cm_position),
-            bp_position: Skippable::Some(&self.bp_position),
-            allele_1: Skippable::Some(&self.allele_1),
-            allele_2: Skippable::Some(&self.allele_2),
+            chromosome: Skippable::Some(self.chromosome.to_owned()),
+            sid: Skippable::Some(self.sid.to_owned()),
+            cm_position: Skippable::Some(self.cm_position.to_owned()),
+            bp_position: Skippable::Some(self.bp_position.to_owned()),
+            allele_1: Skippable::Some(self.allele_1.to_owned()),
+            allele_2: Skippable::Some(self.allele_2.to_owned()),
         };
         Ok(metadata)
     }
