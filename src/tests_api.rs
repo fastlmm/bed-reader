@@ -1748,8 +1748,8 @@ fn metadata_use() -> Result<(), BedErrorPlus> {
 
     let file_name = "bed_reader/tests/data/small.bed";
     let mut bed = Bed::new(file_name)?;
-    let shape = bed.dim()?; // cmk00 why does this fail if we swap with the next line?
     let metadata = bed.metadata()?;
+    let shape = bed.dim()?; // cmk00 why does this fail if we swap with the next line?
 
     let temp_out = tmp_path()?;
     let output_file = temp_out.join("random.bed");
@@ -1767,14 +1767,50 @@ fn metadata_use() -> Result<(), BedErrorPlus> {
     Ok(())
 }
 
+// #[test]
+// fn metadata_same() -> Result<(), BedErrorPlus> {
+//     // create 10 files with the same metadata
+//     let write_options = WriteOptions::builder("ignore.bed")
+//         .fid(["fid1", "fid2", "fid3"])
+//         .iid(["iid1", "iid2", "iid3"])
+//         .father(["iid23", "iid23", "iid22"])
+//         .mother(["iid34", "iid34", "iid33"])
+//         .
+
+//     let metadata = Metadata {
+//         fid: Some(nd::Array1!["fid1", "fid2", "fid3"]),
+//         iid: Some(vec!["iid1", "iid2", "iid3"]),
+//         father: Some(vec!["iid23", "iid23", "iid22"]),
+//         mother: Some(vec!["iid34", "iid34", "iid33"]),
+//     }
+//         .missing_value(-1)
+//         .build(3, 4)?;
+
+//     let file_name = "bed_reader/tests/data/small.bed";
+//     let mut bed = Bed::new(file_name)?;
+//     let metadata = bed.metadata()?;
+//     let shape = bed.dim()?; // cmk00 why does this fail if we swap with the next line?
+
+//     let temp_out = tmp_path()?;
+//     let output_file = temp_out.join("random.bed");
+
+//     // !!!cmk00 needs seed
+//     let val = nd::Array::random(shape, Uniform::from(-1..3));
+
+//     println!("{val:?}");
+
+//     WriteOptions::builder(output_file)
+//         .metadata(&metadata)
+//         .missing_value(-1)
+//         .write(&val)?;
+
+//     Ok(())
+// }
+
 // A - apply to reading
 // B - extract from reading
 // C - apply to writing
 // D - extra from options when writing
-
-// BC
-// Extract metadata from a file
-// create a random file with the same metadata
 
 // CD
 // create 10 files with the same metadata
