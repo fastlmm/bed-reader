@@ -1,3 +1,10 @@
+// !!!cmk00 document WriteOptions  path/fam_path/bim_path
+// !!!cmk00 document WriteOptions  in num_threads says #Example
+// !!!cmk00 document WriteOptions  in missing_value says #Example
+// !!!cmk00 document WriteOptions  fn iid_count, sid_count, sim, metadata
+// !!!cmk00 allow WriteOptions to be modified, but check lengths on every write
+// !!!cmk00 document WriteOptionsBuilder i8/f32/f64
+// !!!cmk00 typo: " writes to file in one step.
 // !!!cmk0 document Bed: read_and_* (3 of them)
 // !!!cmk0 document Bed: fam_path, bim_path
 // !!!cmk0 document BedBuilder:: build
@@ -4428,12 +4435,6 @@ where
     #[builder(setter(custom))]
     pub bim_path: PathBuf,
 
-    #[builder(setter(custom))]
-    pub iid_count: usize,
-
-    #[builder(setter(custom))]
-    pub sid_count: usize,
-
     /// Family id of each of individual (sample)
     ///
     /// If this ndarray is not given, the default (zeros) is used.
@@ -4513,7 +4514,7 @@ where
 
     /// Sets if allele 1 is counted. Default is true.
     ///
-    /// Also see [`count_a1`](struct.WriteOptionsBuilder.html#method.count_a1) and [`count_a2`](struct.WroteOptionsBuilder.html#method.count_a2).    
+    /// Also see [`count_a1`](struct.WriteOptionsBuilder.html#method.count_a1) and [`count_a2`](struct.WriteOptionsBuilder.html#method.count_a2).    
     pub is_a1_counted: bool,
 
     /// Number of threads to use (defaults to all)
@@ -4521,7 +4522,7 @@ where
     /// Can also be set with an environment variable. See cmk 0.
     ///
     /// In this example, we write using only one thread.
-    /// ```cmk 0 fix example to write
+    /// ```cmk00 fix example to write
     /// use ndarray as nd;
     /// use bed_reader::{Bed, WriteOptions};
     /// use bed_reader::assert_eq_nan;
@@ -4544,8 +4545,34 @@ where
     #[builder(default, setter(strip_option))]
     pub num_threads: Option<usize>,
 
+    /// Value used for missing values (defaults to -127 or NaN)
+    ///
+    /// -127 is the default for i8 and NaN is the default for f32 and f64.
+    ///
+    /// In this example, -1 represents missing values in val.
+    /// ```cmk00 fix example to write
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let val = ReadOptions::builder().missing_value(-1).i8().read(&mut bed)?;
+    ///
+    /// assert_eq_nan(
+    ///     &val,
+    ///     &nd::array![
+    ///         [1, 0, -1, 0],
+    ///         [2, 0, -1, 2],
+    ///         [0, 1, 2, 0]
+    ///     ],
+    /// );
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
     #[builder(default = "TVal::missing()")]
     pub missing_value: TVal,
+    // !!!cmk later mark so that users must use builder? Here and Bed. See https://stackoverflow.com/questions/53588819/how-to-restrict-the-construction-of-struct
 }
 
 impl<TVal> WriteOptions<TVal>
@@ -4698,6 +4725,38 @@ impl<TVal> WriteOptionsBuilder<TVal>
 where
     TVal: BedVal,
 {
+    /// Creates a new `WriteOptions` with the options given.
+    ///
+    /// > Also see [`WriteOptionsBuilder::write`](struct.WriteOptionsBuilder.html#method.write), which creates
+    /// > a `WriteOptions` and writes to file in one step.
+    ///
+    /// # Example
+    /// Create a new `WriteOptions` with some given values and some
+    /// default values. Then use it to write a .bed file.
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, WriteOptions, tmp_path};
+    ///
+    /// let output_folder = tmp_path()?;
+    /// let output_file = output_folder.join("small.bed");
+    /// let write_options = WriteOptions::builder(output_file)
+    ///     .iid(["iid1", "iid2", "iid3"])
+    ///     .sid(["sid1", "sid2", "sid3", "sid4"])
+    ///     .build(3,4)?;
+    ///
+    /// // cmk00 check this
+    /// println("{:?}",&write_options.chromosome); // Outputs ndarray ["0", "0", "0", "0"]
+    ///
+    /// let val = nd::array![
+    ///     [1.0, 0.0, f64::NAN, 0.0],
+    ///     [2.0, 0.0, f64::NAN, 2.0],
+    ///     [0.0, 1.0, 2.0, 0.0]
+    /// ];
+    ///
+    /// Bed::write_with_options(&val, &write_options?;
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
     pub fn build(
         &mut self,
         iid_count: usize,
@@ -4717,8 +4776,6 @@ where
             num_threads: self.num_threads.unwrap_or(None),
             missing_value: self.missing_value.unwrap_or_else(|| TVal::missing()),
 
-            iid_count: iid_count,
-            sid_count: sid_count,
             fid: compute_field("fid", &mut self.fid, iid_count, |_| "0".to_string())?,
             iid: compute_field("iid", &mut self.iid, iid_count, |i| {
                 format!("iid{}", i + 1).to_string()
@@ -4771,8 +4828,10 @@ where
         Ok(write_options)
     }
 
-    // !!!cmk later should check that metadata agrees with val size
-    // !!!cmk later maybe use the default builder?
+    /// Creates a new `WriteOptions` with the options given and then writes a *.bed file.
+    ///
+    /// # Example
+    /// See [`WriteOptions::builder`](struct.WriteOptions.html#method.builder).
     pub fn write<S: nd::Data<Elem = TVal>>(
         &mut self,
         val: &nd::ArrayBase<S, nd::Ix2>,
@@ -4784,6 +4843,26 @@ where
         Ok(())
     }
 
+    /// Set the path to the .fam file.
+    ///
+    /// cmk00 update for writing
+    /// If not set, the .fam file will be assumed
+    /// have the same name as the .bed file, but with the extension .fam.
+    ///
+    /// In this example, we read .bed, .fam, and .bim files with non-standard names.
+    /// ```
+    /// use bed_reader::{Bed, ReadOptions};
+    /// let mut bed = Bed::builder("bed_reader/tests/data/small.deb")
+    ///    .fam_path("bed_reader/tests/data/small.maf")
+    ///    .bim_path("bed_reader/tests/data/small.mib")
+    ///    .build()?;
+    /// println!("{:?}", bed.iid()?); // Outputs ndarray ["iid1", "iid2", "iid3"]
+    /// println!("{:?}", bed.sid()?); // Outputs ndarray ["sid1", "sid2", "sid3", "sid4"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
+
+    // !!!cmk00 understand why this is needed
     fn new<P: AsRef<Path>>(path: P) -> Self {
         Self {
             path: Some(path.as_ref().into()),
@@ -4807,9 +4886,6 @@ where
             is_a1_counted: None,
             num_threads: None,
             missing_value: None,
-
-            iid_count: None,
-            sid_count: None,
         }
     }
 
@@ -4818,12 +4894,66 @@ where
         self
     }
 
+    /// Set the path to the .bim file.
+    ///
+    /// cmk00 update for writing
+    /// If not set, the .bim file will be assumed
+    /// have the same name as the .bed file, but with the extension .bim.
+    ///
+    /// In this example, we read .bed, .fam, and .bim files with non-standard names.
+    /// ```
+    /// use bed_reader::{Bed, ReadOptions};
+    /// let mut bed = Bed::builder("bed_reader/tests/data/small.deb")
+    ///    .fam_path("bed_reader/tests/data/small.maf")
+    ///    .bim_path("bed_reader/tests/data/small.mib")
+    ///    .build()?;
+    /// println!("{:?}", bed.iid()?); // Outputs ndarray ["iid1", "iid2", "iid3"]
+    /// println!("{:?}", bed.sid()?); // Outputs ndarray ["sid1", "sid2", "sid3", "sid4"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
     pub fn bim_path<P: AsRef<Path>>(mut self, path: P) -> Self {
         self.bim_path = Some(path.as_ref().into());
         self
     }
 
-    // !!!cmk later can we also extract a metadata property from write options?
+    /// Use the given metadata information.
+    ///
+    /// cmk00 update for writing
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, Metadata, Skippable};
+    ///
+    /// let iid = nd::array!["iid1".to_string(), "iid2".to_string(), "iid3".to_string()];
+    /// let sid = nd::array![
+    ///     "sid1".to_string(),
+    ///     "sid2".to_string(),
+    ///     "sid3".to_string(),
+    ///     "sid4".to_string()
+    /// ];
+    /// let metadata = Metadata {
+    ///     fid: Skippable::Skip,
+    ///     iid: Skippable::Some(&iid),
+    ///     father: Skippable::Skip,
+    ///     mother: Skippable::Skip,
+    ///     sex: Skippable::Skip,
+    ///     pheno: Skippable::Skip,
+    ///
+    ///     chromosome: Skippable::Skip,
+    ///     sid: Skippable::Some(&sid),
+    ///     cm_position: Skippable::Skip,
+    ///     bp_position: Skippable::Skip,
+    ///     allele_1: Skippable::Skip,
+    ///     allele_2: Skippable::Skip,
+    /// };
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::builder(file_name).metadata(metadata).build()?;
+    /// let metadata2 = bed.metadata()?;
+    /// println!("{metadata2:?}"); // Outputs a copy of input metadata
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```    
     pub fn metadata(mut self, metadata: &Metadata) -> Self {
         if let Skippable::Some(fid) = &metadata.fid {
             self.fid = Some((*fid).clone());
@@ -4865,23 +4995,37 @@ where
         self
     }
 
+    /// Set the family id (fid) values for each individual (sample).
+    ///
+    /// Defaults to zeros.
     pub fn fid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, fid: I) -> Self {
         let array: nd::Array1<String> = fid.into_iter().map(|s| s.as_ref().to_string()).collect();
         self.fid = Some(array);
         self
     }
 
+    /// Set the individual id (iid) values for each individual (sample).
+    ///
+    /// Defaults to "iid1", "iid2", ...
     pub fn iid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, iid: I) -> Self {
         let array: nd::Array1<String> = iid.into_iter().map(|s| s.as_ref().to_string()).collect();
         self.iid = Some(array);
         self
     }
+
+    /// Set the father id values for each individual (sample).
+    ///
+    /// Defaults to zeros.
     pub fn father<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, father: I) -> Self {
         let array: nd::Array1<String> =
             father.into_iter().map(|s| s.as_ref().to_string()).collect();
         self.father = Some(array);
         self
     }
+
+    /// Set the mother id values for each individual (sample).
+    ///
+    /// Defaults to zeros.
     pub fn mother<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, mother: I) -> Self {
         let array: nd::Array1<String> =
             mother.into_iter().map(|s| s.as_ref().to_string()).collect();
@@ -4889,6 +5033,9 @@ where
         self
     }
 
+    /// Set the sex for each individual (sample).
+    ///
+    /// 0 is unknown (default), 1 is male, 2 is female
     pub fn sex<I: IntoIterator<Item = i32>>(mut self, sex: I) -> Self {
         let array: nd::Array1<i32> = sex.into_iter().map(|i| i).collect();
         self.sex = Some(array);
@@ -4896,12 +5043,18 @@ where
         self
     }
 
+    /// Set a phenotype for each individual (sample). Seldom used.
+    ///
+    /// Defaults to zeros.
     pub fn pheno<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, pheno: I) -> Self {
         let array: nd::Array1<String> = pheno.into_iter().map(|s| s.as_ref().to_string()).collect();
         self.pheno = Some(array);
         self
     }
 
+    /// Set the chromosome for each SNP (variant).
+    ///
+    /// Defaults to zeros.
     pub fn chromosome<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, chromosome: I) -> Self {
         let array: nd::Array1<String> = chromosome
             .into_iter()
@@ -4911,24 +5064,36 @@ where
         self
     }
 
+    /// Set the SNP id (sid) for each SNP (variant).
+    ///
+    /// Defaults to "sid1", "sid2", ...
     pub fn sid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, sid: I) -> Self {
         let array: nd::Array1<String> = sid.into_iter().map(|s| s.as_ref().to_string()).collect();
         self.sid = Some(array);
         self
     }
 
+    /// Set the centimorgan position for each SNP (variant).
+    ///
+    /// Defaults to zeros.
     pub fn cm_position<I: IntoIterator<Item = f32>>(mut self, cm_position: I) -> Self {
         let array: nd::Array1<f32> = cm_position.into_iter().map(|s| s).collect();
         self.cm_position = Some(array);
         self
     }
 
+    /// Set the base-pair position for each SNP (variant).
+    ///
+    /// Defaults to zeros.
     pub fn bp_position<I: IntoIterator<Item = i32>>(mut self, bp_position: I) -> Self {
         let array: nd::Array1<i32> = bp_position.into_iter().map(|s| s).collect();
         self.bp_position = Some(array);
         self
     }
 
+    /// Set the first allele for each SNP (variant).
+    ///
+    /// Defaults to "A1", A1" ...
     pub fn allele_1<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, allele_1: I) -> Self {
         let array: nd::Array1<String> = allele_1
             .into_iter()
@@ -4938,6 +5103,9 @@ where
         self
     }
 
+    /// Set the second allele for each SNP (variant).
+    ///
+    /// Defaults to "A2", A2" ...
     pub fn allele_2<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, allele_2: I) -> Self {
         let array: nd::Array1<String> = allele_2
             .into_iter()

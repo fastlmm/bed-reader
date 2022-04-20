@@ -24,6 +24,10 @@ use crate::WriteOptions;
 use ndarray as nd;
 #[cfg(test)]
 use ndarray::s;
+#[cfg(test)]
+use ndarray_rand::rand_distr::Uniform;
+#[cfg(test)]
+use ndarray_rand::RandomExt;
 
 #[test]
 fn rusty_bed1() -> Result<(), BedErrorPlus> {
@@ -1621,7 +1625,7 @@ fn write_options_metadata() -> Result<(), BedErrorPlus> {
         .iid(["iid1", "iid2", "iid3"])
         .build(3, 4);
     println!("{write_options_result:?}"); // Outputs field of iid
-    let iid_count = write_options_result?.iid_count;
+    let iid_count = write_options_result?.iid_count();
     assert_eq!(iid_count, 3);
 
     // AA
@@ -1647,7 +1651,7 @@ fn write_options_metadata() -> Result<(), BedErrorPlus> {
     // B late
     let mut write_options = WriteOptions::<f64>::builder(&output_file).build(3, 4)?;
     Bed::write_with_options(&val, &mut write_options)?;
-    let sid_count = write_options.sid_count;
+    let sid_count = write_options.sid_count();
     println!("{sid_count:?}");
     assert_eq!(4, sid_count);
 
@@ -1664,7 +1668,7 @@ fn write_options_metadata() -> Result<(), BedErrorPlus> {
     // C
     let write_options_result = WriteOptions::<f32>::builder(&output_file).build(3, 4);
     println!("{write_options_result:?}"); // Outputs field of iid
-    let sid_count = write_options_result?.sid_count;
+    let sid_count = write_options_result?.sid_count();
     assert_eq!(sid_count, 4);
 
     // AC inconsistent
@@ -1736,3 +1740,41 @@ fn write_options_metadata() -> Result<(), BedErrorPlus> {
 
     Ok(())
 }
+
+#[test]
+fn metadata_use() -> Result<(), BedErrorPlus> {
+    // Extract metadata from a file
+    // create a random file with the same metadata
+
+    let file_name = "bed_reader/tests/data/small.bed";
+    let mut bed = Bed::new(file_name)?;
+    let shape = bed.dim()?; // cmk00 why does this fail if we swap with the next line?
+    let metadata = bed.metadata()?;
+
+    let temp_out = tmp_path()?;
+    let output_file = temp_out.join("random.bed");
+
+    // !!!cmk00 needs seed
+    let val = nd::Array::random(shape, Uniform::from(-1..3));
+
+    println!("{val:?}");
+
+    WriteOptions::builder(output_file)
+        .metadata(&metadata)
+        .missing_value(-1)
+        .write(&val)?;
+
+    Ok(())
+}
+
+// A - apply to reading
+// B - extract from reading
+// C - apply to writing
+// D - extra from options when writing
+
+// BC
+// Extract metadata from a file
+// create a random file with the same metadata
+
+// CD
+// create 10 files with the same metadata

@@ -64,3 +64,6 @@ pyo3 = { version = "0.16.1", features = ["extension-module"] }
 dpc-pariter = "0.4.0"                                            # // cmk pariter = "0.5.1"
 derive_builder = "0.10.2"
 temp_testdir = "0.2.3"
+
+[dev-dependencies]
+ndarray-rand = "0.14.0"
