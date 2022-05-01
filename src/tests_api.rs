@@ -28,6 +28,8 @@ use ndarray::s;
 use ndarray_rand::rand_distr::Uniform;
 #[cfg(test)]
 use ndarray_rand::RandomExt;
+#[cfg(test)]
+use std::rc::Rc;
 
 #[test]
 fn rusty_bed1() -> Result<(), BedErrorPlus> {
@@ -74,6 +76,7 @@ fn rusty_bed2() -> Result<(), BedErrorPlus> {
 use std::collections::HashSet;
 #[cfg(test)]
 use std::panic::catch_unwind;
+
 
 #[test]
 fn rusty_bed3() -> Result<(), BedErrorPlus> {
@@ -1487,7 +1490,7 @@ fn set_metadata() -> Result<(), BedErrorPlus> {
     ];
     let metadata = Metadata {
         fid: Skippable::Skip,
-        iid: Skippable::Some(iid),
+        iid: Skippable::Some(Rc::new(iid)),
         father: Skippable::Skip,
         mother: Skippable::Skip,
         sex: Skippable::Skip,

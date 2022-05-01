@@ -215,6 +215,7 @@ mod tests;
 mod tests_api;
 
 use core::fmt::Debug;
+use std::rc::Rc;
 use derive_builder::{Builder, UninitializedFieldError};
 use nd::ShapeBuilder;
 use ndarray as nd;
@@ -1379,7 +1380,7 @@ pub enum Skippable<T> {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Metadata {
     pub fid: Skippable<nd::Array1<String>>,
-    pub iid: Skippable<nd::Array1<String>>,
+    pub iid: Skippable<Rc<nd::Array1<String>>>,
     pub father: Skippable<nd::Array1<String>>,
     pub mother: Skippable<nd::Array1<String>>,
     pub sex: Skippable<nd::Array1<i32>>,
@@ -1400,6 +1401,15 @@ fn lazy_or_skip_count<T>(array: &LazyOrSkip<nd::Array1<T>>) -> Option<usize> {
         LazyOrSkip::Lazy => None,
     }
 }
+
+fn lazy_or_skip_count_cmk<T>(array: &LazyOrSkip<Rc<nd::Array1<T>>>) -> Option<usize> {
+    match array {
+        LazyOrSkip::Some(array) => Some(array.len()),
+        LazyOrSkip::Skip => None,
+        LazyOrSkip::Lazy => None,
+    }
+}
+
 
 // !!!cmk later update these comments:
 // https://crates.io/crates/typed-builder
@@ -1472,7 +1482,7 @@ pub struct Bed {
     /// cmk0c
     #[builder(setter(custom))]
     #[builder(default = "LazyOrSkip::Lazy")]
-    iid: LazyOrSkip<nd::Array1<String>>,
+    iid: LazyOrSkip<Rc<nd::Array1<String>>>,
 
     #[builder(setter(custom))]
     #[builder(default = "LazyOrSkip::Lazy")]
@@ -1555,7 +1565,7 @@ impl BedBuilder {
         check_counts(
             vec![
                 lazy_or_skip_count(&bed.fid),
-                lazy_or_skip_count(&bed.iid),
+                lazy_or_skip_count_cmk(&bed.iid),
                 lazy_or_skip_count(&bed.father),
                 lazy_or_skip_count(&bed.mother),
                 lazy_or_skip_count(&bed.sex),
@@ -1797,7 +1807,7 @@ impl BedBuilder {
     /// ```
     pub fn metadata(mut self, metadata: Metadata) -> Self {
         self.fid = Some(to_lazy_or_skip_clone(&metadata.fid));
-        self.iid = Some(to_lazy_or_skip_clone(&metadata.iid));
+        self.iid = Some(to_lazy_or_skip_clone_cmk(&metadata.iid));
         self.father = Some(to_lazy_or_skip_clone(&metadata.father));
         self.mother = Some(to_lazy_or_skip_clone(&metadata.mother));
         self.sex = Some(to_lazy_or_skip_clone(&metadata.sex));
@@ -1870,7 +1880,8 @@ impl BedBuilder {
     /// ```
     pub fn iid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, iid: I) -> Self {
         self.iid = Some(LazyOrSkip::Some(
-            iid.into_iter().map(|s| s.as_ref().to_string()).collect(),
+            Rc::new(
+            iid.into_iter().map(|s| s.as_ref().to_string()).collect()),
         ));
 
         self
@@ -2044,6 +2055,15 @@ fn to_lazy_or_skip_clone<T: Clone>(
 ) -> LazyOrSkip<nd::Array1<T>> {
     match skippable {
         Skippable::Some(f) => LazyOrSkip::Some(f.to_owned()),
+        Skippable::Skip => LazyOrSkip::Skip,
+    }
+}
+
+fn to_lazy_or_skip_clone_cmk<T: Clone>(
+    skippable: &Skippable<Rc<nd::Array1<T>>>,
+) -> LazyOrSkip<Rc<nd::Array1<T>>> {
+    match skippable {
+        Skippable::Some(f) => LazyOrSkip::Some(Rc::clone(f)),
         Skippable::Skip => LazyOrSkip::Skip,
     }
 }
@@ -2488,7 +2508,7 @@ impl Bed {
             self.father = LazyOrSkip::Some(nd::Array::from_vec(vec_of_vec.pop().unwrap()));
         }
         if self.iid.is_lazy() {
-            self.iid = LazyOrSkip::Some(nd::Array::from_vec(vec_of_vec.pop().unwrap()));
+            self.iid = LazyOrSkip::Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
         }
         if self.fid.is_lazy() {
             self.fid = LazyOrSkip::Some(nd::Array::from_vec(vec_of_vec.pop().unwrap()));
@@ -2629,6 +2649,18 @@ impl Bed {
         }
     }
 
+    fn get_some_field_cmk<'a, T: FromStringArray<T>>(
+        &'a self,
+        field: &'a LazyOrSkip<Rc<nd::Array1<T>>>,
+        name: &str,
+    ) -> Result<Rc<nd::Array1<T>>, BedErrorPlus> {
+        match field {
+            LazyOrSkip::Some(array) => Ok(Rc::clone(array)),
+            LazyOrSkip::Skip => Err(BedError::CannotUseSkippedMetadata(name.to_string()).into()),
+            LazyOrSkip::Lazy => panic!("impossible"),
+        }
+    } 
+
     /// Family id of each of individual (sample)
     ///
     /// If this ndarray is needed, it will be found
@@ -2674,9 +2706,9 @@ impl Bed {
     /// println!("{iid:?}"); // Outputs ndarray ["iid1", "iid2", "iid3"]
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
-    pub fn iid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
+    pub fn iid(&mut self) -> Result<Rc<nd::Array1<String>>, BedErrorPlus> {
         self.unlazy_fam::<String>(self.iid.is_lazy())?;
-        self.get_some_field(&self.iid, "iid")
+        self.get_some_field_cmk(&self.iid, "iid")
     }
 
     /// Father id of each of individual (sample)
@@ -4446,7 +4478,7 @@ where
     /// If this ndarray is not given the default
     /// (["iid0", "iid1", ...]) is used.
     #[builder(setter(custom))]
-    pub iid: nd::Array1<String>,
+    pub iid: Rc<nd::Array1<String>>,
 
     /// Father id of each of individual (sample)
     ///
@@ -4663,7 +4695,8 @@ where
         let file = File::create(&self.fam_path)?;
         let mut writer = BufWriter::new(file);
         let mut result: Result<(), BedErrorPlus> = Ok(());
-        nd::azip!((fid in &self.fid, iid in &self.iid, father in &self.father, mother in &self.mother, sex in &self.sex, pheno in &self.pheno)
+        let iid_cmk = self.iid.as_ref();
+        nd::azip!((fid in &self.fid, iid in iid_cmk, father in &self.father, mother in &self.mother, sex in &self.sex, pheno in &self.pheno)
         {
             if result.is_ok() {
                 if let Err(e) = writeln!(
@@ -4705,7 +4738,7 @@ where
     pub fn metadata(&mut self) -> Result<Metadata, BedErrorPlus> {
         let metadata = Metadata {
             fid: Skippable::Some(self.fid.to_owned()),
-            iid: Skippable::Some(self.iid.to_owned()),
+            iid: Skippable::Some(Rc::clone(&self.iid)),
             father: Skippable::Some(self.father.to_owned()),
             mother: Skippable::Some(self.mother.to_owned()),
             sex: Skippable::Some(self.sex.to_owned()),
@@ -4777,7 +4810,7 @@ where
             missing_value: self.missing_value.unwrap_or_else(|| TVal::missing()),
 
             fid: compute_field("fid", &mut self.fid, iid_count, |_| "0".to_string())?,
-            iid: compute_field("iid", &mut self.iid, iid_count, |i| {
+            iid: compute_field_cmk("iid", &mut self.iid, iid_count, |i| {
                 format!("iid{}", i + 1).to_string()
             })?,
             father: compute_field("father", &mut self.father, iid_count, |_| "0".to_string())?,
@@ -5008,7 +5041,7 @@ where
     ///
     /// Defaults to "iid1", "iid2", ...
     pub fn iid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, iid: I) -> Self {
-        let array: nd::Array1<String> = iid.into_iter().map(|s| s.as_ref().to_string()).collect();
+        let array: Rc<nd::Array1<String>> = Rc::new(iid.into_iter().map(|s| s.as_ref().to_string()).collect());
         self.iid = Some(array);
         self
     }
@@ -5296,5 +5329,26 @@ fn compute_field<T: Clone, F: Fn(usize) -> T>(
         Ok(array.clone())
     } else {
         Ok((0..count).map(|_| lambda(0)).collect::<nd::Array1<T>>())
+    }
+}
+// According to https://docs.rs/derive_builder/latest/derive_builder/
+// "clone" is OK because "Luckily Rust is clever enough to optimize these
+// clone-calls away in release builds for your every-day use cases.
+// Thats quite a safe bet - we checked this for you. ;-)"
+fn compute_field_cmk<T: Clone, F: Fn(usize) -> T>(
+    field_name: &str,
+    field: &mut Option<Rc<nd::Array1<T>>>,
+    count: usize,
+    lambda: F,
+) -> Result<Rc<nd::Array1<T>>, BedErrorPlus> {
+    if let Some(array) = field {
+        if array.len() != count {
+            return Err(
+                BedError::InconsistentCount(field_name.to_string(), array.len(), count).into(),
+            );
+        }
+        Ok(Rc::clone(array))
+    } else {
+        Ok(Rc::new((0..count).map(|_| lambda(0)).collect::<nd::Array1<T>>()))
     }
 }
