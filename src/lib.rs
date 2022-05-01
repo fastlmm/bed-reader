@@ -1371,27 +1371,28 @@ impl<T> LazyOrSkip<T> {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum Skippable<T> {
-    Some(T),
-    Skip,
-}
+// cmk00
+// #[derive(Clone, Debug, Eq, PartialEq)]
+// pub enum Option<T> {
+//     Some(T),
+//     Skip,
+// }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Metadata {
-    pub fid: Skippable<nd::Array1<String>>,
-    pub iid: Skippable<Rc<nd::Array1<String>>>,
-    pub father: Skippable<nd::Array1<String>>,
-    pub mother: Skippable<nd::Array1<String>>,
-    pub sex: Skippable<nd::Array1<i32>>,
-    pub pheno: Skippable<nd::Array1<String>>,
+    pub fid: Option<nd::Array1<String>>,
+    pub iid: Option<Rc<nd::Array1<String>>>,
+    pub father: Option<nd::Array1<String>>,
+    pub mother: Option<nd::Array1<String>>,
+    pub sex: Option<nd::Array1<i32>>,
+    pub pheno: Option<nd::Array1<String>>,
 
-    pub chromosome: Skippable<nd::Array1<String>>,
-    pub sid: Skippable<nd::Array1<String>>,
-    pub cm_position: Skippable<nd::Array1<f32>>,
-    pub bp_position: Skippable<nd::Array1<i32>>,
-    pub allele_1: Skippable<nd::Array1<String>>,
-    pub allele_2: Skippable<nd::Array1<String>>,
+    pub chromosome: Option<nd::Array1<String>>,
+    pub sid: Option<nd::Array1<String>>,
+    pub cm_position: Option<nd::Array1<f32>>,
+    pub bp_position: Option<nd::Array1<i32>>,
+    pub allele_1: Option<nd::Array1<String>>,
+    pub allele_2: Option<nd::Array1<String>>,
 }
 
 fn lazy_or_skip_count<T>(array: &LazyOrSkip<nd::Array1<T>>) -> Option<usize> {
@@ -1783,19 +1784,19 @@ impl BedBuilder {
     ///     "sid4".to_string()
     /// ];
     /// let metadata = Metadata {
-    ///     fid: Skippable::Skip,
-    ///     iid: Skippable::Some(&iid),
-    ///     father: Skippable::Skip,
-    ///     mother: Skippable::Skip,
-    ///     sex: Skippable::Skip,
-    ///     pheno: Skippable::Skip,
+    ///     fid: None,
+    ///     iid: Some(&iid),
+    ///     father: None,
+    ///     mother: None,
+    ///     sex: None,
+    ///     pheno: None,
     ///
-    ///     chromosome: Skippable::Skip,
-    ///     sid: Skippable::Some(&sid),
-    ///     cm_position: Skippable::Skip,
-    ///     bp_position: Skippable::Skip,
-    ///     allele_1: Skippable::Skip,
-    ///     allele_2: Skippable::Skip,
+    ///     chromosome: None,
+    ///     sid: Some(&sid),
+    ///     cm_position: None,
+    ///     bp_position: None,
+    ///     allele_1: None,
+    ///     allele_2: None,
     /// };
     ///
     /// let file_name = "bed_reader/tests/data/small.bed";
@@ -2042,29 +2043,29 @@ fn to_metadata_path(
     }
 }
 
-fn to_skippable<T: Clone>(lazy_or_skip: &LazyOrSkip<T>) -> Skippable<T> {
+fn to_skippable<T: Clone>(lazy_or_skip: &LazyOrSkip<T>) -> Option<T> {
     match lazy_or_skip {
         LazyOrSkip::Lazy => panic!("assert: impossible"),
-        LazyOrSkip::Skip => Skippable::Skip,
-        LazyOrSkip::Some(some) => Skippable::Some(some.to_owned()),
+        LazyOrSkip::Skip => None,
+        LazyOrSkip::Some(some) => Some(some.to_owned()),
     }
 }
 
 fn to_lazy_or_skip_clone<T: Clone>(
-    skippable: &Skippable<nd::Array1<T>>,
+    skippable: &Option<nd::Array1<T>>,
 ) -> LazyOrSkip<nd::Array1<T>> {
     match skippable {
-        Skippable::Some(f) => LazyOrSkip::Some(f.to_owned()),
-        Skippable::Skip => LazyOrSkip::Skip,
+        Some(f) => LazyOrSkip::Some(f.to_owned()),
+        None => LazyOrSkip::Skip,
     }
 }
 
 fn to_lazy_or_skip_clone_cmk<T: Clone>(
-    skippable: &Skippable<Rc<nd::Array1<T>>>,
+    skippable: &Option<Rc<nd::Array1<T>>>,
 ) -> LazyOrSkip<Rc<nd::Array1<T>>> {
     match skippable {
-        Skippable::Some(f) => LazyOrSkip::Some(Rc::clone(f)),
-        Skippable::Skip => LazyOrSkip::Skip,
+        Some(f) => LazyOrSkip::Some(Rc::clone(f)),
+        None => LazyOrSkip::Skip,
     }
 }
 
@@ -4737,19 +4738,19 @@ where
 
     pub fn metadata(&mut self) -> Result<Metadata, BedErrorPlus> {
         let metadata = Metadata {
-            fid: Skippable::Some(self.fid.to_owned()),
-            iid: Skippable::Some(Rc::clone(&self.iid)),
-            father: Skippable::Some(self.father.to_owned()),
-            mother: Skippable::Some(self.mother.to_owned()),
-            sex: Skippable::Some(self.sex.to_owned()),
-            pheno: Skippable::Some(self.pheno.to_owned()),
+            fid: Some(self.fid.to_owned()),
+            iid: Some(Rc::clone(&self.iid)),
+            father: Some(self.father.to_owned()),
+            mother: Some(self.mother.to_owned()),
+            sex: Some(self.sex.to_owned()),
+            pheno: Some(self.pheno.to_owned()),
 
-            chromosome: Skippable::Some(self.chromosome.to_owned()),
-            sid: Skippable::Some(self.sid.to_owned()),
-            cm_position: Skippable::Some(self.cm_position.to_owned()),
-            bp_position: Skippable::Some(self.bp_position.to_owned()),
-            allele_1: Skippable::Some(self.allele_1.to_owned()),
-            allele_2: Skippable::Some(self.allele_2.to_owned()),
+            chromosome: Some(self.chromosome.to_owned()),
+            sid: Some(self.sid.to_owned()),
+            cm_position: Some(self.cm_position.to_owned()),
+            bp_position: Some(self.bp_position.to_owned()),
+            allele_1: Some(self.allele_1.to_owned()),
+            allele_2: Some(self.allele_2.to_owned()),
         };
         Ok(metadata)
     }
@@ -4965,19 +4966,19 @@ where
     ///     "sid4".to_string()
     /// ];
     /// let metadata = Metadata {
-    ///     fid: Skippable::Skip,
-    ///     iid: Skippable::Some(&iid),
-    ///     father: Skippable::Skip,
-    ///     mother: Skippable::Skip,
-    ///     sex: Skippable::Skip,
-    ///     pheno: Skippable::Skip,
+    ///     fid: None,
+    ///     iid: Some(&iid),
+    ///     father: None,
+    ///     mother: None,
+    ///     sex: None,
+    ///     pheno: None,
     ///
-    ///     chromosome: Skippable::Skip,
-    ///     sid: Skippable::Some(&sid),
-    ///     cm_position: Skippable::Skip,
-    ///     bp_position: Skippable::Skip,
-    ///     allele_1: Skippable::Skip,
-    ///     allele_2: Skippable::Skip,
+    ///     chromosome: None,
+    ///     sid: Some(&sid),
+    ///     cm_position: None,
+    ///     bp_position: None,
+    ///     allele_1: None,
+    ///     allele_2: None,
     /// };
     ///
     /// let file_name = "bed_reader/tests/data/small.bed";
@@ -4988,41 +4989,41 @@ where
     /// # Ok::<(), BedErrorPlus>(())
     /// ```    
     pub fn metadata(mut self, metadata: &Metadata) -> Self {
-        if let Skippable::Some(fid) = &metadata.fid {
+        if let Some(fid) = &metadata.fid {
             self.fid = Some((*fid).clone());
         }
-        if let Skippable::Some(iid) = &metadata.iid {
+        if let Some(iid) = &metadata.iid {
             self.iid = Some((*iid).clone());
         }
-        if let Skippable::Some(father) = &metadata.father {
+        if let Some(father) = &metadata.father {
             self.father = Some((*father).clone());
         }
-        if let Skippable::Some(mother) = &metadata.mother {
+        if let Some(mother) = &metadata.mother {
             self.mother = Some((*mother).clone());
         }
-        if let Skippable::Some(sex) = &metadata.sex {
+        if let Some(sex) = &metadata.sex {
             self.sex = Some((*sex).clone());
         }
-        if let Skippable::Some(pheno) = &metadata.pheno {
+        if let Some(pheno) = &metadata.pheno {
             self.pheno = Some((*pheno).clone());
         }
 
-        if let Skippable::Some(chromosome) = &metadata.chromosome {
+        if let Some(chromosome) = &metadata.chromosome {
             self.chromosome = Some((*chromosome).clone());
         }
-        if let Skippable::Some(sid) = &metadata.sid {
+        if let Some(sid) = &metadata.sid {
             self.sid = Some((*sid).clone());
         }
-        if let Skippable::Some(cm_position) = &metadata.cm_position {
+        if let Some(cm_position) = &metadata.cm_position {
             self.cm_position = Some((*cm_position).clone());
         }
-        if let Skippable::Some(bp_position) = &metadata.bp_position {
+        if let Some(bp_position) = &metadata.bp_position {
             self.bp_position = Some((*bp_position).clone());
         }
-        if let Skippable::Some(allele_1) = &metadata.allele_1 {
+        if let Some(allele_1) = &metadata.allele_1 {
             self.allele_1 = Some((*allele_1).clone());
         }
-        if let Skippable::Some(allele_2) = &metadata.allele_2 {
+        if let Some(allele_2) = &metadata.allele_2 {
             self.allele_2 = Some((*allele_2).clone());
         }
         self

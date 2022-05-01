@@ -15,8 +15,6 @@ use crate::Metadata;
 #[cfg(test)]
 use crate::ReadOptions;
 #[cfg(test)]
-use crate::Skippable;
-#[cfg(test)]
 use crate::SliceInfo1;
 #[cfg(test)]
 use crate::WriteOptions;
@@ -1489,19 +1487,19 @@ fn set_metadata() -> Result<(), BedErrorPlus> {
         "sid4".to_string()
     ];
     let metadata = Metadata {
-        fid: Skippable::Skip,
-        iid: Skippable::Some(Rc::new(iid)),
-        father: Skippable::Skip,
-        mother: Skippable::Skip,
-        sex: Skippable::Skip,
-        pheno: Skippable::Skip,
+        fid: None,
+        iid: Some(Rc::new(iid)),
+        father: None,
+        mother: None,
+        sex: None,
+        pheno: None,
 
-        chromosome: Skippable::Skip,
-        sid: Skippable::Some(sid),
-        cm_position: Skippable::Skip,
-        bp_position: Skippable::Skip,
-        allele_1: Skippable::Skip,
-        allele_2: Skippable::Skip,
+        chromosome: None,
+        sid: Some(sid),
+        cm_position: None,
+        bp_position: None,
+        allele_1: None,
+        allele_2: None,
     };
 
     let mut bed = Bed::builder(file_name).metadata(metadata).build()?;
@@ -1721,25 +1719,25 @@ fn write_options_metadata() -> Result<(), BedErrorPlus> {
         .build(3, 4)?;
     Bed::write_with_options(&val, &mut write_options)?;
 
-    // let mut write_options = WriteOptions::builder(output_file)
-    //     .fid(["fid1", "fid1", "fid2"])
-    //     .iid(["iid1", "iid2", "iid3"])
-    //     .father(["iid23", "iid23", "iid22"])
-    //     .mother(["iid34", "iid34", "iid33"])
-    //     .sex([1, 2, 0])
-    //     .pheno(["red", "red", "blue"])
-    //     .chromosome(["1", "1", "5", "Y"])
-    //     .sid(["sid1", "sid2", "sid3", "sid4"])
-    //     .cm_position([100.4, 2000.5, 4000.7, 7000.9])
-    //     .bp_position([1, 100, 1000, 1004])
-    //     .f32()
-    //     // .iid_count(3)
-    //     // !!!cmk00 note the allele's have default values
-    //     // .sid_count(5)
-    //     .build()?;
+    let mut write_options = WriteOptions::builder(output_file)
+        .fid(["fid1", "fid1", "fid2"])
+        .iid(["iid1", "iid2", "iid3"])
+        .father(["iid23", "iid23", "iid22"])
+        .mother(["iid34", "iid34", "iid33"])
+        .sex([1, 2, 0])
+        .pheno(["red", "red", "blue"])
+        .chromosome(["1", "1", "5", "Y"])
+        .sid(["sid1", "sid2", "sid3", "sid4"])
+        .cm_position([100.4, 2000.5, 4000.7, 7000.9])
+        .bp_position([1, 100, 1000, 1004])
+        .f32()
+        // .iid_count(3)
+        // !!!cmk00 note the allele's have default values
+        // .sid_count(5)
+        .build(3,4)?;
 
-    // let metadata = write_options.metadata()?;
-    // println!("{metadata:?}");
+    let metadata = write_options.metadata()?;
+    println!("{metadata:?}");
 
     Ok(())
 }
@@ -1770,45 +1768,53 @@ fn metadata_use() -> Result<(), BedErrorPlus> {
     Ok(())
 }
 
-// #[test]
-// fn metadata_same() -> Result<(), BedErrorPlus> {
-//     // create 10 files with the same metadata
-//     let write_options = WriteOptions::builder("ignore.bed")
-//         .fid(["fid1", "fid2", "fid3"])
-//         .iid(["iid1", "iid2", "iid3"])
-//         .father(["iid23", "iid23", "iid22"])
-//         .mother(["iid34", "iid34", "iid33"])
-//         .
+#[test]
+fn metadata_same() -> Result<(), BedErrorPlus> {
+    // create 10 files with the same metadata
+    let write_options = WriteOptions::builder("ignore.bed")
+        .fid(["fid1", "fid2", "fid3"])
+        .iid(["iid1", "iid2", "iid3"])
+        .father(["iid23", "iid23", "iid22"])
+        .mother(["iid34", "iid34", "iid33"])
+        .missing_value(-1)
+        .build(3,4)?;
 
-//     let metadata = Metadata {
-//         fid: Some(nd::Array1!["fid1", "fid2", "fid3"]),
-//         iid: Some(vec!["iid1", "iid2", "iid3"]),
-//         father: Some(vec!["iid23", "iid23", "iid22"]),
-//         mother: Some(vec!["iid34", "iid34", "iid33"]),
-//     }
-//         .missing_value(-1)
-//         .build(3, 4)?;
+    // let metadata = Metadata {
+    //     fid: Some(nd::Array1!["fid1", "fid2", "fid3"]),
+    //     iid: Some(vec!["iid1", "iid2", "iid3"]),
+    //     father: Some(vec!["iid23", "iid23", "iid22"]),
+    //     mother: Some(vec!["iid34", "iid34", "iid33"]),
+    //     sex: todo!(),
+    //     pheno: todo!(),
+    //     chromosome: todo!(),
+    //     sid: todo!(),
+    //     cm_position: todo!(),
+    //     bp_position: todo!(),
+    //     allele_1: todo!(),
+    //     allele_2: todo!(),
+    // }
 
-//     let file_name = "bed_reader/tests/data/small.bed";
-//     let mut bed = Bed::new(file_name)?;
-//     let metadata = bed.metadata()?;
-//     let shape = bed.dim()?; // cmk00 why does this fail if we swap with the next line?
 
-//     let temp_out = tmp_path()?;
-//     let output_file = temp_out.join("random.bed");
+    let file_name = "bed_reader/tests/data/small.bed";
+    let mut bed = Bed::new(file_name)?;
+    let metadata = bed.metadata()?;
+    let shape = bed.dim()?; // cmk00 why does this fail if we swap with the next line?
 
-//     // !!!cmk00 needs seed
-//     let val = nd::Array::random(shape, Uniform::from(-1..3));
+    let temp_out = tmp_path()?;
+    let output_file = temp_out.join("random.bed");
 
-//     println!("{val:?}");
+    // !!!cmk00 needs seed
+    let val = nd::Array::random(shape, Uniform::from(-1..3));
 
-//     WriteOptions::builder(output_file)
-//         .metadata(&metadata)
-//         .missing_value(-1)
-//         .write(&val)?;
+    println!("{val:?}");
 
-//     Ok(())
-// }
+    WriteOptions::builder(output_file)
+        .metadata(&metadata)
+        .missing_value(-1)
+        .write(&val)?;
+
+    Ok(())
+}
 
 // A - apply to reading
 // B - extract from reading
