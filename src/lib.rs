@@ -2633,20 +2633,6 @@ impl Bed {
         &'a self,
         field: &'a LazyOrSkip<Rc<nd::Array1<T>>>,
         name: &str,
-    ) -> Result<Rc<nd::Array1<T>>, BedErrorPlus> {
-        match field {
-            LazyOrSkip::Some(array) => Ok(Rc::clone(array)),
-            LazyOrSkip::Skip => Err(BedError::CannotUseSkippedMetadata(name.to_string()).into()),
-            LazyOrSkip::Lazy => panic!("impossible"),
-        }
-    } 
-
-
-    // cmk00 need 'a?
-    fn get_some_field_cmk<'a, T: FromStringArray<T>>(
-        &'a self,
-        field: &'a LazyOrSkip<Rc<nd::Array1<T>>>,
-        name: &str,
     ) -> Result<&nd::Array1<T>, BedErrorPlus> {
         match field {
             LazyOrSkip::Some(array) => Ok(&array),
@@ -2675,7 +2661,7 @@ impl Bed {
     /// println!("{fid:?}"); // Outputs ndarray ["fid1", "fid1", "fid2"]
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
-    pub fn fid(&mut self) -> Result<Rc<nd::Array1<String>>, BedErrorPlus> {
+    pub fn fid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         self.unlazy_fam::<String>(self.fid.is_lazy())?;
         self.get_some_field(&self.fid, "fid")
     }
@@ -2700,7 +2686,7 @@ impl Bed {
     /// println!("{iid:?}"); // Outputs ndarray ["iid1", "iid2", "iid3"]
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
-    pub fn iid(&mut self) -> Result<Rc<nd::Array1<String>>, BedErrorPlus> {
+    pub fn iid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         self.unlazy_fam::<String>(self.iid.is_lazy())?;
         self.get_some_field(&self.iid, "iid")
     }
@@ -2725,7 +2711,7 @@ impl Bed {
     /// println!("{father:?}"); // Outputs ndarray ["iid23", "iid23", "iid22"]
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())    
-    pub fn father(&mut self) -> Result<Rc<nd::Array1<String>>, BedErrorPlus> {
+    pub fn father(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         self.unlazy_fam::<String>(self.father.is_lazy())?;
         self.get_some_field(&self.father, "father")
     }
@@ -2750,7 +2736,7 @@ impl Bed {
     /// println!("{mother:?}"); // Outputs ndarray ["iid34", "iid34", "iid33"]
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
-    pub fn mother(&mut self) -> Result<Rc<nd::Array1<String>>, BedErrorPlus> {
+    pub fn mother(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         self.unlazy_fam::<String>(self.mother.is_lazy())?;
         self.get_some_field(&self.mother, "mother")
     }
@@ -2777,7 +2763,7 @@ impl Bed {
     /// println!("{sex:?}"); // Outputs ndarray [1, 2, 0]
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
-    pub fn sex(&mut self) -> Result<Rc<nd::Array1<i32>>, BedErrorPlus> {
+    pub fn sex(&mut self) -> Result<&nd::Array1<i32>, BedErrorPlus> {
         self.unlazy_fam::<String>(self.sex.is_lazy())?;
         self.get_some_field(&self.sex, "sex")
     }
@@ -2802,7 +2788,7 @@ impl Bed {
     /// println!("{pheno:?}"); // Outputs ndarray ["red", "red", "blue"]
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
-    pub fn pheno(&mut self) -> Result<Rc<nd::Array1<String>>, BedErrorPlus> {
+    pub fn pheno(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         self.unlazy_fam::<String>(self.pheno.is_lazy())?;
         self.get_some_field(&self.pheno, "pheno")
     }
@@ -2829,7 +2815,7 @@ impl Bed {
     /// # Ok::<(), BedErrorPlus>(())
     pub fn chromosome(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         self.unlazy_bim::<String>(self.chromosome.is_lazy())?;
-        self.get_some_field_cmk(&self.chromosome, "chromosome")
+        self.get_some_field(&self.chromosome, "chromosome")
     }
 
     /// SNP id of each SNP (variant)
@@ -2852,7 +2838,7 @@ impl Bed {
     /// println!("{sid:?}"); // Outputs ndarray "sid1", "sid2", "sid3", "sid4"]
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
-    pub fn sid(&mut self) -> Result<Rc<nd::Array1<String>>, BedErrorPlus> {
+    pub fn sid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         self.unlazy_bim::<String>(self.sid.is_lazy())?;
         self.get_some_field(&self.sid, "sid")
     }
@@ -2877,7 +2863,7 @@ impl Bed {
     /// println!("{cm_position:?}"); // Outputs ndarray [100.4, 2000.5, 4000.7, 7000.9]
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
-    pub fn cm_position(&mut self) -> Result<Rc<nd::Array1<f32>>, BedErrorPlus> {
+    pub fn cm_position(&mut self) -> Result<&nd::Array1<f32>, BedErrorPlus> {
         self.unlazy_bim::<String>(self.cm_position.is_lazy())?;
         self.get_some_field(&self.cm_position, "cm_position")
     }
@@ -2902,7 +2888,7 @@ impl Bed {
     /// println!("{bp_position:?}"); // Outputs ndarray [1, 100, 1000, 1004]
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
-    pub fn bp_position(&mut self) -> Result<Rc<nd::Array1<i32>>, BedErrorPlus> {
+    pub fn bp_position(&mut self) -> Result<&nd::Array1<i32>, BedErrorPlus> {
         self.unlazy_bim::<String>(self.bp_position.is_lazy())?;
         self.get_some_field(&self.bp_position, "bp_position")
     }
@@ -2927,7 +2913,7 @@ impl Bed {
     /// println!("{allele_1:?}"); // Outputs ndarray ["A", "T", "A", "T"]
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
-    pub fn allele_1(&mut self) -> Result<Rc<nd::Array1<String>>, BedErrorPlus> {
+    pub fn allele_1(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         self.unlazy_bim::<String>(self.allele_1.is_lazy())?;
         self.get_some_field(&self.allele_1, "allele_1")
     }
@@ -2952,7 +2938,7 @@ impl Bed {
     /// println!("{allele_2:?}"); // Outputs ndarray ["A", "C", "C", "G"]
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
-    pub fn allele_2(&mut self) -> Result<Rc<nd::Array1<String>>, BedErrorPlus> {
+    pub fn allele_2(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         self.unlazy_bim::<String>(self.allele_2.is_lazy())?;
         self.get_some_field(&self.allele_2, "allele_2")
     }
