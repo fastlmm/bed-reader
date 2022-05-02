@@ -1770,50 +1770,47 @@ fn metadata_use() -> Result<(), BedErrorPlus> {
 
 #[test]
 fn metadata_same() -> Result<(), BedErrorPlus> {
-    // create 10 files with the same metadata
-    let write_options = WriteOptions::builder("ignore.bed")
-        .fid(["fid1", "fid2", "fid3"])
-        .iid(["iid1", "iid2", "iid3"])
-        .father(["iid23", "iid23", "iid22"])
-        .mother(["iid34", "iid34", "iid33"])
-        .missing_value(-1)
-        .build(3,4)?;
+    let iid_count = 1_000;
+    let sid_count = 5_000;
+    let file_count = 10;
 
-    // let metadata = Metadata {
-    //     fid: Some(nd::Array1!["fid1", "fid2", "fid3"]),
-    //     iid: Some(vec!["iid1", "iid2", "iid3"]),
-    //     father: Some(vec!["iid23", "iid23", "iid22"]),
-    //     mother: Some(vec!["iid34", "iid34", "iid33"]),
-    //     sex: todo!(),
-    //     pheno: todo!(),
-    //     chromosome: todo!(),
-    //     sid: todo!(),
-    //     cm_position: todo!(),
-    //     bp_position: todo!(),
-    //     allele_1: todo!(),
-    //     allele_2: todo!(),
-    // }
-
-
-    let file_name = "bed_reader/tests/data/small.bed";
-    let mut bed = Bed::new(file_name)?;
-    let metadata = bed.metadata()?;
-    let shape = bed.dim()?; // cmk00 why does this fail if we swap with the next line?
+    let metadata = Metadata {
+        fid: None,
+        iid: Some(Rc::new(
+            (0..iid_count).map(|iid_index| format!("iid_{iid_index}").to_owned()).collect()
+        )),
+        father: None,
+        mother: None,
+        sex: None,
+        pheno: None,
+        chromosome: None,
+        sid: Some(//Rc::new(
+            (0..sid_count).map(|sid_index| format!("sid_{sid_index}").to_owned()).collect()
+        ),
+        cm_position: None,
+        bp_position: None,
+        allele_1: None,
+        allele_2: None,
+    };
 
     let temp_out = tmp_path()?;
-    let output_file = temp_out.join("random.bed");
 
-    // !!!cmk00 needs seed
-    let val = nd::Array::random(shape, Uniform::from(-1..3));
+    for file_index in 0..file_count
+    {
+        let output_file = temp_out.join(format!("random{file_index}.bed"));
+    
+        // !!!cmk00 needs seed
+        let val = nd::Array::random((iid_count, sid_count), Uniform::from(-1..3));
+    
+        // cmk00 println!("{val:?}");
+    
+        WriteOptions::builder(output_file)
+            .metadata(&metadata)
+            .missing_value(-1)
+            .write(&val)?;
+    }
+        Ok(())
 
-    println!("{val:?}");
-
-    WriteOptions::builder(output_file)
-        .metadata(&metadata)
-        .missing_value(-1)
-        .write(&val)?;
-
-    Ok(())
 }
 
 // A - apply to reading
