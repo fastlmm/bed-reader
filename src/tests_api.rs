@@ -432,10 +432,12 @@ fn readme_examples() -> Result<(), BedErrorPlus> {
     let mut bed3 = Bed::new(file_name2)?;
     println!("{:?}", bed3.iid()?.slice(s![..5]));
     println!("{:?}", bed3.sid()?.slice(s![..5]));
-    let unique = bed3.chromosome()?.iter().collect::<HashSet<_>>();
+    let chrom = bed3.chromosome()?; // cmk00 fix so can be on-line
+    let unique = chrom.iter().collect::<HashSet<_>>();
     println!("{unique:?}");
     // let is_5 = bed3.chromosome()?.map(|elem| elem == "5");
-    let is_5 = nd::Zip::from(bed3.chromosome()?).par_map_collect(|elem| elem == "5");
+    // !!!cmk00 why is as_ref needed? How can it be removed?
+    let is_5 = nd::Zip::from(bed3.chromosome()?.as_ref()).par_map_collect(|elem| elem == "5");
     let val3 = ReadOptions::builder()
         .sid_index(is_5)
         .f64()
@@ -1495,7 +1497,7 @@ fn set_metadata() -> Result<(), BedErrorPlus> {
         pheno: None,
 
         chromosome: None,
-        sid: Some(sid),
+        sid: Some(Rc::new(sid)),
         cm_position: None,
         bp_position: None,
         allele_1: None,
@@ -1784,9 +1786,9 @@ fn metadata_same() -> Result<(), BedErrorPlus> {
         sex: None,
         pheno: None,
         chromosome: None,
-        sid: Some(//Rc::new(
+        sid: Some(Rc::new(
             (0..sid_count).map(|sid_index| format!("sid_{sid_index}").to_owned()).collect()
-        ),
+        )),
         cm_position: None,
         bp_position: None,
         allele_1: None,
