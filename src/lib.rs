@@ -2641,6 +2641,20 @@ impl Bed {
         }
     } 
 
+
+    // cmk00 need 'a?
+    fn get_some_field_cmk<'a, T: FromStringArray<T>>(
+        &'a self,
+        field: &'a LazyOrSkip<Rc<nd::Array1<T>>>,
+        name: &str,
+    ) -> Result<&nd::Array1<T>, BedErrorPlus> {
+        match field {
+            LazyOrSkip::Some(array) => Ok(&array),
+            LazyOrSkip::Skip => Err(BedError::CannotUseSkippedMetadata(name.to_string()).into()),
+            LazyOrSkip::Lazy => panic!("impossible"),
+        }
+    } 
+
     /// Family id of each of individual (sample)
     ///
     /// If this ndarray is needed, it will be found
@@ -2813,9 +2827,9 @@ impl Bed {
     /// println!("{chromosome:?}"); // Outputs ndarray ["1", "1", "5", "Y"]
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
-    pub fn chromosome(&mut self) -> Result<Rc<nd::Array1<String>>, BedErrorPlus> {
+    pub fn chromosome(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         self.unlazy_bim::<String>(self.chromosome.is_lazy())?;
-        self.get_some_field(&self.chromosome, "chromosome")
+        self.get_some_field_cmk(&self.chromosome, "chromosome")
     }
 
     /// SNP id of each SNP (variant)
