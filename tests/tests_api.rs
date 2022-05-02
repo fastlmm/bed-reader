@@ -1,23 +1,31 @@
 #[cfg(test)]
-use crate::allclose;
+use bed_reader::allclose;
 #[cfg(test)]
-use crate::assert_eq_nan;
+use bed_reader::SliceInfo1;
 #[cfg(test)]
-use crate::tmp_path;
+use bed_reader::assert_eq_nan;
 #[cfg(test)]
-use crate::Bed;
+use bed_reader::assert_same_result;
 #[cfg(test)]
-use crate::BedError;
+use bed_reader::nds1;
 #[cfg(test)]
-use crate::BedErrorPlus;
+use bed_reader::rt1;
 #[cfg(test)]
-use crate::Metadata;
+use bed_reader::rt23;
 #[cfg(test)]
-use crate::ReadOptions;
+use bed_reader::tmp_path;
 #[cfg(test)]
-use crate::SliceInfo1;
+use bed_reader::Bed;
 #[cfg(test)]
-use crate::WriteOptions;
+use bed_reader::BedError;
+#[cfg(test)]
+use bed_reader::BedErrorPlus;
+#[cfg(test)]
+use bed_reader::Metadata;
+#[cfg(test)]
+use bed_reader::ReadOptions;
+#[cfg(test)]
+use bed_reader::WriteOptions;
 #[cfg(test)]
 use ndarray as nd;
 #[cfg(test)]
@@ -28,6 +36,7 @@ use ndarray_rand::rand_distr::Uniform;
 use ndarray_rand::RandomExt;
 #[cfg(test)]
 use std::rc::Rc;
+
 
 #[test]
 fn rusty_bed1() -> Result<(), BedErrorPlus> {
@@ -72,9 +81,6 @@ fn rusty_bed2() -> Result<(), BedErrorPlus> {
 
 #[cfg(test)]
 use std::collections::HashSet;
-#[cfg(test)]
-use std::panic::catch_unwind;
-
 
 #[test]
 fn rusty_bed3() -> Result<(), BedErrorPlus> {
@@ -679,154 +685,7 @@ fn into_iter() -> Result<(), BedErrorPlus> {
     Ok(())
 }
 
-#[cfg(test)]
-fn rt1<R>(range_thing: R) -> Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>
-where
-    R: std::ops::RangeBounds<usize>
-        + std::fmt::Debug
-        + Clone
-        + std::slice::SliceIndex<[isize], Output = [isize]>
-        + std::panic::RefUnwindSafe,
-{
-    println!("Running {:?}", &range_thing);
-    let file_name = "bed_reader/tests/data/toydata.5chrom.bed";
 
-    let result1 = catch_unwind(|| {
-        let mut bed = Bed::new(file_name).unwrap();
-        let all: Vec<isize> = (0..(bed.iid_count().unwrap() as isize)).collect();
-        let mut bed = Bed::new(file_name).unwrap();
-        let iid_index: &[isize] = &all[range_thing.clone()];
-        ReadOptions::builder()
-            .iid_index(iid_index)
-            .i8()
-            .read(&mut bed)
-    });
-    if result1.is_err() {
-        return Err(BedError::PanickedThread().into());
-    }
-    match result1 {
-        Err(_) => Err(BedError::PanickedThread().into()),
-        Ok(bed_result) => Ok(bed_result),
-    }
-}
-
-#[cfg(test)]
-fn nds1(range_thing: SliceInfo1) -> Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus> {
-    println!("Running {:?}", &range_thing);
-    let file_name = "bed_reader/tests/data/toydata.5chrom.bed";
-
-    let result1 = catch_unwind(|| {
-        let mut bed = Bed::new(file_name).unwrap();
-        let all: nd::Array1<isize> = (0..(bed.iid_count().unwrap() as isize)).collect();
-        let mut bed = Bed::new(file_name).unwrap();
-        let iid_index = &all.slice(&range_thing);
-        ReadOptions::builder()
-            .iid_index(iid_index)
-            .i8()
-            .read(&mut bed)
-    });
-    if result1.is_err() {
-        return Err(BedError::PanickedThread().into());
-    }
-    match result1 {
-        Err(_) => Err(BedError::PanickedThread().into()),
-        Ok(bed_result) => Ok(bed_result),
-    }
-}
-
-#[cfg(test)]
-fn rt23(
-    range_thing: crate::Index,
-) -> (
-    Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>,
-    Result<Result<usize, BedErrorPlus>, BedErrorPlus>,
-) {
-    (rt2(range_thing.clone()), rt3(range_thing.clone()))
-}
-
-#[cfg(test)]
-fn rt2(range_thing: crate::Index) -> Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus> {
-    println!("Running {:?}", &range_thing);
-    let file_name = "bed_reader/tests/data/toydata.5chrom.bed";
-
-    let result2 = catch_unwind(|| {
-        let mut bed = Bed::new(file_name).unwrap();
-        ReadOptions::builder()
-            .iid_index(range_thing)
-            .i8()
-            .read(&mut bed)
-    });
-    if result2.is_err() {
-        return Err(BedError::PanickedThread().into());
-    }
-    match result2 {
-        Err(_) => Err(BedError::PanickedThread().into()),
-        Ok(bed_result) => Ok(bed_result),
-    }
-}
-
-#[cfg(test)]
-fn rt3(range_thing: crate::Index) -> Result<Result<usize, BedErrorPlus>, BedErrorPlus> {
-    println!("Running {:?}", &range_thing);
-    let file_name = "bed_reader/tests/data/toydata.5chrom.bed";
-
-    let result3 = catch_unwind(|| {
-        let mut bed = Bed::new(file_name).unwrap();
-        range_thing.len(bed.iid_count().unwrap()).unwrap()
-    });
-    if result3.is_err() {
-        return Err(BedError::PanickedThread().into());
-    }
-    match result3 {
-        Err(_) => Err(BedError::PanickedThread().into()),
-        Ok(bed_result) => Ok(Ok(bed_result)),
-    }
-}
-
-#[cfg(test)]
-fn is_err2<T>(result_result: &Result<Result<T, BedErrorPlus>, BedErrorPlus>) -> bool {
-    match result_result {
-        Ok(Ok(_)) => false,
-        _ => true,
-    }
-}
-
-#[cfg(test)]
-fn assert_same_result(
-    result1: Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>,
-    result23: (
-        Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>,
-        Result<Result<usize, BedErrorPlus>, BedErrorPlus>,
-    ),
-) {
-    let result2 = result23.0;
-    let result3 = result23.1;
-    let err1 = is_err2(&result1);
-    let err2 = is_err2(&result2);
-    let err3 = is_err2(&result3);
-
-    if err1 || err2 || err3 {
-        if !err1 || !err2 || !err3 {
-            println!("{result1:?}");
-            println!("{result2:?}");
-            println!("{result3:?}");
-            panic!("all should panic/error the same");
-        }
-        return;
-    }
-
-    let result1 = result1.unwrap().unwrap();
-    let result2 = result2.unwrap().unwrap();
-    let result3 = result3.unwrap().unwrap();
-    println!("{result1:?}");
-    println!("{result2:?}");
-    println!("{result3:?}");
-    assert!(
-        allclose(&result1.view(), &result2.view(), 0, true),
-        "not close"
-    );
-    assert!(result1.shape()[0] == result3, "not same length");
-}
 
 #[test]
 fn range_same() -> Result<(), BedErrorPlus> {
@@ -1814,6 +1673,7 @@ fn metadata_same() -> Result<(), BedErrorPlus> {
 
 }
 
+// !!!cmk00
 // A - apply to reading
 // B - extract from reading
 // C - apply to writing
@@ -1821,3 +1681,20 @@ fn metadata_same() -> Result<(), BedErrorPlus> {
 
 // CD
 // create 10 files with the same metadata
+
+// !!!cmk00 what are the structs?
+// !!!cmk00 can their fields by changed by users after construction?
+// !!!cmk00 can iid_count and sid_count be made inconsistant and will it be caught?
+
+// structs: Metadata, Bed, ReadOptions, WriteOptions
+
+#[test]
+fn struct_play() -> Result<(), BedErrorPlus> {
+    todo!(); // cmk00
+    // let bed = Bed { path: PathBuf::from("ignore.bed"), fam_path: None, bim_path: None, is_checked_early: false,
+    //      iid_count: None, sid_count: None, 
+    //      fid: LazyOrSkip::Lazy, iid: LazyOrSkip::Lazy, father: LazyOrSkip::Lazy, mother: LazyOrSkip::Lazy, sex: LazyOrSkip::Lazy, pheno: LazyOrSkip::Lazy,
+    //       chromosome: LazyOrSkip::Lazy, sid: LazyOrSkip::Lazy, cm_position: LazyOrSkip::Lazy, bp_position: LazyOrSkip::Lazy, allele_1: LazyOrSkip::Lazy, allele_2: LazyOrSkip::Lazy };
+    // println!("{bed:?}");
+    Ok(())
+}

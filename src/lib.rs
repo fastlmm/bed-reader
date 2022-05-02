@@ -212,8 +212,6 @@
 
 mod python_module;
 mod tests;
-mod tests_api;
-
 use core::fmt::Debug;
 use std::rc::Rc;
 use derive_builder::{Builder, UninitializedFieldError};
@@ -245,6 +243,7 @@ use std::num::{ParseFloatError, ParseIntError};
 use std::ops::AddAssign;
 use std::ops::{Div, Sub};
 use thiserror::Error;
+use std::panic::catch_unwind;
 
 const BED_FILE_MAGIC1: u8 = 0x6C; // 0b01101100 or 'l' (lowercase 'L')
 const BED_FILE_MAGIC2: u8 = 0x1B; // 0b00011011 or <esc>
@@ -1370,13 +1369,6 @@ impl<T> LazyOrSkip<T> {
         }
     }
 }
-
-// cmk00
-// #[derive(Clone, Debug, Eq, PartialEq)]
-// pub enum Option<T> {
-//     Some(T),
-//     Skip,
-// }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Metadata {
@@ -2628,7 +2620,7 @@ impl Bed {
         }
         Ok(())
     }
-    // cmk00 need 'a?
+  
     fn get_some_field<'a, T: FromStringArray<T>>(
         &'a self,
         field: &'a LazyOrSkip<Rc<nd::Array1<T>>>,
@@ -3175,7 +3167,7 @@ impl Index {
     }
 }
 
-pub(crate) type SliceInfo1 =
+pub type SliceInfo1 =
     nd::SliceInfo<[nd::SliceInfoElem; 1], nd::Dim<[usize; 1]>, nd::Dim<[usize; 1]>>;
 
 /// A specification of which individuals (samples) or SNPs (variants) to read.
@@ -3848,7 +3840,7 @@ impl From<()> for Index {
 /// # Ok::<(), BedErrorPlus>(())
 /// ```
 #[derive(Debug, Clone, Builder)]
-#[builder(build_fn(private, error = "BedErrorPlus"))]
+#[builder(build_fn(error = "BedErrorPlus"))]
 pub struct ReadOptions<TVal: BedVal> {
     /// Value to use for missing values (defaults to -127 or NaN)
     ///
@@ -5318,3 +5310,149 @@ fn compute_field<T: Clone, F: Fn(usize) -> T>(
         Ok(Rc::new((0..count).map(|_| lambda(0)).collect::<nd::Array1<T>>()))
     }
 }
+
+// !!!cmk00
+pub fn assert_same_result(
+    result1: Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>,
+    result23: (
+        Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>,
+        Result<Result<usize, BedErrorPlus>, BedErrorPlus>,
+    ),
+) {
+    let result2 = result23.0;
+    let result3 = result23.1;
+    let err1 = is_err2(&result1);
+    let err2 = is_err2(&result2);
+    let err3 = is_err2(&result3);
+
+    if err1 || err2 || err3 {
+        if !err1 || !err2 || !err3 {
+            println!("{result1:?}");
+            println!("{result2:?}");
+            println!("{result3:?}");
+            panic!("all should panic/error the same");
+        }
+        return;
+    }
+
+    let result1 = result1.unwrap().unwrap();
+    let result2 = result2.unwrap().unwrap();
+    let result3 = result3.unwrap().unwrap();
+    println!("{result1:?}");
+    println!("{result2:?}");
+    println!("{result3:?}");
+    assert!(
+        allclose(&result1.view(), &result2.view(), 0, true),
+        "not close"
+    );
+    assert!(result1.shape()[0] == result3, "not same length");
+}
+
+
+fn is_err2<T>(result_result: &Result<Result<T, BedErrorPlus>, BedErrorPlus>) -> bool {
+    match result_result {
+        Ok(Ok(_)) => false,
+        _ => true,
+    }
+}
+
+pub fn rt1<R>(range_thing: R) -> Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>
+where
+    R: std::ops::RangeBounds<usize>
+        + std::fmt::Debug
+        + Clone
+        + std::slice::SliceIndex<[isize], Output = [isize]>
+        + std::panic::RefUnwindSafe,
+{
+    println!("Running {:?}", &range_thing);
+    let file_name = "bed_reader/tests/data/toydata.5chrom.bed";
+
+    let result1 = catch_unwind(|| {
+        let mut bed = Bed::new(file_name).unwrap();
+        let all: Vec<isize> = (0..(bed.iid_count().unwrap() as isize)).collect();
+        let mut bed = Bed::new(file_name).unwrap();
+        let iid_index: &[isize] = &all[range_thing.clone()];
+        ReadOptions::builder()
+            .iid_index(iid_index)
+            .i8()
+            .read(&mut bed)
+    });
+    if result1.is_err() {
+        return Err(BedError::PanickedThread().into());
+    }
+    match result1 {
+        Err(_) => Err(BedError::PanickedThread().into()),
+        Ok(bed_result) => Ok(bed_result),
+    }
+}
+
+pub fn nds1(range_thing: SliceInfo1) -> Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus> {
+
+    println!("Running {:?}", &range_thing);
+    let file_name = "bed_reader/tests/data/toydata.5chrom.bed";
+
+    let result1 = catch_unwind(|| {
+        let mut bed = Bed::new(file_name).unwrap();
+        let all: nd::Array1<isize> = (0..(bed.iid_count().unwrap() as isize)).collect();
+        let mut bed = Bed::new(file_name).unwrap();
+        let iid_index = &all.slice(&range_thing);
+        ReadOptions::builder()
+            .iid_index(iid_index)
+            .i8()
+            .read(&mut bed)
+    });
+    if result1.is_err() {
+        return Err(BedError::PanickedThread().into());
+    }
+    match result1 {
+        Err(_) => Err(BedError::PanickedThread().into()),
+        Ok(bed_result) => Ok(bed_result),
+    }
+}
+
+pub fn rt23(
+    range_thing: crate::Index,
+) -> (
+    Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>,
+    Result<Result<usize, BedErrorPlus>, BedErrorPlus>,
+) {
+    (rt2(range_thing.clone()), rt3(range_thing.clone()))
+}
+
+pub fn rt2(range_thing: crate::Index) -> Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus> {
+    println!("Running {:?}", &range_thing);
+    let file_name = "bed_reader/tests/data/toydata.5chrom.bed";
+
+    let result2 = catch_unwind(|| {
+        let mut bed = Bed::new(file_name).unwrap();
+        ReadOptions::builder()
+            .iid_index(range_thing)
+            .i8()
+            .read(&mut bed)
+    });
+    if result2.is_err() {
+        return Err(BedError::PanickedThread().into());
+    }
+    match result2 {
+        Err(_) => Err(BedError::PanickedThread().into()),
+        Ok(bed_result) => Ok(bed_result),
+    }
+}
+
+pub fn rt3(range_thing: crate::Index) -> Result<Result<usize, BedErrorPlus>, BedErrorPlus> {
+    println!("Running {:?}", &range_thing);
+    let file_name = "bed_reader/tests/data/toydata.5chrom.bed";
+
+    let result3 = catch_unwind(|| {
+        let mut bed = Bed::new(file_name).unwrap();
+        range_thing.len(bed.iid_count().unwrap()).unwrap()
+    });
+    if result3.is_err() {
+        return Err(BedError::PanickedThread().into());
+    }
+    match result3 {
+        Err(_) => Err(BedError::PanickedThread().into()),
+        Ok(bed_result) => Ok(Ok(bed_result)),
+    }
+}
+
