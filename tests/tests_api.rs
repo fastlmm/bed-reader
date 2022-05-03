@@ -1606,27 +1606,26 @@ fn write_options_metadata() -> Result<(), BedErrorPlus> {
 
 #[test]
 fn metadata_use() -> Result<(), BedErrorPlus> {
-    todo!(); // cmk00
-    // // Extract metadata from a file
-    // // create a random file with the same metadata
+    // Extract metadata from a file
+    // create a random file with the same metadata
 
-    // let file_name = "bed_reader/tests/data/small.bed";
-    // let mut bed = Bed::new(file_name)?;
-    // let metadata = bed.metadata()?;
-    // let shape = bed.dim()?; // cmk00 why does this fail if we swap with the next line?
+    let file_name = "bed_reader/tests/data/small.bed";
+    let mut bed = Bed::new(file_name)?;
+    let metadata = bed.metadata()?;
+    let shape = bed.dim()?; // cmk00 why does this fail if we swap with the next line?
 
-    // let temp_out = tmp_path()?;
-    // let output_file = temp_out.join("random.bed");
+    let temp_out = tmp_path()?;
+    let output_file = temp_out.join("random.bed");
 
-    // // !!!cmk00 needs seed
-    // let val = nd::Array::random(shape, Uniform::from(-1..3));
+    // !!!cmk00 needs seed
+    let val = nd::Array::random(shape, Uniform::from(-1..3));
 
-    // println!("{val:?}");
+    println!("{val:?}");
 
-    // WriteOptions::builder(output_file)
-    //     .metadata(&metadata)
-    //     .missing_value(-1)
-    //     .write(&val)?;
+    WriteOptions::builder(output_file)
+        .metadata(&metadata)
+        .missing_value(-1)
+        .write(&val)?;
 
     Ok(())
 }

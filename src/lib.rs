@@ -2364,11 +2364,12 @@ impl Bed {
         Ok((self.iid_count()?, self.sid_count()?))
     }
 
-    pub fn metadata(&mut self) -> Result<&Metadata, BedErrorPlus> {
+    pub fn metadata(&mut self) -> Result<Metadata, BedErrorPlus> {
         self.fam()?;
         self.bim()?;
 
-        Ok(&self.metadata)
+        let clone  = self.metadata.clone();
+        Ok(clone)
     }
 
     fn fam(&mut self) -> Result<(), BedErrorPlus> {
