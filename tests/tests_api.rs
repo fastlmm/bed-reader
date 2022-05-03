@@ -1696,14 +1696,12 @@ fn struct_play() -> Result<(), BedErrorPlus> {
     // can't change pub properties because there are none
 
     // make ReadOptions directly or change? no, no pub fields
+    // make WriteOptions directly or change? no, no pub fields
 
-    // let read_options = ReadOptions { missing_value: -1,
-    //      iid_index: todo!(), sid_index: todo!(), 
-    //      is_f: false, 
-    //      is_a1_counted: true, num_threads: None };
+    // let write_options = WriteOptions { path: todo!(), fam_path: todo!(), bim_path: todo!(), fid: todo!(), iid: todo!(), father: todo!(), mother: todo!(), sex: todo!(), pheno: todo!(), chromosome: todo!(), sid: todo!(), cm_position: todo!(), bp_position: todo!(), allele_1: todo!(), allele_2: todo!(), is_a1_counted: todo!(), num_threads: todo!(), missing_value: -1 };
 
    
 
-    // println!("{read_options:?}");
+    // println!("{write_options:?}");
     Ok(())
 }

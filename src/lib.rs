@@ -4513,49 +4513,49 @@ where
     ///
     /// If this ndarray is not given, the default (zeros) is used.
     #[builder(setter(custom))]
- pheno: Rc<nd::Array1<String>>,
+    pheno: Rc<nd::Array1<String>>,
 
     /// Chromosome of each SNP (variant)
     ///
     /// If this ndarray is not given, the default (zeros) is used.
     #[builder(setter(custom))]
-    pub chromosome: Rc<nd::Array1<String>>,
+    chromosome: Rc<nd::Array1<String>>,
 
     /// SNP id of each SNP (variant)
     ///
     /// If this ndarray is not given, the default
     /// (["sid0", "sid1", "sid2", ...] is used.
     #[builder(setter(custom))]
-    pub sid: Rc<nd::Array1<String>>,
+    sid: Rc<nd::Array1<String>>,
 
     /// Centimorgan position of each SNP (variant)
     ///
     /// If this ndarray is not given, the default (0.0) is used.
     #[builder(setter(custom))]
-    pub cm_position: Rc<nd::Array1<f32>>,
+    cm_position: Rc<nd::Array1<f32>>,
 
     /// Base-pair position of each SNP (variant)
     ///
     /// If this ndarray is not given, the default (zeros) is used.
     #[builder(setter(custom))]
-    pub bp_position: Rc<nd::Array1<i32>>,
+    bp_position: Rc<nd::Array1<i32>>,
 
     /// Allele 1 for each SNP (variant)
     ///
     /// If this ndarray is not given, the default ("A1") is used.
     #[builder(setter(custom))]
-    pub allele_1: Rc<nd::Array1<String>>,
+    allele_1: Rc<nd::Array1<String>>,
 
     /// Allele 2 for each SNP (variant)
     ///
     /// If this ndarray is not given, the default ("A2") is used.
     #[builder(setter(custom))]
-    pub allele_2: Rc<nd::Array1<String>>,
+    allele_2: Rc<nd::Array1<String>>,
 
     /// Sets if allele 1 is counted. Default is true.
     ///
     /// Also see [`count_a1`](struct.WriteOptionsBuilder.html#method.count_a1) and [`count_a2`](struct.WriteOptionsBuilder.html#method.count_a2).    
-    pub is_a1_counted: bool,
+    is_a1_counted: bool,
 
     /// Number of threads to use (defaults to all)
     ///
@@ -4583,7 +4583,7 @@ where
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     #[builder(default, setter(strip_option))]
-    pub num_threads: Option<usize>,
+    num_threads: Option<usize>,
 
     /// Value used for missing values (defaults to -127 or NaN)
     ///
@@ -4611,7 +4611,7 @@ where
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     #[builder(default = "TVal::missing()")]
-    pub missing_value: TVal,
+    missing_value: TVal,
     // !!!cmk later mark so that users must use builder? Here and Bed. See https://stackoverflow.com/questions/53588819/how-to-restrict-the-construction-of-struct
 }
 
@@ -4656,6 +4656,12 @@ where
     pub fn pheno(&self) -> &nd::Array1<String> {
         &self.pheno.as_ref()
     }
+
+    pub fn chromosome(&self) -> &nd::Array1<String> {
+        &self.chromosome.as_ref()
+    }
+
+    // cmk00 put in rest of access functions
 
 
     /// Write values to a file in PLINK .bed format. Supports metadata and options.
@@ -4831,7 +4837,7 @@ where
     ///     .build(3,4)?;
     ///
     /// // cmk00 check this
-    /// println!("{:?}",&write_options.chromosome); // Outputs ndarray ["0", "0", "0", "0"]
+    /// println!("{:?}",&write_options.chromosome()); // Outputs ndarray ["0", "0", "0", "0"]
     ///
     /// let val = nd::array![
     ///     [1.0, 0.0, f64::NAN, 0.0],
