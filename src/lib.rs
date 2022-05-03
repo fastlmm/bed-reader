@@ -1446,7 +1446,7 @@ pub struct Bed {
     // don't emit a setter, but keep the field declaration on the builder
     /// The file name or path of the .bed file.
     #[builder(setter(custom))]
-    pub path: PathBuf, // !!!cmk later always clone?
+    path: PathBuf, // !!!cmk later always clone?
 
     #[builder(setter(custom))]
     #[builder(default = "None")]
@@ -2160,6 +2160,11 @@ impl Bed {
     ///
     pub fn builder<P: AsRef<Path>>(path: P) -> BedBuilder {
         BedBuilder::new(path)
+    }
+
+    // !!!cmk 00 return ref instead
+    pub fn path(self) -> PathBuf{
+        self.path.to_owned()
     }
 
     /// Attempts to open a PLINK .bed file for reading. Does not support options.

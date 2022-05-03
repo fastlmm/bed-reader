@@ -131,7 +131,7 @@ fn rusty_bed_order() -> Result<(), BedErrorPlus> {
 fn bad_header() -> Result<(), BedErrorPlus> {
     let filename = "bed_reader/tests/data/badfile.bed";
     let bed = Bed::builder(filename).skip_early_check().build()?;
-    println!("{:?}", bed.path);
+    println!("{:?}", bed.path());
 
     let result = Bed::new(filename);
 
@@ -1685,16 +1685,24 @@ fn metadata_same() -> Result<(), BedErrorPlus> {
 // !!!cmk00 what are the structs?
 // !!!cmk00 can their fields by changed by users after construction?
 // !!!cmk00 can iid_count and sid_count be made inconsistant and will it be caught?
+// !!!cmk00 make sure can't set pub fields like path
 
 // structs: Metadata, Bed, ReadOptions, WriteOptions
 
 #[test]
 fn struct_play() -> Result<(), BedErrorPlus> {
-    todo!(); // cmk00
-    // let bed = Bed { path: PathBuf::from("ignore.bed"), fam_path: None, bim_path: None, is_checked_early: false,
-    //      iid_count: None, sid_count: None, 
-    //      fid: LazyOrSkip::Lazy, iid: LazyOrSkip::Lazy, father: LazyOrSkip::Lazy, mother: LazyOrSkip::Lazy, sex: LazyOrSkip::Lazy, pheno: LazyOrSkip::Lazy,
-    //       chromosome: LazyOrSkip::Lazy, sid: LazyOrSkip::Lazy, cm_position: LazyOrSkip::Lazy, bp_position: LazyOrSkip::Lazy, allele_1: LazyOrSkip::Lazy, allele_2: LazyOrSkip::Lazy };
-    // println!("{bed:?}");
+    // Bed
+    // can't construct Bed directly because some fields are private
+    // can we change pub properties because there are none
+
+    // make ReadOptions directly?
+    let read_options = ReadOptions { missing_value: -1,
+         iid_index: todo!(), sid_index: todo!(), 
+         is_f: false, 
+         is_a1_counted: true, num_threads: None };
+
+   
+
+    println!("{read_options:?}");
     Ok(())
 }
