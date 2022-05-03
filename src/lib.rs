@@ -1453,12 +1453,6 @@ pub struct Bed {
     #[builder(default = "None")]
     sid_count: Option<usize>,
 
-    #[builder(default = "false")]
-    is_fam_read: bool,
-
-    #[builder(default = "false")]
-    is_bim_read: bool,
-
     metadata: Metadata,
 
     skip_set: HashSet<usize>, // replace usize with enum cmk00
@@ -1523,8 +1517,7 @@ impl BedBuilder {
             iid_count: None,
             sid_count: None,
 
-            is_fam_read: Some(false),
-            is_bim_read: Some(false),
+           
 
             metadata: Some(Metadata::default()),
             skip_set: Some(HashSet::new()),
@@ -2001,22 +1994,7 @@ fn to_metadata_path(
     }
 }
 
-fn to_skippable<T: Clone>(lazy_or_skip: &LazyOrSkip<T>) -> Option<T> {
-    match lazy_or_skip {
-        LazyOrSkip::Lazy => panic!("assert: impossible"),
-        LazyOrSkip::Skip => None,
-        LazyOrSkip::Some(some) => Some(some.to_owned()),
-    }
-}
 
-fn to_lazy_or_skip_clone<T: Clone>(
-    skippable: &Option<Rc<nd::Array1<T>>>,
-) -> LazyOrSkip<Rc<nd::Array1<T>>> {
-    match skippable {
-        Some(f) => LazyOrSkip::Some(Rc::clone(f)),
-        None => LazyOrSkip::Skip,
-    }
-}
 
 // !!!cmk later should bed builder be able to accept a metadata struct?
 
@@ -2597,16 +2575,7 @@ impl Bed {
         Ok(())
     }
   
-    fn get_some_field<'a, T: FromStringArray<T>>(
-        &'a self,
-        field: &'a Option<Rc<nd::Array1<T>>>,
-        name: &str,
-    ) -> Result<&nd::Array1<T>, BedErrorPlus> {
-        match field {
-            Some(array) => Ok(&array),
-            None => panic!("impossible"),
-        }
-    } 
+
 
     /// Family id of each of individual (sample)
     ///
