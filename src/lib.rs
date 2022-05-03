@@ -1837,7 +1837,7 @@ impl BedBuilder {
     /// By default, if fid values are needed and haven't already been found,
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn fid<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, fid: I) -> &Self {
+    pub fn fid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, fid: I) -> Self {
         self.metadata.as_mut().unwrap().fid(fid);
         self
     }
@@ -1861,7 +1861,7 @@ impl BedBuilder {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
-    pub fn iid<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, iid: I) -> &Self {
+    pub fn iid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, iid: I) -> Self {
         self.metadata.as_mut().unwrap().iid(iid);
         self
     }
@@ -1871,7 +1871,7 @@ impl BedBuilder {
     /// By default, if father values are needed and haven't already been found,
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to gi&ve different values.
-    pub fn father<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, father: I) -> &Self {
+    pub fn father<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, father: I) -> Self {
         self.metadata.as_mut().unwrap().father(father);
         self
     }
@@ -1881,7 +1881,7 @@ impl BedBuilder {
     /// By default, if mother values are needed and haven't already been found,
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn mother<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, mother: I) -> &Self {
+    pub fn mother<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, mother: I) -> Self {
         self.metadata.as_mut().unwrap().mother(mother);
         self
     }
@@ -1891,7 +1891,7 @@ impl BedBuilder {
     /// By default, if sex values are needed and haven't already been found,
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn sex<I: IntoIterator<Item = i32>>(&mut self, sex: I) -> &Self {
+    pub fn sex<I: IntoIterator<Item = i32>>(mut self, sex: I) -> Self {
         self.metadata.as_mut().unwrap().sex(sex);
         self
     }
@@ -1902,7 +1902,7 @@ impl BedBuilder {
     /// By default, if phenotype values are needed and haven't already been found,
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn pheno<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, pheno: I) -> &Self {
+    pub fn pheno<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, pheno: I) -> Self {
         self.metadata.as_mut().unwrap().pheno(pheno);
         self
     }
@@ -1912,7 +1912,7 @@ impl BedBuilder {
     /// By default, if chromosome values are needed and haven't already been found,
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn chromosome<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, chromosome: I) -> &Self {
+    pub fn chromosome<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, chromosome: I) -> Self {
         self.metadata.as_mut().unwrap().chromosome(chromosome);
         self
     }
@@ -1936,7 +1936,7 @@ impl BedBuilder {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
-    pub fn sid<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, sid: I) -> &Self {
+    pub fn sid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, sid: I) -> Self {
         self.metadata.as_mut().unwrap().sid(sid);
         self
     }
@@ -1946,7 +1946,7 @@ impl BedBuilder {
     /// By default, if centimorgan position values are needed and haven't already been found,
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn cm_position<I: IntoIterator<Item = f32>>(&mut self, cm_position: I) -> &Self {
+    pub fn cm_position<I: IntoIterator<Item = f32>>(mut self, cm_position: I) -> Self {
         self.metadata.as_mut().unwrap().cm_position(cm_position);
         self
     }
@@ -1956,7 +1956,7 @@ impl BedBuilder {
     /// By default, if base-pair position values are needed and haven't already been found,
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn bp_position<I: IntoIterator<Item = i32>>(&mut self, bp_position: I) -> &Self {
+    pub fn bp_position<I: IntoIterator<Item = i32>>(mut self, bp_position: I) -> Self {
         self.metadata.as_mut().unwrap().bp_position(bp_position);
         self
     }
@@ -1966,7 +1966,7 @@ impl BedBuilder {
     /// By default, if allele 1 values are needed and haven't already been found,
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn allele_1<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, allele_1: I) -> &Self {
+    pub fn allele_1<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, allele_1: I) -> Self {
         self.metadata.as_mut().unwrap().allele_1(allele_1);
         self
     }
@@ -1976,7 +1976,7 @@ impl BedBuilder {
     /// By default, if allele 2 values are needed and haven't already been found,
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn allele_2<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, allele_2: I) -> &Self {
+    pub fn allele_2<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, allele_2: I) -> Self {
         self.metadata.as_mut().unwrap().allele_2(allele_2);
         self
     }

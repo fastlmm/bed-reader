@@ -336,10 +336,11 @@ fn metadata_etc() -> Result<(), BedErrorPlus> {
 
 #[test]
 fn hello_father() -> Result<(), BedErrorPlus> {
+   
     let mut bed = Bed::builder("bed_reader/tests/data/small.bed")
-        .father(["f1", "f2", "f3"])
-        .skip_mother()
-        .build()?;
+    .father(["f1", "f2", "f3"])
+    .skip_mother()
+    .build()?;
     println!("{:?}", bed.father()?);
     // ["f1", "f2", "f3"], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
     bed.mother().unwrap_err();
@@ -645,18 +646,18 @@ fn nd_slice() -> Result<(), BedErrorPlus> {
 #[test]
 fn skip_coverage() -> Result<(), BedErrorPlus> {
     let mut bed = Bed::builder("bed_reader/tests/data/small.bed")
-        // .skip_fid()
-        // .skip_iid()
-        // .skip_father()
+        .skip_fid()
+        .skip_iid()
+        .skip_father()
         .skip_mother()
         .skip_sex()
-        // .skip_pheno()
-        // .skip_chromosome()
-        // .skip_sid()
-        // .skip_cm_position()
-        // .skip_bp_position()
-        // .skip_allele_1()
-        // .skip_allele_2()
+        .skip_pheno()
+        .skip_chromosome()
+        .skip_sid()
+        .skip_cm_position()
+        .skip_bp_position()
+        .skip_allele_1()
+        .skip_allele_2()
         .build()?;
     bed.mother().unwrap_err();
 
@@ -1605,26 +1606,27 @@ fn write_options_metadata() -> Result<(), BedErrorPlus> {
 
 #[test]
 fn metadata_use() -> Result<(), BedErrorPlus> {
-    // Extract metadata from a file
-    // create a random file with the same metadata
+    todo!(); // cmk00
+    // // Extract metadata from a file
+    // // create a random file with the same metadata
 
-    let file_name = "bed_reader/tests/data/small.bed";
-    let mut bed = Bed::new(file_name)?;
-    let metadata = bed.metadata()?;
-    let shape = bed.dim()?; // cmk00 why does this fail if we swap with the next line?
+    // let file_name = "bed_reader/tests/data/small.bed";
+    // let mut bed = Bed::new(file_name)?;
+    // let metadata = bed.metadata()?;
+    // let shape = bed.dim()?; // cmk00 why does this fail if we swap with the next line?
 
-    let temp_out = tmp_path()?;
-    let output_file = temp_out.join("random.bed");
+    // let temp_out = tmp_path()?;
+    // let output_file = temp_out.join("random.bed");
 
-    // !!!cmk00 needs seed
-    let val = nd::Array::random(shape, Uniform::from(-1..3));
+    // // !!!cmk00 needs seed
+    // let val = nd::Array::random(shape, Uniform::from(-1..3));
 
-    println!("{val:?}");
+    // println!("{val:?}");
 
-    WriteOptions::builder(output_file)
-        .metadata(&metadata)
-        .missing_value(-1)
-        .write(&val)?;
+    // WriteOptions::builder(output_file)
+    //     .metadata(&metadata)
+    //     .missing_value(-1)
+    //     .write(&val)?;
 
     Ok(())
 }
