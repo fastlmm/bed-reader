@@ -1693,16 +1693,17 @@ fn metadata_same() -> Result<(), BedErrorPlus> {
 fn struct_play() -> Result<(), BedErrorPlus> {
     // Bed
     // can't construct Bed directly because some fields are private
-    // can we change pub properties because there are none
+    // can't change pub properties because there are none
 
-    // make ReadOptions directly?
-    let read_options = ReadOptions { missing_value: -1,
-         iid_index: todo!(), sid_index: todo!(), 
-         is_f: false, 
-         is_a1_counted: true, num_threads: None };
+    // make ReadOptions directly or change? no, no pub fields
+
+    // let read_options = ReadOptions { missing_value: -1,
+    //      iid_index: todo!(), sid_index: todo!(), 
+    //      is_f: false, 
+    //      is_a1_counted: true, num_threads: None };
 
    
 
-    println!("{read_options:?}");
+    // println!("{read_options:?}");
     Ok(())
 }

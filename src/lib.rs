@@ -1766,7 +1766,8 @@ impl BedBuilder {
     /// This means that no metadata information will be read the .fam or .bim file.
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{Bed, Metadata, Skippable};
+    /// use bed_reader::{Bed, Metadata};
+    /// use std::rc::Rc;
     ///
     /// let iid = nd::array!["iid1".to_string(), "iid2".to_string(), "iid3".to_string()];
     /// let sid = nd::array![
@@ -1777,14 +1778,14 @@ impl BedBuilder {
     /// ];
     /// let metadata = Metadata {
     ///     fid: None,
-    ///     iid: Some(&iid),
+    ///     iid: Some(Rc::new(iid)),
     ///     father: None,
     ///     mother: None,
     ///     sex: None,
     ///     pheno: None,
     ///
     ///     chromosome: None,
-    ///     sid: Some(&sid),
+    ///     sid: Some(Rc::new(sid)),
     ///     cm_position: None,
     ///     bp_position: None,
     ///     allele_1: None,
@@ -3873,7 +3874,7 @@ pub struct ReadOptions<TVal: BedVal> {
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     #[builder(default = "TVal::missing()")]
-    pub missing_value: TVal,
+    missing_value: TVal,
 
     /// Select which individual (sample) values to read -- Defaults to all.
     ///
@@ -3945,7 +3946,7 @@ pub struct ReadOptions<TVal: BedVal> {
     /// ```
     #[builder(default = "Index::All")]
     #[builder(setter(into))]
-    pub iid_index: Index,
+    iid_index: Index,
 
     /// Select which SNPs (variant) values to read -- Defaults to all.
     ///
@@ -4017,7 +4018,7 @@ pub struct ReadOptions<TVal: BedVal> {
     /// ```
     #[builder(default = "Index::All")]
     #[builder(setter(into))]
-    pub sid_index: Index,
+    sid_index: Index,
 
     /// Sets if the order of the output array is Fortran -- Default is true.
     ///
@@ -4025,13 +4026,13 @@ pub struct ReadOptions<TVal: BedVal> {
     ///
     /// Also see [`f`](struct.ReadOptionsBuilder.html#method.f) and [`c`](struct.ReadOptionsBuilder.html#method.c).
     #[builder(default = "true")]
-    pub is_f: bool,
+    is_f: bool,
 
     /// Sets if allele 1 is counted. Default is true.
     ///
     /// Also see [`count_a1`](struct.ReadOptionsBuilder.html#method.count_a1) and [`count_a2`](struct.ReadOptionsBuilder.html#method.count_a2).
     #[builder(default = "true")]
-    pub is_a1_counted: bool,
+    is_a1_counted: bool,
 
     /// Number of threads to use (defaults to all)
     ///
@@ -4059,7 +4060,7 @@ pub struct ReadOptions<TVal: BedVal> {
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     #[builder(default, setter(strip_option))]
-    pub num_threads: Option<usize>,
+    num_threads: Option<usize>,
 }
 
 impl<TVal: BedVal> ReadOptions<TVal> {
@@ -4282,6 +4283,36 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     }
 }
 
+impl<TVal> ReadOptions<TVal>
+where
+    TVal: BedVal,
+{
+    // !!!cmk00 test and doc
+    pub fn missing_value(&self) -> TVal {
+        self.missing_value
+    }
+
+    pub fn iid_index(&self) -> &Index {
+        &self.iid_index
+    }
+
+    pub fn sid_index(&self) -> &Index {
+        &self.sid_index
+    }
+
+    pub fn is_f(&self) -> bool {
+        self.is_f
+    }
+
+    pub fn is_a1_counted(&self) -> bool {
+        self.is_a1_counted
+    }
+
+    pub fn num_threads(&self) -> Option<usize> {
+        self.num_threads
+    }
+}
+
 impl ReadOptionsBuilder<i8> {
     /// Output an ndarray of i8.
     ///
@@ -4436,39 +4467,39 @@ where
     TVal: BedVal,
 {
     #[builder(setter(custom))]
-    pub path: PathBuf, // !!!cmk later always clone?
+    path: PathBuf, // !!!cmk later always clone?
 
     #[builder(setter(custom))]
-    pub fam_path: PathBuf,
+    fam_path: PathBuf,
 
     #[builder(setter(custom))]
-    pub bim_path: PathBuf,
+    bim_path: PathBuf,
 
     /// Family id of each of individual (sample)
     ///
     /// If this ndarray is not given, the default (zeros) is used.
     #[builder(setter(custom))]
-    pub fid: Rc<nd::Array1<String>>,
+     fid: Rc<nd::Array1<String>>,
 
     /// Individual id of each of individual (sample)
     ///
     /// If this ndarray is not given the default
     /// (["iid0", "iid1", ...]) is used.
     #[builder(setter(custom))]
-    pub iid: Rc<nd::Array1<String>>,
+     iid: Rc<nd::Array1<String>>,
 
     /// Father id of each of individual (sample)
     ///
     /// If this ndarray is not given, the default
     /// (["sid0", "sid1", ...]) is used.
     #[builder(setter(custom))]
-    pub father: Rc<nd::Array1<String>>,
+     father: Rc<nd::Array1<String>>,
 
     /// Mother id of each of individual (sample)
     ///
     /// If this ndarray is not given, the default (zeros) is used.
     #[builder(setter(custom))]
-    pub mother: Rc<nd::Array1<String>>,
+     mother: Rc<nd::Array1<String>>,
 
     /// Sex of each of individual (sample)
     ///
@@ -4476,13 +4507,13 @@ where
     ///
     /// If this ndarray is not given, the default (zeros) is used.
     #[builder(setter(custom))]
-    pub sex: Rc<nd::Array1<i32>>,
+     sex: Rc<nd::Array1<i32>>,
 
     /// Phenotype value for each of individual (sample). Seldom used.
     ///
     /// If this ndarray is not given, the default (zeros) is used.
     #[builder(setter(custom))]
-    pub pheno: Rc<nd::Array1<String>>,
+ pheno: Rc<nd::Array1<String>>,
 
     /// Chromosome of each SNP (variant)
     ///
@@ -4588,6 +4619,45 @@ impl<TVal> WriteOptions<TVal>
 where
     TVal: BedVal,
 {
+
+    // !!!cmk test and doc these
+    pub fn path (&self) -> &PathBuf {
+        &self.path
+    }
+
+    pub fn fam_path(&self) -> &PathBuf {
+        &self.fam_path
+    }
+
+    pub fn bim_path(&self) -> &PathBuf {
+        &self.bim_path
+    }
+
+    pub fn fid(&self) -> &nd::Array1<String> {
+        &self.fid.as_ref()
+    }
+
+    pub fn iid(&self) -> &nd::Array1<String> {
+        &self.iid.as_ref()
+    }
+
+    pub fn father(&self) -> &nd::Array1<String> {
+        &self.father.as_ref()
+    }
+
+    pub fn mother(&self) -> &nd::Array1<String> {
+        &self.mother.as_ref()
+    }
+
+    pub fn sex(&self) -> &nd::Array1<i32> {
+        &self.sex.as_ref()
+    }
+
+    pub fn pheno(&self) -> &nd::Array1<String> {
+        &self.pheno.as_ref()
+    }
+
+
     /// Write values to a file in PLINK .bed format. Supports metadata and options.
     ///
     /// > Also see [`Bed::write`](struct.Bed.html#method.write), which does not support metadata or options.
@@ -4761,7 +4831,7 @@ where
     ///     .build(3,4)?;
     ///
     /// // cmk00 check this
-    /// println("{:?}",&write_options.chromosome); // Outputs ndarray ["0", "0", "0", "0"]
+    /// println!("{:?}",&write_options.chromosome); // Outputs ndarray ["0", "0", "0", "0"]
     ///
     /// let val = nd::array![
     ///     [1.0, 0.0, f64::NAN, 0.0],
@@ -4769,7 +4839,7 @@ where
     ///     [0.0, 1.0, 2.0, 0.0]
     /// ];
     ///
-    /// Bed::write_with_options(&val, &write_options?;
+    /// Bed::write_with_options(&val, &write_options)?;
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
@@ -4938,7 +5008,8 @@ where
     /// cmk00 update for writing
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{Bed, Metadata, Skippable};
+    /// use bed_reader::{Bed, Metadata};
+    /// use std::rc::Rc;
     ///
     /// let iid = nd::array!["iid1".to_string(), "iid2".to_string(), "iid3".to_string()];
     /// let sid = nd::array![
@@ -4949,14 +5020,14 @@ where
     /// ];
     /// let metadata = Metadata {
     ///     fid: None,
-    ///     iid: Some(&iid),
+    ///     iid: Some(Rc::new(iid)),
     ///     father: None,
     ///     mother: None,
     ///     sex: None,
     ///     pheno: None,
     ///
     ///     chromosome: None,
-    ///     sid: Some(&sid),
+    ///     sid: Some(Rc::new(sid)),
     ///     cm_position: None,
     ///     bp_position: None,
     ///     allele_1: None,
