@@ -1373,13 +1373,6 @@ pub struct Metadata {
     pub allele_2: Option<Rc<nd::Array1<String>>>,
 }
 
-// cmk00 fn lazy_or_skip_count<T>(array: &LazyOrSkip<nd::Array1<T>>) -> Option<usize> {
-//     match array {
-//         LazyOrSkip::Some(array) => Some(array.len()),
-//         LazyOrSkip::Skip => None,
-//         LazyOrSkip::Lazy => None,
-//     }
-// }
 
 fn lazy_or_skip_count<T>(array: &Option<Rc<nd::Array1<T>>>) -> Option<usize> {
     match array {
@@ -4414,82 +4407,85 @@ where
     #[builder(setter(custom))]
     bim_path: PathBuf,
 
-    /// Family id of each of individual (sample)
-    ///
-    /// If this ndarray is not given, the default (zeros) is used.
     #[builder(setter(custom))]
-     fid: Rc<nd::Array1<String>>,
+    metadata:Metadata,
 
-    /// Individual id of each of individual (sample)
-    ///
-    /// If this ndarray is not given the default
-    /// (["iid0", "iid1", ...]) is used.
-    #[builder(setter(custom))]
-     iid: Rc<nd::Array1<String>>,
+    // /// Family id of each of individual (sample)
+    // ///
+    // /// If this ndarray is not given, the default (zeros) is used.
+    // #[builder(setter(custom))]
+    //  fid: Rc<nd::Array1<String>>,
 
-    /// Father id of each of individual (sample)
-    ///
-    /// If this ndarray is not given, the default
-    /// (["sid0", "sid1", ...]) is used.
-    #[builder(setter(custom))]
-     father: Rc<nd::Array1<String>>,
+    // /// Individual id of each of individual (sample)
+    // ///
+    // /// If this ndarray is not given the default
+    // /// (["iid0", "iid1", ...]) is used.
+    // #[builder(setter(custom))]
+    //  iid: Rc<nd::Array1<String>>,
 
-    /// Mother id of each of individual (sample)
-    ///
-    /// If this ndarray is not given, the default (zeros) is used.
-    #[builder(setter(custom))]
-     mother: Rc<nd::Array1<String>>,
+    // /// Father id of each of individual (sample)
+    // ///
+    // /// If this ndarray is not given, the default
+    // /// (["sid0", "sid1", ...]) is used.
+    // #[builder(setter(custom))]
+    //  father: Rc<nd::Array1<String>>,
 
-    /// Sex of each of individual (sample)
-    ///
-    /// 0 is unknown, 1 is male, 2 is female
-    ///
-    /// If this ndarray is not given, the default (zeros) is used.
-    #[builder(setter(custom))]
-     sex: Rc<nd::Array1<i32>>,
+    // /// Mother id of each of individual (sample)
+    // ///
+    // /// If this ndarray is not given, the default (zeros) is used.
+    // #[builder(setter(custom))]
+    //  mother: Rc<nd::Array1<String>>,
 
-    /// Phenotype value for each of individual (sample). Seldom used.
-    ///
-    /// If this ndarray is not given, the default (zeros) is used.
-    #[builder(setter(custom))]
-    pheno: Rc<nd::Array1<String>>,
+    // /// Sex of each of individual (sample)
+    // ///
+    // /// 0 is unknown, 1 is male, 2 is female
+    // ///
+    // /// If this ndarray is not given, the default (zeros) is used.
+    // #[builder(setter(custom))]
+    //  sex: Rc<nd::Array1<i32>>,
 
-    /// Chromosome of each SNP (variant)
-    ///
-    /// If this ndarray is not given, the default (zeros) is used.
-    #[builder(setter(custom))]
-    chromosome: Rc<nd::Array1<String>>,
+    // /// Phenotype value for each of individual (sample). Seldom used.
+    // ///
+    // /// If this ndarray is not given, the default (zeros) is used.
+    // #[builder(setter(custom))]
+    // pheno: Rc<nd::Array1<String>>,
 
-    /// SNP id of each SNP (variant)
-    ///
-    /// If this ndarray is not given, the default
-    /// (["sid0", "sid1", "sid2", ...] is used.
-    #[builder(setter(custom))]
-    sid: Rc<nd::Array1<String>>,
+    // /// Chromosome of each SNP (variant)
+    // ///
+    // /// If this ndarray is not given, the default (zeros) is used.
+    // #[builder(setter(custom))]
+    // chromosome: Rc<nd::Array1<String>>,
 
-    /// Centimorgan position of each SNP (variant)
-    ///
-    /// If this ndarray is not given, the default (0.0) is used.
-    #[builder(setter(custom))]
-    cm_position: Rc<nd::Array1<f32>>,
+    // /// SNP id of each SNP (variant)
+    // ///
+    // /// If this ndarray is not given, the default
+    // /// (["sid0", "sid1", "sid2", ...] is used.
+    // #[builder(setter(custom))]
+    // sid: Rc<nd::Array1<String>>,
 
-    /// Base-pair position of each SNP (variant)
-    ///
-    /// If this ndarray is not given, the default (zeros) is used.
-    #[builder(setter(custom))]
-    bp_position: Rc<nd::Array1<i32>>,
+    // /// Centimorgan position of each SNP (variant)
+    // ///
+    // /// If this ndarray is not given, the default (0.0) is used.
+    // #[builder(setter(custom))]
+    // cm_position: Rc<nd::Array1<f32>>,
 
-    /// Allele 1 for each SNP (variant)
-    ///
-    /// If this ndarray is not given, the default ("A1") is used.
-    #[builder(setter(custom))]
-    allele_1: Rc<nd::Array1<String>>,
+    // /// Base-pair position of each SNP (variant)
+    // ///
+    // /// If this ndarray is not given, the default (zeros) is used.
+    // #[builder(setter(custom))]
+    // bp_position: Rc<nd::Array1<i32>>,
 
-    /// Allele 2 for each SNP (variant)
-    ///
-    /// If this ndarray is not given, the default ("A2") is used.
-    #[builder(setter(custom))]
-    allele_2: Rc<nd::Array1<String>>,
+    // /// Allele 1 for each SNP (variant)
+    // ///
+    // /// If this ndarray is not given, the default ("A1") is used.
+    // #[builder(setter(custom))]
+    // allele_1: Rc<nd::Array1<String>>,
+
+    // /// Allele 2 for each SNP (variant)
+    // ///
+    // /// If this ndarray is not given, the default ("A2") is used.
+    // #[builder(setter(custom))]
+    // allele_2: Rc<nd::Array1<String>>,
 
     /// Sets if allele 1 is counted. Default is true.
     ///
@@ -4573,33 +4569,53 @@ where
     }
 
     pub fn fid(&self) -> &nd::Array1<String> {
-        &self.fid.as_ref()
+        &self.metadata.fid.as_ref().unwrap()
     }
 
     pub fn iid(&self) -> &nd::Array1<String> {
-        &self.iid.as_ref()
+        &self.metadata.iid.as_ref().unwrap()
     }
 
     pub fn father(&self) -> &nd::Array1<String> {
-        &self.father.as_ref()
+        &self.metadata.father.as_ref().unwrap()
     }
 
     pub fn mother(&self) -> &nd::Array1<String> {
-        &self.mother.as_ref()
+        &self.metadata.mother.as_ref().unwrap()
     }
 
     pub fn sex(&self) -> &nd::Array1<i32> {
-        &self.sex.as_ref()
+        &self.metadata.sex.as_ref().unwrap()
     }
 
     pub fn pheno(&self) -> &nd::Array1<String> {
-        &self.pheno.as_ref()
+        &self.metadata.pheno.as_ref().unwrap()
     }
 
     pub fn chromosome(&self) -> &nd::Array1<String> {
-        &self.chromosome.as_ref()
+        &self.metadata.chromosome.as_ref().unwrap()
     }
 
+
+    pub fn sid(&self) -> &nd::Array1<String> {
+        &self.metadata.sid.as_ref().unwrap()
+    }
+
+    pub fn cm_position(&self) -> &nd::Array1<f32> {
+        &self.metadata.cm_position.as_ref().unwrap()
+    }
+
+    pub fn bp_position(&self) -> &nd::Array1<i32> {
+        &self.metadata.bp_position.as_ref().unwrap()
+    }
+
+    pub fn allele_1(&self) -> &nd::Array1<String> {
+        &self.metadata.allele_1.as_ref().unwrap()
+    }
+
+    pub fn allele_2(&self) -> &nd::Array1<String> {
+        &self.metadata.allele_2.as_ref().unwrap()
+    }
     // cmk00 put in rest of access functions
 
 
@@ -4671,11 +4687,11 @@ where
     }
 
     pub fn iid_count(&self) -> usize {
-        self.iid.len()
+        self.iid().len()
     }
 
     pub fn sid_count(&self) -> usize {
-        self.sid.len()
+        self.sid().len()
     }
 
     // !!!cmk 0 understand dim vs shape
@@ -4688,12 +4704,12 @@ where
         let mut writer = BufWriter::new(file);
         let mut result: Result<(), BedErrorPlus> = Ok(());
 
-        nd::azip!((fid in &*self.fid,
-                   iid in &*self.iid,
-                   father in &*self.father,
-                   mother in &*self.mother,
-                   sex in &*self.sex,
-                   pheno in &*self.pheno)
+        nd::azip!((fid in &*self.fid(),
+                   iid in &*self.iid(),
+                   father in &*self.father(),
+                   mother in &*self.mother(),
+                   sex in &*self.sex(),
+                   pheno in &*self.pheno())
         {
             if result.is_ok() {
                 if let Err(e) = writeln!(
@@ -4710,12 +4726,13 @@ where
         Ok(())
     }
 
+    // !!!cmk00 move to metadata
     fn bim_write(&self) -> Result<(), BedErrorPlus> {
         let file = File::create(&self.bim_path)?;
         let mut writer = BufWriter::new(file);
         let mut result: Result<(), BedErrorPlus> = Ok(());
-        nd::azip!((chromosome in &*self.chromosome, sid in &*self.sid, cm_position in &*self.cm_position,
-             bp_position in &*self.bp_position, allele_1 in &*self.allele_1, allele_2 in &*self.allele_2)
+        nd::azip!((chromosome in &*self.chromosome(), sid in &*self.sid(), cm_position in &*self.cm_position(),
+             bp_position in &*self.bp_position(), allele_1 in &*self.allele_1(), allele_2 in &*self.allele_2())
         {
             // !!!cmk later should these be \t?
             if result.is_ok() {
@@ -4733,23 +4750,9 @@ where
         Ok(())
     }
 
+    // cmk00 does this need to return an error?
     pub fn metadata(&mut self) -> Result<Metadata, BedErrorPlus> {
-        let metadata = Metadata {
-            fid: Some(Rc::clone(&self.fid)),
-            iid: Some(Rc::clone(&self.iid)),
-            father: Some(Rc::clone(&self.father)),
-            mother: Some(Rc::clone(&self.mother)),
-            sex: Some(Rc::clone(&self.sex)),
-            pheno: Some(Rc::clone(&self.pheno)),
-
-            chromosome: Some(Rc::clone(&self.chromosome)),
-            sid: Some(Rc::clone(&self.sid)),
-            cm_position: Some(Rc::clone(&self.cm_position)),
-            bp_position: Some(Rc::clone(&self.bp_position)),
-            allele_1: Some(Rc::clone(&self.allele_1)),
-            allele_2: Some(Rc::clone(&self.allele_2)),
-        };
-        Ok(metadata)
+        Ok(self.metadata.clone())
     }
 }
 impl<TVal> WriteOptionsBuilder<TVal>
@@ -4789,7 +4792,7 @@ where
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     pub fn build(
-        &mut self,
+        &self,
         iid_count: usize,
         sid_count: usize,
     ) -> Result<WriteOptions<TVal>, BedErrorPlus> {
@@ -4799,6 +4802,35 @@ where
                 return Err(UninitializedFieldError::from("path").into());
             }
         };
+
+        let metadata = self.metadata.as_ref().unwrap();
+        let metadata = metadata.clone_and_fill(iid_count, sid_count)?;
+
+        // let metadata0 = self.metadata.as_ref().unwrap();
+        // let mut metadata = metadata0.clone();
+        // metadata.fid = compute_field("fid", metadata0.fid.clone(), iid_count, |_| "0".to_string())?;
+        // metadata.iid = compute_field("iid", &metadata.iid, iid_count, |i| {
+        //         format!("iid{}", i + 1).to_string()
+        //     })?;
+        // metadata.father = compute_field("father", &metadata.father, iid_count, |_| "0".to_string())?;
+        // metadata.mother = compute_field("mother", &metadata.mother, iid_count, |_| "0".to_string())?;
+        // metadata.sex = compute_field("sex", &metadata.sex, iid_count, |_| 0)?;
+        // metadata.pheno = compute_field("pheno", &metadata.pheno, iid_count, |_| "0".to_string())?;
+        // metadata.chromosome = compute_field("chromosome", &metadata.chromosome, sid_count, |_| {
+        //     "0".to_string()
+        // })?;
+        // metadata.sid = compute_field("sid", &metadata.sid, sid_count, |i| {
+        //     format!("sid{}", i + 1).to_string()
+        // })?;
+        // metadata.cm_position = compute_field("cm_position", &metadata.cm_position, sid_count, |_| 0.0)?;
+        // metadata.bp_position = compute_field("bp_position", &metadata.bp_position, sid_count, |_| 0)?;
+        // metadata.allele_1 = compute_field("allele_1", &metadata.allele_1, sid_count, |_| {
+        //     "A1".to_string()
+        // })?;
+        // metadata.allele_2 = compute_field("allele_2", &metadata.allele_2, sid_count, |_| {
+        //     "A2".to_string()
+        // })?;
+
         let write_options = WriteOptions {
             path: path_buf.clone(),
             fam_path: to_metadata_path(path_buf, &self.fam_path, "fam"),
@@ -4807,29 +4839,9 @@ where
             num_threads: self.num_threads.unwrap_or(None),
             missing_value: self.missing_value.unwrap_or_else(|| TVal::missing()),
 
-            fid: compute_field("fid", &mut self.fid, iid_count, |_| "0".to_string())?,
-            iid: compute_field("iid", &mut self.iid, iid_count, |i| {
-                format!("iid{}", i + 1).to_string()
-            })?,
-            father: compute_field("father", &mut self.father, iid_count, |_| "0".to_string())?,
-            mother: compute_field("mother", &mut self.mother, iid_count, |_| "0".to_string())?,
-            sex: compute_field("sex", &mut self.sex, iid_count, |_| 0)?,
-            pheno: compute_field("pheno", &mut self.pheno, iid_count, |_| "0".to_string())?,
-            chromosome: compute_field("chromosome", &mut self.chromosome, sid_count, |_| {
-                "0".to_string()
-            })?,
-            sid: compute_field("sid", &mut self.sid, sid_count, |i| {
-                format!("sid{}", i + 1).to_string()
-            })?,
-            cm_position: compute_field("cm_position", &mut self.cm_position, sid_count, |_| 0.0)?,
-            bp_position: compute_field("bp_position", &mut self.bp_position, sid_count, |_| 0)?,
-            allele_1: compute_field("allele_1", &mut self.allele_1, sid_count, |_| {
-                "A1".to_string()
-            })?,
-            allele_2: compute_field("allele_2", &mut self.allele_2, sid_count, |_| {
-                "A2".to_string()
-            })?,
+            metadata: metadata
         };
+        // !!! cmk00
         // check_counts(
         //     vec![
         //         option_count(&write_options.fid),
@@ -4900,19 +4912,7 @@ where
             fam_path: None,
             bim_path: None,
 
-            fid: None,
-            iid: None,
-            father: None,
-            mother: None,
-            sex: None,
-            pheno: None,
-
-            chromosome: None,
-            sid: None,
-            cm_position: None,
-            bp_position: None,
-            allele_1: None,
-            allele_2: None,
+            metadata: Some(Metadata::default()),
 
             is_a1_counted: None,
             num_threads: None,
@@ -4987,43 +4987,47 @@ where
     /// # Ok::<(), BedErrorPlus>(())
     /// ```    
     pub fn metadata(mut self, metadata: &Metadata) -> Self {
-        if let Some(fid) = &metadata.fid {
-            self.fid = Some(Rc::clone(fid));
-        }
-        if let Some(iid) = &metadata.iid {
-            self.iid = Some(Rc::clone(iid));
-        }
-        if let Some(father) = &metadata.father {
-            self.father = Some(Rc::clone(father));
-        }
-        if let Some(mother) = &metadata.mother {
-            self.mother = Some(Rc::clone(mother));
-        }
-        if let Some(sex) = &metadata.sex {
-            self.sex = Some(Rc::clone(sex));
-        }
-        if let Some(pheno) = &metadata.pheno {
-            self.pheno = Some(Rc::clone(pheno));
-        }
+        self.metadata = Some(metadata.clone());
 
-        if let Some(chromosome) = &metadata.chromosome {
-            self.chromosome = Some(Rc::clone(chromosome));
-        }
-        if let Some(sid) = &metadata.sid {
-            self.sid = Some(Rc::clone(sid));
-        }
-        if let Some(cm_position) = &metadata.cm_position {
-            self.cm_position = Some(Rc::clone(cm_position));
-        }
-        if let Some(bp_position) = &metadata.bp_position {
-            self.bp_position = Some(Rc::clone(bp_position));
-        }
-        if let Some(allele_1) = &metadata.allele_1 {
-            self.allele_1 = Some(Rc::clone(allele_1));
-        }
-        if let Some(allele_2) = &metadata.allele_2 {
-            self.allele_2 = Some(Rc::clone(allele_2));
-        }
+        // cmk00 update that replaces any existing metadata (with defaults sometimes)
+
+        // if let Some(fid) = &metadata.fid {
+        //     self.fid = Some(Rc::clone(fid));
+        // }
+        // if let Some(iid) = &metadata.iid {
+        //     self.iid = Some(Rc::clone(iid));
+        // }
+        // if let Some(father) = &metadata.father {
+        //     self.father = Some(Rc::clone(father));
+        // }
+        // if let Some(mother) = &metadata.mother {
+        //     self.mother = Some(Rc::clone(mother));
+        // }
+        // if let Some(sex) = &metadata.sex {
+        //     self.sex = Some(Rc::clone(sex));
+        // }
+        // if let Some(pheno) = &metadata.pheno {
+        //     self.pheno = Some(Rc::clone(pheno));
+        // }
+
+        // if let Some(chromosome) = &metadata.chromosome {
+        //     self.chromosome = Some(Rc::clone(chromosome));
+        // }
+        // if let Some(sid) = &metadata.sid {
+        //     self.sid = Some(Rc::clone(sid));
+        // }
+        // if let Some(cm_position) = &metadata.cm_position {
+        //     self.cm_position = Some(Rc::clone(cm_position));
+        // }
+        // if let Some(bp_position) = &metadata.bp_position {
+        //     self.bp_position = Some(Rc::clone(bp_position));
+        // }
+        // if let Some(allele_1) = &metadata.allele_1 {
+        //     self.allele_1 = Some(Rc::clone(allele_1));
+        // }
+        // if let Some(allele_2) = &metadata.allele_2 {
+        //     self.allele_2 = Some(Rc::clone(allele_2));
+        // }
         self
     }
 
@@ -5031,8 +5035,8 @@ where
     ///
     /// Defaults to zeros.
     pub fn fid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, fid: I) -> Self {
-        let array: nd::Array1<String> = fid.into_iter().map(|s| s.as_ref().to_string()).collect();
-        self.fid = Some(Rc::new(array));
+        let metadata = self.metadata.as_mut().unwrap();
+        metadata.fid(fid);
         self
     }
 
@@ -5040,8 +5044,7 @@ where
     ///
     /// Defaults to "iid1", "iid2", ...
     pub fn iid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, iid: I) -> Self {
-        let array: nd::Array1<String> = iid.into_iter().map(|s| s.as_ref().to_string()).collect();
-        self.iid = Some(Rc::new(array));
+        self.metadata.as_mut().unwrap().iid(iid);
         self
     }
 
@@ -5049,9 +5052,7 @@ where
     ///
     /// Defaults to zeros.
     pub fn father<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, father: I) -> Self {
-        let array: nd::Array1<String> =
-            father.into_iter().map(|s| s.as_ref().to_string()).collect();
-        self.father = Some(Rc::new(array));
+        self.metadata.as_mut().unwrap().father(father);
         self
     }
 
@@ -5059,9 +5060,7 @@ where
     ///
     /// Defaults to zeros.
     pub fn mother<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, mother: I) -> Self {
-        let array: nd::Array1<String> =
-            mother.into_iter().map(|s| s.as_ref().to_string()).collect();
-        self.mother = Some(Rc::new(array));
+        self.metadata.as_mut().unwrap().mother(mother);
         self
     }
 
@@ -5069,9 +5068,7 @@ where
     ///
     /// 0 is unknown (default), 1 is male, 2 is female
     pub fn sex<I: IntoIterator<Item = i32>>(mut self, sex: I) -> Self {
-        let array: nd::Array1<i32> = sex.into_iter().map(|i| i).collect();
-        self.sex = Some(Rc::new(array));
-
+        self.metadata.as_mut().unwrap().sex(sex);
         self
     }
 
@@ -5079,8 +5076,7 @@ where
     ///
     /// Defaults to zeros.
     pub fn pheno<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, pheno: I) -> Self {
-        let array: nd::Array1<String> = pheno.into_iter().map(|s| s.as_ref().to_string()).collect();
-        self.pheno = Some(Rc::new(array));
+        self.metadata.as_mut().unwrap().pheno(pheno);
         self
     }
 
@@ -5088,11 +5084,7 @@ where
     ///
     /// Defaults to zeros.
     pub fn chromosome<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, chromosome: I) -> Self {
-        let array: nd::Array1<String> = chromosome
-            .into_iter()
-            .map(|s| s.as_ref().to_string())
-            .collect();
-        self.chromosome = Some(Rc::new(array));
+        self.metadata.as_mut().unwrap().chromosome(chromosome);
         self
     }
 
@@ -5100,8 +5092,7 @@ where
     ///
     /// Defaults to "sid1", "sid2", ...
     pub fn sid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, sid: I) -> Self {
-        let array: nd::Array1<String> = sid.into_iter().map(|s| s.as_ref().to_string()).collect();
-        self.sid = Some(Rc::new(array));
+        self.metadata.as_mut().unwrap().sid(sid);
         self
     }
 
@@ -5109,8 +5100,7 @@ where
     ///
     /// Defaults to zeros.
     pub fn cm_position<I: IntoIterator<Item = f32>>(mut self, cm_position: I) -> Self {
-        let array: nd::Array1<f32> = cm_position.into_iter().map(|s| s).collect();
-        self.cm_position = Some(Rc::new(array));
+        self.metadata.as_mut().unwrap().cm_position(cm_position);
         self
     }
 
@@ -5118,8 +5108,7 @@ where
     ///
     /// Defaults to zeros.
     pub fn bp_position<I: IntoIterator<Item = i32>>(mut self, bp_position: I) -> Self {
-        let array: nd::Array1<i32> = bp_position.into_iter().map(|s| s).collect();
-        self.bp_position = Some(Rc::new(array));
+        self.metadata.as_mut().unwrap().bp_position(bp_position);
         self
     }
 
@@ -5127,11 +5116,7 @@ where
     ///
     /// Defaults to "A1", A1" ...
     pub fn allele_1<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, allele_1: I) -> Self {
-        let array: nd::Array1<String> = allele_1
-            .into_iter()
-            .map(|s| s.as_ref().to_string())
-            .collect();
-        self.allele_1 = Some(Rc::new(array));
+        self.metadata.as_mut().unwrap().allele_1(allele_1);
         self
     }
 
@@ -5139,11 +5124,7 @@ where
     ///
     /// Defaults to "A2", A2" ...
     pub fn allele_2<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, allele_2: I) -> Self {
-        let array: nd::Array1<String> = allele_2
-            .into_iter()
-            .map(|s| s.as_ref().to_string())
-            .collect();
-        self.allele_2 = Some(Rc::new(array));
+        self.metadata.as_mut().unwrap().allele_2(allele_2);
         self
     }
 
@@ -5318,18 +5299,36 @@ fn compute_field<T: Clone, F: Fn(usize) -> T>(
     field_name: &str,
     field: &mut Option<Rc<nd::Array1<T>>>,
     count: usize,
-    lambda: F,
-) -> Result<Rc<nd::Array1<T>>, BedErrorPlus> {
+    lambda: F
+) -> Result<(), BedErrorPlus> {
+
+
+    // let lambda = |_| "0".to_string();
+    // let count = iid_count;
+    // let field = &mut metadata.fid;
+
     if let Some(array) = field {
         if array.len() != count {
             return Err(
                 BedError::InconsistentCount(field_name.to_string(), array.len(), count).into(),
             );
         }
-        Ok(Rc::clone(array))
     } else {
-        Ok(Rc::new((0..count).map(|_| lambda(0)).collect::<nd::Array1<T>>()))
+        let array = Rc::new((0..count).map(|_| lambda(0)).collect::<nd::Array1<T>>());
+        *field = Some(array) ;
     }
+    Ok(())
+
+    // if let Some(array) = field {
+    //     if array.len() != count {
+    //         return Err(
+    //             BedError::InconsistentCount(field_name.to_string(), array.len(), count).into(),
+    //         );
+    //     }
+    //     Ok(Some(Rc::clone(&array)))
+    // } else {
+    //     Ok(Some(Rc::new((0..count).map(|_| lambda(0)).collect::<nd::Array1<T>>())))
+    // }
 }
 
 // !!!cmk00
@@ -5478,6 +5477,54 @@ pub fn rt3(range_thing: crate::Index) -> Result<Result<usize, BedErrorPlus>, Bed
 }
 
 impl Metadata {
+  
+
+    pub fn clone_and_fill(&self, iid_count:usize, sid_count  : usize) -> Result<Metadata, BedErrorPlus> {
+        let mut metadata = self.clone();
+
+        // let lambda = |_| "0".to_string();
+        // let count = iid_count;
+        // let field = &mut metadata.fid;
+
+        // if let Some(array) = field {
+        //     if array.len() != count {
+        //         return Err(
+        //             BedError::InconsistentCount(field_name.to_string(), array.len(), count).into(),
+        //         );
+        //     }
+        // } else {
+        //     field = &mut Some(Rc::new((0..count).map(|_| lambda(0)).collect::<nd::Array1<String>>()));
+        // }
+
+
+
+        compute_field("fid", &mut metadata.fid, iid_count, |_| "0".to_string())?;
+        compute_field("iid", &mut metadata.iid, iid_count, |i| {
+                format!("iid{}", i + 1).to_string()
+            })?;
+        compute_field("father", &mut metadata.father, iid_count, |_| "0".to_string())?;
+        compute_field("mother", &mut metadata.mother, iid_count, |_| "0".to_string())?;
+        compute_field("sex", &mut metadata.sex, iid_count, |_| 0)?;
+        compute_field("pheno", &mut metadata.pheno, iid_count, |_| "0".to_string())?;
+        compute_field("chromosome", &mut metadata.chromosome, sid_count, |_| {
+            "0".to_string()
+        })?;
+        compute_field("sid", &mut metadata.sid, sid_count, |i| {
+            format!("sid{}", i + 1).to_string()
+        })?;
+        compute_field("cm_position", &mut metadata.cm_position, sid_count, |_| 0.0)?;
+        compute_field("bp_position", &mut metadata.bp_position, sid_count, |_| 0)?;
+        compute_field("allele_1", &mut metadata.allele_1, sid_count, |_| {
+            "A1".to_string()
+        })?;
+        compute_field("allele_2", &mut metadata.allele_2, sid_count, |_| {
+            "A2".to_string()
+        })?;
+        
+        Ok(metadata)
+    
+    }
+
     pub fn fid<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, fid: I) -> &Self {
         self.fid = Some(Rc::new(
             fid.into_iter().map(|s| s.as_ref().to_string()).collect(),

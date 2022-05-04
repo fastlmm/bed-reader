@@ -558,6 +558,7 @@ fn read_write() -> Result<(), BedErrorPlus> {
     // bim_filepath=bim_file,
     // )
 
+    // !!!cmk00 also have a test in which BedReader has itsmetadata set
     WriteOptions::builder(&output_file)
         .metadata(&metadata)
         .fam_path(&fam_file)
