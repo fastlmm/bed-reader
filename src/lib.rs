@@ -213,14 +213,14 @@
 mod python_module;
 mod tests;
 use core::fmt::Debug;
-use std::collections::HashSet;
-use std::rc::Rc;
 use derive_builder::{Builder, UninitializedFieldError};
 use nd::ShapeBuilder;
 use ndarray as nd;
+use std::collections::HashSet;
 use std::fs::{self};
 use std::io::Write;
 use std::ops::{Bound, Range, RangeBounds, RangeFrom, RangeInclusive, RangeTo, RangeToInclusive};
+use std::rc::Rc;
 use std::{
     env,
     fs::File,
@@ -243,8 +243,8 @@ use std::io::SeekFrom;
 use std::num::{ParseFloatError, ParseIntError};
 use std::ops::AddAssign;
 use std::ops::{Div, Sub};
-use thiserror::Error;
 use std::panic::catch_unwind;
+use thiserror::Error;
 
 const BED_FILE_MAGIC1: u8 = 0x6C; // 0b01101100 or 'l' (lowercase 'L')
 const BED_FILE_MAGIC2: u8 = 0x1B; // 0b00011011 or <esc>
@@ -1355,24 +1355,48 @@ fn file_aat_piece<T: Float + Sync + Send + AddAssign, P: AsRef<Path>>(
 
 // !!!cmk later document and add issue that File(s) are not held, incorrectly allowing for the file to be changed between reads.
 
-
-#[derive(Clone, Debug, PartialEq, Default)]
+// cmk00 #[derive(Clone, Debug, PartialEq, Default, Builder)]
+#[derive(Clone, Debug, Builder, PartialEq)]
+#[builder(build_fn(private, name = "build_no_file_check", error = "BedErrorPlus"))]
 pub struct Metadata {
-    pub fid: Option<Rc<nd::Array1<String>>>,
-    pub iid: Option<Rc<nd::Array1<String>>>,
-    pub father: Option<Rc<nd::Array1<String>>>,
-    pub mother: Option<Rc<nd::Array1<String>>>,
-    pub sex: Option<Rc<nd::Array1<i32>>>,
-    pub pheno: Option<Rc<nd::Array1<String>>>,
+    #[builder(setter(custom))]
+    #[builder(default = "None")]
+    fid: Option<Rc<nd::Array1<String>>>,
+    #[builder(setter(custom))]
+    #[builder(default = "None")]
+    iid: Option<Rc<nd::Array1<String>>>,
+    #[builder(setter(custom))]
+    #[builder(default = "None")]
+    father: Option<Rc<nd::Array1<String>>>,
+    #[builder(setter(custom))]
+    #[builder(default = "None")]
+    mother: Option<Rc<nd::Array1<String>>>,
+    #[builder(setter(custom))]
+    #[builder(default = "None")]
+    sex: Option<Rc<nd::Array1<i32>>>,
+    #[builder(setter(custom))]
+    #[builder(default = "None")]
+    pheno: Option<Rc<nd::Array1<String>>>,
 
-    pub chromosome: Option<Rc<nd::Array1<String>>>,
-    pub sid: Option<Rc<nd::Array1<String>>>,
-    pub cm_position: Option<Rc<nd::Array1<f32>>>,
-    pub bp_position: Option<Rc<nd::Array1<i32>>>,
-    pub allele_1: Option<Rc<nd::Array1<String>>>,
-    pub allele_2: Option<Rc<nd::Array1<String>>>,
+    #[builder(setter(custom))]
+    #[builder(default = "None")]
+    chromosome: Option<Rc<nd::Array1<String>>>,
+    #[builder(setter(custom))]
+    #[builder(default = "None")]
+    sid: Option<Rc<nd::Array1<String>>>,
+    #[builder(setter(custom))]
+    #[builder(default = "None")]
+    cm_position: Option<Rc<nd::Array1<f32>>>,
+    #[builder(setter(custom))]
+    #[builder(default = "None")]
+    bp_position: Option<Rc<nd::Array1<i32>>>,
+    #[builder(setter(custom))]
+    #[builder(default = "None")]
+    allele_1: Option<Rc<nd::Array1<String>>>,
+    #[builder(setter(custom))]
+    #[builder(default = "None")]
+    allele_2: Option<Rc<nd::Array1<String>>>,
 }
-
 
 fn lazy_or_skip_count<T>(array: &Option<Rc<nd::Array1<T>>>) -> Option<usize> {
     match array {
@@ -1380,7 +1404,6 @@ fn lazy_or_skip_count<T>(array: &Option<Rc<nd::Array1<T>>>) -> Option<usize> {
         None => None,
     }
 }
-
 
 // !!!cmk later update these comments:
 // https://crates.io/crates/typed-builder
@@ -1450,51 +1473,7 @@ pub struct Bed {
 
     skip_set: HashSet<usize>, // replace usize with enum cmk00
 
-    // /// cmk0c
-    // #[builder(setter(custom))]
-    // #[builder(default = "LazyOrSkip::Lazy")]
-    // iid: LazyOrSkip<Rc<nd::Array1<String>>>,
-
-    // #[builder(setter(custom))]
-    // #[builder(default = "LazyOrSkip::Lazy")]
-    // father: LazyOrSkip<Rc<nd::Array1<String>>>,
-
-    // #[builder(setter(custom))]
-    // #[builder(default = "LazyOrSkip::Lazy")]
-    // mother: LazyOrSkip<Rc<nd::Array1<String>>>,
-
-    // #[builder(setter(custom))]
-    // #[builder(default = "LazyOrSkip::Lazy")]
-    // sex: LazyOrSkip<Rc<nd::Array1<i32>>>,
-
-    // #[builder(setter(custom))]
-    // #[builder(default = "LazyOrSkip::Lazy")]
-    // pheno: LazyOrSkip<Rc<nd::Array1<String>>>,
-
-    // #[builder(setter(custom))]
-    // #[builder(default = "LazyOrSkip::Lazy")]
-    // chromosome: LazyOrSkip<Rc<nd::Array1<String>>>,
-
-    // #[builder(setter(custom))]
-    // #[builder(default = "LazyOrSkip::Lazy")]
-    // sid: LazyOrSkip<Rc<nd::Array1<String>>>,
-
-    // #[builder(setter(custom))]
-    // #[builder(default = "LazyOrSkip::Lazy")]
-    // cm_position: LazyOrSkip<Rc<nd::Array1<f32>>>,
-
-    // // i32 based on https://www.cog-genomics.org/plink2/formats#bim
-    // #[builder(setter(custom))]
-    // #[builder(default = "LazyOrSkip::Lazy")]
-    // bp_position: LazyOrSkip<Rc<nd::Array1<i32>>>,
-
-    // #[builder(setter(custom))]
-    // #[builder(default = "LazyOrSkip::Lazy")]
-    // allele_1: LazyOrSkip<Rc<nd::Array1<String>>>,
-
-    // #[builder(setter(custom))]
-    // #[builder(default = "LazyOrSkip::Lazy")]
-    // allele_2: LazyOrSkip<Rc<nd::Array1<String>>>,
+                              // cmk00 move comment // i32 based on https://www.cog-genomics.org/plink2/formats#bim
 }
 
 impl BedBuilder {
@@ -1510,11 +1489,8 @@ impl BedBuilder {
             iid_count: None,
             sid_count: None,
 
-           
-
-            metadata: Some(Metadata::default()),
+            metadata: Some(Metadata::new()),
             skip_set: Some(HashSet::new()),
-
             // fid: None,
             // iid: None,
             // father: None,
@@ -1538,6 +1514,7 @@ impl BedBuilder {
             open_and_check(&bed.path)?;
         }
 
+        // !!!cmk00 use metadata's version?
         check_counts(
             vec![
                 lazy_or_skip_count(&bed.metadata.fid),
@@ -1626,7 +1603,7 @@ impl BedBuilder {
     /// This stops that recording. This is useful if the iid is not needed.
     /// Asking for the iid after skipping it results in an error.
     pub fn skip_iid(mut self) -> Self {
-        self.skip_set.as_mut().unwrap().insert(1);   
+        self.skip_set.as_mut().unwrap().insert(1);
         self
     }
 
@@ -1646,7 +1623,7 @@ impl BedBuilder {
     /// This stops that recording. This is useful if the father id is not needed.
     /// Asking for the father id after skipping it results in an error.    
     pub fn skip_father(mut self) -> Self {
-        self.skip_set.as_mut().unwrap().insert(2); 
+        self.skip_set.as_mut().unwrap().insert(2);
         self
     }
 
@@ -1656,7 +1633,7 @@ impl BedBuilder {
     /// This stops that recording. This is useful if the mother id is not needed.
     /// Asking for the mother id after skipping it results in an error.    
     pub fn skip_mother(mut self) -> Self {
-        self.skip_set.as_mut().unwrap().insert(3); 
+        self.skip_set.as_mut().unwrap().insert(3);
         self
     }
 
@@ -1666,7 +1643,7 @@ impl BedBuilder {
     /// This stops that recording. This is useful if sex is not needed.
     /// Asking for sex after skipping it results in an error.    
     pub fn skip_sex(mut self) -> Self {
-        self.skip_set.as_mut().unwrap().insert(4); 
+        self.skip_set.as_mut().unwrap().insert(4);
         self
     }
 
@@ -1680,7 +1657,7 @@ impl BedBuilder {
     /// information is not needed.
     /// Asking for the phenotype after skipping it results in an error.    
     pub fn skip_pheno(mut self) -> Self {
-        self.skip_set.as_mut().unwrap().insert(5); 
+        self.skip_set.as_mut().unwrap().insert(5);
         self
     } // cmk00 understand this as_mut
 
@@ -1690,7 +1667,7 @@ impl BedBuilder {
     /// This stops that recording. This is useful if the chromosome is not needed.
     /// Asking for the chromosome after skipping it results in an error.    
     pub fn skip_chromosome(mut self) -> Self {
-        self.skip_set.as_mut().unwrap().insert(6); 
+        self.skip_set.as_mut().unwrap().insert(6);
         self
     }
 
@@ -1700,7 +1677,7 @@ impl BedBuilder {
     /// This stops that recording. This is useful if the sid is not needed.
     /// Asking for the sid after skipping it results in an error.    
     pub fn skip_sid(mut self) -> Self {
-        self.skip_set.as_mut().unwrap().insert(7); 
+        self.skip_set.as_mut().unwrap().insert(7);
         self
     }
 
@@ -1710,7 +1687,7 @@ impl BedBuilder {
     /// This stops that recording. This is useful if the cm position is not needed.
     /// Asking for the cm position after skipping it results in an error.    
     pub fn skip_cm_position(mut self) -> Self {
-        self.skip_set.as_mut().unwrap().insert(8); 
+        self.skip_set.as_mut().unwrap().insert(8);
         self
     }
 
@@ -1720,7 +1697,7 @@ impl BedBuilder {
     /// This stops that recording. This is useful if the bp position is not needed.
     /// Asking for the cp position after skipping it results in an error.    
     pub fn skip_bp_position(mut self) -> Self {
-        self.skip_set.as_mut().unwrap().insert(9); 
+        self.skip_set.as_mut().unwrap().insert(9);
         self
     }
 
@@ -1730,7 +1707,7 @@ impl BedBuilder {
     /// This stops that recording. This is useful if allele 1 is not needed.
     /// Asking for allele 1 after skipping it results in an error.    
     pub fn skip_allele_1(mut self) -> Self {
-        self.skip_set.as_mut().unwrap().insert(10); 
+        self.skip_set.as_mut().unwrap().insert(10);
         self
     }
 
@@ -1740,7 +1717,7 @@ impl BedBuilder {
     /// This stops that recording. This is useful if allele 2 is not needed.
     /// Asking for allele 2 after skipping it results in an error.    
     pub fn skip_allele_2(mut self) -> Self {
-        self.skip_set.as_mut().unwrap().insert(11); 
+        self.skip_set.as_mut().unwrap().insert(11);
         self
     }
 
@@ -1750,33 +1727,13 @@ impl BedBuilder {
     /// ```
     /// use ndarray as nd;
     /// use bed_reader::{Bed, Metadata};
-    /// use std::rc::Rc;
-    ///
-    /// let iid = nd::array!["iid1".to_string(), "iid2".to_string(), "iid3".to_string()];
-    /// let sid = nd::array![
-    ///     "sid1".to_string(),
-    ///     "sid2".to_string(),
-    ///     "sid3".to_string(),
-    ///     "sid4".to_string()
-    /// ];
-    /// let metadata = Metadata {
-    ///     fid: None,
-    ///     iid: Some(Rc::new(iid)),
-    ///     father: None,
-    ///     mother: None,
-    ///     sex: None,
-    ///     pheno: None,
-    ///
-    ///     chromosome: None,
-    ///     sid: Some(Rc::new(sid)),
-    ///     cm_position: None,
-    ///     bp_position: None,
-    ///     allele_1: None,
-    ///     allele_2: None,
-    /// };
-    ///
     /// let file_name = "bed_reader/tests/data/small.bed";
-    /// let mut bed = Bed::builder(file_name).metadata(metadata).build()?;
+    ///
+    /// let metadata = Metadata::builder()
+    ///    .iid(["iid1", "iid2", "iid3"])
+    ///    .sid(["sid1", "sid2", "sid3", "sid4"])
+    //     .build()?;
+    /// let mut bed = Bed::builder(file_name).metadata(&metadata).build()?;
     /// let metadata2 = bed.metadata()?;
     /// println!("{metadata2:?}"); // Outputs a copy of input metadata
     /// # use bed_reader::BedErrorPlus;
@@ -1987,8 +1944,6 @@ fn to_metadata_path(
     }
 }
 
-
-
 // !!!cmk later should bed builder be able to accept a metadata struct?
 
 impl Bed {
@@ -2100,7 +2055,7 @@ impl Bed {
     }
 
     // !!!cmk 00 return ref instead
-    pub fn path(self) -> PathBuf{
+    pub fn path(self) -> PathBuf {
         self.path.to_owned()
     }
 
@@ -2361,7 +2316,7 @@ impl Bed {
         self.fam()?;
         self.bim()?;
 
-        let clone  = self.metadata.clone();
+        let clone = self.metadata.clone();
         Ok(clone)
     }
 
@@ -2383,7 +2338,7 @@ impl Bed {
         if self.metadata.sex.is_none() && !self.skip_set.contains(&4) {
             field_vec.push(4);
         }
-        if self.metadata.pheno.is_none() && !self.skip_set.contains(&5){ 
+        if self.metadata.pheno.is_none() && !self.skip_set.contains(&5) {
             field_vec.push(5);
         }
 
@@ -2403,11 +2358,10 @@ impl Bed {
         }
 
         // unwraps are safe because we pop once for every push
-        if self.metadata.pheno.is_none() && !self.skip_set.contains(&5){ 
+        if self.metadata.pheno.is_none() && !self.skip_set.contains(&5) {
             self.metadata.pheno = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
         }
         if self.metadata.sex.is_none() && !self.skip_set.contains(&4) {
-        
             let vec = vec_of_vec.pop().unwrap();
             let array = vec
                 .iter()
@@ -2416,19 +2370,15 @@ impl Bed {
             self.metadata.sex = Some(Rc::new(array));
         }
         if self.metadata.mother.is_none() && !self.skip_set.contains(&3) {
-       
             self.metadata.mother = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
         }
         if self.metadata.father.is_none() && !self.skip_set.contains(&2) {
-         
             self.metadata.father = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
         }
         if self.metadata.iid.is_none() && !self.skip_set.contains(&1) {
-    
             self.metadata.iid = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
         }
         if self.metadata.fid.is_none() && !self.skip_set.contains(&0) {
-        
             self.metadata.fid = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
         }
 
@@ -2437,14 +2387,12 @@ impl Bed {
     fn bim(&mut self) -> Result<(), BedErrorPlus> {
         let mut field_vec: Vec<usize> = Vec::new();
         if self.metadata.chromosome.is_none() && !self.skip_set.contains(&6) {
-       
             field_vec.push(0);
         }
         if self.metadata.sid.is_none() && !self.skip_set.contains(&7) {
-       
             field_vec.push(1);
         }
-        
+
         if self.metadata.cm_position.is_none() && !self.skip_set.contains(&8) {
             field_vec.push(2);
         }
@@ -2478,11 +2426,9 @@ impl Bed {
             self.metadata.allele_2 = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
         }
         if self.metadata.allele_1.is_none() && !self.skip_set.contains(&10) {
-         
             self.metadata.allele_1 = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
         }
         if self.metadata.bp_position.is_none() && !self.skip_set.contains(&9) {
-        
             let vec = vec_of_vec.pop().unwrap();
             let array = vec
                 .iter()
@@ -2491,7 +2437,6 @@ impl Bed {
             self.metadata.bp_position = Some(Rc::new(array));
         }
         if self.metadata.cm_position.is_none() && !self.skip_set.contains(&8) {
-        
             let vec = vec_of_vec.pop().unwrap();
             let array = vec
                 .iter()
@@ -2501,12 +2446,11 @@ impl Bed {
         }
 
         if self.metadata.sid.is_none() && !self.skip_set.contains(&7) {
-       
             self.metadata.sid = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
         }
         if self.metadata.chromosome.is_none() && !self.skip_set.contains(&6) {
-       
-            self.metadata.chromosome = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
+            self.metadata.chromosome =
+                Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
         }
 
         Ok(())
@@ -2550,7 +2494,12 @@ impl Bed {
         Ok((vec_of_vec, count))
     }
 
-    fn unlazy_fam<T: FromStringArray<T>>(&mut self, is_none: bool, field_index:usize, name: &str) -> Result<(), BedErrorPlus> {
+    fn unlazy_fam<T: FromStringArray<T>>(
+        &mut self,
+        is_none: bool,
+        field_index: usize,
+        name: &str,
+    ) -> Result<(), BedErrorPlus> {
         if self.skip_set.contains(&field_index) {
             return Err(BedError::CannotUseSkippedMetadata(name.to_string()).into());
         }
@@ -2559,7 +2508,12 @@ impl Bed {
         }
         Ok(())
     }
-    fn unlazy_bim<T: FromStringArray<T>>(&mut self, is_none: bool, field_index:usize, name: &str) -> Result<(), BedErrorPlus> {
+    fn unlazy_bim<T: FromStringArray<T>>(
+        &mut self,
+        is_none: bool,
+        field_index: usize,
+        name: &str,
+    ) -> Result<(), BedErrorPlus> {
         if self.skip_set.contains(&field_index) {
             return Err(BedError::CannotUseSkippedMetadata(name.to_string()).into());
         }
@@ -2568,8 +2522,6 @@ impl Bed {
         }
         Ok(())
     }
-  
-
 
     /// Family id of each of individual (sample)
     ///
@@ -2592,7 +2544,7 @@ impl Bed {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     pub fn fid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        self.unlazy_fam::<String>(self.metadata.fid.is_none(),0, "fid")?;
+        self.unlazy_fam::<String>(self.metadata.fid.is_none(), 0, "fid")?;
         Ok(self.metadata.fid.as_ref().unwrap())
     }
 
@@ -2667,7 +2619,7 @@ impl Bed {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     pub fn mother(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        self.unlazy_fam::<String>(self.metadata.mother.is_none(), 3 , "mother")?;
+        self.unlazy_fam::<String>(self.metadata.mother.is_none(), 3, "mother")?;
         Ok(self.metadata.mother.as_ref().unwrap())
     }
 
@@ -4408,7 +4360,7 @@ where
     bim_path: PathBuf,
 
     #[builder(setter(custom))]
-    metadata:Metadata,
+    metadata: Metadata,
 
     // /// Family id of each of individual (sample)
     // ///
@@ -4486,7 +4438,6 @@ where
     // /// If this ndarray is not given, the default ("A2") is used.
     // #[builder(setter(custom))]
     // allele_2: Rc<nd::Array1<String>>,
-
     /// Sets if allele 1 is counted. Default is true.
     ///
     /// Also see [`count_a1`](struct.WriteOptionsBuilder.html#method.count_a1) and [`count_a2`](struct.WriteOptionsBuilder.html#method.count_a2).    
@@ -4554,9 +4505,8 @@ impl<TVal> WriteOptions<TVal>
 where
     TVal: BedVal,
 {
-
     // !!!cmk test and doc these
-    pub fn path (&self) -> &PathBuf {
+    pub fn path(&self) -> &PathBuf {
         &self.path
     }
 
@@ -4596,7 +4546,6 @@ where
         &self.metadata.chromosome.as_ref().unwrap()
     }
 
-
     pub fn sid(&self) -> &nd::Array1<String> {
         &self.metadata.sid.as_ref().unwrap()
     }
@@ -4617,7 +4566,6 @@ where
         &self.metadata.allele_2.as_ref().unwrap()
     }
     // cmk00 put in rest of access functions
-
 
     /// Write values to a file in PLINK .bed format. Supports metadata and options.
     ///
@@ -4806,31 +4754,6 @@ where
         let metadata = self.metadata.as_ref().unwrap();
         let metadata = metadata.clone_and_fill(iid_count, sid_count)?;
 
-        // let metadata0 = self.metadata.as_ref().unwrap();
-        // let mut metadata = metadata0.clone();
-        // metadata.fid = compute_field("fid", metadata0.fid.clone(), iid_count, |_| "0".to_string())?;
-        // metadata.iid = compute_field("iid", &metadata.iid, iid_count, |i| {
-        //         format!("iid{}", i + 1).to_string()
-        //     })?;
-        // metadata.father = compute_field("father", &metadata.father, iid_count, |_| "0".to_string())?;
-        // metadata.mother = compute_field("mother", &metadata.mother, iid_count, |_| "0".to_string())?;
-        // metadata.sex = compute_field("sex", &metadata.sex, iid_count, |_| 0)?;
-        // metadata.pheno = compute_field("pheno", &metadata.pheno, iid_count, |_| "0".to_string())?;
-        // metadata.chromosome = compute_field("chromosome", &metadata.chromosome, sid_count, |_| {
-        //     "0".to_string()
-        // })?;
-        // metadata.sid = compute_field("sid", &metadata.sid, sid_count, |i| {
-        //     format!("sid{}", i + 1).to_string()
-        // })?;
-        // metadata.cm_position = compute_field("cm_position", &metadata.cm_position, sid_count, |_| 0.0)?;
-        // metadata.bp_position = compute_field("bp_position", &metadata.bp_position, sid_count, |_| 0)?;
-        // metadata.allele_1 = compute_field("allele_1", &metadata.allele_1, sid_count, |_| {
-        //     "A1".to_string()
-        // })?;
-        // metadata.allele_2 = compute_field("allele_2", &metadata.allele_2, sid_count, |_| {
-        //     "A2".to_string()
-        // })?;
-
         let write_options = WriteOptions {
             path: path_buf.clone(),
             fam_path: to_metadata_path(path_buf, &self.fam_path, "fam"),
@@ -4839,7 +4762,7 @@ where
             num_threads: self.num_threads.unwrap_or(None),
             missing_value: self.missing_value.unwrap_or_else(|| TVal::missing()),
 
-            metadata: metadata
+            metadata: metadata,
         };
         // !!! cmk00
         // check_counts(
@@ -4912,7 +4835,7 @@ where
             fam_path: None,
             bim_path: None,
 
-            metadata: Some(Metadata::default()),
+            metadata: Some(MetadataBuilder::default().build().unwrap()),
 
             is_a1_counted: None,
             num_threads: None,
@@ -4954,33 +4877,13 @@ where
     /// ```
     /// use ndarray as nd;
     /// use bed_reader::{Bed, Metadata};
-    /// use std::rc::Rc;
-    ///
-    /// let iid = nd::array!["iid1".to_string(), "iid2".to_string(), "iid3".to_string()];
-    /// let sid = nd::array![
-    ///     "sid1".to_string(),
-    ///     "sid2".to_string(),
-    ///     "sid3".to_string(),
-    ///     "sid4".to_string()
-    /// ];
-    /// let metadata = Metadata {
-    ///     fid: None,
-    ///     iid: Some(Rc::new(iid)),
-    ///     father: None,
-    ///     mother: None,
-    ///     sex: None,
-    ///     pheno: None,
-    ///
-    ///     chromosome: None,
-    ///     sid: Some(Rc::new(sid)),
-    ///     cm_position: None,
-    ///     bp_position: None,
-    ///     allele_1: None,
-    ///     allele_2: None,
-    /// };
     ///
     /// let file_name = "bed_reader/tests/data/small.bed";
-    /// let mut bed = Bed::builder(file_name).metadata(metadata).build()?;
+    /// let metadata = Metadata::builder()
+    ///    .iid(["iid1", "iid2", "iid3"])
+    ///    .sid(["sid1", "sid2", "sid3", "sid4"])
+    ///    .build()?;
+    /// let mut bed = Bed::builder(file_name).metadata(&metadata).build()?;
     /// let metadata2 = bed.metadata()?;
     /// println!("{metadata2:?}"); // Outputs a copy of input metadata
     /// # use bed_reader::BedErrorPlus;
@@ -5299,10 +5202,8 @@ fn compute_field<T: Clone, F: Fn(usize) -> T>(
     field_name: &str,
     field: &mut Option<Rc<nd::Array1<T>>>,
     count: usize,
-    lambda: F
+    lambda: F,
 ) -> Result<(), BedErrorPlus> {
-
-
     // let lambda = |_| "0".to_string();
     // let count = iid_count;
     // let field = &mut metadata.fid;
@@ -5315,7 +5216,7 @@ fn compute_field<T: Clone, F: Fn(usize) -> T>(
         }
     } else {
         let array = Rc::new((0..count).map(|_| lambda(0)).collect::<nd::Array1<T>>());
-        *field = Some(array) ;
+        *field = Some(array);
     }
     Ok(())
 
@@ -5368,7 +5269,6 @@ pub fn assert_same_result(
     assert!(result1.shape()[0] == result3, "not same length");
 }
 
-
 fn is_err2<T>(result_result: &Result<Result<T, BedErrorPlus>, BedErrorPlus>) -> bool {
     match result_result {
         Ok(Ok(_)) => false,
@@ -5407,7 +5307,6 @@ where
 }
 
 pub fn nds1(range_thing: SliceInfo1) -> Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus> {
-
     println!("Running {:?}", &range_thing);
     let file_name = "bed_reader/tests/data/toydata.5chrom.bed";
 
@@ -5439,7 +5338,9 @@ pub fn rt23(
     (rt2(range_thing.clone()), rt3(range_thing.clone()))
 }
 
-pub fn rt2(range_thing: crate::Index) -> Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus> {
+pub fn rt2(
+    range_thing: crate::Index,
+) -> Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus> {
     println!("Running {:?}", &range_thing);
     let file_name = "bed_reader/tests/data/toydata.5chrom.bed";
 
@@ -5476,34 +5377,244 @@ pub fn rt3(range_thing: crate::Index) -> Result<Result<usize, BedErrorPlus>, Bed
     }
 }
 
+impl MetadataBuilder {
+    pub fn build(&self) -> Result<Metadata, BedErrorPlus> {
+        let metadata = self.build_no_file_check()?;
+
+        let mut iid_count = None;
+        let mut sid_count = None;
+
+        check_counts(
+            vec![
+                lazy_or_skip_count(&metadata.fid),
+                lazy_or_skip_count(&metadata.iid),
+                lazy_or_skip_count(&metadata.father),
+                lazy_or_skip_count(&metadata.mother),
+                lazy_or_skip_count(&metadata.sex),
+                lazy_or_skip_count(&metadata.pheno),
+            ],
+            &mut iid_count,
+            "iid",
+        )?;
+
+        check_counts(
+            vec![
+                lazy_or_skip_count(&metadata.chromosome),
+                lazy_or_skip_count(&metadata.sid),
+                lazy_or_skip_count(&metadata.cm_position),
+                lazy_or_skip_count(&metadata.bp_position),
+                lazy_or_skip_count(&metadata.allele_1),
+                lazy_or_skip_count(&metadata.allele_2),
+            ],
+            &mut sid_count,
+            "sid",
+        )?;
+
+        Ok(metadata)
+    }
+
+    /// Override the family id (fid) values found in the .fam file.
+    ///
+    /// By default, if fid values are needed and haven't already been found,
+    /// they will be read from the .fam file.
+    /// Providing them here avoids that file read and provides a way to give different values.
+    pub fn fid<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, fid: I) -> &Self {
+        self.fid = Some(Some(Rc::new(
+            fid.into_iter().map(|s| s.as_ref().to_string()).collect(),
+        )));
+        self
+    }
+
+    /// Override the individual id (iid) values found in the .fam file.
+    ///
+    /// By default, if iid values are needed and haven't already been found,
+    /// they will be read from the .fam file.
+    /// Providing them here avoids that file read and provides a way to give different values.
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::Bed;
+    /// use bed_reader::assert_eq_nan;
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// use bed_reader::ReadOptions;
+    ///
+    /// let mut bed = Bed::builder(file_name)
+    ///    .iid(["sample1", "sample2", "sample3"])
+    ///    .build()?;
+    /// println!("{:?}", bed.iid()?); // Outputs ndarray ["sample1", "sample2", "sample3"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
+    pub fn iid<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, iid: I) -> &mut Self {
+        self.iid = Some(Some(Rc::new(
+            iid.into_iter().map(|s| s.as_ref().to_string()).collect(),
+        )));
+        self
+    }
+
+    /// Override the father values found in the .fam file.
+    ///nd
+    /// By default, if father values are needed and haven't already been found,
+    /// they will be read from the .fam file.
+    /// Providing them here avoids that file read and provides a way to give different values.
+    pub fn father<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, father: I) -> &Self {
+        self.father = Some(Some(Rc::new(
+            father.into_iter().map(|s| s.as_ref().to_string()).collect(),
+        )));
+        self
+    }
+
+    /// Override the mother values found in the .fam file.
+    ///
+    /// By default, if mother values are needed and haven't already been found,
+    /// they will be read from the .fam file.
+    /// Providing them here avoids that file read and provides a way to give different values.
+    pub fn mother<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, mother: I) -> &Self {
+        self.mother = Some(Some(Rc::new(
+            mother.into_iter().map(|s| s.as_ref().to_string()).collect(),
+        )));
+        self
+    }
+
+    /// Override the sex values found in the .fam file.
+    ///
+    /// By default, if sex values are needed and haven't already been found,
+    /// they will be read from the .fam file.
+    /// Providing them here avoids that file read and provides a way to give different values.
+    pub fn sex<I: IntoIterator<Item = i32>>(&mut self, sex: I) -> &Self {
+        self.sex = Some(Some(Rc::new(sex.into_iter().map(|s| s).collect())));
+        self
+    }
+
+    /// Override the phenotype values found in the .fam file.
+    ///
+    /// Note that the phenotype values in the .fam file are seldom used.
+    /// By default, if phenotype values are needed and haven't already been found,
+    /// they will be read from the .fam file.
+    /// Providing them here avoids that file read and provides a way to give different values.
+    pub fn pheno<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, pheno: I) -> &Self {
+        self.pheno = Some(Some(Rc::new(
+            pheno.into_iter().map(|s| s.as_ref().to_string()).collect(),
+        )));
+        self
+    }
+
+    /// Override the chromosome values found in the .bim file.
+    ///
+    /// By default, if chromosome values are needed and haven't already been found,
+    /// they will be read from the .bim file.
+    /// Providing them here avoids that file read and provides a way to give different values.
+    pub fn chromosome<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, chromosome: I) -> &Self {
+        self.chromosome = Some(Some(Rc::new(
+            chromosome
+                .into_iter()
+                .map(|s| s.as_ref().to_string())
+                .collect(),
+        )));
+        self
+    }
+
+    /// Override the SNP id (sid) values found in the .fam file.
+    ///
+    /// By default, if sid values are needed and haven't already been found,
+    /// they will be read from the .bim file.
+    /// Providing them here avoids that file read and provides a way to give different values.
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::Bed;
+    /// use bed_reader::assert_eq_nan;
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// use bed_reader::ReadOptions;
+    ///
+    /// let mut bed = Bed::builder(file_name)
+    ///    .sid(["SNP1", "SNP2", "SNP3", "SNP4"])
+    ///    .build()?;
+    /// println!("{:?}", bed.sid()?); // Outputs ndarray ["SNP1", "SNP2", "SNP3", "SNP4"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
+    pub fn sid<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, sid: I) -> &mut Self {
+        self.sid = Some(Some(Rc::new(
+            sid.into_iter().map(|s| s.as_ref().to_string()).collect(),
+        )));
+        self
+    }
+
+    /// Override the centimorgan position values found in the .bim file.
+    ///
+    /// By default, if centimorgan position values are needed and haven't already been found,
+    /// they will be read from the .bim file.
+    /// Providing them here avoids that file read and provides a way to give different values.
+    pub fn cm_position<I: IntoIterator<Item = f32>>(&mut self, cm_position: I) -> &Self {
+        self.cm_position = Some(Some(Rc::new(cm_position.into_iter().map(|s| s).collect())));
+        self
+    }
+
+    /// Override the base-pair position values found in the .bim file.
+    ///
+    /// By default, if base-pair position values are needed and haven't already been found,
+    /// they will be read from the .bim file.
+    /// Providing them here avoids that file read and provides a way to give different values.
+    pub fn bp_position<I: IntoIterator<Item = i32>>(&mut self, bp_position: I) -> &Self {
+        self.bp_position = Some(Some(Rc::new(bp_position.into_iter().map(|s| s).collect())));
+        self
+    }
+
+    /// Override the allele 1 values found in the .bim file.
+    ///
+    /// By default, if allele 1 values are needed and haven't already been found,
+    /// they will be read from the .bim file.
+    /// Providing them here avoids that file read and provides a way to give different values.
+    pub fn allele_1<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, allele_1: I) -> &Self {
+        self.allele_1 = Some(Some(Rc::new(
+            allele_1
+                .into_iter()
+                .map(|s| s.as_ref().to_string())
+                .collect(),
+        )));
+        self
+    }
+
+    /// Override the allele 2 values found in the .bim file.
+    ///
+    /// By default, if allele 2 values are needed and haven't already been found,
+    /// they will be read from the .bim file.
+    /// Providing them here avoids that file read and provides a way to give different values.
+    pub fn allele_2<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, allele_2: I) -> &Self {
+        self.allele_2 = Some(Some(Rc::new(
+            allele_2
+                .into_iter()
+                .map(|s| s.as_ref().to_string())
+                .collect(),
+        )));
+        self
+    }
+}
 impl Metadata {
-  
+    pub fn builder() -> MetadataBuilder {
+        MetadataBuilder::default()
+    }
 
-    pub fn clone_and_fill(&self, iid_count:usize, sid_count  : usize) -> Result<Metadata, BedErrorPlus> {
+    pub fn new() -> Metadata {
+        Metadata::builder().build().unwrap()
+    }
+
+    pub fn clone_and_fill(
+        &self,
+        iid_count: usize,
+        sid_count: usize,
+    ) -> Result<Metadata, BedErrorPlus> {
         let mut metadata = self.clone();
-
-        // let lambda = |_| "0".to_string();
-        // let count = iid_count;
-        // let field = &mut metadata.fid;
-
-        // if let Some(array) = field {
-        //     if array.len() != count {
-        //         return Err(
-        //             BedError::InconsistentCount(field_name.to_string(), array.len(), count).into(),
-        //         );
-        //     }
-        // } else {
-        //     field = &mut Some(Rc::new((0..count).map(|_| lambda(0)).collect::<nd::Array1<String>>()));
-        // }
-
-
 
         compute_field("fid", &mut metadata.fid, iid_count, |_| "0".to_string())?;
         compute_field("iid", &mut metadata.iid, iid_count, |i| {
-                format!("iid{}", i + 1).to_string()
-            })?;
-        compute_field("father", &mut metadata.father, iid_count, |_| "0".to_string())?;
-        compute_field("mother", &mut metadata.mother, iid_count, |_| "0".to_string())?;
+            format!("iid{}", i + 1).to_string()
+        })?;
+        compute_field("father", &mut metadata.father, iid_count, |_| {
+            "0".to_string()
+        })?;
+        compute_field("mother", &mut metadata.mother, iid_count, |_| {
+            "0".to_string()
+        })?;
         compute_field("sex", &mut metadata.sex, iid_count, |_| 0)?;
         compute_field("pheno", &mut metadata.pheno, iid_count, |_| "0".to_string())?;
         compute_field("chromosome", &mut metadata.chromosome, sid_count, |_| {
@@ -5520,9 +5631,8 @@ impl Metadata {
         compute_field("allele_2", &mut metadata.allele_2, sid_count, |_| {
             "A2".to_string()
         })?;
-        
+
         Ok(metadata)
-    
     }
 
     pub fn fid<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, fid: I) -> &Self {
@@ -5532,7 +5642,7 @@ impl Metadata {
         self
     }
 
-   /// Override the individual id (iid) values found in the .fam file.
+    /// Override the individual id (iid) values found in the .fam file.
     ///
     /// By default, if iid values are needed and haven't already been found,
     /// they will be read from the .fam file.
@@ -5552,10 +5662,9 @@ impl Metadata {
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     pub fn iid<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, iid: I) -> &Self {
-        self.iid = Some(
-            Rc::new(
-            iid.into_iter().map(|s| s.as_ref().to_string()).collect()),
-        );
+        self.iid = Some(Rc::new(
+            iid.into_iter().map(|s| s.as_ref().to_string()).collect(),
+        ));
         self
     }
 
@@ -5653,9 +5762,7 @@ impl Metadata {
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
     pub fn cm_position<I: IntoIterator<Item = f32>>(&mut self, cm_position: I) -> &Self {
-        self.cm_position = Some(Rc::new(
-            cm_position.into_iter().map(|s| s).collect(),
-        ));
+        self.cm_position = Some(Rc::new(cm_position.into_iter().map(|s| s).collect()));
         self
     }
 
@@ -5665,9 +5772,7 @@ impl Metadata {
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
     pub fn bp_position<I: IntoIterator<Item = i32>>(&mut self, bp_position: I) -> &Self {
-        self.bp_position = Some(Rc::new(
-            bp_position.into_iter().map(|s| s).collect(),
-        ));
+        self.bp_position = Some(Rc::new(bp_position.into_iter().map(|s| s).collect()));
         self
     }
 
@@ -5699,5 +5804,5 @@ impl Metadata {
                 .collect(),
         ));
         self
-    }    
+    }
 }

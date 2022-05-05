@@ -1,8 +1,6 @@
 #[cfg(test)]
 use bed_reader::allclose;
 #[cfg(test)]
-use bed_reader::SliceInfo1;
-#[cfg(test)]
 use bed_reader::assert_eq_nan;
 #[cfg(test)]
 use bed_reader::assert_same_result;
@@ -25,6 +23,8 @@ use bed_reader::Metadata;
 #[cfg(test)]
 use bed_reader::ReadOptions;
 #[cfg(test)]
+use bed_reader::SliceInfo1;
+#[cfg(test)]
 use bed_reader::WriteOptions;
 #[cfg(test)]
 use ndarray as nd;
@@ -34,9 +34,6 @@ use ndarray::s;
 use ndarray_rand::rand_distr::Uniform;
 #[cfg(test)]
 use ndarray_rand::RandomExt;
-#[cfg(test)]
-use std::rc::Rc;
-
 
 #[test]
 fn rusty_bed1() -> Result<(), BedErrorPlus> {
@@ -336,11 +333,10 @@ fn metadata_etc() -> Result<(), BedErrorPlus> {
 
 #[test]
 fn hello_father() -> Result<(), BedErrorPlus> {
-   
     let mut bed = Bed::builder("bed_reader/tests/data/small.bed")
-    .father(["f1", "f2", "f3"])
-    .skip_mother()
-    .build()?;
+        .father(["f1", "f2", "f3"])
+        .skip_mother()
+        .build()?;
     println!("{:?}", bed.father()?);
     // ["f1", "f2", "f3"], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
     bed.mother().unwrap_err();
@@ -558,7 +554,7 @@ fn read_write() -> Result<(), BedErrorPlus> {
     // bim_filepath=bim_file,
     // )
 
-    // !!!cmk00 also have a test in which BedReader has itsmetadata set
+    // !!!cmk00 also have a test in which BedReader has its metadata set
     WriteOptions::builder(&output_file)
         .metadata(&metadata)
         .fam_path(&fam_file)
@@ -686,8 +682,6 @@ fn into_iter() -> Result<(), BedErrorPlus> {
     let _ = bed.pheno()?;
     Ok(())
 }
-
-
 
 #[test]
 fn range_same() -> Result<(), BedErrorPlus> {
@@ -1337,48 +1331,28 @@ fn index_options() -> Result<(), BedErrorPlus> {
     Ok(())
 }
 
-// cmk00 put this back
-// #[test]
-// fn set_metadata() -> Result<(), BedErrorPlus> {
-//     let file_name = "bed_reader/tests/data/small.bed";
+#[test]
+fn set_metadata() -> Result<(), BedErrorPlus> {
+    let file_name = "bed_reader/tests/data/small.bed";
 
-//     let iid = nd::array!["iid1".to_string(), "iid2".to_string(), "iid3".to_string()];
-//     let sid = nd::array![
-//         "sid1".to_string(),
-//         "sid2".to_string(),
-//         "sid3".to_string(),
-//         "sid4".to_string()
-//     ];
-//     let metadata = Metadata {
-//         fid: None,
-//         iid: Some(Rc::new(iid)),
-//         father: None,
-//         mother: None,
-//         sex: None,
-//         pheno: None,
+    let metadata = Metadata::builder()
+        .iid(["iid1", "iid2", "iid3"])
+        .sid(["sid1", "sid2", "sid3", "sid4"])
+        .build()?;
+    let mut bed = Bed::builder(file_name).metadata(metadata).build()?;
+    let metadata2 = bed.metadata()?;
+    println!("{metadata2:?}");
 
-//         chromosome: None,
-//         sid: Some(Rc::new(sid)),
-//         cm_position: None,
-//         bp_position: None,
-//         allele_1: None,
-//         allele_2: None,
-//     };
+    let mut bed = Bed::new(file_name)?;
+    let metadata = bed.metadata()?;
+    println!("{metadata:?}");
 
-//     let mut bed = Bed::builder(file_name).metadata(metadata).build()?;
-//     let metadata2 = bed.metadata()?;
-//     println!("{metadata2:?}");
+    let mut bed = Bed::builder(file_name).metadata(metadata).build()?;
+    let metadata2 = bed.metadata()?;
+    println!("{metadata2:?}");
 
-//     let mut bed = Bed::new(file_name)?;
-//     let metadata = bed.metadata()?;
-//     println!("{metadata:?}");
-
-//     let mut bed = Bed::builder(file_name).metadata(metadata).build()?;
-//     let metadata2 = bed.metadata()?;
-//     println!("{metadata2:?}");
-
-//     Ok(())
-// }
+    Ok(())
+}
 
 // !!!cmk 0 in docs explain that vec<isize> given to *_index will move it.
 // !!!cmk 0 other things (like a borrow) will clone it.
@@ -1597,7 +1571,7 @@ fn write_options_metadata() -> Result<(), BedErrorPlus> {
         // .iid_count(3)
         // !!!cmk00 note the allele's have default values
         // .sid_count(5)
-        .build(3,4)?;
+        .build(3, 4)?;
 
     let metadata = write_options.metadata()?;
     println!("{metadata:?}");
@@ -1637,43 +1611,27 @@ fn metadata_same() -> Result<(), BedErrorPlus> {
     let sid_count = 5_000;
     let file_count = 10;
 
-    let metadata = Metadata {
-        fid: None,
-        iid: Some(Rc::new(
-            (0..iid_count).map(|iid_index| format!("iid_{iid_index}").to_owned()).collect()
-        )),
-        father: None,
-        mother: None,
-        sex: None,
-        pheno: None,
-        chromosome: None,
-        sid: Some(Rc::new(
-            (0..sid_count).map(|sid_index| format!("sid_{sid_index}").to_owned()).collect()
-        )),
-        cm_position: None,
-        bp_position: None,
-        allele_1: None,
-        allele_2: None,
-    };
+    let metadata = Metadata::builder()
+        .iid((0..iid_count).map(|iid_index| format!("iid_{iid_index}")))
+        .sid((0..sid_count).map(|sid_index| format!("sid_{sid_index}")))
+        .build()?;
 
     let temp_out = tmp_path()?;
 
-    for file_index in 0..file_count
-    {
+    for file_index in 0..file_count {
         let output_file = temp_out.join(format!("random{file_index}.bed"));
-    
+
         // !!!cmk00 needs seed
         let val = nd::Array::random((iid_count, sid_count), Uniform::from(-1..3));
-    
+
         // cmk00 println!("{val:?}");
-    
+
         WriteOptions::builder(output_file)
             .metadata(&metadata)
             .missing_value(-1)
             .write(&val)?;
     }
-        Ok(())
-
+    Ok(())
 }
 
 // !!!cmk00
@@ -1687,7 +1645,7 @@ fn metadata_same() -> Result<(), BedErrorPlus> {
 
 // !!!cmk00 what are the structs?
 // !!!cmk00 can their fields by changed by users after construction?
-// !!!cmk00 can iid_count and sid_count be made inconsistant and will it be caught?
+// !!!cmk00 can iid_count and sid_count be made inconsistent and will it be caught?
 // !!!cmk00 make sure can't set pub fields like path
 
 // structs: Metadata, Bed, ReadOptions, WriteOptions
@@ -1702,8 +1660,6 @@ fn struct_play() -> Result<(), BedErrorPlus> {
     // make WriteOptions directly or change? no, no pub fields
 
     // let write_options = WriteOptions { path: todo!(), fam_path: todo!(), bim_path: todo!(), fid: todo!(), iid: todo!(), father: todo!(), mother: todo!(), sex: todo!(), pheno: todo!(), chromosome: todo!(), sid: todo!(), cm_position: todo!(), bp_position: todo!(), allele_1: todo!(), allele_2: todo!(), is_a1_counted: todo!(), num_threads: todo!(), missing_value: -1 };
-
-   
 
     // println!("{write_options:?}");
     Ok(())
