@@ -1732,8 +1732,8 @@ impl BedBuilder {
     /// let metadata = Metadata::builder()
     ///    .iid(["iid1", "iid2", "iid3"])
     ///    .sid(["sid1", "sid2", "sid3", "sid4"])
-    //     .build()?;
-    /// let mut bed = Bed::builder(file_name).metadata(&metadata).build()?;
+    ///    .build()?;
+    /// let mut bed = Bed::builder(file_name).metadata(metadata).build()?;
     /// let metadata2 = bed.metadata()?;
     /// println!("{metadata2:?}"); // Outputs a copy of input metadata
     /// # use bed_reader::BedErrorPlus;
@@ -4883,7 +4883,7 @@ where
     ///    .iid(["iid1", "iid2", "iid3"])
     ///    .sid(["sid1", "sid2", "sid3", "sid4"])
     ///    .build()?;
-    /// let mut bed = Bed::builder(file_name).metadata(&metadata).build()?;
+    /// let mut bed = Bed::builder(file_name).metadata(metadata).build()?;
     /// let metadata2 = bed.metadata()?;
     /// println!("{metadata2:?}"); // Outputs a copy of input metadata
     /// # use bed_reader::BedErrorPlus;

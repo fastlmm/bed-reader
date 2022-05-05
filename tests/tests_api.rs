@@ -1334,11 +1334,11 @@ fn index_options() -> Result<(), BedErrorPlus> {
 #[test]
 fn set_metadata() -> Result<(), BedErrorPlus> {
     let file_name = "bed_reader/tests/data/small.bed";
-
     let metadata = Metadata::builder()
         .iid(["iid1", "iid2", "iid3"])
         .sid(["sid1", "sid2", "sid3", "sid4"])
         .build()?;
+    // !!!cmk00 should we pass a ref to bedbuilder's metadata?
     let mut bed = Bed::builder(file_name).metadata(metadata).build()?;
     let metadata2 = bed.metadata()?;
     println!("{metadata2:?}");
