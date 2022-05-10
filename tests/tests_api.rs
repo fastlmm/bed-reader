@@ -438,7 +438,7 @@ fn readme_examples() -> Result<(), BedErrorPlus> {
     let unique = bed3.chromosome()?.iter().collect::<HashSet<_>>();
     println!("{unique:?}");
     // let is_5 = bed3.chromosome()?.map(|elem| elem == "5");
-    // !!!cmk00 why is as_ref needed? How can it be removed?
+    // !!!cmk00o why is as_ref needed? How can it be removed?
     let is_5 = nd::Zip::from(bed3.chromosome()?).par_map_collect(|elem| elem == "5");
     let val3 = ReadOptions::builder()
         .sid_index(is_5)
@@ -554,7 +554,7 @@ fn read_write() -> Result<(), BedErrorPlus> {
     // bim_filepath=bim_file,
     // )
 
-    // !!!cmk00 also have a test in which BedReader has its metadata set
+    // !!!cmk00p also have a test in which BedReader has its metadata set
     WriteOptions::builder(&output_file)
         .metadata(&metadata)
         .fam_path(&fam_file)
@@ -1338,7 +1338,7 @@ fn set_metadata() -> Result<(), BedErrorPlus> {
         .iid(["iid1", "iid2", "iid3"])
         .sid(["sid1", "sid2", "sid3", "sid4"])
         .build()?;
-    // !!!cmk00 should we pass a ref to BedBuilders's metadata?
+    // !!!cmk00q should we pass a ref to BedBuilders's metadata?
     let mut bed = Bed::builder(file_name).metadata(metadata).build()?;
     let metadata2 = bed.metadata()?;
     println!("{metadata2:?}");
@@ -1568,12 +1568,10 @@ fn write_options_metadata() -> Result<(), BedErrorPlus> {
         .cm_position([100.4, 2000.5, 4000.7, 7000.9])
         .bp_position([1, 100, 1000, 1004])
         .f32()
-        // .iid_count(3)
-        // !!!cmk00 note the allele's have default values
-        // .sid_count(5)
+        // !!!cmk00a note the allele's have default values
         .build(3, 4)?;
 
-    let metadata = write_options.metadata()?;
+    let metadata = write_options.metadata();
     println!("{metadata:?}");
 
     Ok(())
@@ -1592,7 +1590,7 @@ fn metadata_use() -> Result<(), BedErrorPlus> {
     let temp_out = tmp_path()?;
     let output_file = temp_out.join("random.bed");
 
-    // !!!cmk00 needs seed
+    // !!!cmk00r needs seed
     let val = nd::Array::random(shape, Uniform::from(-1..3));
 
     println!("{val:?}");
@@ -1621,10 +1619,10 @@ fn metadata_same() -> Result<(), BedErrorPlus> {
     for file_index in 0..file_count {
         let output_file = temp_out.join(format!("random{file_index}.bed"));
 
-        // !!!cmk00 needs seed
+        // !!!cmk00r needs seed
         let val = nd::Array::random((iid_count, sid_count), Uniform::from(-1..3));
 
-        // cmk00 println!("{val:?}");
+        // cmk00r println!("{val:?}");
 
         WriteOptions::builder(output_file)
             .metadata(&metadata)
@@ -1634,7 +1632,7 @@ fn metadata_same() -> Result<(), BedErrorPlus> {
     Ok(())
 }
 
-// !!!cmk00
+// !!!cmk00s
 // A - apply to reading
 // B - extract from reading
 // C - apply to writing
@@ -1643,10 +1641,10 @@ fn metadata_same() -> Result<(), BedErrorPlus> {
 // CD
 // create 10 files with the same metadata
 
-// !!!cmk00 what are the structs?
-// !!!cmk00 can their fields by changed by users after construction?
-// !!!cmk00 can iid_count and sid_count be made inconsistent and will it be caught?
-// !!!cmk00 make sure can't set pub fields like path
+// !!!cmk00s what are the structs?
+// !!!cmk00s can their fields by changed by users after construction?
+// !!!cmk00s can iid_count and sid_count be made inconsistent and will it be caught?
+// !!!cmk00s make sure can't set pub fields like path
 
 // structs: Metadata, Bed, ReadOptions, WriteOptions
 

@@ -1,15 +1,15 @@
-// !!!cmk00 document WriteOptions  path/fam_path/bim_path
-// !!!cmk00 document WriteOptions  in num_threads says #Example
-// !!!cmk00 document WriteOptions  in missing_value says #Example
-// !!!cmk00 document WriteOptions  fn iid_count, sid_count, sim, metadata
-// !!!cmk00 allow WriteOptions to be modified, but check lengths on every write
-// !!!cmk00 document WriteOptionsBuilder i8/f32/f64
-// !!!cmk00 typo: " writes to file in one step.
-// !!!cmk0 document Bed: read_and_* (3 of them)
-// !!!cmk0 document Bed: fam_path, bim_path
-// !!!cmk0 document BedBuilder:: build
-// !!!cmk0 document WriteOptions:: path, fam_path, bim_path, missing_value
-// !!!cmk0 document WriteOptions: add metadata method
+// !!!cmk00a document WriteOptions  path/fam_path/bim_path
+// !!!cmk00a document WriteOptions  in num_threads says #Example
+// !!!cmk00a document WriteOptions  in missing_value says #Example
+// !!!cmk00a document WriteOptions  fn iid_count, sid_count, sim, metadata
+// !!!cmk00b allow WriteOptions to be modified, but check lengths on every write
+// !!!cmk00a document WriteOptionsBuilder i8/f32/f64
+// !!!cmk00a typo: " writes to file in one step.
+// !!!cmk0a document Bed: read_and_* (3 of them)
+// !!!cmk0a document Bed: fam_path, bim_path
+// !!!cmk0a document BedBuilder:: build
+// !!!cmk0a document WriteOptions:: path, fam_path, bim_path, missing_value
+// !!!cmk0c document WriteOptions: add metadata method
 
 // !!!cmk0 document bed::metadata:
 // !!!cmk 0 document Metadata
@@ -1355,7 +1355,6 @@ fn file_aat_piece<T: Float + Sync + Send + AddAssign, P: AsRef<Path>>(
 
 // !!!cmk later document and add issue that File(s) are not held, incorrectly allowing for the file to be changed between reads.
 
-// cmk00 #[derive(Clone, Debug, PartialEq, Default, Builder)]
 #[derive(Clone, Debug, Builder, PartialEq)]
 #[builder(build_fn(private, name = "build_no_file_check", error = "BedErrorPlus"))]
 pub struct Metadata {
@@ -1371,6 +1370,8 @@ pub struct Metadata {
     #[builder(setter(custom))]
     #[builder(default = "None")]
     mother: Option<Rc<nd::Array1<String>>>,
+
+    // i32 based on https://www.cog-genomics.org/plink2/formats#bim
     #[builder(setter(custom))]
     #[builder(default = "None")]
     sex: Option<Rc<nd::Array1<i32>>>,
@@ -1473,7 +1474,6 @@ pub struct Bed {
 
     #[builder(setter(custom))]
     skip_set: HashSet<SkipFields>,
-    // cmk00 move comment // i32 based on https://www.cog-genomics.org/plink2/formats#bim
 }
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Ord, PartialOrd, Hash)]
@@ -1662,7 +1662,7 @@ impl BedBuilder {
     pub fn skip_pheno(mut self) -> Self {
         self.skip_set.as_mut().unwrap().insert(SkipFields::Pheno);
         self
-    } // cmk00 understand this as_mut
+    } // cmk00d understand this as_mut
 
     /// Don't read the chromosome information from the .bim file.
     ///
@@ -1751,23 +1751,7 @@ impl BedBuilder {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
-    /// cmk00
-    // pub fn metadata(mut self, metadata: Metadata) -> Self {
-    //     self.fid = Some(to_lazy_or_skip_clone(&metadata.fid));
-    //     self.iid = Some(to_lazy_or_skip_clone(&metadata.iid));
-    //     self.father = Some(to_lazy_or_skip_clone(&metadata.father));
-    //     self.mother = Some(to_lazy_or_skip_clone(&metadata.mother));
-    //     self.sex = Some(to_lazy_or_skip_clone(&metadata.sex));
-    //     self.pheno = Some(to_lazy_or_skip_clone(&metadata.pheno));
-
-    //     self.chromosome = Some(to_lazy_or_skip_clone(&metadata.chromosome));
-    //     self.sid = Some(to_lazy_or_skip_clone(&metadata.sid));
-    //     self.cm_position = Some(to_lazy_or_skip_clone(&metadata.cm_position));
-    //     self.bp_position = Some(to_lazy_or_skip_clone(&metadata.bp_position));
-    //     self.allele_1 = Some(to_lazy_or_skip_clone(&metadata.allele_1));
-    //     self.allele_2 = Some(to_lazy_or_skip_clone(&metadata.allele_2));
-    //     self
-    // }
+    /// cmk00e
 
     /// Set the number of individuals in the data.
     ///
@@ -2066,7 +2050,7 @@ impl Bed {
         BedBuilder::new(path)
     }
 
-    // !!!cmk 00 return ref instead
+    // !!!cmk 00f return ref instead
     pub fn path(self) -> PathBuf {
         self.path.to_owned()
     }
@@ -4203,7 +4187,7 @@ impl<TVal> ReadOptions<TVal>
 where
     TVal: BedVal,
 {
-    // !!!cmk00 test and doc
+    // !!!cmk00a test and doc
     pub fn missing_value(&self) -> TVal {
         self.missing_value
     }
@@ -4376,7 +4360,6 @@ impl ReadOptionsBuilder<f64> {
 /// # Ok::<(), BedErrorPlus>(())
 /// ```
 #[derive(Clone, Debug, Builder)]
-// cmk00 #[builder(build_fn(private, name = "build_internal", error = "BedErrorPlus"))]
 #[builder(build_fn(skip))]
 pub struct WriteOptions<TVal>
 where
@@ -4508,7 +4491,7 @@ where
     /// -127 is the default for i8 and NaN is the default for f32 and f64.
     ///
     /// In this example, -1 represents missing values in val.
-    /// ```cmk00 fix example to write
+    /// ```cmk00g fix example to write
     /// use ndarray as nd;
     /// use bed_reader::{Bed, ReadOptions};
     /// use bed_reader::assert_eq_nan;
@@ -4597,7 +4580,6 @@ where
     pub fn allele_2(&self) -> &nd::Array1<String> {
         &self.metadata.allele_2.as_ref().unwrap()
     }
-    // cmk00 put in rest of access functions
 
     /// Write values to a file in PLINK .bed format. Supports metadata and options.
     ///
@@ -4679,6 +4661,7 @@ where
         (self.iid_count(), self.sid_count())
     }
 
+    // !!!cmk00h move to metadata
     fn fam_write(&self) -> Result<(), BedErrorPlus> {
         let file = File::create(&self.fam_path)?;
         let mut writer = BufWriter::new(file);
@@ -4706,7 +4689,7 @@ where
         Ok(())
     }
 
-    // !!!cmk00 move to metadata
+    // !!!cmk00h move to metadata
     fn bim_write(&self) -> Result<(), BedErrorPlus> {
         let file = File::create(&self.bim_path)?;
         let mut writer = BufWriter::new(file);
@@ -4730,9 +4713,8 @@ where
         Ok(())
     }
 
-    // cmk00 does this need to return an error?
-    pub fn metadata(&mut self) -> Result<Metadata, BedErrorPlus> {
-        Ok(self.metadata.clone())
+    pub fn metadata(&mut self) -> Metadata {
+        self.metadata.clone()
     }
 }
 impl<TVal> WriteOptionsBuilder<TVal>
@@ -4758,7 +4740,7 @@ where
     ///     .sid(["sid1", "sid2", "sid3", "sid4"])
     ///     .build(3,4)?;
     ///
-    /// // cmk00 check this
+    /// // cmk00i check this
     /// println!("{:?}",&write_options.chromosome()); // Outputs ndarray ["0", "0", "0", "0"]
     ///
     /// let val = nd::array![
@@ -4796,7 +4778,7 @@ where
 
             metadata: metadata,
         };
-        // !!! cmk00
+        // !!! cmk00b
         // check_counts(
         //     vec![
         //         option_count(&write_options.fid),
@@ -4843,7 +4825,7 @@ where
 
     /// Set the path to the .fam file.
     ///
-    /// cmk00 update for writing
+    /// cmk00g update for writing
     /// If not set, the .fam file will be assumed
     /// have the same name as the .bed file, but with the extension .fam.
     ///
@@ -4860,7 +4842,7 @@ where
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
 
-    // !!!cmk00 understand why this is needed
+    // !!!cmk00j understand why this is needed
     fn new<P: AsRef<Path>>(path: P) -> Self {
         Self {
             path: Some(path.as_ref().into()),
@@ -4882,7 +4864,7 @@ where
 
     /// Set the path to the .bim file.
     ///
-    /// cmk00 update for writing
+    /// cmk00g update for writing
     /// If not set, the .bim file will be assumed
     /// have the same name as the .bed file, but with the extension .bim.
     ///
@@ -4905,7 +4887,7 @@ where
 
     /// Use the given metadata information.
     ///
-    /// cmk00 update for writing
+    /// cmk00g update for writing
     /// ```
     /// use ndarray as nd;
     /// use bed_reader::{Bed, Metadata};
@@ -4924,45 +4906,8 @@ where
     pub fn metadata(mut self, metadata: &Metadata) -> Self {
         self.metadata = Some(metadata.clone());
 
-        // cmk00 update that replaces any existing metadata (with defaults sometimes)
+        // cmk00k update that replaces any existing metadata (with defaults sometimes)
 
-        // if let Some(fid) = &metadata.fid {
-        //     self.fid = Some(Rc::clone(fid));
-        // }
-        // if let Some(iid) = &metadata.iid {
-        //     self.iid = Some(Rc::clone(iid));
-        // }
-        // if let Some(father) = &metadata.father {
-        //     self.father = Some(Rc::clone(father));
-        // }
-        // if let Some(mother) = &metadata.mother {
-        //     self.mother = Some(Rc::clone(mother));
-        // }
-        // if let Some(sex) = &metadata.sex {
-        //     self.sex = Some(Rc::clone(sex));
-        // }
-        // if let Some(pheno) = &metadata.pheno {
-        //     self.pheno = Some(Rc::clone(pheno));
-        // }
-
-        // if let Some(chromosome) = &metadata.chromosome {
-        //     self.chromosome = Some(Rc::clone(chromosome));
-        // }
-        // if let Some(sid) = &metadata.sid {
-        //     self.sid = Some(Rc::clone(sid));
-        // }
-        // if let Some(cm_position) = &metadata.cm_position {
-        //     self.cm_position = Some(Rc::clone(cm_position));
-        // }
-        // if let Some(bp_position) = &metadata.bp_position {
-        //     self.bp_position = Some(Rc::clone(bp_position));
-        // }
-        // if let Some(allele_1) = &metadata.allele_1 {
-        //     self.allele_1 = Some(Rc::clone(allele_1));
-        // }
-        // if let Some(allele_2) = &metadata.allele_2 {
-        //     self.allele_2 = Some(Rc::clone(allele_2));
-        // }
         self
     }
 
@@ -5252,7 +5197,7 @@ fn compute_field<T: Clone, F: Fn(usize) -> T>(
     Ok(())
 }
 
-// !!!cmk00
+// !!!cmk00l
 pub fn assert_same_result(
     result1: Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>,
     result23: (
@@ -5618,7 +5563,7 @@ impl Metadata {
         Metadata::builder().build().unwrap()
     }
 
-    // !!!cmk00 rename "fill". Also, make the "fill from file" function work the same way
+    // !!!cmk00m  "fill from file" function work the same way
     pub fn fill(&self, iid_count: usize, sid_count: usize) -> Result<Metadata, BedErrorPlus> {
         let mut metadata = self.clone();
 
@@ -5652,7 +5597,7 @@ impl Metadata {
         Ok(metadata)
     }
 
-    /// !!!cmk00 update these docs for metadata (they were written for Bed)
+    /// !!!n update these docs for metadata (they were written for Bed)
     /// Family id of each of individual (sample)
     ///
     /// If this ndarray is needed, it will be found
