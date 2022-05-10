@@ -1472,7 +1472,6 @@ pub struct Bed {
     metadata: Metadata,
 
     #[builder(setter(custom))]
-    #[builder(default = "None")]
     skip_set: HashSet<SkipFields>,
     // cmk00 move comment // i32 based on https://www.cog-genomics.org/plink2/formats#bim
 }
@@ -1508,19 +1507,6 @@ impl BedBuilder {
 
             metadata: Some(Metadata::new()),
             skip_set: Some(HashSet::new()),
-            // fid: None,
-            // iid: None,
-            // father: None,
-            // mother: None,
-            // sex: None,
-            // pheno: None,
-
-            // chromosome: None,
-            // sid: None,
-            // cm_position: None,
-            // bp_position: None,
-            // allele_1: None,
-            // allele_2: None,
         }
     }
 
