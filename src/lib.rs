@@ -1471,9 +1471,26 @@ pub struct Bed {
 
     metadata: Metadata,
 
-    skip_set: HashSet<usize>, // replace usize with enum cmk00
+    #[builder(setter(custom))]
+    #[builder(default = "None")]
+    skip_set: HashSet<SkipFields>,
+    // cmk00 move comment // i32 based on https://www.cog-genomics.org/plink2/formats#bim
+}
 
-                              // cmk00 move comment // i32 based on https://www.cog-genomics.org/plink2/formats#bim
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Ord, PartialOrd, Hash)]
+enum SkipFields {
+    Fid,
+    Iid,
+    Father,
+    Mother,
+    Sex,
+    Pheno,
+    Chromosome,
+    Sid,
+    CmPosition,
+    BpPosition,
+    Allele1,
+    Allele2,
 }
 
 impl BedBuilder {
@@ -1597,23 +1614,23 @@ impl BedBuilder {
         self
     }
 
-    /// Don't read the iid information from the .fam file.
-    ///
-    /// By default, when the .fam is read, the iid (the individual id) is recorded.
-    /// This stops that recording. This is useful if the iid is not needed.
-    /// Asking for the iid after skipping it results in an error.
-    pub fn skip_iid(mut self) -> Self {
-        self.skip_set.as_mut().unwrap().insert(1);
-        self
-    }
-
     /// Don't read the fid information from the .fam file.
     ///
     /// By default, when the .fam is read, the fid (the family id) is recorded.
     /// This stops that recording. This is useful if the fid is not needed.
     /// Asking for the fid after skipping it results in an error.    
     pub fn skip_fid(mut self) -> Self {
-        self.skip_set.as_mut().unwrap().insert(0);
+        self.skip_set.as_mut().unwrap().insert(SkipFields::Fid);
+        self
+    }
+
+    /// Don't read the iid information from the .fam file.
+    ///
+    /// By default, when the .fam is read, the iid (the individual id) is recorded.
+    /// This stops that recording. This is useful if the iid is not needed.
+    /// Asking for the iid after skipping it results in an error.
+    pub fn skip_iid(mut self) -> Self {
+        self.skip_set.as_mut().unwrap().insert(SkipFields::Iid);
         self
     }
 
@@ -1623,7 +1640,7 @@ impl BedBuilder {
     /// This stops that recording. This is useful if the father id is not needed.
     /// Asking for the father id after skipping it results in an error.    
     pub fn skip_father(mut self) -> Self {
-        self.skip_set.as_mut().unwrap().insert(2);
+        self.skip_set.as_mut().unwrap().insert(SkipFields::Father);
         self
     }
 
@@ -1633,7 +1650,7 @@ impl BedBuilder {
     /// This stops that recording. This is useful if the mother id is not needed.
     /// Asking for the mother id after skipping it results in an error.    
     pub fn skip_mother(mut self) -> Self {
-        self.skip_set.as_mut().unwrap().insert(3);
+        self.skip_set.as_mut().unwrap().insert(SkipFields::Mother);
         self
     }
 
@@ -1643,7 +1660,7 @@ impl BedBuilder {
     /// This stops that recording. This is useful if sex is not needed.
     /// Asking for sex after skipping it results in an error.    
     pub fn skip_sex(mut self) -> Self {
-        self.skip_set.as_mut().unwrap().insert(4);
+        self.skip_set.as_mut().unwrap().insert(SkipFields::Sex);
         self
     }
 
@@ -1657,7 +1674,7 @@ impl BedBuilder {
     /// information is not needed.
     /// Asking for the phenotype after skipping it results in an error.    
     pub fn skip_pheno(mut self) -> Self {
-        self.skip_set.as_mut().unwrap().insert(5);
+        self.skip_set.as_mut().unwrap().insert(SkipFields::Pheno);
         self
     } // cmk00 understand this as_mut
 
@@ -1667,7 +1684,10 @@ impl BedBuilder {
     /// This stops that recording. This is useful if the chromosome is not needed.
     /// Asking for the chromosome after skipping it results in an error.    
     pub fn skip_chromosome(mut self) -> Self {
-        self.skip_set.as_mut().unwrap().insert(6);
+        self.skip_set
+            .as_mut()
+            .unwrap()
+            .insert(SkipFields::Chromosome);
         self
     }
 
@@ -1677,7 +1697,7 @@ impl BedBuilder {
     /// This stops that recording. This is useful if the sid is not needed.
     /// Asking for the sid after skipping it results in an error.    
     pub fn skip_sid(mut self) -> Self {
-        self.skip_set.as_mut().unwrap().insert(7);
+        self.skip_set.as_mut().unwrap().insert(SkipFields::Sid);
         self
     }
 
@@ -1687,7 +1707,10 @@ impl BedBuilder {
     /// This stops that recording. This is useful if the cm position is not needed.
     /// Asking for the cm position after skipping it results in an error.    
     pub fn skip_cm_position(mut self) -> Self {
-        self.skip_set.as_mut().unwrap().insert(8);
+        self.skip_set
+            .as_mut()
+            .unwrap()
+            .insert(SkipFields::CmPosition);
         self
     }
 
@@ -1697,7 +1720,10 @@ impl BedBuilder {
     /// This stops that recording. This is useful if the bp position is not needed.
     /// Asking for the cp position after skipping it results in an error.    
     pub fn skip_bp_position(mut self) -> Self {
-        self.skip_set.as_mut().unwrap().insert(9);
+        self.skip_set
+            .as_mut()
+            .unwrap()
+            .insert(SkipFields::BpPosition);
         self
     }
 
@@ -1707,7 +1733,7 @@ impl BedBuilder {
     /// This stops that recording. This is useful if allele 1 is not needed.
     /// Asking for allele 1 after skipping it results in an error.    
     pub fn skip_allele_1(mut self) -> Self {
-        self.skip_set.as_mut().unwrap().insert(10);
+        self.skip_set.as_mut().unwrap().insert(SkipFields::Allele1);
         self
     }
 
@@ -1717,7 +1743,7 @@ impl BedBuilder {
     /// This stops that recording. This is useful if allele 2 is not needed.
     /// Asking for allele 2 after skipping it results in an error.    
     pub fn skip_allele_2(mut self) -> Self {
-        self.skip_set.as_mut().unwrap().insert(11);
+        self.skip_set.as_mut().unwrap().insert(SkipFields::Allele2);
         self
     }
 
@@ -2323,22 +2349,22 @@ impl Bed {
     fn fam(&mut self) -> Result<(), BedErrorPlus> {
         let mut field_vec: Vec<usize> = Vec::new();
 
-        if self.metadata.fid.is_none() && !self.skip_set.contains(&0) {
+        if self.metadata.fid.is_none() && !self.skip_set.contains(&SkipFields::Fid) {
             field_vec.push(0);
         }
-        if self.metadata.iid.is_none() && !self.skip_set.contains(&1) {
+        if self.metadata.iid.is_none() && !self.skip_set.contains(&SkipFields::Iid) {
             field_vec.push(1);
         }
-        if self.metadata.father.is_none() && !self.skip_set.contains(&2) {
+        if self.metadata.father.is_none() && !self.skip_set.contains(&SkipFields::Father) {
             field_vec.push(2);
         }
-        if self.metadata.mother.is_none() && !self.skip_set.contains(&3) {
+        if self.metadata.mother.is_none() && !self.skip_set.contains(&SkipFields::Mother) {
             field_vec.push(3);
         }
-        if self.metadata.sex.is_none() && !self.skip_set.contains(&4) {
+        if self.metadata.sex.is_none() && !self.skip_set.contains(&SkipFields::Sex) {
             field_vec.push(4);
         }
-        if self.metadata.pheno.is_none() && !self.skip_set.contains(&5) {
+        if self.metadata.pheno.is_none() && !self.skip_set.contains(&SkipFields::Pheno) {
             field_vec.push(5);
         }
 
@@ -2358,10 +2384,10 @@ impl Bed {
         }
 
         // unwraps are safe because we pop once for every push
-        if self.metadata.pheno.is_none() && !self.skip_set.contains(&5) {
+        if self.metadata.pheno.is_none() && !self.skip_set.contains(&SkipFields::Pheno) {
             self.metadata.pheno = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
         }
-        if self.metadata.sex.is_none() && !self.skip_set.contains(&4) {
+        if self.metadata.sex.is_none() && !self.skip_set.contains(&SkipFields::Sex) {
             let vec = vec_of_vec.pop().unwrap();
             let array = vec
                 .iter()
@@ -2369,16 +2395,16 @@ impl Bed {
                 .collect::<Result<nd::Array1<i32>, _>>()?; // !!!cmk later test this error
             self.metadata.sex = Some(Rc::new(array));
         }
-        if self.metadata.mother.is_none() && !self.skip_set.contains(&3) {
+        if self.metadata.mother.is_none() && !self.skip_set.contains(&SkipFields::Mother) {
             self.metadata.mother = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
         }
-        if self.metadata.father.is_none() && !self.skip_set.contains(&2) {
+        if self.metadata.father.is_none() && !self.skip_set.contains(&SkipFields::Father) {
             self.metadata.father = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
         }
-        if self.metadata.iid.is_none() && !self.skip_set.contains(&1) {
+        if self.metadata.iid.is_none() && !self.skip_set.contains(&SkipFields::Iid) {
             self.metadata.iid = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
         }
-        if self.metadata.fid.is_none() && !self.skip_set.contains(&0) {
+        if self.metadata.fid.is_none() && !self.skip_set.contains(&SkipFields::Fid) {
             self.metadata.fid = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
         }
 
@@ -2386,23 +2412,23 @@ impl Bed {
     }
     fn bim(&mut self) -> Result<(), BedErrorPlus> {
         let mut field_vec: Vec<usize> = Vec::new();
-        if self.metadata.chromosome.is_none() && !self.skip_set.contains(&6) {
+        if self.metadata.chromosome.is_none() && !self.skip_set.contains(&SkipFields::Chromosome) {
             field_vec.push(0);
         }
-        if self.metadata.sid.is_none() && !self.skip_set.contains(&7) {
+        if self.metadata.sid.is_none() && !self.skip_set.contains(&SkipFields::Sid) {
             field_vec.push(1);
         }
 
-        if self.metadata.cm_position.is_none() && !self.skip_set.contains(&8) {
+        if self.metadata.cm_position.is_none() && !self.skip_set.contains(&SkipFields::CmPosition) {
             field_vec.push(2);
         }
-        if self.metadata.bp_position.is_none() && !self.skip_set.contains(&9) {
+        if self.metadata.bp_position.is_none() && !self.skip_set.contains(&SkipFields::BpPosition) {
             field_vec.push(3);
         }
-        if self.metadata.allele_1.is_none() && !self.skip_set.contains(&10) {
+        if self.metadata.allele_1.is_none() && !self.skip_set.contains(&SkipFields::Allele1) {
             field_vec.push(4);
         }
-        if self.metadata.allele_2.is_none() && !self.skip_set.contains(&11) {
+        if self.metadata.allele_2.is_none() && !self.skip_set.contains(&SkipFields::Allele2) {
             field_vec.push(5);
         }
 
@@ -2422,13 +2448,13 @@ impl Bed {
         }
 
         // unwraps are safe because we pop once for every push
-        if self.metadata.allele_2.is_none() && !self.skip_set.contains(&11) {
+        if self.metadata.allele_2.is_none() && !self.skip_set.contains(&SkipFields::Allele2) {
             self.metadata.allele_2 = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
         }
-        if self.metadata.allele_1.is_none() && !self.skip_set.contains(&10) {
+        if self.metadata.allele_1.is_none() && !self.skip_set.contains(&SkipFields::Allele1) {
             self.metadata.allele_1 = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
         }
-        if self.metadata.bp_position.is_none() && !self.skip_set.contains(&9) {
+        if self.metadata.bp_position.is_none() && !self.skip_set.contains(&SkipFields::BpPosition) {
             let vec = vec_of_vec.pop().unwrap();
             let array = vec
                 .iter()
@@ -2436,7 +2462,7 @@ impl Bed {
                 .collect::<Result<nd::Array1<i32>, _>>()?; // !!!cmk later test this error
             self.metadata.bp_position = Some(Rc::new(array));
         }
-        if self.metadata.cm_position.is_none() && !self.skip_set.contains(&8) {
+        if self.metadata.cm_position.is_none() && !self.skip_set.contains(&SkipFields::CmPosition) {
             let vec = vec_of_vec.pop().unwrap();
             let array = vec
                 .iter()
@@ -2445,10 +2471,10 @@ impl Bed {
             self.metadata.cm_position = Some(Rc::new(array));
         }
 
-        if self.metadata.sid.is_none() && !self.skip_set.contains(&7) {
+        if self.metadata.sid.is_none() && !self.skip_set.contains(&SkipFields::Sid) {
             self.metadata.sid = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
         }
-        if self.metadata.chromosome.is_none() && !self.skip_set.contains(&6) {
+        if self.metadata.chromosome.is_none() && !self.skip_set.contains(&SkipFields::Chromosome) {
             self.metadata.chromosome =
                 Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
         }
@@ -2497,7 +2523,7 @@ impl Bed {
     fn unlazy_fam<T: FromStringArray<T>>(
         &mut self,
         is_none: bool,
-        field_index: usize,
+        field_index: SkipFields,
         name: &str,
     ) -> Result<(), BedErrorPlus> {
         if self.skip_set.contains(&field_index) {
@@ -2511,7 +2537,7 @@ impl Bed {
     fn unlazy_bim<T: FromStringArray<T>>(
         &mut self,
         is_none: bool,
-        field_index: usize,
+        field_index: SkipFields,
         name: &str,
     ) -> Result<(), BedErrorPlus> {
         if self.skip_set.contains(&field_index) {
@@ -2544,7 +2570,7 @@ impl Bed {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     pub fn fid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        self.unlazy_fam::<String>(self.metadata.fid.is_none(), 0, "fid")?;
+        self.unlazy_fam::<String>(self.metadata.fid.is_none(), SkipFields::Fid, "fid")?;
         Ok(self.metadata.fid.as_ref().unwrap())
     }
 
@@ -2569,7 +2595,7 @@ impl Bed {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     pub fn iid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        self.unlazy_fam::<String>(self.metadata.iid.is_none(), 1, "iid")?;
+        self.unlazy_fam::<String>(self.metadata.iid.is_none(), SkipFields::Iid, "iid")?;
         Ok(self.metadata.iid.as_ref().unwrap())
     }
 
@@ -2594,7 +2620,7 @@ impl Bed {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())    
     pub fn father(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        self.unlazy_fam::<String>(self.metadata.father.is_none(), 2, "father")?;
+        self.unlazy_fam::<String>(self.metadata.father.is_none(), SkipFields::Father, "father")?;
         Ok(self.metadata.father.as_ref().unwrap())
     }
 
@@ -2619,7 +2645,7 @@ impl Bed {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     pub fn mother(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        self.unlazy_fam::<String>(self.metadata.mother.is_none(), 3, "mother")?;
+        self.unlazy_fam::<String>(self.metadata.mother.is_none(), SkipFields::Mother, "mother")?;
         Ok(self.metadata.mother.as_ref().unwrap())
     }
 
@@ -2646,7 +2672,7 @@ impl Bed {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     pub fn sex(&mut self) -> Result<&nd::Array1<i32>, BedErrorPlus> {
-        self.unlazy_fam::<String>(self.metadata.sex.is_none(), 4, "sex")?;
+        self.unlazy_fam::<String>(self.metadata.sex.is_none(), SkipFields::Sex, "sex")?;
         Ok(self.metadata.sex.as_ref().unwrap())
     }
 
@@ -2671,7 +2697,7 @@ impl Bed {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     pub fn pheno(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        self.unlazy_fam::<String>(self.metadata.pheno.is_none(), 5, "")?;
+        self.unlazy_fam::<String>(self.metadata.pheno.is_none(), SkipFields::Pheno, "pheno")?;
         Ok(self.metadata.pheno.as_ref().unwrap())
     }
 
@@ -2696,7 +2722,11 @@ impl Bed {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     pub fn chromosome(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        self.unlazy_bim::<String>(self.metadata.chromosome.is_none(), 6, "chromosome")?;
+        self.unlazy_bim::<String>(
+            self.metadata.chromosome.is_none(),
+            SkipFields::Chromosome,
+            "chromosome",
+        )?;
         Ok(self.metadata.chromosome.as_ref().unwrap())
     }
 
@@ -2721,7 +2751,7 @@ impl Bed {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     pub fn sid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        self.unlazy_bim::<String>(self.metadata.sid.is_none(), 7, "sid")?;
+        self.unlazy_bim::<String>(self.metadata.sid.is_none(), SkipFields::Sid, "sid")?;
         Ok(self.metadata.sid.as_ref().unwrap())
     }
 
@@ -2746,7 +2776,11 @@ impl Bed {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     pub fn cm_position(&mut self) -> Result<&nd::Array1<f32>, BedErrorPlus> {
-        self.unlazy_bim::<String>(self.metadata.cm_position.is_none(), 8, "cm_position")?;
+        self.unlazy_bim::<String>(
+            self.metadata.cm_position.is_none(),
+            SkipFields::CmPosition,
+            "cm_position",
+        )?;
         Ok(self.metadata.cm_position.as_ref().unwrap())
     }
 
@@ -2771,7 +2805,11 @@ impl Bed {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     pub fn bp_position(&mut self) -> Result<&nd::Array1<i32>, BedErrorPlus> {
-        self.unlazy_bim::<String>(self.metadata.bp_position.is_none(), 9, "bp_position")?;
+        self.unlazy_bim::<String>(
+            self.metadata.bp_position.is_none(),
+            SkipFields::BpPosition,
+            "bp_position",
+        )?;
         Ok(self.metadata.bp_position.as_ref().unwrap())
     }
 
@@ -2796,7 +2834,11 @@ impl Bed {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     pub fn allele_1(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        self.unlazy_bim::<String>(self.metadata.allele_1.is_none(), 10, "allele_1")?;
+        self.unlazy_bim::<String>(
+            self.metadata.allele_1.is_none(),
+            SkipFields::Allele1,
+            "allele_1",
+        )?;
         Ok(self.metadata.allele_1.as_ref().unwrap())
     }
 
@@ -2821,7 +2863,11 @@ impl Bed {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     pub fn allele_2(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
-        self.unlazy_bim::<String>(self.metadata.allele_2.is_none(), 11, "allele_2")?;
+        self.unlazy_bim::<String>(
+            self.metadata.allele_2.is_none(),
+            SkipFields::Allele2,
+            "allele_2",
+        )?;
         Ok(self.metadata.allele_2.as_ref().unwrap())
     }
 
