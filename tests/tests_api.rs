@@ -1338,7 +1338,7 @@ fn set_metadata() -> Result<(), BedErrorPlus> {
         .iid(["iid1", "iid2", "iid3"])
         .sid(["sid1", "sid2", "sid3", "sid4"])
         .build()?;
-    // !!!cmk00 should we pass a ref to bedbuilder's metadata?
+    // !!!cmk00 should we pass a ref to BedBuilders's metadata?
     let mut bed = Bed::builder(file_name).metadata(metadata).build()?;
     let metadata2 = bed.metadata()?;
     println!("{metadata2:?}");
@@ -1658,9 +1658,10 @@ fn struct_play() -> Result<(), BedErrorPlus> {
 
     // make ReadOptions directly or change? no, no pub fields
     // make WriteOptions directly or change? no, no pub fields
+    // make Metadata directly or change? no, no pub fields
 
-    // let write_options = WriteOptions { path: todo!(), fam_path: todo!(), bim_path: todo!(), fid: todo!(), iid: todo!(), father: todo!(), mother: todo!(), sex: todo!(), pheno: todo!(), chromosome: todo!(), sid: todo!(), cm_position: todo!(), bp_position: todo!(), allele_1: todo!(), allele_2: todo!(), is_a1_counted: todo!(), num_threads: todo!(), missing_value: -1 };
-
-    // println!("{write_options:?}");
+    // Can you change a value in a vector? No, because can't be borrowed as mutable
+    let metadata = Metadata::builder().build()?.fill(100, 100)?;
+    println!("{0:?}", metadata.iid());
     Ok(())
 }

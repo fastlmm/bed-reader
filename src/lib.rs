@@ -1788,7 +1788,7 @@ impl BedBuilder {
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to give different values.
     pub fn fid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, fid: I) -> Self {
-        self.metadata.as_mut().unwrap().fid(fid);
+        self.metadata.as_mut().unwrap().set_fid(fid);
         self
     }
 
@@ -1812,7 +1812,7 @@ impl BedBuilder {
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     pub fn iid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, iid: I) -> Self {
-        self.metadata.as_mut().unwrap().iid(iid);
+        self.metadata.as_mut().unwrap().set_iid(iid);
         self
     }
 
@@ -1822,7 +1822,7 @@ impl BedBuilder {
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to gi&ve different values.
     pub fn father<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, father: I) -> Self {
-        self.metadata.as_mut().unwrap().father(father);
+        self.metadata.as_mut().unwrap().set_father(father);
         self
     }
 
@@ -1832,7 +1832,7 @@ impl BedBuilder {
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to give different values.
     pub fn mother<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, mother: I) -> Self {
-        self.metadata.as_mut().unwrap().mother(mother);
+        self.metadata.as_mut().unwrap().set_mother(mother);
         self
     }
 
@@ -1842,7 +1842,7 @@ impl BedBuilder {
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to give different values.
     pub fn sex<I: IntoIterator<Item = i32>>(mut self, sex: I) -> Self {
-        self.metadata.as_mut().unwrap().sex(sex);
+        self.metadata.as_mut().unwrap().set_sex(sex);
         self
     }
 
@@ -1853,7 +1853,7 @@ impl BedBuilder {
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to give different values.
     pub fn pheno<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, pheno: I) -> Self {
-        self.metadata.as_mut().unwrap().pheno(pheno);
+        self.metadata.as_mut().unwrap().set_pheno(pheno);
         self
     }
 
@@ -1863,7 +1863,7 @@ impl BedBuilder {
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
     pub fn chromosome<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, chromosome: I) -> Self {
-        self.metadata.as_mut().unwrap().chromosome(chromosome);
+        self.metadata.as_mut().unwrap().set_chromosome(chromosome);
         self
     }
 
@@ -1887,7 +1887,7 @@ impl BedBuilder {
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     pub fn sid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, sid: I) -> Self {
-        self.metadata.as_mut().unwrap().sid(sid);
+        self.metadata.as_mut().unwrap().set_sid(sid);
         self
     }
 
@@ -1897,7 +1897,7 @@ impl BedBuilder {
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
     pub fn cm_position<I: IntoIterator<Item = f32>>(mut self, cm_position: I) -> Self {
-        self.metadata.as_mut().unwrap().cm_position(cm_position);
+        self.metadata.as_mut().unwrap().set_cm_position(cm_position);
         self
     }
 
@@ -1907,7 +1907,7 @@ impl BedBuilder {
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
     pub fn bp_position<I: IntoIterator<Item = i32>>(mut self, bp_position: I) -> Self {
-        self.metadata.as_mut().unwrap().bp_position(bp_position);
+        self.metadata.as_mut().unwrap().set_bp_position(bp_position);
         self
     }
 
@@ -1917,7 +1917,7 @@ impl BedBuilder {
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
     pub fn allele_1<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, allele_1: I) -> Self {
-        self.metadata.as_mut().unwrap().allele_1(allele_1);
+        self.metadata.as_mut().unwrap().set_allele_1(allele_1);
         self
     }
 
@@ -1927,7 +1927,7 @@ impl BedBuilder {
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
     pub fn allele_2<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, allele_2: I) -> Self {
-        self.metadata.as_mut().unwrap().allele_2(allele_2);
+        self.metadata.as_mut().unwrap().set_allele_2(allele_2);
         self
     }
 }
@@ -4752,7 +4752,7 @@ where
         };
 
         let metadata = self.metadata.as_ref().unwrap();
-        let metadata = metadata.clone_and_fill(iid_count, sid_count)?;
+        let metadata = metadata.fill(iid_count, sid_count)?;
 
         let write_options = WriteOptions {
             path: path_buf.clone(),
@@ -4938,8 +4938,7 @@ where
     ///
     /// Defaults to zeros.
     pub fn fid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, fid: I) -> Self {
-        let metadata = self.metadata.as_mut().unwrap();
-        metadata.fid(fid);
+        self.metadata.as_mut().unwrap().set_fid(fid);
         self
     }
 
@@ -4947,7 +4946,7 @@ where
     ///
     /// Defaults to "iid1", "iid2", ...
     pub fn iid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, iid: I) -> Self {
-        self.metadata.as_mut().unwrap().iid(iid);
+        self.metadata.as_mut().unwrap().set_iid(iid);
         self
     }
 
@@ -4955,7 +4954,7 @@ where
     ///
     /// Defaults to zeros.
     pub fn father<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, father: I) -> Self {
-        self.metadata.as_mut().unwrap().father(father);
+        self.metadata.as_mut().unwrap().set_father(father);
         self
     }
 
@@ -4963,7 +4962,7 @@ where
     ///
     /// Defaults to zeros.
     pub fn mother<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, mother: I) -> Self {
-        self.metadata.as_mut().unwrap().mother(mother);
+        self.metadata.as_mut().unwrap().set_mother(mother);
         self
     }
 
@@ -4971,7 +4970,7 @@ where
     ///
     /// 0 is unknown (default), 1 is male, 2 is female
     pub fn sex<I: IntoIterator<Item = i32>>(mut self, sex: I) -> Self {
-        self.metadata.as_mut().unwrap().sex(sex);
+        self.metadata.as_mut().unwrap().set_sex(sex);
         self
     }
 
@@ -4979,7 +4978,7 @@ where
     ///
     /// Defaults to zeros.
     pub fn pheno<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, pheno: I) -> Self {
-        self.metadata.as_mut().unwrap().pheno(pheno);
+        self.metadata.as_mut().unwrap().set_pheno(pheno);
         self
     }
 
@@ -4987,7 +4986,7 @@ where
     ///
     /// Defaults to zeros.
     pub fn chromosome<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, chromosome: I) -> Self {
-        self.metadata.as_mut().unwrap().chromosome(chromosome);
+        self.metadata.as_mut().unwrap().set_chromosome(chromosome);
         self
     }
 
@@ -4995,7 +4994,7 @@ where
     ///
     /// Defaults to "sid1", "sid2", ...
     pub fn sid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, sid: I) -> Self {
-        self.metadata.as_mut().unwrap().sid(sid);
+        self.metadata.as_mut().unwrap().set_sid(sid);
         self
     }
 
@@ -5003,7 +5002,7 @@ where
     ///
     /// Defaults to zeros.
     pub fn cm_position<I: IntoIterator<Item = f32>>(mut self, cm_position: I) -> Self {
-        self.metadata.as_mut().unwrap().cm_position(cm_position);
+        self.metadata.as_mut().unwrap().set_cm_position(cm_position);
         self
     }
 
@@ -5011,7 +5010,7 @@ where
     ///
     /// Defaults to zeros.
     pub fn bp_position<I: IntoIterator<Item = i32>>(mut self, bp_position: I) -> Self {
-        self.metadata.as_mut().unwrap().bp_position(bp_position);
+        self.metadata.as_mut().unwrap().set_bp_position(bp_position);
         self
     }
 
@@ -5019,7 +5018,7 @@ where
     ///
     /// Defaults to "A1", A1" ...
     pub fn allele_1<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, allele_1: I) -> Self {
-        self.metadata.as_mut().unwrap().allele_1(allele_1);
+        self.metadata.as_mut().unwrap().set_allele_1(allele_1);
         self
     }
 
@@ -5027,7 +5026,7 @@ where
     ///
     /// Defaults to "A2", A2" ...
     pub fn allele_2<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, allele_2: I) -> Self {
-        self.metadata.as_mut().unwrap().allele_2(allele_2);
+        self.metadata.as_mut().unwrap().set_allele_2(allele_2);
         self
     }
 
@@ -5215,21 +5214,10 @@ fn compute_field<T: Clone, F: Fn(usize) -> T>(
             );
         }
     } else {
-        let array = Rc::new((0..count).map(|_| lambda(0)).collect::<nd::Array1<T>>());
+        let array = Rc::new((0..count).map(|i| lambda(i)).collect::<nd::Array1<T>>());
         *field = Some(array);
     }
     Ok(())
-
-    // if let Some(array) = field {
-    //     if array.len() != count {
-    //         return Err(
-    //             BedError::InconsistentCount(field_name.to_string(), array.len(), count).into(),
-    //         );
-    //     }
-    //     Ok(Some(Rc::clone(&array)))
-    // } else {
-    //     Ok(Some(Rc::new((0..count).map(|_| lambda(0)).collect::<nd::Array1<T>>())))
-    // }
 }
 
 // !!!cmk00
@@ -5598,11 +5586,8 @@ impl Metadata {
         Metadata::builder().build().unwrap()
     }
 
-    pub fn clone_and_fill(
-        &self,
-        iid_count: usize,
-        sid_count: usize,
-    ) -> Result<Metadata, BedErrorPlus> {
+    // !!!cmk00 rename "fill". Also, make the "fill from file" function work the same way
+    pub fn fill(&self, iid_count: usize, sid_count: usize) -> Result<Metadata, BedErrorPlus> {
         let mut metadata = self.clone();
 
         compute_field("fid", &mut metadata.fid, iid_count, |_| "0".to_string())?;
@@ -5635,92 +5620,374 @@ impl Metadata {
         Ok(metadata)
     }
 
-    pub fn fid<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, fid: I) -> &Self {
+    /// !!!cmk00 update these docs for metadata (they were written for Bed)
+    /// Family id of each of individual (sample)
+    ///
+    /// If this ndarray is needed, it will be found
+    /// by reading the .fam file. Once found, this ndarray
+    /// and other information in the .fam file will be remembered.
+    /// The file read can be avoided by setting the
+    /// array with [`BedBuilder::fid`](struct.BedBuilder.html#method.fid).
+    ///
+    /// # Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let fid = bed.fid()?;
+    /// println!("{fid:?}"); // Outputs ndarray ["fid1", "fid1", "fid2"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    pub fn fid(&self) -> Option<&nd::Array1<String>> {
+        match self.fid {
+            Some(ref array) => Some(array.as_ref()),
+            None => None,
+        }
+    }
+
+    /// Individual id of each of individual (sample)
+    ///
+    /// If this ndarray is needed, it will be found
+    /// by reading the .fam file. Once found, this ndarray
+    /// and other information in the .fam file will be remembered.
+    /// The file read can be avoided by setting the
+    /// array with [`BedBuilder::iid`](struct.BedBuilder.html#method.iid).
+    ///
+    /// # Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let iid = bed.iid()?;    ///
+    /// println!("{iid:?}"); // Outputs ndarray ["iid1", "iid2", "iid3"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    pub fn iid(&self) -> Option<&nd::Array1<String>> {
+        match self.iid {
+            Some(ref array) => Some(array.as_ref()),
+            None => None,
+        }
+    }
+
+    /// Father id of each of individual (sample)
+    ///
+    /// If this ndarray is needed, it will be found
+    /// by reading the .fam file. Once found, this ndarray
+    /// and other information in the .fam file will be remembered.
+    /// The file read can be avoided by setting the
+    /// array with [`BedBuilder::father`](struct.BedBuilder.html#method.father).
+    ///
+    /// # Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let father = bed.father()?;
+    /// println!("{father:?}"); // Outputs ndarray ["iid23", "iid23", "iid22"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())    
+    pub fn father(&self) -> Option<&nd::Array1<String>> {
+        match self.father {
+            Some(ref array) => Some(array.as_ref()),
+            None => None,
+        }
+    }
+
+    /// Mother id of each of individual (sample)
+    ///
+    /// If this ndarray is needed, it will be found
+    /// by reading the .fam file. Once found, this ndarray
+    /// and other information in the .fam file will be remembered.
+    /// The file read can be avoided by setting the
+    /// array with [`BedBuilder::mother`](struct.BedBuilder.html#method.mother).
+    ///
+    /// # Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let mother = bed.mother()?;
+    /// println!("{mother:?}"); // Outputs ndarray ["iid34", "iid34", "iid33"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    pub fn mother(&self) -> Option<&nd::Array1<String>> {
+        match self.mother {
+            Some(ref array) => Some(array.as_ref()),
+            None => None,
+        }
+    }
+
+    /// Sex each of individual (sample)
+    ///
+    /// 0 is unknown, 1 is male, 2 is female
+    ///
+    /// If this ndarray is needed, it will be found
+    /// by reading the .fam file. Once found, this ndarray
+    /// and other information in the .fam file will be remembered.
+    /// The file read can be avoided by setting the
+    /// array with [`BedBuilder::sex`](struct.BedBuilder.html#method.sex).
+    ///
+    /// # Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let sex = bed.sex()?;
+    /// println!("{sex:?}"); // Outputs ndarray [1, 2, 0]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    pub fn sex(&self) -> Option<&nd::Array1<i32>> {
+        match self.sex {
+            Some(ref array) => Some(array.as_ref()),
+            None => None,
+        }
+    }
+
+    /// A phenotype for each individual (seldom used)
+    ///
+    /// If this ndarray is needed, it will be found
+    /// by reading the .fam file. Once found, this ndarray
+    /// and other information in the .fam file will be remembered.
+    /// The file read can be avoided by setting the
+    /// array with [`BedBuilder::pheno`](struct.BedBuilder.html#method.pheno).
+    ///
+    /// # Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let pheno = bed.pheno()?;
+    /// println!("{pheno:?}"); // Outputs ndarray ["red", "red", "blue"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    pub fn pheno(&self) -> Option<&nd::Array1<String>> {
+        match self.pheno {
+            Some(ref array) => Some(array.as_ref()),
+            None => None,
+        }
+    }
+
+    /// Chromosome of each SNP (variant)
+    ///
+    /// If this ndarray is needed, it will be found
+    /// by reading the .bim file. Once found, this ndarray
+    /// and other information in the .bim file will be remembered.
+    /// The file read can be avoided by setting the
+    /// array with [`BedBuilder::chromosome`](struct.BedBuilder.html#method.chromosome).
+    ///
+    /// # Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let chromosome = bed.chromosome()?;
+    /// println!("{chromosome:?}"); // Outputs ndarray ["1", "1", "5", "Y"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    pub fn chromosome(&self) -> Option<&nd::Array1<String>> {
+        match self.chromosome {
+            Some(ref array) => Some(array.as_ref()),
+            None => None,
+        }
+    }
+
+    /// SNP id of each SNP (variant)
+    ///
+    /// If this ndarray is needed, it will be found
+    /// by reading the .bim file. Once found, this ndarray
+    /// and other information in the .bim file will be remembered.
+    /// The file read can be avoided by setting the
+    /// array with [`BedBuilder::sid`](struct.BedBuilder.html#method.sid).
+    ///
+    /// # Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let sid = bed.sid()?;
+    /// println!("{sid:?}"); // Outputs ndarray "sid1", "sid2", "sid3", "sid4"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    pub fn sid(&self) -> Option<&nd::Array1<String>> {
+        match self.sid {
+            Some(ref array) => Some(array.as_ref()),
+            None => None,
+        }
+    }
+
+    /// Centimorgan position of each SNP (variant)
+    ///
+    /// If this ndarray is needed, it will be found
+    /// by reading the .bim file. Once found, this ndarray
+    /// and other information in the .bim file will be remembered.
+    /// The file read can be avoided by setting the
+    /// array with [`BedBuilder::cm_position`](struct.BedBuilder.html#method.cm_position).
+    ///
+    /// # Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let cm_position = bed.cm_position()?;
+    /// println!("{cm_position:?}"); // Outputs ndarray [100.4, 2000.5, 4000.7, 7000.9]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    pub fn cm_position(&self) -> Option<&nd::Array1<f32>> {
+        match self.cm_position {
+            Some(ref array) => Some(array.as_ref()),
+            None => None,
+        }
+    }
+
+    /// Base-pair position of each SNP (variant)
+    ///
+    /// If this ndarray is needed, it will be found
+    /// by reading the .bim file. Once found, this ndarray
+    /// and other information in the .bim file will be remembered.
+    /// The file read can be avoided by setting the
+    /// array with [`BedBuilder::bp_position`](struct.BedBuilder.html#method.bp_position).
+    ///
+    /// # Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let bp_position = bed.bp_position()?;
+    /// println!("{bp_position:?}"); // Outputs ndarray [1, 100, 1000, 1004]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    pub fn bp_position(&self) -> Option<&nd::Array1<i32>> {
+        match self.bp_position {
+            Some(ref array) => Some(array.as_ref()),
+            None => None,
+        }
+    }
+
+    /// First allele of each SNP (variant)
+    ///
+    /// If this ndarray is needed, it will be found
+    /// by reading the .bim file. Once found, this ndarray
+    /// and other information in the .bim file will be remembered.
+    /// The file read can be avoided by setting the
+    /// array with [`BedBuilder::allele_1`](struct.BedBuilder.html#method.allele_1).
+    ///
+    /// # Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let allele_1 = bed.allele_1()?;
+    /// println!("{allele_1:?}"); // Outputs ndarray ["A", "T", "A", "T"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    pub fn allele_1(&self) -> Option<&nd::Array1<String>> {
+        match self.allele_1 {
+            Some(ref array) => Some(array.as_ref()),
+            None => None,
+        }
+    }
+
+    /// Second allele of each SNP (variant)
+    ///
+    /// If this ndarray is needed, it will be found
+    /// by reading the .bim file. Once found, this ndarray
+    /// and other information in the .bim file will be remembered.
+    /// The file read can be avoided by setting the
+    /// array with [`BedBuilder::allele_2`](struct.BedBuilder.html#method.allele_2).
+    ///
+    /// # Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let allele_2 = bed.allele_2()?;
+    /// println!("{allele_2:?}"); // Outputs ndarray ["A", "C", "C", "G"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    pub fn allele_2(&self) -> Option<&nd::Array1<String>> {
+        match self.allele_2 {
+            Some(ref array) => Some(array.as_ref()),
+            None => None,
+        }
+    }
+
+    fn set_fid<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, fid: I) -> &Self {
         self.fid = Some(Rc::new(
             fid.into_iter().map(|s| s.as_ref().to_string()).collect(),
         ));
         self
     }
 
-    /// Override the individual id (iid) values found in the .fam file.
-    ///
-    /// By default, if iid values are needed and haven't already been found,
-    /// they will be read from the .fam file.
-    /// Providing them here avoids that file read and provides a way to give different values.
-    /// ```
-    /// use ndarray as nd;
-    /// use bed_reader::Bed;
-    /// use bed_reader::assert_eq_nan;
-    /// let file_name = "bed_reader/tests/data/small.bed";
-    /// use bed_reader::ReadOptions;
-    ///
-    /// let mut bed = Bed::builder(file_name)
-    ///    .iid(["sample1", "sample2", "sample3"])
-    ///    .build()?;
-    /// println!("{:?}", bed.iid()?); // Outputs ndarray ["sample1", "sample2", "sample3"]
-    /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
-    /// ```
-    pub fn iid<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, iid: I) -> &Self {
+    fn set_iid<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, iid: I) -> &Self {
         self.iid = Some(Rc::new(
             iid.into_iter().map(|s| s.as_ref().to_string()).collect(),
         ));
         self
     }
 
-    /// Override the father values found in the .fam file.
-    ///nd
-    /// By default, if father values are needed and haven't already been found,
-    /// they will be read from the .fam file.
-    /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn father<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, father: I) -> &Self {
+    fn set_father<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, father: I) -> &Self {
         self.father = Some(Rc::new(
             father.into_iter().map(|s| s.as_ref().to_string()).collect(),
         ));
         self
     }
 
-    /// Override the mother values found in the .fam file.
-    ///
-    /// By default, if mother values are needed and haven't already been found,
-    /// they will be read from the .fam file.
-    /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn mother<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, mother: I) -> &Self {
+    fn set_mother<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, mother: I) -> &Self {
         self.mother = Some(Rc::new(
             mother.into_iter().map(|s| s.as_ref().to_string()).collect(),
         ));
         self
     }
 
-    /// Override the sex values found in the .fam file.
-    ///
-    /// By default, if sex values are needed and haven't already been found,
-    /// they will be read from the .fam file.
-    /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn sex<I: IntoIterator<Item = i32>>(&mut self, sex: I) -> &Self {
+    fn set_sex<I: IntoIterator<Item = i32>>(&mut self, sex: I) -> &Self {
         self.sex = Some(Rc::new(sex.into_iter().map(|s| s).collect()));
         self
     }
 
-    /// Override the phenotype values found in the .fam file.
-    ///
-    /// Note that the phenotype values in the .fam file are seldom used.
-    /// By default, if phenotype values are needed and haven't already been found,
-    /// they will be read from the .fam file.
-    /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn pheno<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, pheno: I) -> &Self {
+    fn set_pheno<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, pheno: I) -> &Self {
         self.pheno = Some(Rc::new(
             pheno.into_iter().map(|s| s.as_ref().to_string()).collect(),
         ));
         self
     }
 
-    /// Override the chromosome values found in the .bim file.
-    ///
-    /// By default, if chromosome values are needed and haven't already been found,
-    /// they will be read from the .bim file.
-    /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn chromosome<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, chromosome: I) -> &Self {
+    fn set_chromosome<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, chromosome: I) -> &Self {
         self.chromosome = Some(Rc::new(
             chromosome
                 .into_iter()
@@ -5730,58 +5997,24 @@ impl Metadata {
         self
     }
 
-    /// Override the SNP id (sid) values found in the .fam file.
-    ///
-    /// By default, if sid values are needed and haven't already been found,
-    /// they will be read from the .bim file.
-    /// Providing them here avoids that file read and provides a way to give different values.
-    /// ```
-    /// use ndarray as nd;
-    /// use bed_reader::Bed;
-    /// use bed_reader::assert_eq_nan;
-    /// let file_name = "bed_reader/tests/data/small.bed";
-    /// use bed_reader::ReadOptions;
-    ///
-    /// let mut bed = Bed::builder(file_name)
-    ///    .sid(["SNP1", "SNP2", "SNP3", "SNP4"])
-    ///    .build()?;
-    /// println!("{:?}", bed.sid()?); // Outputs ndarray ["SNP1", "SNP2", "SNP3", "SNP4"]
-    /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
-    /// ```
-    pub fn sid<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, sid: I) -> &Self {
+    fn set_sid<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, sid: I) -> &Self {
         self.sid = Some(Rc::new(
             sid.into_iter().map(|s| s.as_ref().to_string()).collect(),
         ));
         self
     }
 
-    /// Override the centimorgan position values found in the .bim file.
-    ///
-    /// By default, if centimorgan position values are needed and haven't already been found,
-    /// they will be read from the .bim file.
-    /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn cm_position<I: IntoIterator<Item = f32>>(&mut self, cm_position: I) -> &Self {
+    fn set_cm_position<I: IntoIterator<Item = f32>>(&mut self, cm_position: I) -> &Self {
         self.cm_position = Some(Rc::new(cm_position.into_iter().map(|s| s).collect()));
         self
     }
 
-    /// Override the base-pair position values found in the .bim file.
-    ///
-    /// By default, if base-pair position values are needed and haven't already been found,
-    /// they will be read from the .bim file.
-    /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn bp_position<I: IntoIterator<Item = i32>>(&mut self, bp_position: I) -> &Self {
+    fn set_bp_position<I: IntoIterator<Item = i32>>(&mut self, bp_position: I) -> &Self {
         self.bp_position = Some(Rc::new(bp_position.into_iter().map(|s| s).collect()));
         self
     }
 
-    /// Override the allele 1 values found in the .bim file.
-    ///
-    /// By default, if allele 1 values are needed and haven't already been found,
-    /// they will be read from the .bim file.
-    /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn allele_1<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, allele_1: I) -> &Self {
+    fn set_allele_1<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, allele_1: I) -> &Self {
         self.allele_1 = Some(Rc::new(
             allele_1
                 .into_iter()
@@ -5791,12 +6024,7 @@ impl Metadata {
         self
     }
 
-    /// Override the allele 2 values found in the .bim file.
-    ///
-    /// By default, if allele 2 values are needed and haven't already been found,
-    /// they will be read from the .bim file.
-    /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn allele_2<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, allele_2: I) -> &Self {
+    fn set_allele_2<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, allele_2: I) -> &Self {
         self.allele_2 = Some(Rc::new(
             allele_2
                 .into_iter()
