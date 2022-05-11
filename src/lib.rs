@@ -2179,13 +2179,13 @@ impl Bed {
             num_threads,
         )?;
 
-        if let Err(e) = write_options.fam_write() {
+        if let Err(e) = write_options.metadata.fam_write(write_options.fam_path()) {
             // Clean up the file
             let _ = fs::remove_file(&write_options.fam_path);
             return Err(e);
         }
 
-        if let Err(e) = write_options.bim_write() {
+        if let Err(e) = write_options.metadata.bim_write(write_options.bim_path()) {
             // Clean up the file
             let _ = fs::remove_file(&write_options.bim_path);
             return Err(e);
@@ -4661,58 +4661,6 @@ where
         (self.iid_count(), self.sid_count())
     }
 
-    // !!!cmk00h move to metadata
-    fn fam_write(&self) -> Result<(), BedErrorPlus> {
-        let file = File::create(&self.fam_path)?;
-        let mut writer = BufWriter::new(file);
-        let mut result: Result<(), BedErrorPlus> = Ok(());
-
-        nd::azip!((fid in &*self.fid(),
-                   iid in &*self.iid(),
-                   father in &*self.father(),
-                   mother in &*self.mother(),
-                   sex in &*self.sex(),
-                   pheno in &*self.pheno())
-        {
-            if result.is_ok() {
-                if let Err(e) = writeln!(
-                writer,
-                "{}\t{}\t{}\t{}\t{}\t{}",
-                *fid, *iid, *father, *mother, *sex, *pheno
-            )
-            {
-            result = Err(BedErrorPlus::IOError(e)); // !!!cmk later test this
-            }
-        }});
-        result?;
-
-        Ok(())
-    }
-
-    // !!!cmk00h move to metadata
-    fn bim_write(&self) -> Result<(), BedErrorPlus> {
-        let file = File::create(&self.bim_path)?;
-        let mut writer = BufWriter::new(file);
-        let mut result: Result<(), BedErrorPlus> = Ok(());
-        nd::azip!((chromosome in &*self.chromosome(), sid in &*self.sid(), cm_position in &*self.cm_position(),
-             bp_position in &*self.bp_position(), allele_1 in &*self.allele_1(), allele_2 in &*self.allele_2())
-        {
-            // !!!cmk later should these be \t?
-            if result.is_ok() {
-                if let Err(e) = writeln!(
-                writer,
-                "{}\t{}\t{}\t{}\t{}\t{}",
-                *chromosome, *sid, *cm_position, *bp_position, *allele_1, *allele_2
-            )
-            {
-            result = Err(BedErrorPlus::IOError(e)); // !!!cmk later test this
-            }
-        }});
-        result?;
-
-        Ok(())
-    }
-
     pub fn metadata(&mut self) -> Metadata {
         self.metadata.clone()
     }
@@ -5561,6 +5509,88 @@ impl Metadata {
 
     pub fn new() -> Metadata {
         Metadata::builder().build().unwrap()
+    }
+
+    fn fam_all_some(&self) -> bool {
+        self.fid.is_some()
+            && self.iid.is_some()
+            && self.father.is_some()
+            && self.mother.is_some()
+            && self.sex.is_some()
+            && self.pheno.is_some()
+    }
+    fn bim_all_some(&self) -> bool {
+        self.chromosome.is_some()
+            && self.sid.is_some()
+            && self.cm_position.is_some()
+            && self.bp_position.is_some()
+            && self.allele_1.is_some()
+            && self.allele_2.is_some()
+    }
+
+    fn fam_write<P: AsRef<Path>>(&self, path: P) -> Result<(), BedErrorPlus> {
+        let file = File::create(path)?;
+        let mut writer = BufWriter::new(file);
+        let mut result: Result<(), BedErrorPlus> = Ok(());
+
+        if !self.fam_all_some() {
+            todo!("add error message cmk00");
+        }
+
+        nd::azip!((fid in self.fid.as_ref().unwrap().as_ref(),
+                   iid in self.iid.as_ref().unwrap().as_ref(),
+                   father in self.father.as_ref().unwrap().as_ref(),
+                   mother in self.mother.as_ref().unwrap().as_ref(),
+                   sex in self.sex.as_ref().unwrap().as_ref(),
+                   pheno in self.pheno.as_ref().unwrap().as_ref(),
+                )
+        {
+            if result.is_ok() {
+                if let Err(e) = writeln!(
+                writer,
+                "{}\t{}\t{}\t{}\t{}\t{}",
+                *fid, *iid, *father, *mother, *sex, *pheno
+            )
+            {
+            result = Err(BedErrorPlus::IOError(e)); // !!!cmk later test this
+            }
+        }});
+        result?;
+
+        Ok(())
+    }
+
+    fn bim_write<P: AsRef<Path>>(&self, path: P) -> Result<(), BedErrorPlus> {
+        let file = File::create(path)?;
+        let mut writer = BufWriter::new(file);
+        let mut result: Result<(), BedErrorPlus> = Ok(());
+
+        if !self.bim_all_some() {
+            todo!("add error message cmk00");
+        }
+
+        nd::azip!((chromosome in self.chromosome.as_ref().unwrap().as_ref(),
+        sid in self.sid.as_ref().unwrap().as_ref(),
+        cm_position in self.cm_position.as_ref().unwrap().as_ref(),
+        bp_position in self.bp_position.as_ref().unwrap().as_ref(),
+        allele_1 in self.allele_1.as_ref().unwrap().as_ref(),
+        allele_2 in self.allele_2.as_ref().unwrap().as_ref(),
+                )
+        {
+            // !!!cmk later should these be \t?
+            if result.is_ok() {
+                if let Err(e) = writeln!(
+                writer,
+                "{}\t{}\t{}\t{}\t{}\t{}",
+                *chromosome, *sid, *cm_position, *bp_position, *allele_1, *allele_2
+            )
+            {
+            result = Err(BedErrorPlus::IOError(e)); // !!!cmk later test this
+            }
+        }});
+        result?;
+
+        Ok(())
     }
 
     // !!!cmk00m  "fill from file" function work the same way
