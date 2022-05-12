@@ -2282,6 +2282,12 @@ impl Bed {
         }
     }
 
+    pub fn metadata(&mut self) -> Result<Metadata, BedErrorPlus> {
+        self.fam()?;
+        self.bim()?;
+        Ok(self.metadata.clone())
+    }
+
     /// Number of individuals (samples) and SNPs (variants)
     ///
     /// If these numbers are needed, they will be found
@@ -2308,188 +2314,6 @@ impl Bed {
         Ok((self.iid_count()?, self.sid_count()?))
     }
 
-    pub fn metadata(&mut self) -> Result<Metadata, BedErrorPlus> {
-        self.fam()?;
-        self.bim()?;
-
-        let clone = self.metadata.clone();
-        Ok(clone)
-    }
-
-    fn fam(&mut self) -> Result<(), BedErrorPlus> {
-        let mut field_vec: Vec<usize> = Vec::new();
-
-        if self.metadata.fid.is_none() && !self.skip_set.contains(&SkipFields::Fid) {
-            field_vec.push(0);
-        }
-        if self.metadata.iid.is_none() && !self.skip_set.contains(&SkipFields::Iid) {
-            field_vec.push(1);
-        }
-        if self.metadata.father.is_none() && !self.skip_set.contains(&SkipFields::Father) {
-            field_vec.push(2);
-        }
-        if self.metadata.mother.is_none() && !self.skip_set.contains(&SkipFields::Mother) {
-            field_vec.push(3);
-        }
-        if self.metadata.sex.is_none() && !self.skip_set.contains(&SkipFields::Sex) {
-            field_vec.push(4);
-        }
-        if self.metadata.pheno.is_none() && !self.skip_set.contains(&SkipFields::Pheno) {
-            field_vec.push(5);
-        }
-
-        let fam_path = self.fam_path();
-        let (mut vec_of_vec, count) = self.read_fam_or_bim(&field_vec, &fam_path)?;
-        match self.iid_count {
-            Some(iid_count) => {
-                if iid_count != count {
-                    return Err(
-                        BedError::InconsistentCount("iid".to_string(), iid_count, count).into(),
-                    );
-                }
-            }
-            None => {
-                self.iid_count = Some(count);
-            }
-        }
-
-        // unwraps are safe because we pop once for every push
-        if self.metadata.pheno.is_none() && !self.skip_set.contains(&SkipFields::Pheno) {
-            self.metadata.pheno = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
-        }
-        if self.metadata.sex.is_none() && !self.skip_set.contains(&SkipFields::Sex) {
-            let vec = vec_of_vec.pop().unwrap();
-            let array = vec
-                .iter()
-                .map(|s| s.parse::<i32>())
-                .collect::<Result<nd::Array1<i32>, _>>()?; // !!!cmk later test this error
-            self.metadata.sex = Some(Rc::new(array));
-        }
-        if self.metadata.mother.is_none() && !self.skip_set.contains(&SkipFields::Mother) {
-            self.metadata.mother = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
-        }
-        if self.metadata.father.is_none() && !self.skip_set.contains(&SkipFields::Father) {
-            self.metadata.father = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
-        }
-        if self.metadata.iid.is_none() && !self.skip_set.contains(&SkipFields::Iid) {
-            self.metadata.iid = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
-        }
-        if self.metadata.fid.is_none() && !self.skip_set.contains(&SkipFields::Fid) {
-            self.metadata.fid = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
-        }
-
-        Ok(())
-    }
-    fn bim(&mut self) -> Result<(), BedErrorPlus> {
-        let mut field_vec: Vec<usize> = Vec::new();
-        if self.metadata.chromosome.is_none() && !self.skip_set.contains(&SkipFields::Chromosome) {
-            field_vec.push(0);
-        }
-        if self.metadata.sid.is_none() && !self.skip_set.contains(&SkipFields::Sid) {
-            field_vec.push(1);
-        }
-
-        if self.metadata.cm_position.is_none() && !self.skip_set.contains(&SkipFields::CmPosition) {
-            field_vec.push(2);
-        }
-        if self.metadata.bp_position.is_none() && !self.skip_set.contains(&SkipFields::BpPosition) {
-            field_vec.push(3);
-        }
-        if self.metadata.allele_1.is_none() && !self.skip_set.contains(&SkipFields::Allele1) {
-            field_vec.push(4);
-        }
-        if self.metadata.allele_2.is_none() && !self.skip_set.contains(&SkipFields::Allele2) {
-            field_vec.push(5);
-        }
-
-        let bim_path = self.bim_path();
-        let (mut vec_of_vec, count) = self.read_fam_or_bim(&field_vec, &bim_path)?;
-        match self.sid_count {
-            Some(sid_count) => {
-                if sid_count != count {
-                    return Err(
-                        BedError::InconsistentCount("sid".to_string(), sid_count, count).into(),
-                    );
-                }
-            }
-            None => {
-                self.sid_count = Some(count);
-            }
-        }
-
-        // unwraps are safe because we pop once for every push
-        if self.metadata.allele_2.is_none() && !self.skip_set.contains(&SkipFields::Allele2) {
-            self.metadata.allele_2 = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
-        }
-        if self.metadata.allele_1.is_none() && !self.skip_set.contains(&SkipFields::Allele1) {
-            self.metadata.allele_1 = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
-        }
-        if self.metadata.bp_position.is_none() && !self.skip_set.contains(&SkipFields::BpPosition) {
-            let vec = vec_of_vec.pop().unwrap();
-            let array = vec
-                .iter()
-                .map(|s| s.parse::<i32>())
-                .collect::<Result<nd::Array1<i32>, _>>()?; // !!!cmk later test this error
-            self.metadata.bp_position = Some(Rc::new(array));
-        }
-        if self.metadata.cm_position.is_none() && !self.skip_set.contains(&SkipFields::CmPosition) {
-            let vec = vec_of_vec.pop().unwrap();
-            let array = vec
-                .iter()
-                .map(|s| s.parse::<f32>())
-                .collect::<Result<nd::Array1<f32>, _>>()?; // !!!cmk later test this error
-            self.metadata.cm_position = Some(Rc::new(array));
-        }
-
-        if self.metadata.sid.is_none() && !self.skip_set.contains(&SkipFields::Sid) {
-            self.metadata.sid = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
-        }
-        if self.metadata.chromosome.is_none() && !self.skip_set.contains(&SkipFields::Chromosome) {
-            self.metadata.chromosome =
-                Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
-        }
-
-        Ok(())
-    }
-
-    fn read_fam_or_bim(
-        &self,
-        field_vec: &Vec<usize>,
-        path_buf: &PathBuf,
-    ) -> Result<(Vec<Vec<String>>, usize), BedErrorPlus> {
-        let mut vec_of_vec = vec![vec![]; field_vec.len()];
-
-        let file = File::open(&path_buf)?;
-
-        let reader = BufReader::new(file);
-        let mut count = 0;
-        for line in reader.lines() {
-            let line = line?;
-            count += 1;
-            let field = line.split_whitespace();
-
-            let mut field_count = 0;
-            let mut of_interest_count = 0;
-            for field in field {
-                if field_vec.contains(&field_count) {
-                    vec_of_vec[of_interest_count].push(field.to_string());
-                    of_interest_count += 1;
-                }
-                field_count += 1;
-            }
-            if field_count != 6 {
-                return Err(BedError::MetadataFieldCount(
-                    6,
-                    field_count,
-                    path_buf.to_str().unwrap().to_string(),
-                )
-                .into());
-            }
-        }
-
-        Ok((vec_of_vec, count))
-    }
-
     fn unlazy_fam<T: FromStringArray<T>>(
         &mut self,
         is_none: bool,
@@ -2504,6 +2328,7 @@ impl Bed {
         }
         Ok(())
     }
+
     fn unlazy_bim<T: FromStringArray<T>>(
         &mut self,
         is_none: bool,
@@ -2515,6 +2340,48 @@ impl Bed {
         }
         if is_none {
             self.bim()?
+        }
+        Ok(())
+    }
+
+    fn fam(&mut self) -> Result<(), BedErrorPlus> {
+        let fam_path = self.fam_path();
+
+        let (metadata, count) = self.metadata.read_fam(&fam_path, &self.skip_set)?;
+        self.metadata = metadata;
+
+        match self.iid_count {
+            Some(iid_count) => {
+                if iid_count != count {
+                    return Err(
+                        BedError::InconsistentCount("iid".to_string(), iid_count, count).into(),
+                    );
+                }
+            }
+            None => {
+                self.iid_count = Some(count);
+            }
+        }
+        Ok(())
+    }
+
+    fn bim(&mut self) -> Result<(), BedErrorPlus> {
+        let bim_path = self.bim_path();
+
+        let (metadata, count) = self.metadata.read_bim(&bim_path, &self.skip_set)?;
+        self.metadata = metadata;
+
+        match self.sid_count {
+            Some(sid_count) => {
+                if sid_count != count {
+                    return Err(
+                        BedError::InconsistentCount("sid".to_string(), sid_count, count).into(),
+                    );
+                }
+            }
+            None => {
+                self.sid_count = Some(count);
+            }
         }
         Ok(())
     }
@@ -5509,6 +5376,165 @@ impl Metadata {
 
     pub fn new() -> Metadata {
         Metadata::builder().build().unwrap()
+    }
+
+    fn read_fam(
+        &self,
+        path: &Path,
+        skip_set: &HashSet<SkipFields>,
+    ) -> Result<(Metadata, usize), BedErrorPlus> {
+        let mut field_vec: Vec<usize> = Vec::new();
+
+        if self.fid.is_none() && !skip_set.contains(&SkipFields::Fid) {
+            field_vec.push(0);
+        }
+        if self.iid.is_none() && !skip_set.contains(&SkipFields::Iid) {
+            field_vec.push(1);
+        }
+        if self.father.is_none() && !skip_set.contains(&SkipFields::Father) {
+            field_vec.push(2);
+        }
+        if self.mother.is_none() && !skip_set.contains(&SkipFields::Mother) {
+            field_vec.push(3);
+        }
+        if self.sex.is_none() && !skip_set.contains(&SkipFields::Sex) {
+            field_vec.push(4);
+        }
+        if self.pheno.is_none() && !skip_set.contains(&SkipFields::Pheno) {
+            field_vec.push(5);
+        }
+
+        let (mut vec_of_vec, count) = self.read_fam_or_bim(&field_vec, &path)?;
+
+        let mut clone = self.clone();
+
+        // unwraps are safe because we pop once for every push
+        if clone.pheno.is_none() && !skip_set.contains(&SkipFields::Pheno) {
+            clone.pheno = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
+        }
+        if clone.sex.is_none() && !skip_set.contains(&SkipFields::Sex) {
+            let vec = vec_of_vec.pop().unwrap();
+            let array = vec
+                .iter()
+                .map(|s| s.parse::<i32>())
+                .collect::<Result<nd::Array1<i32>, _>>()?; // !!!cmk later test this error
+            clone.sex = Some(Rc::new(array));
+        }
+        if clone.mother.is_none() && !skip_set.contains(&SkipFields::Mother) {
+            clone.mother = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
+        }
+        if clone.father.is_none() && !skip_set.contains(&SkipFields::Father) {
+            clone.father = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
+        }
+        if clone.iid.is_none() && !skip_set.contains(&SkipFields::Iid) {
+            clone.iid = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
+        }
+        if clone.fid.is_none() && !skip_set.contains(&SkipFields::Fid) {
+            clone.fid = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
+        }
+
+        Ok((clone, count))
+    }
+
+    fn read_bim(
+        &self,
+        path: &Path,
+        skip_set: &HashSet<SkipFields>,
+    ) -> Result<(Metadata, usize), BedErrorPlus> {
+        let mut field_vec: Vec<usize> = Vec::new();
+        if self.chromosome.is_none() && !skip_set.contains(&SkipFields::Chromosome) {
+            field_vec.push(0);
+        }
+        if self.sid.is_none() && !skip_set.contains(&SkipFields::Sid) {
+            field_vec.push(1);
+        }
+
+        if self.cm_position.is_none() && !skip_set.contains(&SkipFields::CmPosition) {
+            field_vec.push(2);
+        }
+        if self.bp_position.is_none() && !skip_set.contains(&SkipFields::BpPosition) {
+            field_vec.push(3);
+        }
+        if self.allele_1.is_none() && !skip_set.contains(&SkipFields::Allele1) {
+            field_vec.push(4);
+        }
+        if self.allele_2.is_none() && !skip_set.contains(&SkipFields::Allele2) {
+            field_vec.push(5);
+        }
+
+        let mut clone = self.clone();
+        let (mut vec_of_vec, count) = self.read_fam_or_bim(&field_vec, &path)?;
+
+        // unwraps are safe because we pop once for every push
+        if clone.allele_2.is_none() && !skip_set.contains(&SkipFields::Allele2) {
+            clone.allele_2 = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
+        }
+        if clone.allele_1.is_none() && !skip_set.contains(&SkipFields::Allele1) {
+            clone.allele_1 = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
+        }
+        if clone.bp_position.is_none() && !skip_set.contains(&SkipFields::BpPosition) {
+            let vec = vec_of_vec.pop().unwrap();
+            let array = vec
+                .iter()
+                .map(|s| s.parse::<i32>())
+                .collect::<Result<nd::Array1<i32>, _>>()?; // !!!cmk later test this error
+            clone.bp_position = Some(Rc::new(array));
+        }
+        if clone.cm_position.is_none() && !skip_set.contains(&SkipFields::CmPosition) {
+            let vec = vec_of_vec.pop().unwrap();
+            let array = vec
+                .iter()
+                .map(|s| s.parse::<f32>())
+                .collect::<Result<nd::Array1<f32>, _>>()?; // !!!cmk later test this error
+            clone.cm_position = Some(Rc::new(array));
+        }
+
+        if clone.sid.is_none() && !skip_set.contains(&SkipFields::Sid) {
+            clone.sid = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
+        }
+        if clone.chromosome.is_none() && !skip_set.contains(&SkipFields::Chromosome) {
+            clone.chromosome = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
+        }
+
+        Ok((clone, count))
+    }
+
+    fn read_fam_or_bim(
+        &self,
+        field_vec: &Vec<usize>,
+        path: &Path,
+    ) -> Result<(Vec<Vec<String>>, usize), BedErrorPlus> {
+        let mut vec_of_vec = vec![vec![]; field_vec.len()];
+
+        let file = File::open(&path)?;
+
+        let reader = BufReader::new(file);
+        let mut count = 0;
+        for line in reader.lines() {
+            let line = line?;
+            count += 1;
+            let field = line.split_whitespace();
+
+            let mut field_count = 0;
+            let mut of_interest_count = 0;
+            for field in field {
+                if field_vec.contains(&field_count) {
+                    vec_of_vec[of_interest_count].push(field.to_string());
+                    of_interest_count += 1;
+                }
+                field_count += 1;
+            }
+            if field_count != 6 {
+                return Err(BedError::MetadataFieldCount(
+                    6,
+                    field_count,
+                    path.to_str().unwrap().to_string(),
+                )
+                .into());
+            }
+        }
+
+        Ok((vec_of_vec, count))
     }
 
     fn fam_all_some(&self) -> bool {
