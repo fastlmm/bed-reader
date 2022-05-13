@@ -7,8 +7,6 @@ use bed_reader::assert_same_result;
 #[cfg(test)]
 use bed_reader::nds1;
 #[cfg(test)]
-use bed_reader::rt1;
-#[cfg(test)]
 use bed_reader::rt23;
 #[cfg(test)]
 use bed_reader::tmp_path;
@@ -78,6 +76,7 @@ fn rusty_bed2() -> Result<(), BedErrorPlus> {
 
 #[cfg(test)]
 use std::collections::HashSet;
+use std::panic::catch_unwind;
 
 #[test]
 fn rusty_bed3() -> Result<(), BedErrorPlus> {
@@ -1662,4 +1661,34 @@ fn struct_play() -> Result<(), BedErrorPlus> {
     let metadata = Metadata::builder().build()?.fill(100, 100)?;
     println!("{0:?}", metadata.iid());
     Ok(())
+}
+
+pub fn rt1<R>(range_thing: R) -> Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>
+where
+    R: std::ops::RangeBounds<usize>
+        + std::fmt::Debug
+        + Clone
+        + std::slice::SliceIndex<[isize], Output = [isize]>
+        + std::panic::RefUnwindSafe,
+{
+    println!("Running {:?}", &range_thing);
+    let file_name = "bed_reader/tests/data/toydata.5chrom.bed";
+
+    let result1 = catch_unwind(|| {
+        let mut bed = Bed::new(file_name).unwrap();
+        let all: Vec<isize> = (0..(bed.iid_count().unwrap() as isize)).collect();
+        let mut bed = Bed::new(file_name).unwrap();
+        let iid_index: &[isize] = &all[range_thing.clone()];
+        ReadOptions::builder()
+            .iid_index(iid_index)
+            .i8()
+            .read(&mut bed)
+    });
+    if result1.is_err() {
+        return Err(BedError::PanickedThread().into());
+    }
+    match result1 {
+        Err(_) => Err(BedError::PanickedThread().into()),
+        Ok(bed_result) => Ok(bed_result),
+    }
 }
