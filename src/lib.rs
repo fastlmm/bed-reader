@@ -6030,53 +6030,7 @@ impl Metadata {
         self
     }
 }
-pub fn rt23(
-    range_thing: crate::Index,
-) -> (
-    Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>,
-    Result<Result<usize, BedErrorPlus>, BedErrorPlus>,
-) {
-    (rt2(range_thing.clone()), rt3(range_thing.clone()))
-}
 
-pub fn rt2(
-    range_thing: crate::Index,
-) -> Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus> {
-    println!("Running {:?}", &range_thing);
-    let file_name = "bed_reader/tests/data/toydata.5chrom.bed";
-
-    let result2 = catch_unwind(|| {
-        let mut bed = Bed::new(file_name).unwrap();
-        ReadOptions::builder()
-            .iid_index(range_thing)
-            .i8()
-            .read(&mut bed)
-    });
-    if result2.is_err() {
-        return Err(BedError::PanickedThread().into());
-    }
-    match result2 {
-        Err(_) => Err(BedError::PanickedThread().into()),
-        Ok(bed_result) => Ok(bed_result),
-    }
-}
-
-pub fn rt3(range_thing: crate::Index) -> Result<Result<usize, BedErrorPlus>, BedErrorPlus> {
-    println!("Running {:?}", &range_thing);
-    let file_name = "bed_reader/tests/data/toydata.5chrom.bed";
-
-    let result3 = catch_unwind(|| {
-        let mut bed = Bed::new(file_name).unwrap();
-        range_thing.len(bed.iid_count().unwrap()).unwrap()
-    });
-    if result3.is_err() {
-        return Err(BedError::PanickedThread().into());
-    }
-    match result3 {
-        Err(_) => Err(BedError::PanickedThread().into()),
-        Ok(bed_result) => Ok(Ok(bed_result)),
-    }
-}
 pub fn nds1(range_thing: SliceInfo1) -> Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus> {
     println!("Running {:?}", &range_thing);
     let file_name = "bed_reader/tests/data/toydata.5chrom.bed";
