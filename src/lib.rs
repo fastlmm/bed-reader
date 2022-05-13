@@ -1477,7 +1477,7 @@ pub struct Bed {
 }
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Ord, PartialOrd, Hash)]
-enum SkipFields {
+pub enum SkipFields {
     Fid,
     Iid,
     Father,
@@ -5378,7 +5378,7 @@ impl Metadata {
         Metadata::builder().build().unwrap()
     }
 
-    fn read_fam(
+    pub fn read_fam(
         &self,
         path: &Path,
         skip_set: &HashSet<SkipFields>,
@@ -5436,7 +5436,7 @@ impl Metadata {
         Ok((clone, count))
     }
 
-    fn read_bim(
+    pub fn read_bim(
         &self,
         path: &Path,
         skip_set: &HashSet<SkipFields>,
@@ -5554,7 +5554,7 @@ impl Metadata {
             && self.allele_2.is_some()
     }
 
-    fn fam_write<P: AsRef<Path>>(&self, path: P) -> Result<(), BedErrorPlus> {
+    pub fn fam_write<P: AsRef<Path>>(&self, path: P) -> Result<(), BedErrorPlus> {
         let file = File::create(path)?;
         let mut writer = BufWriter::new(file);
         let mut result: Result<(), BedErrorPlus> = Ok(());
@@ -5586,7 +5586,7 @@ impl Metadata {
         Ok(())
     }
 
-    fn bim_write<P: AsRef<Path>>(&self, path: P) -> Result<(), BedErrorPlus> {
+    pub fn bim_write<P: AsRef<Path>>(&self, path: P) -> Result<(), BedErrorPlus> {
         let file = File::create(path)?;
         let mut writer = BufWriter::new(file);
         let mut result: Result<(), BedErrorPlus> = Ok(());
@@ -5619,7 +5619,6 @@ impl Metadata {
         Ok(())
     }
 
-    // !!!cmk00m  "fill from file" function work the same way
     pub fn fill(&self, iid_count: usize, sid_count: usize) -> Result<Metadata, BedErrorPlus> {
         let mut metadata = self.clone();
 
