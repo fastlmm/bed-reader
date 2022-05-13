@@ -3,10 +3,6 @@ use bed_reader::allclose;
 #[cfg(test)]
 use bed_reader::assert_eq_nan;
 #[cfg(test)]
-use bed_reader::assert_same_result;
-#[cfg(test)]
-use bed_reader::nds1;
-#[cfg(test)]
 use bed_reader::tmp_path;
 #[cfg(test)]
 use bed_reader::Bed;
@@ -1690,7 +1686,8 @@ where
         Ok(bed_result) => Ok(bed_result),
     }
 }
-pub fn rt2(
+
+fn rt2(
     range_thing: bed_reader::Index,
 ) -> Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus> {
     println!("Running {:?}", &range_thing);
@@ -1712,7 +1709,7 @@ pub fn rt2(
     }
 }
 
-pub fn rt23(
+fn rt23(
     range_thing: bed_reader::Index,
 ) -> (
     Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>,
@@ -1721,7 +1718,7 @@ pub fn rt23(
     (rt2(range_thing.clone()), rt3(range_thing.clone()))
 }
 
-pub fn rt3(range_thing: bed_reader::Index) -> Result<Result<usize, BedErrorPlus>, BedErrorPlus> {
+fn rt3(range_thing: bed_reader::Index) -> Result<Result<usize, BedErrorPlus>, BedErrorPlus> {
     println!("Running {:?}", &range_thing);
     let file_name = "bed_reader/tests/data/toydata.5chrom.bed";
 
@@ -1735,5 +1732,71 @@ pub fn rt3(range_thing: bed_reader::Index) -> Result<Result<usize, BedErrorPlus>
     match result3 {
         Err(_) => Err(BedError::PanickedThread().into()),
         Ok(bed_result) => Ok(Ok(bed_result)),
+    }
+}
+
+fn nds1(range_thing: SliceInfo1) -> Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus> {
+    println!("Running {:?}", &range_thing);
+    let file_name = "bed_reader/tests/data/toydata.5chrom.bed";
+
+    let result1 = catch_unwind(|| {
+        let mut bed = Bed::new(file_name).unwrap();
+        let all: nd::Array1<isize> = (0..(bed.iid_count().unwrap() as isize)).collect();
+        let mut bed = Bed::new(file_name).unwrap();
+        let iid_index = &all.slice(&range_thing);
+        ReadOptions::builder()
+            .iid_index(iid_index)
+            .i8()
+            .read(&mut bed)
+    });
+    if result1.is_err() {
+        return Err(BedError::PanickedThread().into());
+    }
+    match result1 {
+        Err(_) => Err(BedError::PanickedThread().into()),
+        Ok(bed_result) => Ok(bed_result),
+    }
+}
+
+fn assert_same_result(
+    result1: Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>,
+    result23: (
+        Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>,
+        Result<Result<usize, BedErrorPlus>, BedErrorPlus>,
+    ),
+) {
+    let result2 = result23.0;
+    let result3 = result23.1;
+    let err1 = is_err2(&result1);
+    let err2 = is_err2(&result2);
+    let err3 = is_err2(&result3);
+
+    if err1 || err2 || err3 {
+        if !err1 || !err2 || !err3 {
+            println!("{result1:?}");
+            println!("{result2:?}");
+            println!("{result3:?}");
+            panic!("all should panic/error the same");
+        }
+        return;
+    }
+
+    let result1 = result1.unwrap().unwrap();
+    let result2 = result2.unwrap().unwrap();
+    let result3 = result3.unwrap().unwrap();
+    println!("{result1:?}");
+    println!("{result2:?}");
+    println!("{result3:?}");
+    assert!(
+        allclose(&result1.view(), &result2.view(), 0, true),
+        "not close"
+    );
+    assert!(result1.shape()[0] == result3, "not same length");
+}
+
+fn is_err2<T>(result_result: &Result<Result<T, BedErrorPlus>, BedErrorPlus>) -> bool {
+    match result_result {
+        Ok(Ok(_)) => false,
+        _ => true,
     }
 }

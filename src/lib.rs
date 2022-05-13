@@ -220,7 +220,6 @@ use std::collections::HashSet;
 use std::fs::{self};
 use std::io::Write;
 use std::ops::{Bound, Range, RangeBounds, RangeFrom, RangeInclusive, RangeTo, RangeToInclusive};
-use std::panic::catch_unwind;
 use std::rc::Rc;
 use std::{
     env,
@@ -455,7 +454,7 @@ impl Max for u64 {
     }
 }
 
-/// A trait alias, used internally, to provide default missing values i8, f32, f64.
+/// A trait alias, used internally, to provide default missing values for i8, f32, f64.
 pub trait Missing {
     fn missing() -> Self;
 }
@@ -3003,6 +3002,7 @@ impl Index {
     }
 }
 
+/// Type alias for 1-D slices of NDArrays.
 pub type SliceInfo1 =
     nd::SliceInfo<[nd::SliceInfoElem; 1], nd::Dim<[usize; 1]>, nd::Dim<[usize; 1]>>;
 
@@ -4950,6 +4950,7 @@ impl FromStringArray<i32> for i32 {
     }
 }
 
+/// Asserts two 2-D arrays are equal, treating NaNs as values.
 pub fn assert_eq_nan<T: 'static + Copy + PartialEq + PartialOrd + Signed + From<i8>>(
     val: &nd::ArrayBase<nd::OwnedRepr<T>, nd::Dim<[usize; 2]>>,
     answer: &nd::ArrayBase<nd::OwnedRepr<T>, nd::Dim<[usize; 2]>>,
@@ -4962,6 +4963,7 @@ pub fn assert_eq_nan<T: 'static + Copy + PartialEq + PartialOrd + Signed + From<
     ));
 }
 
+/// True if and only if two 2-D arrays are equal, within a given tolerance and possibly treating NaNs as values.
 pub fn allclose<
     T1: 'static + Copy + PartialEq + PartialOrd + Signed,
     T2: 'static + Copy + PartialEq + PartialOrd + Signed + Into<T1>,
@@ -4999,7 +5001,7 @@ pub fn allclose<
         })
 }
 
-// cmk 0 document
+/// Return a path to a temporary directory.
 pub fn tmp_path() -> Result<PathBuf, BedErrorPlus> {
     let output_path = PathBuf::from(TempDir::default().as_ref());
     fs::create_dir(&output_path)?;
@@ -5075,50 +5077,6 @@ fn compute_field<T: Clone, F: Fn(usize) -> T>(
         *field = Some(array);
     }
     Ok(())
-}
-
-// !!!cmk00l
-pub fn assert_same_result(
-    result1: Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>,
-    result23: (
-        Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>,
-        Result<Result<usize, BedErrorPlus>, BedErrorPlus>,
-    ),
-) {
-    let result2 = result23.0;
-    let result3 = result23.1;
-    let err1 = is_err2(&result1);
-    let err2 = is_err2(&result2);
-    let err3 = is_err2(&result3);
-
-    if err1 || err2 || err3 {
-        if !err1 || !err2 || !err3 {
-            println!("{result1:?}");
-            println!("{result2:?}");
-            println!("{result3:?}");
-            panic!("all should panic/error the same");
-        }
-        return;
-    }
-
-    let result1 = result1.unwrap().unwrap();
-    let result2 = result2.unwrap().unwrap();
-    let result3 = result3.unwrap().unwrap();
-    println!("{result1:?}");
-    println!("{result2:?}");
-    println!("{result3:?}");
-    assert!(
-        allclose(&result1.view(), &result2.view(), 0, true),
-        "not close"
-    );
-    assert!(result1.shape()[0] == result3, "not same length");
-}
-
-fn is_err2<T>(result_result: &Result<Result<T, BedErrorPlus>, BedErrorPlus>) -> bool {
-    match result_result {
-        Ok(Ok(_)) => false,
-        _ => true,
-    }
 }
 
 impl MetadataBuilder {
@@ -6028,28 +5986,5 @@ impl Metadata {
                 .collect(),
         ));
         self
-    }
-}
-
-pub fn nds1(range_thing: SliceInfo1) -> Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus> {
-    println!("Running {:?}", &range_thing);
-    let file_name = "bed_reader/tests/data/toydata.5chrom.bed";
-
-    let result1 = catch_unwind(|| {
-        let mut bed = Bed::new(file_name).unwrap();
-        let all: nd::Array1<isize> = (0..(bed.iid_count().unwrap() as isize)).collect();
-        let mut bed = Bed::new(file_name).unwrap();
-        let iid_index = &all.slice(&range_thing);
-        ReadOptions::builder()
-            .iid_index(iid_index)
-            .i8()
-            .read(&mut bed)
-    });
-    if result1.is_err() {
-        return Err(BedError::PanickedThread().into());
-    }
-    match result1 {
-        Err(_) => Err(BedError::PanickedThread().into()),
-        Ok(bed_result) => Ok(bed_result),
     }
 }
