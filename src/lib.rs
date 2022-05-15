@@ -1504,6 +1504,7 @@ pub struct Bed {
     #[builder(default = "None")]
     sid_count: Option<usize>,
 
+    #[builder(setter(custom))]
     metadata: Metadata,
 
     #[builder(setter(custom))]
@@ -1756,6 +1757,7 @@ impl BedBuilder {
             .insert(MetadataFields::BpPosition);
         self
     }
+    /// !!!cmk is there any way to un skip?
 
     /// Don't read the allele 1 information from the .bim file.
     ///
@@ -1822,6 +1824,81 @@ impl BedBuilder {
     /// of lines. Providing the number thus avoids a file read.
     pub fn sid_count(mut self, count: usize) -> Self {
         self.sid_count = Some(Some(count));
+        self
+    }
+
+    fn set_field<T>(field1: &Option<Rc<nd::Array1<T>>>, field2: &mut Option<Rc<nd::Array1<T>>>) {
+        if let Some(array) = field1 {
+            *field2 = Some(array.clone());
+        }
+    }
+
+    /// Set metadata with a metadata struct.
+    ///
+    /// # Example
+    ///
+    /// In the example, we create a metadata struct with iid
+    /// and sid arrays. Next, we use BedBuilder to set an fid array
+    /// and an iid array. Then, we add the metadata to the BedBuilder,
+    /// overwriting iid and setting sid. Finally, we print these
+    /// three arrays and chromosome. Chromosome is read from a file.
+    ///```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, Metadata};
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let metadata = Metadata::builder()
+    ///     .iid(["i1", "i2", "i3"])
+    ///     .sid(["s1", "s2", "s3", "s4"])
+    ///     .build()?;
+    /// let mut bed = Bed::builder(file_name)
+    ///     .fid(["f1", "f2", "f3"])
+    ///     .iid(["x1", "x2", "x3"])
+    ///     .metadata(&metadata)
+    ///     .build()?;
+    /// println!("{0:?}", bed.fid()?);  // Outputs ndarray ["f1", "f2", "f3"]
+    /// println!("{0:?}", bed.iid()?);  // Outputs ndarray ["i1", "i2", "i3"]
+    /// println!("{0:?}", bed.sid()?);  // Outputs ndarray ["s1", "s2", "s3", "s4"]
+    /// println!("{0:?}", bed.chromosome()?);  // Outputs ndarray ["1", "1", "5", "Y"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
+
+    pub fn metadata(mut self, metadata: &Metadata) -> Self {
+        BedBuilder::set_field(&metadata.fid, &mut self.metadata.as_mut().unwrap().fid);
+        BedBuilder::set_field(&metadata.iid, &mut self.metadata.as_mut().unwrap().iid);
+        BedBuilder::set_field(
+            &metadata.father,
+            &mut self.metadata.as_mut().unwrap().father,
+        );
+        BedBuilder::set_field(
+            &metadata.mother,
+            &mut self.metadata.as_mut().unwrap().mother,
+        );
+        BedBuilder::set_field(&metadata.sex, &mut self.metadata.as_mut().unwrap().sex);
+        BedBuilder::set_field(&metadata.pheno, &mut self.metadata.as_mut().unwrap().pheno);
+
+        BedBuilder::set_field(
+            &metadata.chromosome,
+            &mut self.metadata.as_mut().unwrap().chromosome,
+        );
+        BedBuilder::set_field(&metadata.sid, &mut self.metadata.as_mut().unwrap().sid);
+        BedBuilder::set_field(
+            &metadata.cm_position,
+            &mut self.metadata.as_mut().unwrap().cm_position,
+        );
+        BedBuilder::set_field(
+            &metadata.bp_position,
+            &mut self.metadata.as_mut().unwrap().bp_position,
+        );
+        BedBuilder::set_field(
+            &metadata.allele_1,
+            &mut self.metadata.as_mut().unwrap().allele_1,
+        );
+        BedBuilder::set_field(
+            &metadata.allele_2,
+            &mut self.metadata.as_mut().unwrap().allele_2,
+        );
         self
     }
 
@@ -2380,7 +2457,6 @@ impl Bed {
     /// println!("{0:?}", metadata.sid()); // Outputs Some(["sid1", "sid2", "sid3", "sid4"] ...)
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
-
     pub fn metadata(&mut self) -> Result<Metadata, BedErrorPlus> {
         self.fam()?;
         self.bim()?;

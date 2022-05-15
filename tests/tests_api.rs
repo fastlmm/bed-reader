@@ -1332,7 +1332,7 @@ fn set_metadata() -> Result<(), BedErrorPlus> {
         .sid(["sid1", "sid2", "sid3", "sid4"])
         .build()?;
     // !!!cmk00q should we pass a ref to BedBuilders's metadata?
-    let mut bed = Bed::builder(file_name).metadata(metadata).build()?;
+    let mut bed = Bed::builder(file_name).metadata(&metadata).build()?;
     let metadata2 = bed.metadata()?;
     println!("{metadata2:?}");
 
@@ -1340,7 +1340,7 @@ fn set_metadata() -> Result<(), BedErrorPlus> {
     let metadata = bed.metadata()?;
     println!("{metadata:?}");
 
-    let mut bed = Bed::builder(file_name).metadata(metadata).build()?;
+    let mut bed = Bed::builder(file_name).metadata(&metadata).build()?;
     let metadata2 = bed.metadata()?;
     println!("{metadata2:?}");
 
@@ -1833,6 +1833,37 @@ fn read_and_fill_with_options() -> Result<(), BedErrorPlus> {
         .read_and_fill(&mut bed, &mut val.view_mut())?;
 
     assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
+
+    Ok(())
+}
+
+#[test]
+fn bed_builder_metadata() -> Result<(), BedErrorPlus> {
+    let file_name = "bed_reader/tests/data/small.bed";
+    let metadata = Metadata::builder()
+        .iid(["i1", "i2", "i3"])
+        .sid(["s1", "s2", "s3", "s4"])
+        .build()?;
+    let mut bed = Bed::builder(file_name)
+        .fid(["f1", "f2", "f3"])
+        .iid(["x1", "x2", "x3"])
+        .metadata(&metadata)
+        .build()?;
+    println!("{0:?}", bed.fid()?); // Outputs ndarray ["f1", "f2", "f3"]
+    println!("{0:?}", bed.iid()?); // Outputs ndarray ["i1", "i2", "i3"]
+    println!("{0:?}", bed.sid()?); // Outputs ndarray ["s1", "s2", "s3", "s4"]
+    println!("{0:?}", bed.chromosome()?); // Outputs ndarray ["1", "1", "5", "Y"]
+
+    let mut bed = Bed::builder(file_name)
+        .skip_fid()
+        .fid(["f1", "f2", "f3"])
+        .iid(["x1", "x2", "x3"])
+        .metadata(&metadata)
+        .build()?;
+    bed.fid().expect_err("Should fail");
+    println!("{0:?}", bed.iid()?); // Outputs ndarray ["i1", "i2", "i3"]
+    println!("{0:?}", bed.sid()?); // Outputs ndarray ["s1", "s2", "s3", "s4"]
+    println!("{0:?}", bed.chromosome()?); // Outputs ndarray ["1", "1", "5", "Y"]
 
     Ok(())
 }
