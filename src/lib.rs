@@ -2100,9 +2100,9 @@ impl Bed {
         BedBuilder::new(path)
     }
 
-    // !!!cmk 00f return ref instead
-    pub fn path(self) -> PathBuf {
-        self.path.to_owned()
+    /// Return the path of the .bed file.
+    pub fn path<'a>(&'a self) -> &'a Path {
+        &self.path
     }
 
     /// Attempts to open a PLINK .bed file for reading. Does not support options.
@@ -2195,6 +2195,34 @@ impl Bed {
     ) -> Result<(), BedErrorPlus> {
         WriteOptions::builder(path).write(val)
     }
+
+    /// Given an 2D array of genotype data and a `WriteOptions`, write to a .bed file.
+    ///
+    /// > Also see [`WriteOptionsBuilder::write`](struct.WriteOptionsBuilder.html#method.write), which creates
+    /// > a `WriteOptions` and writes to file in one step.
+    ///
+    /// # Example
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, WriteOptions, tmp_path};
+    ///
+    /// let val = nd::array![
+    ///     [1.0, 0.0, f64::NAN, 0.0],
+    ///     [2.0, 0.0, f64::NAN, 2.0],
+    ///     [0.0, 1.0, 2.0, 0.0]
+    /// ];
+    ///
+    /// let output_folder = tmp_path()?;
+    /// let output_file = output_folder.join("small.bed");
+    /// let write_options = WriteOptions::builder(output_file)
+    ///     .iid(["iid1", "iid2", "iid3"])
+    ///     .sid(["sid1", "sid2", "sid3", "sid4"])
+    ///     .build(3,4)?;
+    ///
+    /// Bed::write_with_options(&val, &write_options)?;
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
     pub fn write_with_options<S, TVal>(
         val: &nd::ArrayBase<S, nd::Ix2>,
         write_options: &WriteOptions<TVal>,
@@ -2244,8 +2272,9 @@ impl Bed {
         Ok(())
     }
 
-    /// cmk 0
+    /// Return the path of the .fam file.
     pub fn fam_path(&mut self) -> PathBuf {
+        // We need to clone the path because self might mutate later
         if let Some(path) = &self.fam_path {
             path.clone()
         } else {
@@ -2255,8 +2284,9 @@ impl Bed {
         }
     }
 
-    /// cmk 0
+    /// Return the path of the .bim file.
     pub fn bim_path(&mut self) -> PathBuf {
+        // We need to clone the path because self might mutate later
         if let Some(path) = &self.bim_path {
             path.clone()
         } else {
@@ -2332,6 +2362,25 @@ impl Bed {
         }
     }
 
+    /// Metadata for this dataset, for example, the individual/sample Ids.
+    ///
+    /// This returns a struct with 12 fields. Each field is a ndarray.
+    /// The struct will always be new, but the 12 ndarrays will be
+    /// shared with the Bed struct.
+    ///
+    /// If the needed, the metadata will be read from the .fam and/or .bim files.
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::Bed;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let metadata = bed.metadata()?;
+    /// println!("{0:?}", metadata.iid()); // Outputs Some(["iid1", "iid2", "iid3"] ...)
+    /// println!("{0:?}", metadata.sid()); // Outputs Some(["sid1", "sid2", "sid3", "sid4"] ...)
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+
     pub fn metadata(&mut self) -> Result<Metadata, BedErrorPlus> {
         self.fam()?;
         self.bim()?;
@@ -2340,12 +2389,12 @@ impl Bed {
 
     /// Number of individuals (samples) and SNPs (variants)
     ///
-    /// If these numbers are needed, they will be found
+    /// If these numbers aren't known, they will be found
     /// by opening the .fam and .bim files and quickly counting the number
     /// of lines. Once found, the numbers will be remembered.
     /// The file read can be avoided by setting the
     /// number with [`BedBuilder::iid_count`](struct.BedBuilder.html#method.iid_count)
-    /// and [`BedBuilder::sid_count`](struct.BedBuilder.html#method.sid_count)..
+    /// and [`BedBuilder::sid_count`](struct.BedBuilder.html#method.sid_count).
     ///
     /// # Example:
     /// ```
@@ -2820,6 +2869,37 @@ impl Bed {
     }
 
     // !!!cmk later document that any .f() or .c() in read options is ignored
+
+    /// Read genotype data with options, into a preallocated array.
+    ///
+    /// > Also see [`ReadOptionsBuilder::read_and_fill`](struct.ReadOptionsBuilder.html#method.read_and_fill).
+    ///
+    /// Note that options [`ReadOptions::f`](struct.ReadOptions.html#method.f),
+    /// [`ReadOptions::c`](struct.ReadOptions.html#method.c), and [`is_f`](struct.ReadOptionsBuilder.html#method.is_f)
+    /// are ignored. Instead, order of the preallocated array is used.
+    ///
+    /// # Errors
+    /// See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
+    /// for all possible errors.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// // Read the SNPs indexed by 2.
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let read_options = ReadOptions::builder().sid_index(2).build()?;
+    /// let mut val = nd::Array2::<f64>::default((3, 1));
+    /// bed.read_and_fill_with_options(&mut val.view_mut(), &read_options)?;
+    ///
+    /// assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```  
     pub fn read_and_fill_with_options<TVal: BedVal>(
         &mut self,
         val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.,
@@ -2862,6 +2942,37 @@ impl Bed {
         Ok(())
     }
 
+    /// Read all genotype data into a preallocated array.
+    ///
+    /// > Also see [`ReadOptions::builder`](struct.ReadOptions.html#method.builder).
+    ///
+    /// # Errors
+    /// See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
+    /// for all possible errors.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let mut val = nd::Array2::<i8>::default(bed.dim()?);
+    /// bed.read_and_fill(&mut val.view_mut())?;
+    ///
+    /// assert_eq_nan(
+    ///     &val,
+    ///     &nd::array![
+    ///         [1, 0, -127, 0],
+    ///         [2, 0, -127, 2],
+    ///         [0, 1, 2, 0]
+    ///     ],
+    /// );
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
     pub fn read_and_fill<TVal: BedVal>(
         &mut self,
         val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.,
@@ -2893,6 +3004,31 @@ impl Bed {
         Ok(())
     }
 
+    /// Read genotype data with options.
+    ///
+    /// > Also see [`ReadOptions::builder`](struct.ReadOptions.html#method.builder).
+    ///
+    /// # Errors
+    /// See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
+    /// for all possible errors.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// // Read the SNPs indexed by 2.
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let read_options = ReadOptions::builder().sid_index(2).f64().build()?;
+    /// let val = bed.read_with_options(&read_options)?;
+    ///
+    /// assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```  
     pub fn read_with_options<TVal: BedVal>(
         &mut self,
         read_options: &ReadOptions<TVal>,
@@ -4025,6 +4161,38 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
         let read_options = self.build()?;
         bed.read_with_options(&read_options)
     }
+
+    /// Read genotype data with options, into a preallocated array.
+    ///
+    /// > Also see [`Bed::read_and_fill`](struct.Bed.html#method.read_and_fill).
+    ///
+    /// Note that options [`ReadOptions::f`](struct.ReadOptions.html#method.f),
+    /// [`ReadOptions::c`](struct.ReadOptions.html#method.c), and [`is_f`](struct.ReadOptionsBuilder.html#method.is_f)
+    /// are ignored. Instead, order of the preallocated array is used.
+    ///
+    /// # Errors
+    /// See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
+    /// for all possible errors.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// // Read the SNPs indexed by 2.
+    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let mut bed = Bed::new(file_name)?;
+    /// let mut val = nd::Array2::<f64>::default((3, 1));
+    /// ReadOptions::builder()
+    ///     .sid_index(2)
+    ///     .read_and_fill(&mut bed, &mut val.view_mut())?;
+    ///
+    /// assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
     pub fn read_and_fill(
         &self,
         bed: &mut Bed,

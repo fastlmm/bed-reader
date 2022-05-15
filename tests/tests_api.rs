@@ -1657,7 +1657,17 @@ fn struct_play() -> Result<(), BedErrorPlus> {
     Ok(())
 }
 
-pub fn rt1<R>(range_thing: R) -> Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>
+#[test]
+fn metadata_bed() -> Result<(), BedErrorPlus> {
+    let file_name = "bed_reader/tests/data/small.bed";
+    let mut bed = Bed::new(file_name)?;
+    let metadata = bed.metadata()?;
+    println!("{0:?}", metadata.iid()); // Outputs Some(["iid1", "iid2", "iid3"] ...)
+    println!("{0:?}", metadata.sid()); // Outputs Some(["sid1", "sid2", "sid3", "sid4"] ...)
+    Ok(())
+}
+
+fn rt1<R>(range_thing: R) -> Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>
 where
     R: std::ops::RangeBounds<usize>
         + std::fmt::Debug
@@ -1799,4 +1809,30 @@ fn is_err2<T>(result_result: &Result<Result<T, BedErrorPlus>, BedErrorPlus>) -> 
         Ok(Ok(_)) => false,
         _ => true,
     }
+}
+
+#[test]
+fn read_and_fill_with_options() -> Result<(), BedErrorPlus> {
+    use bed_reader::assert_eq_nan;
+    use bed_reader::{Bed, ReadOptions};
+    use ndarray as nd;
+    // Read the SNPs indexed by 2.
+    let file_name = "bed_reader/tests/data/small.bed";
+    let mut bed = Bed::new(file_name)?;
+    let read_options = ReadOptions::builder().sid_index(2).build()?;
+    let mut val = nd::Array2::<f64>::default((3, 1));
+    bed.read_and_fill_with_options(&mut val.view_mut(), &read_options)?;
+
+    assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
+
+    let file_name = "bed_reader/tests/data/small.bed";
+    let mut bed = Bed::new(file_name)?;
+    let mut val = nd::Array2::<f64>::default((3, 1));
+    ReadOptions::builder()
+        .sid_index(2)
+        .read_and_fill(&mut bed, &mut val.view_mut())?;
+
+    assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
+
+    Ok(())
 }
