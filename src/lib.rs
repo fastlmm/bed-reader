@@ -1785,26 +1785,6 @@ impl BedBuilder {
         self
     }
 
-    /// Use the given metadata information.
-    ///
-    /// This means that no metadata information will be read the .fam or .bim file.
-    /// ```
-    /// use ndarray as nd;
-    /// use bed_reader::{Bed, Metadata};
-    /// let file_name = "bed_reader/tests/data/small.bed";
-    ///
-    /// let metadata = Metadata::builder()
-    ///    .iid(["iid1", "iid2", "iid3"])
-    ///    .sid(["sid1", "sid2", "sid3", "sid4"])
-    ///    .build()?;
-    /// let mut bed = Bed::builder(file_name).metadata(metadata).build()?;
-    /// let metadata2 = bed.metadata()?;
-    /// println!("{metadata2:?}"); // Outputs a copy of input metadata
-    /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
-    /// ```
-    /// cmk00e
-
     /// Set the number of individuals in the data.
     ///
     /// By default, if this number is needed, it will be found
@@ -1827,13 +1807,7 @@ impl BedBuilder {
         self
     }
 
-    fn set_field<T>(field1: &Option<Rc<nd::Array1<T>>>, field2: &mut Option<Rc<nd::Array1<T>>>) {
-        if let Some(array) = field1 {
-            *field2 = Some(array.clone());
-        }
-    }
-
-    /// Set metadata with a metadata struct.
+    /// Merge metadata from a metadata struct.
     ///
     /// # Example
     ///
@@ -1864,40 +1838,15 @@ impl BedBuilder {
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     pub fn metadata(mut self, metadata: &Metadata) -> Self {
-        BedBuilder::set_field(&metadata.fid, &mut self.metadata.as_mut().unwrap().fid);
-        BedBuilder::set_field(&metadata.iid, &mut self.metadata.as_mut().unwrap().iid);
-        BedBuilder::set_field(
-            &metadata.father,
-            &mut self.metadata.as_mut().unwrap().father,
+        self.metadata = Some(
+            Metadata::builder()
+                .metadata(&self.metadata.unwrap())
+                .metadata(metadata)
+                // !!!cmk00 should we check the lengths match here?
+                .build_no_file_check()
+                .unwrap(),
         );
-        BedBuilder::set_field(
-            &metadata.mother,
-            &mut self.metadata.as_mut().unwrap().mother,
-        );
-        BedBuilder::set_field(&metadata.sex, &mut self.metadata.as_mut().unwrap().sex);
-        BedBuilder::set_field(&metadata.pheno, &mut self.metadata.as_mut().unwrap().pheno);
 
-        BedBuilder::set_field(
-            &metadata.chromosome,
-            &mut self.metadata.as_mut().unwrap().chromosome,
-        );
-        BedBuilder::set_field(&metadata.sid, &mut self.metadata.as_mut().unwrap().sid);
-        BedBuilder::set_field(
-            &metadata.cm_position,
-            &mut self.metadata.as_mut().unwrap().cm_position,
-        );
-        BedBuilder::set_field(
-            &metadata.bp_position,
-            &mut self.metadata.as_mut().unwrap().bp_position,
-        );
-        BedBuilder::set_field(
-            &metadata.allele_1,
-            &mut self.metadata.as_mut().unwrap().allele_1,
-        );
-        BedBuilder::set_field(
-            &metadata.allele_2,
-            &mut self.metadata.as_mut().unwrap().allele_2,
-        );
         self
     }
 
@@ -4855,13 +4804,7 @@ where
         Ok(write_options)
     }
 
-    fn set_field<T>(field1: &Option<Rc<nd::Array1<T>>>, field2: &mut Option<Rc<nd::Array1<T>>>) {
-        if let Some(array) = field1 {
-            *field2 = Some(array.clone());
-        }
-    }
-
-    /// Set metadata with a metadata struct.
+    /// Merge metadata from a metadata struct.
     ///
     /// # Example
     ///
@@ -4895,54 +4838,13 @@ where
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     pub fn metadata(mut self, metadata: &Metadata) -> Self {
-        WriteOptionsBuilder::<TVal>::set_field(
-            &metadata.fid,
-            &mut self.metadata.as_mut().unwrap().fid,
-        );
-        WriteOptionsBuilder::<TVal>::set_field(
-            &metadata.iid,
-            &mut self.metadata.as_mut().unwrap().iid,
-        );
-        WriteOptionsBuilder::<TVal>::set_field(
-            &metadata.father,
-            &mut self.metadata.as_mut().unwrap().father,
-        );
-        WriteOptionsBuilder::<TVal>::set_field(
-            &metadata.mother,
-            &mut self.metadata.as_mut().unwrap().mother,
-        );
-        WriteOptionsBuilder::<TVal>::set_field(
-            &metadata.sex,
-            &mut self.metadata.as_mut().unwrap().sex,
-        );
-        WriteOptionsBuilder::<TVal>::set_field(
-            &metadata.pheno,
-            &mut self.metadata.as_mut().unwrap().pheno,
-        );
-
-        WriteOptionsBuilder::<TVal>::set_field(
-            &metadata.chromosome,
-            &mut self.metadata.as_mut().unwrap().chromosome,
-        );
-        WriteOptionsBuilder::<TVal>::set_field(
-            &metadata.sid,
-            &mut self.metadata.as_mut().unwrap().sid,
-        );
-        WriteOptionsBuilder::<TVal>::set_field(
-            &metadata.cm_position,
-            &mut self.metadata.as_mut().unwrap().cm_position,
-        );
-        WriteOptionsBuilder::<TVal>::set_field(
-            &metadata.bp_position,
-            &mut self.metadata.as_mut().unwrap().bp_position,
-        );
-        WriteOptionsBuilder::<TVal>::set_field(
-            &metadata.allele_1,
-            &mut self.metadata.as_mut().unwrap().allele_1,
-        );
-        WriteOptionsBuilder::<TVal>::set_field(
-            &metadata.allele_2,
-            &mut self.metadata.as_mut().unwrap().allele_2,
+        self.metadata = Some(
+            Metadata::builder()
+                .metadata(&self.metadata.unwrap())
+                .metadata(metadata)
+                // !!!cmk00 should we check the lengths match here?
+                .build_no_file_check()
+                .unwrap(),
         );
         self
     }
@@ -5353,7 +5255,7 @@ impl MetadataBuilder {
     /// By default, if fid values are needed and haven't already been found,
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn fid<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, fid: I) -> &Self {
+    pub fn fid<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, fid: I) -> &mut Self {
         self.fid = Some(Some(Rc::new(
             fid.into_iter().map(|s| s.as_ref().to_string()).collect(),
         )));
@@ -5380,6 +5282,7 @@ impl MetadataBuilder {
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     pub fn iid<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, iid: I) -> &mut Self {
+        // !!!cmk00 should this be return mut?
         self.iid = Some(Some(Rc::new(
             iid.into_iter().map(|s| s.as_ref().to_string()).collect(),
         )));
@@ -5391,7 +5294,7 @@ impl MetadataBuilder {
     /// By default, if father values are needed and haven't already been found,
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn father<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, father: I) -> &Self {
+    pub fn father<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, father: I) -> &mut Self {
         self.father = Some(Some(Rc::new(
             father.into_iter().map(|s| s.as_ref().to_string()).collect(),
         )));
@@ -5403,7 +5306,7 @@ impl MetadataBuilder {
     /// By default, if mother values are needed and haven't already been found,
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn mother<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, mother: I) -> &Self {
+    pub fn mother<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, mother: I) -> &mut Self {
         self.mother = Some(Some(Rc::new(
             mother.into_iter().map(|s| s.as_ref().to_string()).collect(),
         )));
@@ -5415,7 +5318,7 @@ impl MetadataBuilder {
     /// By default, if sex values are needed and haven't already been found,
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn sex<I: IntoIterator<Item = i32>>(&mut self, sex: I) -> &Self {
+    pub fn sex<I: IntoIterator<Item = i32>>(&mut self, sex: I) -> &mut Self {
         self.sex = Some(Some(Rc::new(sex.into_iter().map(|s| s).collect())));
         self
     }
@@ -5426,7 +5329,7 @@ impl MetadataBuilder {
     /// By default, if phenotype values are needed and haven't already been found,
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn pheno<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, pheno: I) -> &Self {
+    pub fn pheno<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, pheno: I) -> &mut Self {
         self.pheno = Some(Some(Rc::new(
             pheno.into_iter().map(|s| s.as_ref().to_string()).collect(),
         )));
@@ -5438,7 +5341,10 @@ impl MetadataBuilder {
     /// By default, if chromosome values are needed and haven't already been found,
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn chromosome<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, chromosome: I) -> &Self {
+    pub fn chromosome<I: IntoIterator<Item = T>, T: AsRef<str>>(
+        &mut self,
+        chromosome: I,
+    ) -> &mut Self {
         self.chromosome = Some(Some(Rc::new(
             chromosome
                 .into_iter()
@@ -5479,7 +5385,7 @@ impl MetadataBuilder {
     /// By default, if centimorgan position values are needed and haven't already been found,
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn cm_position<I: IntoIterator<Item = f32>>(&mut self, cm_position: I) -> &Self {
+    pub fn cm_position<I: IntoIterator<Item = f32>>(&mut self, cm_position: I) -> &mut Self {
         self.cm_position = Some(Some(Rc::new(cm_position.into_iter().map(|s| s).collect())));
         self
     }
@@ -5489,7 +5395,7 @@ impl MetadataBuilder {
     /// By default, if base-pair position values are needed and haven't already been found,
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn bp_position<I: IntoIterator<Item = i32>>(&mut self, bp_position: I) -> &Self {
+    pub fn bp_position<I: IntoIterator<Item = i32>>(&mut self, bp_position: I) -> &mut Self {
         self.bp_position = Some(Some(Rc::new(bp_position.into_iter().map(|s| s).collect())));
         self
     }
@@ -5499,7 +5405,7 @@ impl MetadataBuilder {
     /// By default, if allele 1 values are needed and haven't already been found,
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn allele_1<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, allele_1: I) -> &Self {
+    pub fn allele_1<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, allele_1: I) -> &mut Self {
         self.allele_1 = Some(Some(Rc::new(
             allele_1
                 .into_iter()
@@ -5509,18 +5415,66 @@ impl MetadataBuilder {
         self
     }
 
+    // !!! cmk00a why is this &mut self, but other two similar ones are self?
     /// Override the allele 2 values found in the .bim file.
     ///
     /// By default, if allele 2 values are needed and haven't already been found,
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn allele_2<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, allele_2: I) -> &Self {
+    pub fn allele_2<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, allele_2: I) -> &mut Self {
         self.allele_2 = Some(Some(Rc::new(
             allele_2
                 .into_iter()
                 .map(|s| s.as_ref().to_string())
                 .collect(),
         )));
+        self
+    }
+
+    /// Merge metadata from a metadata struct.
+    ///
+    /// # Example
+    ///
+    /// In the example, we create a metadata struct with iid
+    /// and sid arrays. Next, we use another MetadataBuilder to set an fid array
+    /// and an iid array. Then, we add the first metadata to the MetadataBuilder,
+    /// overwriting iid and setting sid. Finally, we print these
+    /// three arrays and chromosome. Chromosome is `None`.
+    ///```
+    /// use ndarray as nd;
+    /// use bed_reader::Metadata;
+    ///
+    /// let metadata1 = Metadata::builder()
+    ///     .iid(["i1", "i2", "i3"])
+    ///     .sid(["s1", "s2", "s3", "s4"])
+    ///     .build()?;
+    /// let metadata2 = Metadata::builder()
+    ///     .fid(["f1", "f2", "f3"])
+    ///     .iid(["x1", "x2", "x3"])
+    ///     .metadata(&metadata1)
+    ///     .build()?;
+    ///
+    /// println!("{0:?}", metadata2.fid()); // Outputs optional ndarray Some(["f1", "f2", "f3"]...)
+    /// println!("{0:?}", metadata2.iid()); // Outputs optional ndarray Some(["i1", "i2", "i3"]...)
+    /// println!("{0:?}", metadata2.sid()); // Outputs optional ndarray Some(["s1", "s2", "s3", "s4"]...)
+    /// println!("{0:?}", metadata2.chromosome()); // Outputs None
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
+    pub fn metadata(&mut self, metadata: &Metadata) -> &mut Self {
+        set_field(&metadata.fid, &mut self.fid);
+        set_field(&metadata.iid, &mut self.iid);
+        set_field(&metadata.father, &mut self.father);
+        set_field(&metadata.mother, &mut self.mother);
+        set_field(&metadata.sex, &mut self.sex);
+        set_field(&metadata.pheno, &mut self.pheno);
+
+        set_field(&metadata.chromosome, &mut self.chromosome);
+        set_field(&metadata.sid, &mut self.sid);
+        set_field(&metadata.cm_position, &mut self.cm_position);
+        set_field(&metadata.bp_position, &mut self.bp_position);
+        set_field(&metadata.allele_1, &mut self.allele_1);
+        set_field(&metadata.allele_2, &mut self.allele_2);
         self
     }
 }
@@ -6219,5 +6173,13 @@ impl Metadata {
                 .collect(),
         ));
         self
+    }
+}
+fn set_field<T>(
+    field1: &Option<Rc<nd::Array1<T>>>,
+    field2: &mut Option<Option<Rc<nd::Array1<T>>>>,
+) {
+    if let Some(array) = field1 {
+        *field2 = Some(Some(array.clone()));
     }
 }

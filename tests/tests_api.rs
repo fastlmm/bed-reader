@@ -1889,3 +1889,22 @@ fn write_options_builder_metadata() -> Result<(), BedErrorPlus> {
     println!("{0:?}", write_options.chromosome()); // Outputs ndarray ["0", "0", "0", "0"]
     Ok(())
 }
+
+#[test]
+fn metadata_builder_metadata() -> Result<(), BedErrorPlus> {
+    let metadata1 = Metadata::builder()
+        .iid(["i1", "i2", "i3"])
+        .sid(["s1", "s2", "s3", "s4"])
+        .build()?;
+    let metadata2 = Metadata::builder()
+        .fid(["f1", "f2", "f3"])
+        .iid(["x1", "x2", "x3"])
+        .metadata(&metadata1)
+        .build()?;
+    println!("{0:?}", metadata2.fid()); // Outputs optional ndarray Some(["f1", "f2", "f3"]...)
+    println!("{0:?}", metadata2.iid()); // Outputs optional ndarray Some(["i1", "i2", "i3"]...)
+    println!("{0:?}", metadata2.sid()); // Outputs optional ndarray Some(["s1", "s2", "s3", "s4"]...)
+    println!("{0:?}", metadata2.chromosome()); // Outputs None
+
+    Ok(())
+}
