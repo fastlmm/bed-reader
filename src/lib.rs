@@ -1863,7 +1863,6 @@ impl BedBuilder {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
-
     pub fn metadata(mut self, metadata: &Metadata) -> Self {
         BedBuilder::set_field(&metadata.fid, &mut self.metadata.as_mut().unwrap().fid);
         BedBuilder::set_field(&metadata.iid, &mut self.metadata.as_mut().unwrap().iid);
@@ -4553,82 +4552,6 @@ where
     #[builder(setter(custom))]
     metadata: Metadata,
 
-    // /// Family id of each of individual (sample)
-    // ///
-    // /// If this ndarray is not given, the default (zeros) is used.
-    // #[builder(setter(custom))]
-    //  fid: Rc<nd::Array1<String>>,
-
-    // /// Individual id of each of individual (sample)
-    // ///
-    // /// If this ndarray is not given the default
-    // /// (["iid0", "iid1", ...]) is used.
-    // #[builder(setter(custom))]
-    //  iid: Rc<nd::Array1<String>>,
-
-    // /// Father id of each of individual (sample)
-    // ///
-    // /// If this ndarray is not given, the default
-    // /// (["sid0", "sid1", ...]) is used.
-    // #[builder(setter(custom))]
-    //  father: Rc<nd::Array1<String>>,
-
-    // /// Mother id of each of individual (sample)
-    // ///
-    // /// If this ndarray is not given, the default (zeros) is used.
-    // #[builder(setter(custom))]
-    //  mother: Rc<nd::Array1<String>>,
-
-    // /// Sex of each of individual (sample)
-    // ///
-    // /// 0 is unknown, 1 is male, 2 is female
-    // ///
-    // /// If this ndarray is not given, the default (zeros) is used.
-    // #[builder(setter(custom))]
-    //  sex: Rc<nd::Array1<i32>>,
-
-    // /// Phenotype value for each of individual (sample). Seldom used.
-    // ///
-    // /// If this ndarray is not given, the default (zeros) is used.
-    // #[builder(setter(custom))]
-    // pheno: Rc<nd::Array1<String>>,
-
-    // /// Chromosome of each SNP (variant)
-    // ///
-    // /// If this ndarray is not given, the default (zeros) is used.
-    // #[builder(setter(custom))]
-    // chromosome: Rc<nd::Array1<String>>,
-
-    // /// SNP id of each SNP (variant)
-    // ///
-    // /// If this ndarray is not given, the default
-    // /// (["sid0", "sid1", "sid2", ...] is used.
-    // #[builder(setter(custom))]
-    // sid: Rc<nd::Array1<String>>,
-
-    // /// Centimorgan position of each SNP (variant)
-    // ///
-    // /// If this ndarray is not given, the default (0.0) is used.
-    // #[builder(setter(custom))]
-    // cm_position: Rc<nd::Array1<f32>>,
-
-    // /// Base-pair position of each SNP (variant)
-    // ///
-    // /// If this ndarray is not given, the default (zeros) is used.
-    // #[builder(setter(custom))]
-    // bp_position: Rc<nd::Array1<i32>>,
-
-    // /// Allele 1 for each SNP (variant)
-    // ///
-    // /// If this ndarray is not given, the default ("A1") is used.
-    // #[builder(setter(custom))]
-    // allele_1: Rc<nd::Array1<String>>,
-
-    // /// Allele 2 for each SNP (variant)
-    // ///
-    // /// If this ndarray is not given, the default ("A2") is used.
-    // #[builder(setter(custom))]
-    // allele_2: Rc<nd::Array1<String>>,
     /// Sets if allele 1 is counted. Default is true.
     ///
     /// Also see [`count_a1`](struct.WriteOptionsBuilder.html#method.count_a1) and [`count_a2`](struct.WriteOptionsBuilder.html#method.count_a2).    
@@ -4932,6 +4855,98 @@ where
         Ok(write_options)
     }
 
+    fn set_field<T>(field1: &Option<Rc<nd::Array1<T>>>, field2: &mut Option<Rc<nd::Array1<T>>>) {
+        if let Some(array) = field1 {
+            *field2 = Some(array.clone());
+        }
+    }
+
+    /// Set metadata with a metadata struct.
+    ///
+    /// # Example
+    ///
+    /// In the example, we create a metadata struct with iid
+    /// and sid arrays. Next, we use WriteOptionsBuilder to set an fid array
+    /// and an iid array. Then, we add the metadata to the WriteOptionsBuilder,
+    /// overwriting iid and setting sid. Finally, we print these
+    /// three arrays and chromosome. Chromosome uses its defaults.
+    ///```
+    /// use ndarray as nd;
+    /// use bed_reader::{WriteOptions, Metadata, tmp_path};
+    ///
+    /// let output_folder = tmp_path()?;
+    ///
+    /// let output_file = output_folder.join("small_m.bed");
+    /// let metadata = Metadata::builder()
+    ///     .iid(["i1", "i2", "i3"])
+    ///     .sid(["s1", "s2", "s3", "s4"])
+    ///     .build()?;
+    /// let write_options = WriteOptions::builder(output_file)
+    ///     .f32()
+    ///     .fid(["f1", "f2", "f3"])
+    ///     .iid(["x1", "x2", "x3"])
+    ///     .metadata(&metadata)
+    ///     .build(3, 4)?;
+    /// println!("{0:?}", write_options.fid()); // Outputs ndarray ["f1", "f2", "f3"]
+    /// println!("{0:?}", write_options.iid()); // Outputs ndarray ["i1", "i2", "i3"]
+    /// println!("{0:?}", write_options.sid()); // Outputs ndarray ["s1", "s2", "s3", "s4"]
+    /// println!("{0:?}", write_options.chromosome()); // Outputs ndarray ["0", "0", "0", "0"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
+    pub fn metadata(mut self, metadata: &Metadata) -> Self {
+        WriteOptionsBuilder::<TVal>::set_field(
+            &metadata.fid,
+            &mut self.metadata.as_mut().unwrap().fid,
+        );
+        WriteOptionsBuilder::<TVal>::set_field(
+            &metadata.iid,
+            &mut self.metadata.as_mut().unwrap().iid,
+        );
+        WriteOptionsBuilder::<TVal>::set_field(
+            &metadata.father,
+            &mut self.metadata.as_mut().unwrap().father,
+        );
+        WriteOptionsBuilder::<TVal>::set_field(
+            &metadata.mother,
+            &mut self.metadata.as_mut().unwrap().mother,
+        );
+        WriteOptionsBuilder::<TVal>::set_field(
+            &metadata.sex,
+            &mut self.metadata.as_mut().unwrap().sex,
+        );
+        WriteOptionsBuilder::<TVal>::set_field(
+            &metadata.pheno,
+            &mut self.metadata.as_mut().unwrap().pheno,
+        );
+
+        WriteOptionsBuilder::<TVal>::set_field(
+            &metadata.chromosome,
+            &mut self.metadata.as_mut().unwrap().chromosome,
+        );
+        WriteOptionsBuilder::<TVal>::set_field(
+            &metadata.sid,
+            &mut self.metadata.as_mut().unwrap().sid,
+        );
+        WriteOptionsBuilder::<TVal>::set_field(
+            &metadata.cm_position,
+            &mut self.metadata.as_mut().unwrap().cm_position,
+        );
+        WriteOptionsBuilder::<TVal>::set_field(
+            &metadata.bp_position,
+            &mut self.metadata.as_mut().unwrap().bp_position,
+        );
+        WriteOptionsBuilder::<TVal>::set_field(
+            &metadata.allele_1,
+            &mut self.metadata.as_mut().unwrap().allele_1,
+        );
+        WriteOptionsBuilder::<TVal>::set_field(
+            &metadata.allele_2,
+            &mut self.metadata.as_mut().unwrap().allele_2,
+        );
+        self
+    }
+
     /// Creates a new `WriteOptions` with the options given and then writes a *.bed file.
     ///
     /// # Example
@@ -5006,32 +5021,6 @@ where
     /// ```
     pub fn bim_path<P: AsRef<Path>>(mut self, path: P) -> Self {
         self.bim_path = Some(path.as_ref().into());
-        self
-    }
-
-    /// Use the given metadata information.
-    ///
-    /// cmk00g update for writing
-    /// ```
-    /// use ndarray as nd;
-    /// use bed_reader::{Bed, Metadata};
-    ///
-    /// let file_name = "bed_reader/tests/data/small.bed";
-    /// let metadata = Metadata::builder()
-    ///    .iid(["iid1", "iid2", "iid3"])
-    ///    .sid(["sid1", "sid2", "sid3", "sid4"])
-    ///    .build()?;
-    /// let mut bed = Bed::builder(file_name).metadata(metadata).build()?;
-    /// let metadata2 = bed.metadata()?;
-    /// println!("{metadata2:?}"); // Outputs a copy of input metadata
-    /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
-    /// ```    
-    pub fn metadata(mut self, metadata: &Metadata) -> Self {
-        self.metadata = Some(metadata.clone());
-
-        // cmk00k update that replaces any existing metadata (with defaults sometimes)
-
         self
     }
 

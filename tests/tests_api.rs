@@ -1867,3 +1867,25 @@ fn bed_builder_metadata() -> Result<(), BedErrorPlus> {
 
     Ok(())
 }
+
+#[test]
+fn write_options_builder_metadata() -> Result<(), BedErrorPlus> {
+    let output_folder = tmp_path()?;
+
+    let output_file = output_folder.join("small_m.bed");
+    let metadata = Metadata::builder()
+        .iid(["i1", "i2", "i3"])
+        .sid(["s1", "s2", "s3", "s4"])
+        .build()?;
+    let write_options = WriteOptions::builder(output_file)
+        .f32()
+        .fid(["f1", "f2", "f3"])
+        .iid(["x1", "x2", "x3"])
+        .metadata(&metadata)
+        .build(3, 4)?;
+    println!("{0:?}", write_options.fid()); // Outputs ndarray ["f1", "f2", "f3"]
+    println!("{0:?}", write_options.iid()); // Outputs ndarray ["i1", "i2", "i3"]
+    println!("{0:?}", write_options.sid()); // Outputs ndarray ["s1", "s2", "s3", "s4"]
+    println!("{0:?}", write_options.chromosome()); // Outputs ndarray ["0", "0", "0", "0"]
+    Ok(())
+}
