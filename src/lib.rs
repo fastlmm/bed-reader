@@ -1361,31 +1361,30 @@ fn file_aat_piece<T: Float + Sync + Send + AddAssign, P: AsRef<Path>>(
 
 /// Represents the metadata from PLINK .fam and .bim files.
 ///
-/// cmk update docs (this was copied from Bed)
-/// Construct with [`Bed::new`](struct.Bed.html#method.new) or [`Bed::builder`](struct.Bed.html#method.builder).
+/// Construct with [`Metadata::builder`](struct.Metadata.html#method.builder) or [`Metadata::new`](struct.Metadata.html#method.new).
 ///
 /// # Example
 ///
-/// Open a file for reading. Then, read the individual (sample) ids
-/// and all the genotype data.
+/// Extract metadata from a file.
+/// Create a random file with the same metadata.
 /// ```
 /// use ndarray as nd;
-/// use bed_reader::{Bed, ReadOptions};
-/// use bed_reader::assert_eq_nan;
+/// use bed_reader::{Bed, WriteOptions, tmp_path};
+/// use ndarray_rand::{rand::prelude::StdRng, rand::SeedableRng, rand_distr::Uniform, RandomExt};
 ///
-/// let file_name = "bed_reader/tests/data/small.bed";
-/// let mut bed = Bed::new(file_name)?;
-/// println!("{:?}", bed.iid()?); // Outputs ndarray ["iid1", "iid2", "iid3"]
-/// let val = ReadOptions::builder().f64().read(&mut bed)?;
+/// let mut bed = Bed::new("bed_reader/tests/data/small.bed")?;
+/// let metadata = bed.metadata()?;
+/// let shape = bed.dim()?;
 ///
-/// assert_eq_nan(
-///     &val,
-///     &nd::array![
-///         [1.0, 0.0, f64::NAN, 0.0],
-///         [2.0, 0.0, f64::NAN, 2.0],
-///         [0.0, 1.0, 2.0, 0.0]
-///     ],
-/// );
+/// let mut rng = StdRng::seed_from_u64(0);
+/// let val = nd::Array::random_using(shape, Uniform::from(-1..3), &mut rng);
+///
+/// let temp_out = tmp_path()?;
+/// let output_file = temp_out.join("random.bed");
+/// WriteOptions::builder(output_file)
+///     .metadata(&metadata)
+///     .missing_value(-1)
+///     .write(&val)?;
 /// # use bed_reader::BedErrorPlus;
 /// # Ok::<(), BedErrorPlus>(())
 /// ```
@@ -1546,6 +1545,9 @@ impl BedBuilder {
         }
     }
 
+    /// Create [`Bed`](struct.Bed.html) from the builder.
+    ///
+    /// > See [`Bed::builder`](struct.Bed.html#method.builder) for more details and examples.
     pub fn build(&self) -> Result<Bed, BedErrorPlus> {
         let mut bed = self.build_no_file_check()?;
 
@@ -1807,15 +1809,16 @@ impl BedBuilder {
         self
     }
 
-    /// Merge metadata from a metadata struct.
+    /// Override the metadata in the .fam and .bim files with info merged in from a metadata struct.
     ///
     /// # Example
     ///
     /// In the example, we create a metadata struct with iid
-    /// and sid arrays. Next, we use BedBuilder to set an fid array
+    /// and sid arrays. Next, we use BedBuilder to override the fid array
     /// and an iid array. Then, we add the metadata to the BedBuilder,
-    /// overwriting iid and setting sid. Finally, we print these
-    /// three arrays and chromosome. Chromosome is read from a file.
+    /// overwriting iid (again) and overriding sid. Finally, we print these
+    /// three arrays and chromosome. Chromosome was never overridden so
+    /// it is read from the *.bim file.
     ///```
     /// use ndarray as nd;
     /// use bed_reader::{Bed, Metadata};
@@ -2282,13 +2285,13 @@ impl Bed {
             num_threads,
         )?;
 
-        if let Err(e) = write_options.metadata.fam_write(write_options.fam_path()) {
+        if let Err(e) = write_options.metadata.write_fam(write_options.fam_path()) {
             // Clean up the file
             let _ = fs::remove_file(&write_options.fam_path);
             return Err(e);
         }
 
-        if let Err(e) = write_options.metadata.bim_write(write_options.bim_path()) {
+        if let Err(e) = write_options.metadata.write_bim(write_options.bim_path()) {
             // Clean up the file
             let _ = fs::remove_file(&write_options.bim_path);
             return Err(e);
@@ -5479,17 +5482,71 @@ impl MetadataBuilder {
     }
 }
 impl Metadata {
+    /// Create a Metadata struct using a builder.
+    ///
+    /// # Example
+    /// Create metadata.
+    /// Create a random file with the metadata.
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Metadata, WriteOptions, tmp_path};
+    /// use ndarray_rand::{rand::prelude::StdRng, rand::SeedableRng, rand_distr::Uniform, RandomExt};
+    ///
+    /// let metadata = Metadata::builder()
+    ///     .iid(["i1", "i2", "i3"])
+    ///     .sid(["s1", "s2", "s3", "s4"])
+    ///     .build()?;
+    /// let mut rng = StdRng::seed_from_u64(0);
+    /// let val = nd::Array::random_using((3, 4), Uniform::from(-1..3), &mut rng);
+
+    /// let temp_out = tmp_path()?;
+    /// let output_file = temp_out.join("random.bed");
+    /// WriteOptions::builder(output_file)
+    ///     .metadata(&metadata)
+    ///     .missing_value(-1)
+    ///     .write(&val)?;
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
     pub fn builder() -> MetadataBuilder {
         MetadataBuilder::default()
     }
 
+    /// Create an empty Metadata struct.
+    ///
+    /// > See [`Metadata::builder()`](struct.Metadata.html#method.builder)
     pub fn new() -> Metadata {
         Metadata::builder().build().unwrap()
     }
 
-    pub fn read_fam(
+    /// Create a new Metadata struct by filling in empty fields with a .fam file.
+    ///
+    /// # Example
+    ///
+    /// Read .fam and .bim information into a Metadata struct.
+    /// Do not skip any fields.
+    /// ```
+    /// use ndarray as nd;
+    /// use std::collections::HashSet;
+    /// use bed_reader::{Metadata, MetadataFields};
+    ///
+    /// let skip_set = HashSet::<MetadataFields>::new();
+    /// let metadata_empty = Metadata::new();
+    /// let (metadata_fam, iid_count) =
+    ///     metadata_empty.read_fam("bed_reader/tests/data/small.fam", &skip_set)?;
+    /// let (metadata_bim, sid_count) =
+    ///     metadata_fam.read_bim("bed_reader/tests/data/small.bim", &skip_set)?;
+    /// assert_eq!(iid_count, 3);
+    /// assert_eq!(sid_count, 4);
+    /// println!("{0:?}", metadata_bim.iid()); // Outputs optional ndarray Some(["iid1", "iid2", "iid3"]...)
+    /// println!("{0:?}", metadata_bim.sid()); // Outputs optional ndarray Some(["sid1", "sid2", "sid3", "sid4"]...)
+    /// println!("{0:?}", metadata_bim.chromosome()); // Outputs optional ndarray Some(["1", "1", "5", "Y"]...)
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
+    pub fn read_fam<P: AsRef<Path>>(
         &self,
-        path: &Path,
+        path: P,
         skip_set: &HashSet<MetadataFields>,
     ) -> Result<(Metadata, usize), BedErrorPlus> {
         let mut field_vec: Vec<usize> = Vec::new();
@@ -5513,7 +5570,7 @@ impl Metadata {
             field_vec.push(5);
         }
 
-        let (mut vec_of_vec, count) = self.read_fam_or_bim(&field_vec, &path)?;
+        let (mut vec_of_vec, count) = self.read_fam_or_bim(&field_vec, path)?;
 
         let mut clone = self.clone();
 
@@ -5545,9 +5602,34 @@ impl Metadata {
         Ok((clone, count))
     }
 
-    pub fn read_bim(
+    /// Create a new Metadata struct by filling in empty fields with a .bim file.
+    ///
+    /// # Example
+    ///
+    /// Read .fam and .bim information into a Metadata struct.
+    /// Do not skip any fields.
+    /// ```
+    /// use ndarray as nd;
+    /// use std::collections::HashSet;
+    /// use bed_reader::{Metadata, MetadataFields};
+    ///
+    /// let skip_set = HashSet::<MetadataFields>::new();
+    /// let metadata_empty = Metadata::new();
+    /// let (metadata_fam, iid_count) =
+    ///     metadata_empty.read_fam("bed_reader/tests/data/small.fam", &skip_set)?;
+    /// let (metadata_bim, sid_count) =
+    ///     metadata_fam.read_bim("bed_reader/tests/data/small.bim", &skip_set)?;
+    /// assert_eq!(iid_count, 3);
+    /// assert_eq!(sid_count, 4);
+    /// println!("{0:?}", metadata_bim.iid()); // Outputs optional ndarray Some(["iid1", "iid2", "iid3"]...)
+    /// println!("{0:?}", metadata_bim.sid()); // Outputs optional ndarray Some(["sid1", "sid2", "sid3", "sid4"]...)
+    /// println!("{0:?}", metadata_bim.chromosome()); // Outputs optional ndarray Some(["1", "1", "5", "Y"]...)
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
+    pub fn read_bim<P: AsRef<Path>>(
         &self,
-        path: &Path,
+        path: P,
         skip_set: &HashSet<MetadataFields>,
     ) -> Result<(Metadata, usize), BedErrorPlus> {
         let mut field_vec: Vec<usize> = Vec::new();
@@ -5572,7 +5654,7 @@ impl Metadata {
         }
 
         let mut clone = self.clone();
-        let (mut vec_of_vec, count) = self.read_fam_or_bim(&field_vec, &path)?;
+        let (mut vec_of_vec, count) = self.read_fam_or_bim(&field_vec, path)?;
 
         // unwraps are safe because we pop once for every push
         if clone.allele_2.is_none() && !skip_set.contains(&MetadataFields::Allele2) {
@@ -5608,10 +5690,10 @@ impl Metadata {
         Ok((clone, count))
     }
 
-    fn read_fam_or_bim(
+    fn read_fam_or_bim<P: AsRef<Path>>(
         &self,
         field_vec: &Vec<usize>,
-        path: &Path,
+        path: P,
     ) -> Result<(Vec<Vec<String>>, usize), BedErrorPlus> {
         let mut vec_of_vec = vec![vec![]; field_vec.len()];
 
@@ -5634,12 +5716,8 @@ impl Metadata {
                 field_count += 1;
             }
             if field_count != 6 {
-                return Err(BedError::MetadataFieldCount(
-                    6,
-                    field_count,
-                    path.to_str().unwrap().to_string(),
-                )
-                .into());
+                let s = path.as_ref().to_string_lossy().to_string();
+                return Err(BedError::MetadataFieldCount(6, field_count, s).into());
             }
         }
 
@@ -5663,7 +5741,33 @@ impl Metadata {
             && self.allele_2.is_some()
     }
 
-    pub fn fam_write<P: AsRef<Path>>(&self, path: P) -> Result<(), BedErrorPlus> {
+    /// Write the metadata related to individuals/samples to a .fam file.
+    ///
+    /// If any of the .fam metadata is not present, the function will return an error.
+    ///
+    /// # Example
+    ///
+    /// Create metadata with iid and sid arrays, then fill in the other
+    /// fields with default arrays, finally write the .fam information
+    /// to a file.
+    ///```
+    /// use ndarray as nd;
+    /// use std::collections::HashSet;
+    /// use bed_reader::{Metadata, tmp_path};
+    ///
+    /// let metadata0 = Metadata::builder()
+    ///     .iid(["i1", "i2", "i3"])
+    ///     .sid(["s1", "s2", "s3", "s4"])
+    ///     .build()?;
+    /// let metadata_filled = metadata0.fill(3, 4)?;
+
+    /// let temp_out = tmp_path()?;
+    /// let output_file = temp_out.join("no_bed.fam");
+    /// metadata_filled.write_fam(output_file)?;
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
+    pub fn write_fam<P: AsRef<Path>>(&self, path: P) -> Result<(), BedErrorPlus> {
         let file = File::create(path)?;
         let mut writer = BufWriter::new(file);
         let mut result: Result<(), BedErrorPlus> = Ok(());
@@ -5695,7 +5799,33 @@ impl Metadata {
         Ok(())
     }
 
-    pub fn bim_write<P: AsRef<Path>>(&self, path: P) -> Result<(), BedErrorPlus> {
+    /// Write the metadata related to SNPs/variants to a .bim file.
+    ///
+    /// If any of the .bim metadata is not present, the function will return an error.
+    ///
+    /// # Example
+    ///
+    /// Create metadata with iid and sid arrays, then fill in the other
+    /// fields with default arrays, finally write the .bim information
+    /// to a file.
+    ///```
+    /// use ndarray as nd;
+    /// use std::collections::HashSet;
+    /// use bed_reader::{Metadata, tmp_path};
+    ///
+    /// let metadata0 = Metadata::builder()
+    ///     .iid(["i1", "i2", "i3"])
+    ///     .sid(["s1", "s2", "s3", "s4"])
+    ///     .build()?;
+    /// let metadata_filled = metadata0.fill(3, 4)?;
+
+    /// let temp_out = tmp_path()?;
+    /// let output_file = temp_out.join("no_bed.bim");
+    /// metadata_filled.write_bim(output_file)?;
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
+    pub fn write_bim<P: AsRef<Path>>(&self, path: P) -> Result<(), BedErrorPlus> {
         let file = File::create(path)?;
         let mut writer = BufWriter::new(file);
         let mut result: Result<(), BedErrorPlus> = Ok(());
@@ -5728,6 +5858,26 @@ impl Metadata {
         Ok(())
     }
 
+    /// Create a new Metadata struct by filling in empty fields with default values.
+    ///
+    /// # Example
+    /// ```
+    /// use ndarray as nd;
+    /// use std::collections::HashSet;
+    /// use bed_reader::{Metadata, MetadataFields};
+    ///
+    /// let metadata0 = Metadata::builder()
+    ///     .iid(["i1", "i2", "i3"])
+    ///     .sid(["s1", "s2", "s3", "s4"])
+    ///     .build()?;
+    /// let metadata_filled = metadata0.fill(3, 4)?;
+    ///
+    /// println!("{0:?}", metadata_filled.iid()); // Outputs optional ndarray Some(["i1", "i2", "i3"]...)
+    /// println!("{0:?}", metadata_filled.sid()); // Outputs optional ndarray Some(["s1", "s2", "s3", "s4"]...)
+    /// println!("{0:?}", metadata_filled.chromosome()); // Outputs optional ndarray Some(["0", "0", "0", "0"]...)
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
     pub fn fill(&self, iid_count: usize, sid_count: usize) -> Result<Metadata, BedErrorPlus> {
         let mut metadata = self.clone();
 

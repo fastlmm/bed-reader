@@ -12,6 +12,7 @@ use bed_reader::BedError;
 use bed_reader::BedErrorPlus;
 #[cfg(test)]
 use bed_reader::Metadata;
+use bed_reader::MetadataFields;
 #[cfg(test)]
 use bed_reader::ReadOptions;
 #[cfg(test)]
@@ -23,9 +24,7 @@ use ndarray as nd;
 #[cfg(test)]
 use ndarray::s;
 #[cfg(test)]
-use ndarray_rand::rand_distr::Uniform;
-#[cfg(test)]
-use ndarray_rand::RandomExt;
+use ndarray_rand::{rand::prelude::StdRng, rand::SeedableRng, rand_distr::Uniform, RandomExt};
 
 #[test]
 fn rusty_bed1() -> Result<(), BedErrorPlus> {
@@ -1572,22 +1571,18 @@ fn write_options_metadata() -> Result<(), BedErrorPlus> {
 
 #[test]
 fn metadata_use() -> Result<(), BedErrorPlus> {
-    // Extract metadata from a file
-    // create a random file with the same metadata
+    // Extract metadata from a file.
+    // Create a random file with the same metadata.
 
-    let file_name = "bed_reader/tests/data/small.bed";
-    let mut bed = Bed::new(file_name)?;
+    let mut bed = Bed::new("bed_reader/tests/data/small.bed")?;
     let metadata = bed.metadata()?;
-    let shape = bed.dim()?; // cmk00 why does this fail if we swap with the next line?
+    let shape = bed.dim()?;
+
+    let mut rng = StdRng::seed_from_u64(0);
+    let val = nd::Array::random_using(shape, Uniform::from(-1..3), &mut rng);
 
     let temp_out = tmp_path()?;
     let output_file = temp_out.join("random.bed");
-
-    // !!!cmk00r needs seed
-    let val = nd::Array::random(shape, Uniform::from(-1..3));
-
-    println!("{val:?}");
-
     WriteOptions::builder(output_file)
         .metadata(&metadata)
         .missing_value(-1)
@@ -1905,6 +1900,74 @@ fn metadata_builder_metadata() -> Result<(), BedErrorPlus> {
     println!("{0:?}", metadata2.iid()); // Outputs optional ndarray Some(["i1", "i2", "i3"]...)
     println!("{0:?}", metadata2.sid()); // Outputs optional ndarray Some(["s1", "s2", "s3", "s4"]...)
     println!("{0:?}", metadata2.chromosome()); // Outputs None
+
+    Ok(())
+}
+#[test]
+fn metadata_builder() -> Result<(), BedErrorPlus> {
+    let metadata = Metadata::builder()
+        .iid(["i1", "i2", "i3"])
+        .sid(["s1", "s2", "s3", "s4"])
+        .build()?;
+    let mut rng = StdRng::seed_from_u64(0);
+    let val = nd::Array::random_using((3, 4), Uniform::from(-1..3), &mut rng);
+
+    let temp_out = tmp_path()?;
+    let output_file = temp_out.join("random.bed");
+    WriteOptions::builder(output_file)
+        .metadata(&metadata)
+        .missing_value(-1)
+        .write(&val)?;
+
+    Ok(())
+}
+
+#[test]
+fn metadata_read_fam_bim() -> Result<(), BedErrorPlus> {
+    let skip_set = HashSet::<MetadataFields>::new();
+    let metadata_empty = Metadata::new();
+    let (metadata_fam, iid_count) =
+        metadata_empty.read_fam("bed_reader/tests/data/small.fam", &skip_set)?;
+    let (metadata_bim, sid_count) =
+        metadata_fam.read_bim("bed_reader/tests/data/small.bim", &skip_set)?;
+    assert_eq!(iid_count, 3);
+    assert_eq!(sid_count, 4);
+    println!("{0:?}", metadata_bim.iid()); // Outputs optional ndarray Some(["iid1", "iid2", "iid3"]...)
+    println!("{0:?}", metadata_bim.sid()); // Outputs optional ndarray Some(["sid1", "sid2", "sid3", "sid4"]...)
+    println!("{0:?}", metadata_bim.chromosome()); // Outputs optional ndarray Some(["1", "1", "5", "Y"]...)
+
+    Ok(())
+}
+
+#[test]
+fn metadata_fill() -> Result<(), BedErrorPlus> {
+    let metadata0 = Metadata::builder()
+        .iid(["i1", "i2", "i3"])
+        .sid(["s1", "s2", "s3", "s4"])
+        .build()?;
+    let metadata_filled = metadata0.fill(3, 4)?;
+    println!("{0:?}", metadata_filled.iid()); // Outputs optional ndarray Some(["i1", "i2", "i3"]...)
+    println!("{0:?}", metadata_filled.sid()); // Outputs optional ndarray Some(["s1", "s2", "s3", "s4"]...)
+    println!("{0:?}", metadata_filled.chromosome()); // Outputs optional ndarray Some(["0", "0", "0", "0"]...)
+
+    Ok(())
+}
+
+#[test]
+fn metadata_fam_bim_write() -> Result<(), BedErrorPlus> {
+    let metadata0 = Metadata::builder()
+        .iid(["i1", "i2", "i3"])
+        .sid(["s1", "s2", "s3", "s4"])
+        .build()?;
+    let metadata_filled = metadata0.fill(3, 4)?;
+
+    let temp_out = tmp_path()?;
+    let output_file = temp_out.join("no_bed.fam");
+    metadata_filled.write_fam(output_file)?;
+
+    let temp_out = tmp_path()?;
+    let output_file = temp_out.join("no_bed.bim");
+    metadata_filled.write_bim(output_file)?;
 
     Ok(())
 }
