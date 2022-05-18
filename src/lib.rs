@@ -1738,7 +1738,7 @@ impl BedBuilder {
         self
     }
 
-    /// Set the number of individuals in the data.
+    /// Set the number of individuals (samples) in the data.
     ///
     /// By default, if this number is needed, it will be found
     /// and remembered
@@ -2612,11 +2612,11 @@ impl Bed {
         Ok(self.metadata.allele_2.as_ref().unwrap())
     }
 
-    /// Metadata for this dataset, for example, the individual/sample Ids.
+    /// [`Metadata`](struct.Metadata.html) for this dataset, for example, the individual (sample) Ids.
     ///
     /// This returns a struct with 12 fields. Each field is a ndarray.
     /// The struct will always be new, but the 12 ndarrays will be
-    /// shared with the Bed struct.
+    /// shared with this [`Bed`](struct.Bed.html).
     ///
     /// If the needed, the metadata will be read from the .fam and/or .bim files.
     /// ```
@@ -2721,8 +2721,8 @@ impl Bed {
     /// > Also see [`ReadOptionsBuilder::read_and_fill`](struct.ReadOptionsBuilder.html#method.read_and_fill).
     ///
     /// Note that options [`ReadOptions::f`](struct.ReadOptions.html#method.f),
-    /// [`ReadOptions::c`](struct.ReadOptions.html#method.c), and [`is_f`](struct.ReadOptionsBuilder.html#method.is_f)
-    /// are ignored. Instead, order of the preallocated array is used.
+    /// [`ReadOptions::c`](struct.ReadOptions.html#method.c), and [`ReadOptions::is_f`](struct.ReadOptionsBuilder.html#method.is_f)
+    /// are ignored. Instead, the order of the preallocated array is used.
     ///
     /// # Errors
     /// See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
@@ -2924,10 +2924,10 @@ impl Bed {
         WriteOptions::builder(path).write(val)
     }
 
-    /// Given an 2D array of genotype data and a `WriteOptions`, write to a .bed file.
+    /// Given an 2D array of genotype data and a [`WriteOptions`](struct.WriteOptionsBuilder.html), write to a .bed file.
     ///
     /// > Also see [`WriteOptionsBuilder::write`](struct.WriteOptionsBuilder.html#method.write), which creates
-    /// > a `WriteOptions` and writes to file in one step.
+    /// > a [`WriteOptions`](struct.WriteOptionsBuilder.html) and writes to file in one step.
     ///
     /// # Example
     /// ```
@@ -4321,7 +4321,7 @@ impl<TVal: BedVal> ReadOptions<TVal> {
 }
 
 impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
-    /// > See [`ReadOptions::builder`](struct.ReadOptions.html#method.builder)
+    /// > See [`ReadOptions::builder`](struct.ReadOptions.html#method.builder) for details and examples.
     pub fn read(&self, bed: &mut Bed) -> Result<nd::Array2<TVal>, BedErrorPlus> {
         let read_options = self.build()?;
         bed.read_with_options(&read_options)
@@ -4333,8 +4333,8 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     /// > [`Bed::read_and_fill_with_options`](struct.Bed.html#method.read_and_fill_with_options).
     ///
     /// Note that options [`ReadOptions::f`](struct.ReadOptions.html#method.f),
-    /// [`ReadOptions::c`](struct.ReadOptions.html#method.c), and [`is_f`](struct.ReadOptionsBuilder.html#method.is_f)
-    /// are ignored. Instead, order of the preallocated array is used.
+    /// [`ReadOptions::c`](struct.ReadOptions.html#method.c), and [`ReadOptions::is_f`](struct.ReadOptionsBuilder.html#method.is_f)
+    /// are ignored. Instead, the order of the preallocated array is used.
     ///
     /// # Errors
     /// See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
@@ -4680,67 +4680,6 @@ impl<TVal> WriteOptions<TVal>
 where
     TVal: BedVal,
 {
-    // !!!cmk test and doc these
-    pub fn path(&self) -> &PathBuf {
-        &self.path
-    }
-
-    pub fn fam_path(&self) -> &PathBuf {
-        &self.fam_path
-    }
-
-    pub fn bim_path(&self) -> &PathBuf {
-        &self.bim_path
-    }
-
-    pub fn fid(&self) -> &nd::Array1<String> {
-        &self.metadata.fid.as_ref().unwrap()
-    }
-
-    pub fn iid(&self) -> &nd::Array1<String> {
-        &self.metadata.iid.as_ref().unwrap()
-    }
-
-    pub fn father(&self) -> &nd::Array1<String> {
-        &self.metadata.father.as_ref().unwrap()
-    }
-
-    pub fn mother(&self) -> &nd::Array1<String> {
-        &self.metadata.mother.as_ref().unwrap()
-    }
-
-    pub fn sex(&self) -> &nd::Array1<i32> {
-        &self.metadata.sex.as_ref().unwrap()
-    }
-
-    pub fn pheno(&self) -> &nd::Array1<String> {
-        &self.metadata.pheno.as_ref().unwrap()
-    }
-
-    pub fn chromosome(&self) -> &nd::Array1<String> {
-        &self.metadata.chromosome.as_ref().unwrap()
-    }
-
-    pub fn sid(&self) -> &nd::Array1<String> {
-        &self.metadata.sid.as_ref().unwrap()
-    }
-
-    pub fn cm_position(&self) -> &nd::Array1<f32> {
-        &self.metadata.cm_position.as_ref().unwrap()
-    }
-
-    pub fn bp_position(&self) -> &nd::Array1<i32> {
-        &self.metadata.bp_position.as_ref().unwrap()
-    }
-
-    pub fn allele_1(&self) -> &nd::Array1<String> {
-        &self.metadata.allele_1.as_ref().unwrap()
-    }
-
-    pub fn allele_2(&self) -> &nd::Array1<String> {
-        &self.metadata.allele_2.as_ref().unwrap()
-    }
-
     /// Write values to a file in PLINK .bed format. Supports metadata and options.
     ///
     /// > Also see [`Bed::write`](struct.Bed.html#method.write), which does not support metadata or options.
@@ -4808,21 +4747,455 @@ where
         WriteOptionsBuilder::new(path)
     }
 
+    /// Path to .bed file.
+    ///
+    /// # Example
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, WriteOptions, tmp_path};
+    /// let output_folder = tmp_path()?;
+    /// let output_file = output_folder.join("small.bed");
+    /// let write_options = WriteOptions::builder(output_file)
+    ///     .f64()
+    ///     .iid(["i1", "i2", "i3"])
+    ///     .sid(["s1", "s2", "s3", "s4"])
+    ///     .build(3, 4)?;
+    ///
+    /// println!("{0:?}", write_options.path()); // Outputs "...small.bed"
+    /// println!("{0:?}", write_options.fam_path()); // Outputs "...small.fam"
+    /// println!("{0:?}", write_options.bim_path()); // Outputs "...small.bim"
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
+    pub fn path(&self) -> &PathBuf {
+        &self.path
+    }
+
+    /// Path to .fam file.
+    ///
+    /// # Example
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, WriteOptions, tmp_path};
+    /// let output_folder = tmp_path()?;
+    /// let output_file = output_folder.join("small.bed");
+    /// let write_options = WriteOptions::builder(output_file)
+    ///     .f64()
+    ///     .iid(["i1", "i2", "i3"])
+    ///     .sid(["s1", "s2", "s3", "s4"])
+    ///     .build(3, 4)?;
+    ///
+    /// println!("{0:?}", write_options.path()); // Outputs "...small.bed"
+    /// println!("{0:?}", write_options.fam_path()); // Outputs "...small.fam"
+    /// println!("{0:?}", write_options.bim_path()); // Outputs "...small.bim"
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
+    pub fn fam_path(&self) -> &PathBuf {
+        &self.fam_path
+    }
+
+    /// Path to .bim file.
+    ///
+    /// # Example
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, WriteOptions, tmp_path};
+    /// let output_folder = tmp_path()?;
+    /// let output_file = output_folder.join("small.bed");
+    /// let write_options = WriteOptions::builder(output_file)
+    ///     .f64()
+    ///     .iid(["i1", "i2", "i3"])
+    ///     .sid(["s1", "s2", "s3", "s4"])
+    ///     .build(3, 4)?;
+    ///
+    /// println!("{0:?}", write_options.path()); // Outputs "...small.bed"
+    /// println!("{0:?}", write_options.fam_path()); // Outputs "...small.fam"
+    /// println!("{0:?}", write_options.bim_path()); // Outputs "...small.bim"
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
+    pub fn bim_path(&self) -> &PathBuf {
+        &self.bim_path
+    }
+
+    /// Family id of each of individual (sample). Defaults to "0"'s
+    ///
+    /// # Example
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, WriteOptions, tmp_path};
+    /// let output_folder = tmp_path()?;
+    /// let output_file = output_folder.join("small.bed");
+    /// let write_options = WriteOptions::builder(output_file)
+    ///     .f64()
+    ///     .iid(["i1", "i2", "i3"])
+    ///     .sid(["s1", "s2", "s3", "s4"])
+    ///     .build(3, 4)?;
+    ///
+    /// println!("{0:?}", write_options.fid()); // Outputs ndarray ["0", "0", "0"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
+    pub fn fid(&self) -> &nd::Array1<String> {
+        &self.metadata.fid.as_ref().unwrap()
+    }
+
+    /// Individual id of each of individual (sample). Defaults to "iid1", "iid2" ...
+    ///
+    /// # Example
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, WriteOptions, tmp_path};
+    /// let output_folder = tmp_path()?;
+    /// let output_file = output_folder.join("small.bed");
+    /// let write_options = WriteOptions::builder(output_file)
+    ///     .f64()
+    ///     .iid(["i1", "i2", "i3"])
+    ///     .sid(["s1", "s2", "s3", "s4"])
+    ///     .build(3, 4)?;
+    ///
+    /// println!("{0:?}", write_options.iid()); // Outputs ndarray ["i1", "i2", "i3"]
+    ///
+    /// let val = nd::array![
+    ///     [1.0, 0.0, f64::NAN, 0.0],
+    ///     [2.0, 0.0, f64::NAN, 2.0],
+    ///     [0.0, 1.0, 2.0, 0.0]
+    /// ];
+    /// Bed::write_with_options(&val, &write_options)?;
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
+    pub fn iid(&self) -> &nd::Array1<String> {
+        &self.metadata.iid.as_ref().unwrap()
+    }
+
+    ///  Father id of each of individual (sample). Defaults to "0"'s
+    ///
+    /// # Example
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, WriteOptions, tmp_path};
+    /// let output_folder = tmp_path()?;
+    /// let output_file = output_folder.join("small.bed");
+    /// let write_options = WriteOptions::builder(output_file)
+    ///     .f64()
+    ///     .iid(["i1", "i2", "i3"])
+    ///     .sid(["s1", "s2", "s3", "s4"])
+    ///     .build(3, 4)?;
+    ///
+    /// println!("{0:?}", write_options.father()); // Outputs ndarray ["0", "0", "0"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
+    pub fn father(&self) -> &nd::Array1<String> {
+        &self.metadata.father.as_ref().unwrap()
+    }
+
+    ///  Mother id of each of individual (sample). Defaults to "0"'s
+    ///
+    /// # Example
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, WriteOptions, tmp_path};
+    /// let output_folder = tmp_path()?;
+    /// let output_file = output_folder.join("small.bed");
+    /// let write_options = WriteOptions::builder(output_file)
+    ///     .f64()
+    ///     .iid(["i1", "i2", "i3"])
+    ///     .sid(["s1", "s2", "s3", "s4"])
+    ///     .build(3, 4)?;
+    ///
+    /// println!("{0:?}", write_options.mother()); // Outputs ndarray ["0", "0", "0"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
+    pub fn mother(&self) -> &nd::Array1<String> {
+        &self.metadata.mother.as_ref().unwrap()
+    }
+
+    ///  Sex of each of individual (sample). Defaults to 0's
+    ///
+    /// 0 is unknown, 1 is male, 2 is female
+    ///
+    /// # Example
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, WriteOptions, tmp_path};
+    /// let output_folder = tmp_path()?;
+    /// let output_file = output_folder.join("small.bed");
+    /// let write_options = WriteOptions::builder(output_file)
+    ///     .f64()
+    ///     .iid(["i1", "i2", "i3"])
+    ///     .sid(["s1", "s2", "s3", "s4"])
+    ///     .build(3, 4)?;
+    ///
+    /// println!("{0:?}", write_options.sex()); // Outputs ndarray [0, 0, 0]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
+    pub fn sex(&self) -> &nd::Array1<i32> {
+        &self.metadata.sex.as_ref().unwrap()
+    }
+
+    ///  Phenotype of each of individual (sample). Seldom used. Defaults to 0's
+    ///
+    /// # Example
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, WriteOptions, tmp_path};
+    /// let output_folder = tmp_path()?;
+    /// let output_file = output_folder.join("small.bed");
+    /// let write_options = WriteOptions::builder(output_file)
+    ///     .f64()
+    ///     .iid(["i1", "i2", "i3"])
+    ///     .sid(["s1", "s2", "s3", "s4"])
+    ///     .build(3, 4)?;
+    ///
+    /// println!("{0:?}", write_options.pheno()); // Outputs ndarray ["0", "0", "0"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
+    pub fn pheno(&self) -> &nd::Array1<String> {
+        &self.metadata.pheno.as_ref().unwrap()
+    }
+
+    ///  Chromosome of each of SNP (variant). Defaults to "0"'s
+    ///
+    /// # Example
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, WriteOptions, tmp_path};
+    /// let output_folder = tmp_path()?;
+    /// let output_file = output_folder.join("small.bed");
+    /// let write_options = WriteOptions::builder(output_file)
+    ///     .f64()
+    ///     .iid(["i1", "i2", "i3"])
+    ///     .sid(["s1", "s2", "s3", "s4"])
+    ///     .build(3, 4)?;
+    ///
+    /// println!("{0:?}", write_options.chromosome()); // Outputs ndarray ["0", "0", "0", "0"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
+    pub fn chromosome(&self) -> &nd::Array1<String> {
+        &self.metadata.chromosome.as_ref().unwrap()
+    }
+
+    ///  SNP id of each of SNP (variant). Defaults to "sid1", "sid2", ...
+    ///
+    /// # Example
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, WriteOptions, tmp_path};
+    /// let output_folder = tmp_path()?;
+    /// let output_file = output_folder.join("small.bed");
+    /// let write_options = WriteOptions::builder(output_file)
+    ///     .f64()
+    ///     .iid(["i1", "i2", "i3"])
+    ///     .sid(["s1", "s2", "s3", "s4"])
+    ///     .build(3, 4)?;
+    ///
+    /// println!("{0:?}", write_options.sid()); // Outputs ndarray ["s1", "s2", "s3", "s4"]
+    ///
+    /// let val = nd::array![
+    ///     [1.0, 0.0, f64::NAN, 0.0],
+    ///     [2.0, 0.0, f64::NAN, 2.0],
+    ///     [0.0, 1.0, 2.0, 0.0]
+    /// ];
+    /// Bed::write_with_options(&val, &write_options)?;
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
+    pub fn sid(&self) -> &nd::Array1<String> {
+        &self.metadata.sid.as_ref().unwrap()
+    }
+
+    /// Centimorgan position of each SNP (variant). Defaults to 0.0's.
+    ///
+    /// # Example
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, WriteOptions, tmp_path};
+    /// let output_folder = tmp_path()?;
+    /// let output_file = output_folder.join("small.bed");
+    /// let write_options = WriteOptions::builder(output_file)
+    ///     .f64()
+    ///     .iid(["i1", "i2", "i3"])
+    ///     .sid(["s1", "s2", "s3", "s4"])
+    ///     .build(3, 4)?;
+    ///
+    /// println!("{0:?}", write_options.cm_position()); // Outputs ndarray [0.0, 0.0, 0.0, 0.0]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
+    pub fn cm_position(&self) -> &nd::Array1<f32> {
+        &self.metadata.cm_position.as_ref().unwrap()
+    }
+
+    /// Base-pair position of each SNP (variant). Defaults to 0's.
+    ///
+    /// # Example
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, WriteOptions, tmp_path};
+    /// let output_folder = tmp_path()?;
+    /// let output_file = output_folder.join("small.bed");
+    /// let write_options = WriteOptions::builder(output_file)
+    ///     .f64()
+    ///     .iid(["i1", "i2", "i3"])
+    ///     .sid(["s1", "s2", "s3", "s4"])
+    ///     .build(3, 4)?;
+    ///
+    /// println!("{0:?}", write_options.bp_position()); // Outputs ndarray [0, 0, 0, 0]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
+    pub fn bp_position(&self) -> &nd::Array1<i32> {
+        &self.metadata.bp_position.as_ref().unwrap()
+    }
+
+    /// First allele of each SNP (variant). Defaults to "A1"
+    ///
+    /// # Example
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, WriteOptions, tmp_path};
+    /// let output_folder = tmp_path()?;
+    /// let output_file = output_folder.join("small.bed");
+    /// let write_options = WriteOptions::builder(output_file)
+    ///     .f64()
+    ///     .iid(["i1", "i2", "i3"])
+    ///     .sid(["s1", "s2", "s3", "s4"])
+    ///     .build(3, 4)?;
+    ///
+    /// println!("{0:?}", write_options.allele_1()); // Outputs ndarray ["A1", "A1", "A1", "A1"]
+    /// println!("{0:?}", write_options.allele_2()); // Outputs ndarray ["A2", "A2", "A2", "A2"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
+    pub fn allele_1(&self) -> &nd::Array1<String> {
+        &self.metadata.allele_1.as_ref().unwrap()
+    }
+
+    /// Second allele of each SNP (variant). Defaults to "A2"
+    ///
+    /// # Example
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, WriteOptions, tmp_path};
+    /// let output_folder = tmp_path()?;
+    /// let output_file = output_folder.join("small.bed");
+    /// let write_options = WriteOptions::builder(output_file)
+    ///     .f64()
+    ///     .iid(["i1", "i2", "i3"])
+    ///     .sid(["s1", "s2", "s3", "s4"])
+    ///     .build(3, 4)?;
+    ///
+    /// println!("{0:?}", write_options.allele_1()); // Outputs ndarray ["A1", "A1", "A1", "A1"]
+    /// println!("{0:?}", write_options.allele_2()); // Outputs ndarray ["A2", "A2", "A2", "A2"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
+    pub fn allele_2(&self) -> &nd::Array1<String> {
+        &self.metadata.allele_2.as_ref().unwrap()
+    }
+
+    /// [`Metadata`](struct.Metadata.html) for this [`WriteOptions`](struct.WriteOptions.html), for example, the individual (sample) Ids.
+    ///
+    /// This returns a struct with 12 fields. Each field is a ndarray.
+    /// The struct will always be new, but the 12 ndarrays will be
+    /// shared with this [`WriteOptions`](struct.WriteOptions.html).
+    ///
+    /// If the needed, default values will be used.
+    ///
+    /// # Example
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, WriteOptions, tmp_path};
+    /// let output_folder = tmp_path()?;
+    /// let output_file = output_folder.join("small.bed");
+    /// let write_options = WriteOptions::builder(output_file)
+    ///     .f64()
+    ///     .iid(["i1", "i2", "i3"])
+    ///     .sid(["s1", "s2", "s3", "s4"])
+    ///     .build(3, 4)?;
+    ///
+    /// let metadata = write_options.metadata();
+    /// println!("{0:?}", metadata.iid()); // Outputs optional ndarray Some(["i1", "i2", "i3"])
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
+    pub fn metadata(&self) -> Metadata {
+        self.metadata.clone()
+    }
+
+    /// The number of individuals (samples)
+    ///
+    /// # Example
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, WriteOptions, tmp_path};
+    /// let output_folder = tmp_path()?;
+    /// let output_file = output_folder.join("small.bed");
+    /// let write_options = WriteOptions::builder(output_file)
+    ///     .f64()
+    ///     .iid(["i1", "i2", "i3"])
+    ///     .sid(["s1", "s2", "s3", "s4"])
+    ///     .build(3, 4)?;
+    ///
+    /// assert_eq!(write_options.iid_count(), 3);
+    /// assert_eq!(write_options.sid_count(), 4);
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
     pub fn iid_count(&self) -> usize {
         self.iid().len()
     }
 
+    /// The number of SNPs (variants)
+    ///
+    /// # Example
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, WriteOptions, tmp_path};
+    /// let output_folder = tmp_path()?;
+    /// let output_file = output_folder.join("small.bed");
+    /// let write_options = WriteOptions::builder(output_file)
+    ///     .f64()
+    ///     .iid(["i1", "i2", "i3"])
+    ///     .sid(["s1", "s2", "s3", "s4"])
+    ///     .build(3, 4)?;
+    ///
+    /// assert_eq!(write_options.iid_count(), 3);
+    /// assert_eq!(write_options.sid_count(), 4);
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
     pub fn sid_count(&self) -> usize {
         self.sid().len()
     }
 
-    // !!!cmk 0 understand dim vs shape
+    /// Number of individuals (samples) and SNPs (variants)
+    ///
+    /// # Example
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, WriteOptions, tmp_path};
+    /// let output_folder = tmp_path()?;
+    /// let output_file = output_folder.join("small.bed");
+    /// let write_options = WriteOptions::builder(output_file)
+    ///     .f64()
+    ///     .iid(["i1", "i2", "i3"])
+    ///     .sid(["s1", "s2", "s3", "s4"])
+    ///     .build(3, 4)?;
+    ///
+    /// assert_eq!(write_options.dim(), (3, 4));
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
     pub fn dim(&self) -> (usize, usize) {
         (self.iid_count(), self.sid_count())
-    }
-
-    pub fn metadata(&mut self) -> Metadata {
-        self.metadata.clone()
     }
 }
 impl<TVal> WriteOptionsBuilder<TVal>

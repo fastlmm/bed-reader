@@ -1548,7 +1548,7 @@ fn write_options_metadata() -> Result<(), BedErrorPlus> {
         .build(3, 4)?;
     Bed::write_with_options(&val, &mut write_options)?;
 
-    let mut write_options = WriteOptions::builder(output_file)
+    let write_options = WriteOptions::builder(output_file)
         .fid(["fid1", "fid1", "fid2"])
         .iid(["iid1", "iid2", "iid3"])
         .father(["iid23", "iid23", "iid22"])
@@ -1995,6 +1995,52 @@ fn read_options_properties() -> Result<(), BedErrorPlus> {
     let val = bed.read_with_options(&read_options)?;
 
     assert_eq_nan(&val, &nd::array![[-127, 0, 1], [-127, 2, 2], [2, 0, 0]]);
+
+    Ok(())
+}
+
+#[test]
+fn write_options_properties() -> Result<(), BedErrorPlus> {
+    let output_folder = tmp_path()?;
+    let output_file = output_folder.join("small.bed");
+    let write_options = WriteOptions::builder(output_file)
+        .f64()
+        .iid(["i1", "i2", "i3"])
+        .sid(["s1", "s2", "s3", "s4"])
+        .build(3, 4)?;
+
+    println!("{0:?}", write_options.path()); // Outputs "...small.bed"
+    println!("{0:?}", write_options.fam_path()); // Outputs "...small.fam"
+    println!("{0:?}", write_options.bim_path()); // Outputs "...small.bim"
+
+    println!("{0:?}", write_options.fid()); // Outputs ndarray ["0", "0", "0"]
+    println!("{0:?}", write_options.iid()); // Outputs ndarray ["i1", "i2", "i3"]
+    println!("{0:?}", write_options.father()); // Outputs ndarray ["0", "0", "0"]
+    println!("{0:?}", write_options.mother()); // Outputs ndarray ["0", "0", "0"]
+    println!("{0:?}", write_options.sex()); // Outputs ndarray [0, 0, 0]
+    println!("{0:?}", write_options.pheno()); // Outputs ndarray ["0", "0", "0"]
+
+    println!("{0:?}", write_options.chromosome()); // Outputs ndarray ["0", "0", "0", "0"]
+    println!("{0:?}", write_options.sid()); // Outputs ndarray ["s1", "s2", "s3", "s4"]
+    println!("{0:?}", write_options.cm_position()); // Outputs ndarray [0.0, 0.0, 0.0, 0.0]
+    println!("{0:?}", write_options.bp_position()); // Outputs ndarray [0, 0, 0, 0]
+    println!("{0:?}", write_options.allele_1()); // Outputs ndarray ["A1", "A1", "A1", "A1"]
+    println!("{0:?}", write_options.allele_2()); // Outputs ndarray ["A2", "A2", "A2", "A2"]
+
+    let metadata = write_options.metadata();
+    println!("{0:?}", metadata.iid()); // Outputs optional ndarray Some(["i1", "i2", "i3"])
+
+    assert_eq!(write_options.iid_count(), 3);
+    assert_eq!(write_options.sid_count(), 4);
+    assert_eq!(write_options.dim(), (3, 4));
+
+    let val = nd::array![
+        [1.0, 0.0, f64::NAN, 0.0],
+        [2.0, 0.0, f64::NAN, 2.0],
+        [0.0, 1.0, 2.0, 0.0]
+    ];
+
+    Bed::write_with_options(&val, &write_options)?;
 
     Ok(())
 }
