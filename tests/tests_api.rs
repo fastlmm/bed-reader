@@ -569,7 +569,7 @@ fn read_write() -> Result<(), BedErrorPlus> {
     let val2 = deb.read::<f64>()?;
     let metadata2 = deb.metadata()?;
 
-    // assert np.allclose(val, val2, equal_nan=True)
+    // assert np.allclose(val, val2, equal_nan=true)
     assert!(
         allclose(&val.view(), &val2.view(), 1e-08, true),
         "not close"
@@ -1968,6 +1968,33 @@ fn metadata_fam_bim_write() -> Result<(), BedErrorPlus> {
     let temp_out = tmp_path()?;
     let output_file = temp_out.join("no_bed.bim");
     metadata_filled.write_bim(output_file)?;
+
+    Ok(())
+}
+
+#[test]
+fn metadata_iid_sid() -> Result<(), BedErrorPlus> {
+    let metadata = Metadata::builder().iid(["i1", "i2", "i3"]).build()?;
+    println!("{0:?}", metadata.iid()); // Outputs optional ndarray Some(["i1", "i2", "i3"]...)
+    println!("{0:?}", metadata.sid()); // Outputs None
+    Ok(())
+}
+
+#[test]
+fn read_options_properties() -> Result<(), BedErrorPlus> {
+    let read_options = ReadOptions::builder().sid_index([2, 3, 0]).i8().build()?;
+    assert_eq!(read_options.missing_value(), -127);
+    println!("{0:?}", read_options.iid_index()); // Outputs 'All'
+    println!("{0:?}", read_options.sid_index()); // Outputs 'Vec([2, 3, 0])'
+    assert_eq!(read_options.is_f(), true);
+    assert_eq!(read_options.is_a1_counted(), true);
+    assert_eq!(read_options.num_threads(), None);
+
+    let file_name = "bed_reader/tests/data/small.bed";
+    let mut bed = Bed::new(file_name)?;
+    let val = bed.read_with_options(&read_options)?;
+
+    assert_eq_nan(&val, &nd::array![[-127, 0, 1], [-127, 2, 2], [2, 0, 0]]);
 
     Ok(())
 }
