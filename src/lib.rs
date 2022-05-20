@@ -1556,32 +1556,7 @@ impl BedBuilder {
             open_and_check(&bed.path)?;
         }
 
-        // !!!cmk00 use metadata's version?
-        check_counts(
-            vec![
-                lazy_or_skip_count(&bed.metadata.fid),
-                lazy_or_skip_count(&bed.metadata.iid),
-                lazy_or_skip_count(&bed.metadata.father),
-                lazy_or_skip_count(&bed.metadata.mother),
-                lazy_or_skip_count(&bed.metadata.sex),
-                lazy_or_skip_count(&bed.metadata.pheno),
-            ],
-            &mut bed.iid_count,
-            "iid",
-        )?;
-
-        check_counts(
-            vec![
-                lazy_or_skip_count(&bed.metadata.chromosome),
-                lazy_or_skip_count(&bed.metadata.sid),
-                lazy_or_skip_count(&bed.metadata.cm_position),
-                lazy_or_skip_count(&bed.metadata.bp_position),
-                lazy_or_skip_count(&bed.metadata.allele_1),
-                lazy_or_skip_count(&bed.metadata.allele_2),
-            ],
-            &mut bed.sid_count,
-            "sid",
-        )?;
+        (bed.iid_count, bed.sid_count) = bed.metadata.check_counts(bed.iid_count, bed.sid_count)?;
 
         Ok(bed)
     }
@@ -5314,8 +5289,8 @@ where
     /// # Example:
     /// Write .bed, .fam, and .bim files with non-standard names.
     /// ```
-    /// use bed_reader::WriteOptions;
-    /// use bed_reader::WriteOptions;
+    /// use ndarray as nd;
+    /// use bed_reader::{WriteOptions,tmp_path};
     /// let output_folder = tmp_path()?;
     /// let output_file = output_folder.join("small.deb");
     /// let val = nd::array![[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]];
@@ -5701,34 +5676,7 @@ impl MetadataBuilder {
     pub fn build(&self) -> Result<Metadata, BedErrorPlus> {
         let metadata = self.build_no_file_check()?;
 
-        let mut iid_count = None;
-        let mut sid_count = None;
-
-        check_counts(
-            vec![
-                lazy_or_skip_count(&metadata.fid),
-                lazy_or_skip_count(&metadata.iid),
-                lazy_or_skip_count(&metadata.father),
-                lazy_or_skip_count(&metadata.mother),
-                lazy_or_skip_count(&metadata.sex),
-                lazy_or_skip_count(&metadata.pheno),
-            ],
-            &mut iid_count,
-            "iid",
-        )?;
-
-        check_counts(
-            vec![
-                lazy_or_skip_count(&metadata.chromosome),
-                lazy_or_skip_count(&metadata.sid),
-                lazy_or_skip_count(&metadata.cm_position),
-                lazy_or_skip_count(&metadata.bp_position),
-                lazy_or_skip_count(&metadata.allele_1),
-                lazy_or_skip_count(&metadata.allele_2),
-            ],
-            &mut sid_count,
-            "sid",
-        )?;
+        metadata.check_counts(None, None)?;
 
         Ok(metadata)
     }
@@ -5960,7 +5908,40 @@ impl MetadataBuilder {
         self
     }
 }
+
 impl Metadata {
+    fn check_counts(
+        &self,
+        mut iid_count: Option<usize>,
+        mut sid_count: Option<usize>,
+    ) -> Result<(Option<usize>, Option<usize>), BedErrorPlus> {
+        check_counts(
+            vec![
+                lazy_or_skip_count(&self.fid),
+                lazy_or_skip_count(&self.iid),
+                lazy_or_skip_count(&self.father),
+                lazy_or_skip_count(&self.mother),
+                lazy_or_skip_count(&self.sex),
+                lazy_or_skip_count(&self.pheno),
+            ],
+            &mut iid_count,
+            "iid",
+        )?;
+        check_counts(
+            vec![
+                lazy_or_skip_count(&self.chromosome),
+                lazy_or_skip_count(&self.sid),
+                lazy_or_skip_count(&self.cm_position),
+                lazy_or_skip_count(&self.bp_position),
+                lazy_or_skip_count(&self.allele_1),
+                lazy_or_skip_count(&self.allele_2),
+            ],
+            &mut sid_count,
+            "sid",
+        )?;
+        Ok((iid_count, sid_count))
+    }
+
     /// Create a [`Metadata`](struct.Metadata.html) using a builder.
     ///
     /// # Example
@@ -6194,6 +6175,8 @@ impl Metadata {
             clone.fid = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
         }
 
+        clone.check_counts(Some(count), None)?;
+
         Ok((clone, count))
     }
 
@@ -6281,6 +6264,8 @@ impl Metadata {
         if clone.chromosome.is_none() && !skip_set.contains(&MetadataFields::Chromosome) {
             clone.chromosome = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
         }
+
+        clone.check_counts(None, Some(count))?;
 
         Ok((clone, count))
     }

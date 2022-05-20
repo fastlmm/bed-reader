@@ -725,6 +725,18 @@ fn nd_slice_same() -> Result<(), BedErrorPlus> {
 fn counts_and_files() -> Result<(), BedErrorPlus> {
     let file_name = "bed_reader/tests/data/small.bed";
 
+    // We give the wrong number for iid_count and then expect an error
+    let mut bed = Bed::builder(file_name)
+        .iid(["i1", "i2", "i3", "i4"])
+        .build()?;
+    let iid_count = bed.iid_count()?;
+    assert_eq!(iid_count, 4);
+    let fid_result = bed.fid();
+    match fid_result {
+        Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => {}
+        _ => panic!("should be an error"),
+    }
+
     match Bed::builder(file_name)
         .fid(["f1", "f1", "f1"])
         .iid(["i1", "i2", "i3", "i4"])
@@ -762,17 +774,6 @@ fn counts_and_files() -> Result<(), BedErrorPlus> {
     let mut bed = Bed::builder(file_name).build()?;
     let _ = bed.iid()?;
     let _ = bed.iid_count()?;
-
-    // We give the wrong number for iid_count and then expect an error
-    let mut bed = Bed::builder(file_name)
-        .iid(["i1", "i2", "i3", "i4"])
-        .build()?;
-    assert_eq!(bed.iid_count()?, 4);
-    let fid_result = bed.fid();
-    match fid_result {
-        Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => {}
-        _ => panic!("should be an error"),
-    }
 
     Ok(())
 }
@@ -2119,7 +2120,6 @@ fn bed_inconsistent_count() -> Result<(), BedErrorPlus> {
 }
 
 // WriteOptions, file set iid and fid and metadata and iid_count, and check if error is caught
-// MetadataBuilders
 #[test]
 fn write_options_inconsistent_count() -> Result<(), BedErrorPlus> {
     let temp_out = tmp_path()?;
@@ -2143,6 +2143,59 @@ fn write_options_inconsistent_count() -> Result<(), BedErrorPlus> {
         .i8()
         .metadata(&metadata)
         .build(3, 4);
+    match result {
+        Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => {}
+        _ => panic!("should be an error"),
+    }
+
+    Ok(())
+}
+
+// MetadataBuilders
+#[test]
+fn metadata_inconsistent_count() -> Result<(), BedErrorPlus> {
+    let skip_set = HashSet::<MetadataFields>::new();
+
+    // Metadata: iid vs file
+    let metadata = Metadata::builder().iid(["i1", "i2", "i3", "i4"]).build()?;
+    let result = metadata.read_fam("bed_reader/tests/data/small.fam", &skip_set);
+    match result {
+        Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => {}
+        _ => panic!("should be an error"),
+    }
+
+    // Metadata: fid vs metadata
+    let metadata = Metadata::builder().iid(["f1", "f2", "f3", "f4"]).build()?;
+    let result = Metadata::builder()
+        .fid(["f1", "f2", "f3"])
+        .metadata(&metadata)
+        .build();
+    match result {
+        Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => {}
+        _ => panic!("should be an error"),
+    }
+
+    // Metadata: file vs file:
+    let metadata = Metadata::builder().build()?;
+    let result = metadata.read_fam("bed_reader/tests/data/small.fam_bad", &skip_set);
+    match result {
+        Err(BedErrorPlus::BedError(BedError::MetadataFieldCount(_, _, _))) => {}
+        _ => panic!("should be an error"),
+    }
+
+    // Metadata: fid vs iid
+    let result = Metadata::builder()
+        .fid(["f1", "f2", "f3"])
+        .iid(["i1", "i2", "i3", "i4"])
+        .build();
+    match result {
+        Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => {}
+        _ => panic!("should be an error"),
+    }
+
+    // Metadata: iid vs fill
+    let metadata = Metadata::builder().iid(["i1", "i2", "i3", "i4"]).build()?;
+    let result = metadata.fill(3, 4);
     match result {
         Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => {}
         _ => panic!("should be an error"),
