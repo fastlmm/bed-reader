@@ -2044,3 +2044,24 @@ fn write_options_properties() -> Result<(), BedErrorPlus> {
 
     Ok(())
 }
+
+#[test]
+fn write_options_builder() -> Result<(), BedErrorPlus> {
+    let output_folder = tmp_path()?;
+    let output_file = output_folder.join("small.bed");
+    let val = nd::array![[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]];
+
+    WriteOptions::builder(output_file)
+        .num_threads(1)
+        .write(&val)?;
+
+    let output_folder = tmp_path()?;
+    let output_file = output_folder.join("small.deb");
+    let val = nd::array![[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]];
+
+    WriteOptions::builder(output_file)
+        .fam_path("bed_reader/tests/data/small.maf")
+        .bim_path("bed_reader/tests/data/small.mib")
+        .write(&val)?;
+    Ok(())
+}
