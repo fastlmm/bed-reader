@@ -1,33 +1,9 @@
-// !!!cmk #![error(missing_docs)]
-// !!!cmk00a document WriteOptions  path/fam_path/bim_path
-// !!!cmk00a document WriteOptions  in num_threads says #Example
-// !!!cmk00a document WriteOptions  in missing_value says #Example
-// !!!cmk00a document WriteOptions  fn iid_count, sid_count, sim, metadata
-// !!!cmk00b allow WriteOptions to be modified, but check lengths on every write
-// !!!cmk00a document WriteOptionsBuilder i8/f32/f64
-// !!!cmk00a typo: " writes to file in one step.
-// !!!cmk0a document Bed: read_and_* (3 of them)
-// !!!cmk0a document Bed: fam_path, bim_path
-// !!!cmk0a document BedBuilder:: build
-// !!!cmk0a document WriteOptions:: path, fam_path, bim_path, missing_value
-// !!!cmk0c document WriteOptions: add metadata method
-
-// !!!cmk0 document bed::metadata:
-// !!!cmk 0 document Metadata
-// !!!cmk 0 document RangeAny
-// !!!cmk 0 document RangeNDSlice
-// !!!cmk 0 document ReadOptions
-// !!!cmk 0 document ReadOptionsBuilder
-// !!!cmk 0 document WriteOptions
-// !!!cmk 0 document BedError/Plus/ReadOptionsBuilderError
-// !!!cmk 0 document Index
-// !!!cmk 0 document Skippable
-// !!!cmk 0 document BedVal
-// !!!cmk 0 document Missing
+#![warn(missing_docs)]
 // !!!cmk 0 document three functions
-// !!!cmk 0 doc the also sees: ReadOptions::builder::build lists other options and they list it. all have examples
-// !!!cmk 0 doc BedBuilder Bed
 // !!!cmk later look at all {:?}
+// !!!cmk look at every unwrap
+// !!!cmk run clippy
+// !!!cmk upgrade rust and clippy
 
 // Inspired by C++ version by Chris Widmer and Carl Kadie
 
@@ -264,21 +240,27 @@ const CB_HEADER_USIZE: usize = 3;
 // Based on `<https://nick.groenen.me/posts/rust-error-handling/#the-library-error-type>`
 #[derive(Error, Debug)]
 pub enum BedErrorPlus {
+    #[allow(missing_docs)]
     #[error(transparent)]
     BedError(#[from] BedError),
 
+    #[allow(missing_docs)]
     #[error(transparent)]
     IOError(#[from] std::io::Error),
 
+    #[allow(missing_docs)]
     #[error(transparent)]
     ThreadPoolError(#[from] ThreadPoolBuildError),
 
+    #[allow(missing_docs)]
     #[error(transparent)]
     ParseIntError(#[from] ParseIntError),
 
+    #[allow(missing_docs)]
     #[error(transparent)]
     UninitializedFieldError(#[from] ::derive_builder::UninitializedFieldError),
 
+    #[allow(missing_docs)]
     #[error(transparent)]
     ParseFloatError(#[from] ParseFloatError),
 }
@@ -287,77 +269,101 @@ pub enum BedErrorPlus {
 /// All errors specific to this library.
 #[derive(Error, Debug, Clone)]
 pub enum BedError {
+    #[allow(missing_docs)]
     #[error("Ill-formed BED file. BED file header is incorrect or length is wrong. '{0}'")]
     IllFormed(String),
 
+    #[allow(missing_docs)]
     #[error(
         "Ill-formed BED file. BED file header is incorrect. Expected mode to be 0 or 1. '{0}'"
     )]
     BadMode(String),
 
+    #[allow(missing_docs)]
     #[error("Attempt to write illegal value to BED file. Only 0,1,2,missing allowed. '{0}'")]
     BadValue(String),
 
+    #[allow(missing_docs)]
     #[error("Multithreading resulted in panic(s)")]
     PanickedThread(),
 
+    #[allow(missing_docs)]
     #[error("No individual observed for the SNP.")]
     NoIndividuals,
 
+    #[allow(missing_docs)]
     #[error("Illegal SNP mean.")]
     IllegalSnpMean,
 
+    #[allow(missing_docs)]
     #[error("Index to individual larger than the number of individuals. (Index value {0})")]
     IidIndexTooBig(isize),
 
+    #[allow(missing_docs)]
     #[error("Index to SNP larger than the number of SNPs. (Index value {0})")]
     SidIndexTooBig(isize),
 
+    #[allow(missing_docs)]
     #[error("Length of iid_index ({0}) and sid_index ({1}) must match dimensions of output array ({2},{3}).")]
     IndexMismatch(usize, usize, usize, usize),
 
+    #[allow(missing_docs)]
     #[error("Indexes ({0},{1}) too big for files")]
     IndexesTooBigForFiles(usize, usize),
 
+    #[allow(missing_docs)]
     #[error("Subset: length of iid_index ({0}) and sid_index ({1}) must match dimensions of output array ({2},{3}).")]
     SubsetMismatch(usize, usize, usize, usize),
 
+    #[allow(missing_docs)]
     #[error("Cannot convert beta values to/from float 64")]
     CannotConvertBetaToFromF64,
 
+    #[allow(missing_docs)]
     #[error("Cannot create Beta Dist with given parameters ({0},{1})")]
     CannotCreateBetaDist(f64, f64),
 
+    #[allow(missing_docs)]
     #[error("Cannot use skipped metadata '{0}'")]
     CannotUseSkippedMetadata(String),
 
+    #[allow(missing_docs)]
     #[error("Index starts at {0} but ends at {1}")]
     StartGreaterThanEnd(usize, usize),
 
+    #[allow(missing_docs)]
     #[error("Step of zero not allowed")]
     StepZero,
 
+    #[allow(missing_docs)]
     #[error("Index starts at {0} but count is {1}")]
     StartGreaterThanCount(usize, usize),
 
+    #[allow(missing_docs)]
     #[error("Index ends at {0} but count is {1}")]
     EndGreaterThanCount(usize, usize),
 
+    #[allow(missing_docs)]
     #[error("Adding new axis not allowed")]
     NewAxis,
 
+    #[allow(missing_docs)]
     #[error("Expect 1-D NDArray SliceInfo")]
     NdSliceInfoNot1D,
 
+    #[allow(missing_docs)]
     #[error("Expect {0} fields but find only {1} in '{2}'")]
     MetadataFieldCount(usize, usize, String),
 
+    #[allow(missing_docs)]
     #[error("{0}_count values of {1} and {2} are inconsistent")]
     InconsistentCount(String, usize, usize),
 
+    #[allow(missing_docs)]
     #[error("Expect bool arrays and vectors to be length {0}, not {1}")]
     BoolArrayVectorWrongLength(usize, usize),
 
+    #[allow(missing_docs)]
     #[error("Expect ndarray of shape ({0}, {1}), but found shape ({2}, {3})")]
     InvalidShape(usize, usize, usize, usize),
 }
@@ -457,6 +463,7 @@ impl Max for u64 {
 
 /// A trait alias, used internally, to provide default missing values for i8, f32, f64.
 pub trait Missing {
+    /// The default missing value for a type such as i8, f32, and f64.
     fn missing() -> Self;
 }
 
@@ -634,23 +641,21 @@ fn set_up_two_bits_to_value<TVal: From<i8>>(count_a1: bool, missing_value: TVal)
     let heterozygous_allele = TVal::from(1);
     let homozygous_secondary_allele = TVal::from(2); // Minor Allele
 
-    let from_two_bits_to_value;
     if count_a1 {
-        from_two_bits_to_value = [
+        [
             homozygous_secondary_allele, // look-up 0
             missing_value,               // look-up 1
             heterozygous_allele,         // look-up 2
             homozygous_primary_allele,   // look-up 3
-        ];
+        ]
     } else {
-        from_two_bits_to_value = [
+        [
             homozygous_primary_allele,   // look-up 0
             missing_value,               // look-up 1
             heterozygous_allele,         // look-up 2
             homozygous_secondary_allele, // look-up 3
-        ];
+        ]
     }
-    from_two_bits_to_value
 }
 
 // Thanks to Dawid for his dpc-pariter library that makes this function scale.
@@ -1244,7 +1249,7 @@ fn _file_ata_piece_internal<T: Float + Send + Sync + AddAssign, P: AsRef<Path>>(
             let mut col_save = vec![T::nan(); row_count];
             read_into(&mut buf_reader, &mut col_save)?;
             col_save_list.push(col_save);
-            &col_save_list.last().unwrap() // unwrap is OK here
+            col_save_list.last().unwrap() // unwrap is OK here
         } else {
             read_into(&mut buf_reader, &mut col_reuse)?;
             &col_reuse
@@ -1434,10 +1439,7 @@ pub struct Metadata {
 }
 
 fn lazy_or_skip_count<T>(array: &Option<Rc<nd::Array1<T>>>) -> Option<usize> {
-    match array {
-        Some(array) => Some(array.len()),
-        None => None,
-    }
+    array.as_ref().map(|array| array.len())
 }
 
 // !!!cmk later update these comments:
@@ -1518,17 +1520,29 @@ pub struct Bed {
 /// specified metadata fields.
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Ord, PartialOrd, Hash)]
 pub enum MetadataFields {
+    #[allow(missing_docs)]
     Fid,
+    #[allow(missing_docs)]
     Iid,
+    #[allow(missing_docs)]
     Father,
+    #[allow(missing_docs)]
     Mother,
+    #[allow(missing_docs)]
     Sex,
+    #[allow(missing_docs)]
     Pheno,
+    #[allow(missing_docs)]
     Chromosome,
+    #[allow(missing_docs)]
     Sid,
+    #[allow(missing_docs)]
     CmPosition,
+    #[allow(missing_docs)]
     BpPosition,
+    #[allow(missing_docs)]
     Allele1,
+    #[allow(missing_docs)]
     Allele2,
 }
 
@@ -1988,11 +2002,7 @@ impl BedBuilder {
     }
 }
 
-fn to_metadata_path(
-    bed_path: &PathBuf,
-    metadata_path: &Option<PathBuf>,
-    extension: &str,
-) -> PathBuf {
+fn to_metadata_path(bed_path: &Path, metadata_path: &Option<PathBuf>, extension: &str) -> PathBuf {
     if let Some(metadata_path) = metadata_path {
         metadata_path.clone()
     } else {
@@ -3086,14 +3096,12 @@ impl Hold<'_> {
 fn compute_num_threads(option_num_threads: Option<usize>) -> Result<usize, BedErrorPlus> {
     let num_threads = if let Some(num_threads) = option_num_threads {
         num_threads
+    } else if let Ok(num_threads) = env::var("BED_READER_NUM_THREADS") {
+        num_threads.parse::<usize>()?
+    } else if let Ok(num_threads) = env::var("NUM_THREADS") {
+        num_threads.parse::<usize>()?
     } else {
-        if let Ok(num_threads) = env::var("BED_READER_NUM_THREADS") {
-            num_threads.parse::<usize>()?
-        } else if let Ok(num_threads) = env::var("NUM_THREADS") {
-            num_threads.parse::<usize>()?
-        } else {
-            0
-        }
+        0
     };
     Ok(num_threads)
 }
@@ -3103,6 +3111,8 @@ impl Index {
     // We can't define a 'From' because we want to add count at the last moment.
     // Would be nice to not always allocate a new vec, maybe with Rc<[T]>?
     // Even better would be to support an iterator from Index (an enum with fields).
+
+    /// Turns an [`Index`](enum.Index.html) into a vector of usize indexes. Negative means count from end.
     pub fn to_vec(&self, count: usize) -> Result<Vec<isize>, BedErrorPlus> {
         let count_signed = count as isize;
         match self {
@@ -3241,13 +3251,21 @@ pub enum Index {
     // Could implement an enumerator, but it is complex and requires a 'match' on each next()
     //     https://stackoverflow.com/questions/65272613/how-to-implement-intoiterator-for-an-enum-of-iterable-variants
     // !!!cmk later add docs to type typedbuilder stuff: https://docs.rs/typed-builder/latest/typed_builder/derive.TypedBuilder.html#customisation-with-attributes
+    #[allow(missing_docs)]
     All,
+    #[allow(missing_docs)]
     One(isize),
+    #[allow(missing_docs)]
     Vec(Vec<isize>),
+    #[allow(missing_docs)]
     NDArray(nd::Array1<isize>),
+    #[allow(missing_docs)]
     VecBool(Vec<bool>),
+    #[allow(missing_docs)]
     NDArrayBool(nd::Array1<bool>),
+    #[allow(missing_docs)]
     NDSliceInfo(SliceInfo1),
+    #[allow(missing_docs)]
     RangeAny(RangeAny),
 }
 
@@ -3271,10 +3289,7 @@ impl RangeAny {
         if start > end {
             Err(BedError::StartGreaterThanEnd(start, end).into())
         } else {
-            Ok(Range {
-                start: start,
-                end: end,
-            })
+            Ok(Range { start, end })
         }
     }
 
@@ -3312,26 +3327,24 @@ impl RangeNdSlice {
     fn to_vec(&self) -> Vec<isize> {
         if self.start > self.end {
             Vec::new()
+        } else if !self.is_reversed {
+            (self.start..self.end)
+                .step_by(self.step)
+                .map(|i| i as isize)
+                .collect()
         } else {
-            if !self.is_reversed {
-                (self.start..self.end)
-                    .step_by(self.step)
-                    .map(|i| i as isize)
-                    .collect()
-            } else {
-                // https://docs.rs/ndarray/latest/ndarray/macro.s.html
-                let size = self.len();
-                let mut vec: Vec<isize> = Vec::<isize>::with_capacity(size);
-                let mut i = self.end - 1;
-                while i >= self.start {
-                    vec.push(i as isize);
-                    if i < self.step {
-                        break;
-                    }
-                    i -= self.step;
+            // https://docs.rs/ndarray/latest/ndarray/macro.s.html
+            let size = self.len();
+            let mut vec: Vec<isize> = Vec::<isize>::with_capacity(size);
+            let mut i = self.end - 1;
+            while i >= self.start {
+                vec.push(i as isize);
+                if i < self.step {
+                    break;
                 }
-                vec
+                i -= self.step;
             }
+            vec
         }
     }
 
@@ -3419,14 +3432,13 @@ impl RangeNdSlice {
                 step: 1,
                 is_reversed: false,
             }),
-            nd::SliceInfoElem::NewAxis => {
-                return Err(BedError::NewAxis.into());
-            }
+            nd::SliceInfoElem::NewAxis => Err(BedError::NewAxis.into()),
         }
     }
 }
 
 impl Index {
+    /// Returns the number of elements in an [`Index`](enum.Index.html).
     pub fn len(&self, count: usize) -> Result<usize, BedErrorPlus> {
         match self {
             Index::All => Ok(count),
@@ -4546,7 +4558,7 @@ where
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     pub fn fid(&self) -> &nd::Array1<String> {
-        &self.metadata.fid.as_ref().unwrap()
+        self.metadata.fid.as_ref().unwrap()
     }
 
     /// Individual id of each of individual (sample). Defaults to "iid1", "iid2" ...
@@ -4575,7 +4587,7 @@ where
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     pub fn iid(&self) -> &nd::Array1<String> {
-        &self.metadata.iid.as_ref().unwrap()
+        self.metadata.iid.as_ref().unwrap()
     }
 
     ///  Father id of each of individual (sample). Defaults to "0"'s
@@ -4597,7 +4609,7 @@ where
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     pub fn father(&self) -> &nd::Array1<String> {
-        &self.metadata.father.as_ref().unwrap()
+        self.metadata.father.as_ref().unwrap()
     }
 
     ///  Mother id of each of individual (sample). Defaults to "0"'s
@@ -4619,7 +4631,7 @@ where
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     pub fn mother(&self) -> &nd::Array1<String> {
-        &self.metadata.mother.as_ref().unwrap()
+        self.metadata.mother.as_ref().unwrap()
     }
 
     ///  Sex of each of individual (sample). Defaults to 0's
@@ -4643,7 +4655,7 @@ where
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     pub fn sex(&self) -> &nd::Array1<i32> {
-        &self.metadata.sex.as_ref().unwrap()
+        self.metadata.sex.as_ref().unwrap()
     }
 
     ///  Phenotype of each of individual (sample). Seldom used. Defaults to 0's
@@ -4665,7 +4677,7 @@ where
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     pub fn pheno(&self) -> &nd::Array1<String> {
-        &self.metadata.pheno.as_ref().unwrap()
+        self.metadata.pheno.as_ref().unwrap()
     }
 
     ///  Chromosome of each of SNP (variant). Defaults to "0"'s
@@ -4687,7 +4699,7 @@ where
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     pub fn chromosome(&self) -> &nd::Array1<String> {
-        &self.metadata.chromosome.as_ref().unwrap()
+        self.metadata.chromosome.as_ref().unwrap()
     }
 
     ///  SNP id of each of SNP (variant). Defaults to "sid1", "sid2", ...
@@ -4716,7 +4728,7 @@ where
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     pub fn sid(&self) -> &nd::Array1<String> {
-        &self.metadata.sid.as_ref().unwrap()
+        self.metadata.sid.as_ref().unwrap()
     }
 
     /// Centimorgan position of each SNP (variant). Defaults to 0.0's.
@@ -4738,7 +4750,7 @@ where
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     pub fn cm_position(&self) -> &nd::Array1<f32> {
-        &self.metadata.cm_position.as_ref().unwrap()
+        self.metadata.cm_position.as_ref().unwrap()
     }
 
     /// Base-pair position of each SNP (variant). Defaults to 0's.
@@ -4760,7 +4772,7 @@ where
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     pub fn bp_position(&self) -> &nd::Array1<i32> {
-        &self.metadata.bp_position.as_ref().unwrap()
+        self.metadata.bp_position.as_ref().unwrap()
     }
 
     /// First allele of each SNP (variant). Defaults to "A1"
@@ -4783,7 +4795,7 @@ where
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     pub fn allele_1(&self) -> &nd::Array1<String> {
-        &self.metadata.allele_1.as_ref().unwrap()
+        self.metadata.allele_1.as_ref().unwrap()
     }
 
     /// Second allele of each SNP (variant). Defaults to "A2"
@@ -4806,7 +4818,7 @@ where
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     pub fn allele_2(&self) -> &nd::Array1<String> {
-        &self.metadata.allele_2.as_ref().unwrap()
+        self.metadata.allele_2.as_ref().unwrap()
     }
 
     /// [`Metadata`](struct.Metadata.html) for this [`WriteOptions`](struct.WriteOptions.html), for example, the individual (sample) Ids.
@@ -5569,7 +5581,7 @@ fn compute_field<T: Clone, F: Fn(usize) -> T>(
             );
         }
     } else {
-        let array = Rc::new((0..count).map(|i| lambda(i)).collect::<nd::Array1<T>>());
+        let array = Rc::new((0..count).map(lambda).collect::<nd::Array1<T>>());
         *field = Some(array);
     }
     Ok(())
@@ -5655,7 +5667,7 @@ impl MetadataBuilder {
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to give different values.
     pub fn sex<I: IntoIterator<Item = i32>>(&mut self, sex: I) -> &mut Self {
-        self.sex = Some(Some(Rc::new(sex.into_iter().map(|s| s).collect())));
+        self.sex = Some(Some(Rc::new(sex.into_iter().collect())));
         self
     }
 
@@ -5721,7 +5733,7 @@ impl MetadataBuilder {
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
     pub fn cm_position<I: IntoIterator<Item = f32>>(&mut self, cm_position: I) -> &mut Self {
-        self.cm_position = Some(Some(Rc::new(cm_position.into_iter().map(|s| s).collect())));
+        self.cm_position = Some(Some(Rc::new(cm_position.into_iter().collect())));
         self
     }
 
@@ -5731,7 +5743,7 @@ impl MetadataBuilder {
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
     pub fn bp_position<I: IntoIterator<Item = i32>>(&mut self, bp_position: I) -> &mut Self {
-        self.bp_position = Some(Some(Rc::new(bp_position.into_iter().map(|s| s).collect())));
+        self.bp_position = Some(Some(Rc::new(bp_position.into_iter().collect())));
         self
     }
 
@@ -6178,7 +6190,7 @@ impl Metadata {
 
     fn read_fam_or_bim<P: AsRef<Path>>(
         &self,
-        field_vec: &Vec<usize>,
+        field_vec: &[usize],
         path: P,
     ) -> Result<(Vec<Vec<String>>, usize), BedErrorPlus> {
         let mut vec_of_vec = vec![vec![]; field_vec.len()];
@@ -6383,7 +6395,7 @@ impl Metadata {
             "0".to_string()
         })?;
         compute_field("sid", &mut metadata.sid, sid_count, |i| {
-            format!("sid{}", i + 1).to_string()
+            format!("sid{}", i + 1)
         })?;
         compute_field("cm_position", &mut metadata.cm_position, sid_count, |_| 0.0)?;
         compute_field("bp_position", &mut metadata.bp_position, sid_count, |_| 0)?;
@@ -6426,7 +6438,7 @@ impl Metadata {
     }
 
     fn set_sex<I: IntoIterator<Item = i32>>(&mut self, sex: I) -> &Self {
-        self.sex = Some(Rc::new(sex.into_iter().map(|s| s).collect()));
+        self.sex = Some(Rc::new(sex.into_iter().collect()));
         self
     }
 
@@ -6455,12 +6467,12 @@ impl Metadata {
     }
 
     fn set_cm_position<I: IntoIterator<Item = f32>>(&mut self, cm_position: I) -> &Self {
-        self.cm_position = Some(Rc::new(cm_position.into_iter().map(|s| s).collect()));
+        self.cm_position = Some(Rc::new(cm_position.into_iter().collect()));
         self
     }
 
     fn set_bp_position<I: IntoIterator<Item = i32>>(&mut self, bp_position: I) -> &Self {
-        self.bp_position = Some(Rc::new(bp_position.into_iter().map(|s| s).collect()));
+        self.bp_position = Some(Rc::new(bp_position.into_iter().collect()));
         self
     }
 

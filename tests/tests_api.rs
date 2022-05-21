@@ -604,7 +604,9 @@ fn nd_slice() -> Result<(), BedErrorPlus> {
     println!("{:?}", ndarray.slice(nd::s![1..3])); // [1, 2]
                                                    // This reverses Python's way cmk later make a note.
     println!("{:?}", ndarray.slice(nd::s![1..3;-1])); // [2, 1]
-    println!("{:?}", ndarray.slice(nd::s![3..1;-1])); // []
+    #[allow(clippy::reversed_empty_ranges)]
+    let slice = nd::s![3..1;-1];
+    println!("{:?}", ndarray.slice(slice)); // []
 
     let file_name = "bed_reader/tests/data/small.bed";
     let mut bed = Bed::new(file_name)?;
@@ -677,6 +679,7 @@ fn into_iter() -> Result<(), BedErrorPlus> {
 
 #[test]
 fn range_same() -> Result<(), BedErrorPlus> {
+    #[allow(clippy::reversed_empty_ranges)]
     assert_same_result(rt1(3..0), rt23((3..0).into()));
     assert_same_result(rt1(1000..), rt23((1000..).into()));
 
@@ -697,8 +700,11 @@ fn nd_slice_same() -> Result<(), BedErrorPlus> {
     assert_same_result(nds1(s![999..1000]), rt23(s![999..1000].into()));
     assert_same_result(nds1(s![-1000..]), rt23(s![-1000..].into()));
     assert_same_result(nds1(s![..-1000]), rt23(s![..-1000].into()));
+    #[allow(clippy::reversed_empty_ranges)]
     assert_same_result(nds1(s![-999..-1000]), rt23(s![-999..-1000].into()));
+    #[allow(clippy::reversed_empty_ranges)]
     assert_same_result(nds1(s![3..0]), rt23(s![3..0].into()));
+    #[allow(clippy::reversed_empty_ranges)]
     assert_same_result(nds1(s![-1..-2]), rt23(s![-1..-2].into()));
 
     assert_same_result(nds1(s![..-3]), rt23(s![..-3].into()));
@@ -708,6 +714,7 @@ fn nd_slice_same() -> Result<(), BedErrorPlus> {
     assert_same_result(nds1(s![-3..=-1]), rt23(s![-3..=-1].into()));
     assert_same_result(nds1(s![-3..=-1]), rt23(s![-3..=-1].into()));
     assert_same_result(nds1(s![-2..=-2]), rt23(s![-2..=-2].into()));
+    #[allow(clippy::reversed_empty_ranges)]
     assert_same_result(nds1(s![1..-1]), rt23(s![1..-1].into()));
 
     assert_same_result(nds1(s![..]), rt23((s![..]).into()));
@@ -1480,17 +1487,17 @@ fn write_options_metadata() -> Result<(), BedErrorPlus> {
     assert_eq!(3, Bed::new(&output_file)?.iid_count()?);
 
     // B late
-    let mut write_options = WriteOptions::<f64>::builder(&output_file).build(3, 4)?;
-    Bed::write_with_options(&val, &mut write_options)?;
+    let write_options = WriteOptions::<f64>::builder(&output_file).build(3, 4)?;
+    Bed::write_with_options(&val, &write_options)?;
     let sid_count = write_options.sid_count();
     println!("{sid_count:?}");
     assert_eq!(4, sid_count);
 
     // BB inconsistent
     let val2 = nd::array![[1.0, 0.0, f64::NAN, 0.0], [0.0, 1.0, 2.0, 0.0]];
-    let mut write_options = WriteOptions::<f64>::builder(&output_file).build(3, 4)?;
-    Bed::write_with_options(&val, &mut write_options)?;
-    let result = Bed::write_with_options(&val2, &mut write_options);
+    let write_options = WriteOptions::<f64>::builder(&output_file).build(3, 4)?;
+    Bed::write_with_options(&val, &write_options)?;
+    let result = Bed::write_with_options(&val2, &write_options);
     match result {
         Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => (),
         _ => panic!("test failure"),
@@ -1521,18 +1528,18 @@ fn write_options_metadata() -> Result<(), BedErrorPlus> {
     };
 
     // AB late inconsistent
-    let mut write_options = WriteOptions::builder(&output_file)
+    let write_options = WriteOptions::builder(&output_file)
         .iid(["iid1", "iid2", "iid3", "iid4"])
         .build(4, 4)?;
-    let result = Bed::write_with_options(&val, &mut write_options);
+    let result = Bed::write_with_options(&val, &write_options);
     match result {
         Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => (),
         _ => panic!("test failure"),
     };
 
     // BC late inconsistent
-    let mut write_options = WriteOptions::builder(&output_file).build(4, 4)?;
-    let result = Bed::write_with_options(&val, &mut write_options);
+    let write_options = WriteOptions::builder(&output_file).build(4, 4)?;
+    let result = Bed::write_with_options(&val, &write_options);
     match result {
         Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => (),
         _ => panic!("test failure"),
@@ -1544,10 +1551,10 @@ fn write_options_metadata() -> Result<(), BedErrorPlus> {
         .write(&val)?;
 
     // ABC late consistent
-    let mut write_options = WriteOptions::builder(&output_file)
+    let write_options = WriteOptions::builder(&output_file)
         .sid(["sid1", "sid2", "sid3", "sid4"])
         .build(3, 4)?;
-    Bed::write_with_options(&val, &mut write_options)?;
+    Bed::write_with_options(&val, &write_options)?;
 
     let write_options = WriteOptions::builder(output_file)
         .fid(["fid1", "fid1", "fid2"])
@@ -1721,7 +1728,7 @@ fn rt23(
     Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>,
     Result<Result<usize, BedErrorPlus>, BedErrorPlus>,
 ) {
-    (rt2(range_thing.clone()), rt3(range_thing.clone()))
+    (rt2(range_thing.clone()), rt3(range_thing))
 }
 
 fn rt3(range_thing: bed_reader::Index) -> Result<Result<usize, BedErrorPlus>, BedErrorPlus> {
@@ -1801,10 +1808,7 @@ fn assert_same_result(
 }
 
 fn is_err2<T>(result_result: &Result<Result<T, BedErrorPlus>, BedErrorPlus>) -> bool {
-    match result_result {
-        Ok(Ok(_)) => false,
-        _ => true,
-    }
+    !matches!(result_result, Ok(Ok(_)))
 }
 
 #[test]
@@ -1987,8 +1991,8 @@ fn read_options_properties() -> Result<(), BedErrorPlus> {
     assert_eq!(read_options.missing_value(), -127);
     println!("{0:?}", read_options.iid_index()); // Outputs 'All'
     println!("{0:?}", read_options.sid_index()); // Outputs 'Vec([2, 3, 0])'
-    assert_eq!(read_options.is_f(), true);
-    assert_eq!(read_options.is_a1_counted(), true);
+    assert!(read_options.is_f());
+    assert!(read_options.is_a1_counted());
     assert_eq!(read_options.num_threads(), None);
 
     let file_name = "bed_reader/tests/data/small.bed";
