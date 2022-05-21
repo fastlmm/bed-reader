@@ -193,6 +193,7 @@ use core::fmt::Debug;
 use derive_builder::{Builder, UninitializedFieldError};
 use nd::ShapeBuilder;
 use ndarray as nd;
+use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::fs::{self};
 use std::io::Write;
@@ -592,16 +593,13 @@ fn internal_read_no_alloc<TVal: BedVal, P: AsRef<Path>>(
     Ok(())
 }
 
+type Array1Usize = nd::ArrayBase<nd::OwnedRepr<usize>, nd::Dim<[usize; 1]>>;
+type Array1U8 = nd::ArrayBase<nd::OwnedRepr<u8>, nd::Dim<[usize; 1]>>;
+
 fn check_and_precompute_iid_index(
     in_iid_count: usize,
     iid_index: &[isize],
-) -> Result<
-    (
-        nd::ArrayBase<nd::OwnedRepr<usize>, nd::Dim<[usize; 1]>>,
-        nd::ArrayBase<nd::OwnedRepr<u8>, nd::Dim<[usize; 1]>>,
-    ),
-    BedErrorPlus,
-> {
+) -> Result<(Array1Usize, Array1U8), BedErrorPlus> {
     let lower_iid_count = -(in_iid_count as isize);
     let upper_iid_count: isize = (in_iid_count as isize) - 1;
     let mut i_div_4_array = nd::Array1::<usize>::zeros(iid_index.len());
@@ -2628,7 +2626,7 @@ impl Bed {
     }
 
     /// Return the path of the .bed file.
-    pub fn path<'a>(&'a self) -> &'a Path {
+    pub fn path(&self) -> &Path {
         &self.path
     }
 
@@ -3297,6 +3295,10 @@ impl RangeAny {
         let range = self.to_range(count)?;
         Ok(range.end - range.start)
     }
+
+    fn is_empty(&self, count: usize) -> Result<bool, BedErrorPlus> {
+        Ok(self.len(count)? == 0)
+    }
 }
 
 #[doc(hidden)]
@@ -3321,6 +3323,10 @@ impl RangeNdSlice {
         } else {
             div_ceil(self.end - self.start, self.step)
         }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     // https://docs.rs/ndarray/0.15.4/ndarray/struct.ArrayBase.html#slicing
@@ -3375,14 +3381,18 @@ impl RangeNdSlice {
                 // A range with step size. end is an exclusive index. Negative start or end indexes are counted from the back of the axis. If end is None, the slice extends to the end of the axis.
                 let step2: usize;
                 let is_reverse2: bool;
-                if step > 0 {
-                    step2 = step as usize;
-                    is_reverse2 = false;
-                } else if step < 0 {
-                    step2 = (-step) as usize;
-                    is_reverse2 = true;
-                } else {
-                    return Err(BedError::StepZero.into());
+                match step.cmp(&0) {
+                    Ordering::Greater => {
+                        step2 = step as usize;
+                        is_reverse2 = false;
+                    }
+                    Ordering::Less => {
+                        step2 = (-step) as usize;
+                        is_reverse2 = true;
+                    }
+                    Ordering::Equal => {
+                        return Err(BedError::StepZero.into());
+                    }
                 }
 
                 let start2 = if start >= 0 {
@@ -3439,6 +3449,7 @@ impl RangeNdSlice {
 
 impl Index {
     /// Returns the number of elements in an [`Index`](enum.Index.html).
+    #[allow(clippy::len_without_is_empty)]
     pub fn len(&self, count: usize) -> Result<usize, BedErrorPlus> {
         match self {
             Index::All => Ok(count),
@@ -3449,6 +3460,23 @@ impl Index {
             Index::NDArrayBool(nd_array_bool) => Ok(nd_array_bool.iter().filter(|&b| *b).count()),
             Index::NDSliceInfo(nd_slice_info) => Ok(RangeNdSlice::new(nd_slice_info, count)?.len()),
             Index::RangeAny(range_any) => range_any.len(count),
+        }
+    }
+
+    // !!!!cmk 0 test this
+    /// Returns true if the [`Index`](enum.Index.html) is empty.
+    pub fn is_empty(&self, count: usize) -> Result<bool, BedErrorPlus> {
+        match self {
+            Index::All => Ok(count == 0),
+            Index::One(_) => Ok(false),
+            Index::Vec(vec) => Ok(vec.is_empty()),
+            Index::NDArray(nd_array) => Ok(nd_array.is_empty()),
+            Index::VecBool(vec_bool) => Ok(!vec_bool.iter().any(|&b| b)),
+            Index::NDArrayBool(nd_array_bool) => Ok(!nd_array_bool.iter().any(|&b| b)),
+            Index::NDSliceInfo(nd_slice_info) => {
+                Ok(RangeNdSlice::new(nd_slice_info, count)?.is_empty())
+            }
+            Index::RangeAny(range_any) => range_any.is_empty(count),
         }
     }
 }
@@ -3491,7 +3519,7 @@ impl From<RangeFull> for Index {
 
 impl From<&RangeFull> for RangeAny {
     fn from(range_thing: &RangeFull) -> RangeAny {
-        to_range_any(range_thing.clone())
+        to_range_any(*range_thing)
     }
 }
 
@@ -3587,7 +3615,7 @@ impl From<RangeTo<usize>> for Index {
 
 impl From<&RangeTo<usize>> for RangeAny {
     fn from(range_thing: &RangeTo<usize>) -> RangeAny {
-        to_range_any(range_thing.clone())
+        to_range_any(*range_thing)
     }
 }
 
@@ -3610,7 +3638,7 @@ impl From<RangeToInclusive<usize>> for Index {
 }
 impl From<&RangeToInclusive<usize>> for RangeAny {
     fn from(range_thing: &RangeToInclusive<usize>) -> RangeAny {
-        to_range_any(range_thing.clone())
+        to_range_any(*range_thing)
     }
 }
 
@@ -5182,7 +5210,8 @@ where
     /// # Example:
     /// Write .bed, .fam, and .bim files with non-standard names.
     /// ```
-    /// use bed_reader::WriteOptions;
+    /// use ndarray as nd;
+    /// use bed_reader::{WriteOptions,tmp_path};
     /// let output_folder = tmp_path()?;
     /// let output_file = output_folder.join("small.deb");
     /// let val = nd::array![[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]];
@@ -5362,35 +5391,8 @@ where
             num_threads: self.num_threads.unwrap_or(None),
             missing_value: self.missing_value.unwrap_or_else(|| TVal::missing()),
 
-            metadata: metadata,
+            metadata,
         };
-        // !!! cmk00b
-        // check_counts(
-        //     vec![
-        //         option_count(&write_options.fid),
-        //         option_count(&write_options.iid),
-        //         option_count(&write_options.father),
-        //         option_count(&write_options.mother),
-        //         option_count(&write_options.sex),
-        //         option_count(&write_options.pheno),
-        //     ],
-        //     &mut write_options.iid_count,
-        //     "iid",
-        // )?;
-
-        // check_counts(
-        //     vec![
-        //         option_count(&write_options.chromosome),
-        //         option_count(&write_options.sid),
-        //         option_count(&write_options.cm_position),
-        //         option_count(&write_options.bp_position),
-        //         option_count(&write_options.allele_1),
-        //         option_count(&write_options.allele_2),
-        //     ],
-        //     &mut write_options.sid_count,
-        //     "sid",
-        // )?;
-
         Ok(write_options)
     }
 
@@ -5538,25 +5540,18 @@ fn check_counts(
     option_xid_count: &mut Option<usize>,
     prefix: &str,
 ) -> Result<(), BedErrorPlus> {
-    for option_count in count_vec {
-        if let Some(count) = option_count {
-            match option_xid_count {
-                Some(xid_count) => {
-                    if *xid_count != count {
-                        return Err(BedError::InconsistentCount(
-                            prefix.to_string(),
-                            *xid_count,
-                            count,
-                        )
-                        .into());
-                    }
-                }
-                None => {
-                    *option_xid_count = Some(count);
-                }
+    for count in count_vec.into_iter().flatten() {
+        if let Some(xid_count) = option_xid_count {
+            if *xid_count != count {
+                return Err(
+                    BedError::InconsistentCount(prefix.to_string(), *xid_count, count).into(),
+                );
             }
+        } else {
+            *option_xid_count = Some(count);
         }
     }
+
     Ok(())
 }
 
@@ -5824,6 +5819,12 @@ impl MetadataBuilder {
         set_field(&metadata.allele_1, &mut self.allele_1);
         set_field(&metadata.allele_2, &mut self.allele_2);
         self
+    }
+}
+
+impl Default for Metadata {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -6381,7 +6382,7 @@ impl Metadata {
 
         compute_field("fid", &mut metadata.fid, iid_count, |_| "0".to_string())?;
         compute_field("iid", &mut metadata.iid, iid_count, |i| {
-            format!("iid{}", i + 1).to_string()
+            format!("iid{}", i + 1)
         })?;
         compute_field("father", &mut metadata.father, iid_count, |_| {
             "0".to_string()

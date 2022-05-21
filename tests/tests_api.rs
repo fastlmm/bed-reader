@@ -1722,12 +1722,7 @@ fn rt2(
     }
 }
 
-fn rt23(
-    range_thing: bed_reader::Index,
-) -> (
-    Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>,
-    Result<Result<usize, BedErrorPlus>, BedErrorPlus>,
-) {
+fn rt23(range_thing: bed_reader::Index) -> (RrArray2, RrUsize) {
     (rt2(range_thing.clone()), rt3(range_thing))
 }
 
@@ -1771,13 +1766,10 @@ fn nds1(range_thing: SliceInfo1) -> Result<Result<nd::Array2<i8>, BedErrorPlus>,
     }
 }
 
-fn assert_same_result(
-    result1: Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>,
-    result23: (
-        Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>,
-        Result<Result<usize, BedErrorPlus>, BedErrorPlus>,
-    ),
-) {
+type RrArray2 = Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>;
+type RrUsize = Result<Result<usize, BedErrorPlus>, BedErrorPlus>;
+
+fn assert_same_result(result1: RrArray2, result23: (RrArray2, RrUsize)) {
     let result2 = result23.0;
     let result3 = result23.1;
     let err1 = is_err2(&result1);
