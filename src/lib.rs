@@ -364,7 +364,7 @@ pub enum BedError {
 
 // Trait alias
 
-/// A trait alias, used internally, for the values of a BED file, namely i8, f32, f64.
+/// A trait alias, used internally, for the values of a .bed file, namely i8, f32, f64.
 pub trait BedVal: Copy + Default + From<i8> + Debug + Sync + Send + Missing + PartialEq {}
 impl<T> BedVal for T where T: Copy + Default + From<i8> + Debug + Sync + Send + Missing + PartialEq {}
 
@@ -1511,7 +1511,11 @@ pub struct Bed {
     skip_set: HashSet<MetadataFields>,
 }
 
-/// All Metadata fields
+/// All Metadata fields.
+///
+/// Used by [`Metadata::read_fam`](struct.Metadata.html#method.read_fam) and
+/// [`Metadata::read_bim`](struct.Metadata.html#method.read_bim) to skip reading
+/// specified metadata fields.
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Ord, PartialOrd, Hash)]
 pub enum MetadataFields {
     Fid,
@@ -3148,6 +3152,10 @@ pub type SliceInfo1 =
 
 /// A specification of which individuals (samples) or SNPs (variants) to read.
 ///
+/// See the [Table of Index Expressions](index.html#index-expressions)
+/// for a list of expressions for selecting individuals (sample)
+/// and SNPs (variants).
+///
 /// By default, all individuals or SNPs are read.
 /// The indices can be specified as:
 ///   * an index (negative numbers count from the end)
@@ -3719,106 +3727,7 @@ impl From<()> for Index {
 /// See the [Table of Index Expressions](index.html#index-expressions)
 /// for a list of expressions for selecting individuals (sample)
 /// and SNPs (variants).
-///
-/// # Examples
-///
-/// ```
-/// use ndarray as nd;
-/// use bed_reader::{Bed, ReadOptions};
-/// use bed_reader::assert_eq_nan;
-///
-/// // Read all data from a .bed file into an ndarray of f64.
-/// let file_name = "bed_reader/tests/data/small.bed";
-/// let mut bed = Bed::new(file_name)?;
-/// let val = ReadOptions::builder().f64().read(&mut bed)?;
-///
-/// assert_eq_nan(
-///     &val,
-///     &nd::array![
-///         [1.0, 0.0, f64::NAN, 0.0],
-///         [2.0, 0.0, f64::NAN, 2.0],
-///         [0.0, 1.0, 2.0, 0.0]
-///     ],
-/// );
-///
-/// // Read the SNPs indexed by 2.
-/// let val = ReadOptions::builder().sid_index(2).f64().read(&mut bed)?;
-///
-/// assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
-///
-/// // Read the SNPs indexed by 2, 3, and 4th from last.
-/// let val = ReadOptions::builder()
-///     .sid_index([2, 3, -4])
-///     .f64()
-///     .read(&mut bed)?;
-///
-/// assert_eq_nan(
-///     &val,
-///     &nd::array![[f64::NAN, 0.0, 1.0], [f64::NAN, 2.0, 2.0], [2.0, 0.0, 0.0]],
-/// );
-///
-/// //  Read SNPs from 1 (inclusive) to 4 (exclusive).
-/// let val = ReadOptions::builder()
-///     .sid_index(1..4)
-///     .f64()
-///     .read(&mut bed)?;
-///
-/// assert_eq_nan(
-///     &val,
-///     &nd::array![[0.0, f64::NAN, 0.0], [0.0, f64::NAN, 2.0], [1.0, 2.0, 0.0]],
-/// );
-///
-/// // Print unique chrom values. Then, read all SNPs in chrom 5.
-/// use std::collections::HashSet;
-///
-/// println!("{:?}", bed.chromosome()?.iter().collect::<HashSet<_>>());
-/// // This outputs: {"1", "5", "Y"}.
-/// let val = ReadOptions::builder()
-///     .sid_index(bed.chromosome()?.map(|elem| elem == "5"))
-///     .f64()
-///     .read(&mut bed)?;
-///
-/// assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
-///
-/// // Read 1st individual (across all SNPs).
-/// let val = ReadOptions::builder().iid_index(0).f64().read(&mut bed)?;
-/// assert_eq_nan(&val, &nd::array![[1.0, 0.0, f64::NAN, 0.0]]);
-///
-/// // Read every 2nd individual.
-/// use ndarray::s;
-///
-/// let val = ReadOptions::builder()
-///     .iid_index(s![..;2])
-///     .f64()
-///     .read(&mut bed)?;
-/// assert_eq_nan(
-///     &val,
-///     &nd::array![[1.0, 0.0, f64::NAN, 0.0], [0.0, 1.0, 2.0, 0.0]],
-/// );
-///
-/// // Read last and 2nd-to-last individuals and the last SNP
-/// let val = ReadOptions::builder()
-///     .iid_index([-1,-2])
-///     .sid_index(-1)
-///     .f64()
-///     .read(&mut bed)?;
-///
-/// assert_eq_nan(&val, &nd::array![[0.0],[2.0]]);
-///
-/// // The output array can be f32, f64, or i8
-/// let val = ReadOptions::builder().i8().read(&mut bed)?;
-///
-/// assert_eq_nan(
-///     &val,
-///     &nd::array![
-///         [1, 0, -127, 0],
-///         [2, 0, -127, 2],
-///         [0, 1, 2, 0]
-///     ],
-/// );
-/// # use bed_reader::BedErrorPlus;
-/// # Ok::<(), BedErrorPlus>(())
-/// ```
+
 #[derive(Debug, Clone, Builder)]
 #[builder(build_fn(error = "BedErrorPlus"))]
 pub struct ReadOptions<TVal: BedVal> {
@@ -4516,63 +4425,6 @@ impl ReadOptionsBuilder<f64> {
 /// Represents options for writing genotype data and metadata to a PLINK .bed file.
 ///
 /// Construct with [`WriteOptions::builder`](struct.WriteOptions.html#method.builder).
-///
-// !!!cmk000 same comment twice
-/// The options, [listed here](struct.WriteOptionsBuilder.html#implementations), can specify the:
-///  * items of metadata, for example the individual ids or the SNP ids
-///  * a non-default path for the .fam and/or .bim files
-///  * a non-default value that represents missing data
-///  * whether the first allele is counted (default) or the second
-///  * number of threads to use for writing
-///  * a [`Metadata`](struct.Metadata.html)
-///
-/// # Examples
-/// In this example, all metadata is given one item at a time.
-/// ```
-/// use ndarray as nd;
-/// use bed_reader::{Bed, WriteOptions, tmp_path};
-///
-/// let output_folder = tmp_path()?;
-/// let output_file = output_folder.join("small.bed");
-/// let val = nd::array![
-///     [1.0, 0.0, f64::NAN, 0.0],
-///     [2.0, 0.0, f64::NAN, 2.0],
-///     [0.0, 1.0, 2.0, 0.0]
-/// ];
-/// WriteOptions::builder(output_file)
-///     .fid(["fid1", "fid1", "fid2"])
-///     .iid(["iid1", "iid2", "iid3"])
-///     .father(["iid23", "iid23", "iid22"])
-///     .mother(["iid34", "iid34", "iid33"])
-///     .sex([1, 2, 0])
-///     .pheno(["red", "red", "blue"])
-///     .chromosome(["1", "1", "5", "Y"])
-///     .sid(["sid1", "sid2", "sid3", "sid4"])
-///     .cm_position([100.4, 2000.5, 4000.7, 7000.9])
-///     .bp_position([1, 100, 1000, 1004])
-///     .allele_1(["A", "T", "A", "T"])
-///     .allele_2(["A", "C", "C", "G"])
-///     .write(&val)?;
-/// # use bed_reader::BedErrorPlus;
-/// # Ok::<(), BedErrorPlus>(())
-/// ```
-/// Here, no metadata is given, so default values are assigned.
-/// If we then read the new file and list the chromosome property,
-/// it is an array of zeros, the default chromosome value.
-/// ```
-/// # use ndarray as nd;
-/// # use bed_reader::{Bed, WriteOptions, tmp_path};
-/// # let output_folder = tmp_path()?;
-/// let output_file2 = output_folder.join("small2.bed");
-/// let val = nd::array![[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]];
-///
-/// WriteOptions::builder(&output_file2).write(&val)?;
-///
-/// let mut bed2 = Bed::new(&output_file2)?;
-/// println!("{:?}", bed2.chromosome()?); // Outputs ndarray ["0", "0", "0", "0"]
-/// # use bed_reader::BedErrorPlus;
-/// # Ok::<(), BedErrorPlus>(())
-/// ```
 #[derive(Clone, Debug, Builder)]
 #[builder(build_fn(skip))]
 pub struct WriteOptions<TVal>
@@ -4614,9 +4466,63 @@ where
 {
     /// Write values to a file in PLINK .bed format. Supports metadata and options.
     ///
-    ///  See [`WriteOptions`](struct.WriteOptions.html) for details and examples.
-    ///
     /// > Also see [`Bed::write`](struct.Bed.html#method.write), which does not support metadata or options.
+    ///
+    /// The options, [listed here](struct.WriteOptionsBuilder.html#implementations), can specify the:
+    ///  * items of metadata, for example the individual ids or the SNP ids
+    ///  * a non-default path for the .fam and/or .bim files
+    ///  * a non-default value that represents missing data
+    ///  * whether the first allele is counted (default) or the second
+    ///  * number of threads to use for writing
+    ///  * a [`Metadata`](struct.Metadata.html)
+    ///
+    /// # Examples
+    /// In this example, all metadata is given one item at a time.
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, WriteOptions, tmp_path};
+    ///
+    /// let output_folder = tmp_path()?;
+    /// let output_file = output_folder.join("small.bed");
+    /// let val = nd::array![
+    ///     [1.0, 0.0, f64::NAN, 0.0],
+    ///     [2.0, 0.0, f64::NAN, 2.0],
+    ///     [0.0, 1.0, 2.0, 0.0]
+    /// ];
+    /// WriteOptions::builder(output_file)
+    ///     .fid(["fid1", "fid1", "fid2"])
+    ///     .iid(["iid1", "iid2", "iid3"])
+    ///     .father(["iid23", "iid23", "iid22"])
+    ///     .mother(["iid34", "iid34", "iid33"])
+    ///     .sex([1, 2, 0])
+    ///     .pheno(["red", "red", "blue"])
+    ///     .chromosome(["1", "1", "5", "Y"])
+    ///     .sid(["sid1", "sid2", "sid3", "sid4"])
+    ///     .cm_position([100.4, 2000.5, 4000.7, 7000.9])
+    ///     .bp_position([1, 100, 1000, 1004])
+    ///     .allele_1(["A", "T", "A", "T"])
+    ///     .allele_2(["A", "C", "C", "G"])
+    ///     .write(&val)?;
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
+    /// Here, no metadata is given, so default values are assigned.
+    /// If we then read the new file and list the chromosome property,
+    /// it is an array of zeros, the default chromosome value.
+    /// ```
+    /// # use ndarray as nd;
+    /// # use bed_reader::{Bed, WriteOptions, tmp_path};
+    /// # let output_folder = tmp_path()?;
+    /// let output_file2 = output_folder.join("small2.bed");
+    /// let val = nd::array![[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]];
+    ///
+    /// WriteOptions::builder(&output_file2).write(&val)?;
+    ///
+    /// let mut bed2 = Bed::new(&output_file2)?;
+    /// println!("{:?}", bed2.chromosome()?); // Outputs ndarray ["0", "0", "0", "0"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
     pub fn builder<P: AsRef<Path>>(path: P) -> WriteOptionsBuilder<TVal> {
         WriteOptionsBuilder::new(path)
     }
