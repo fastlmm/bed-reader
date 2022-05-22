@@ -395,10 +395,10 @@ fn read_no_alloc<TVal: BedVal, P: AsRef<Path>>(
     num_threads: usize,
     val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
 ) -> Result<(), BedErrorPlus> {
-    let path_buf = PathBuf::from(path.as_ref());
+    let path = path.as_ref(); // Needed for multithreading
 
     create_pool(num_threads)?.install(|| {
-        let (buf_reader, bytes_vector) = open_and_check(&path_buf)?;
+        let (buf_reader, bytes_vector) = open_and_check(&path)?;
 
         match bytes_vector[2] {
             0 => {
@@ -406,7 +406,7 @@ fn read_no_alloc<TVal: BedVal, P: AsRef<Path>>(
                 let mut val_t = val.view_mut().reversed_axes();
                 internal_read_no_alloc(
                     buf_reader,
-                    path_buf,
+                    &path,
                     sid_count,
                     iid_count,
                     is_a1_counted,
@@ -418,7 +418,7 @@ fn read_no_alloc<TVal: BedVal, P: AsRef<Path>>(
             }
             1 => internal_read_no_alloc(
                 buf_reader,
-                path_buf,
+                &path,
                 iid_count,
                 sid_count,
                 is_a1_counted,
@@ -427,18 +427,22 @@ fn read_no_alloc<TVal: BedVal, P: AsRef<Path>>(
                 missing_value,
                 val,
             ),
-            _ => Err(BedError::BadMode(path_buf.display().to_string()).into()),
+            _ => Err(BedError::BadMode(path_ref_to_string(&path)).into()),
         }
     })?;
     Ok(())
 }
 
-fn open_and_check(path_buf: &PathBuf) -> Result<(BufReader<File>, Vec<u8>), BedErrorPlus> {
-    let mut buf_reader = BufReader::new(File::open(path_buf)?);
+fn path_ref_to_string<P: AsRef<Path>>(path: P) -> String {
+    PathBuf::from(path.as_ref()).display().to_string()
+}
+
+fn open_and_check<P: AsRef<Path>>(path: P) -> Result<(BufReader<File>, Vec<u8>), BedErrorPlus> {
+    let mut buf_reader = BufReader::new(File::open(&path)?);
     let mut bytes_vector: Vec<u8> = vec![0; CB_HEADER_USIZE];
     buf_reader.read_exact(&mut bytes_vector)?;
     if (BED_FILE_MAGIC1 != bytes_vector[0]) || (BED_FILE_MAGIC2 != bytes_vector[1]) {
-        return Err(BedError::IllFormed(path_buf.display().to_string()).into());
+        return Err(BedError::IllFormed(path_ref_to_string(&path)).into());
     }
     Ok((buf_reader, bytes_vector))
 }
@@ -533,7 +537,7 @@ fn internal_read_no_alloc<TVal: BedVal, P: AsRef<Path>>(
     let file_len = buf_reader.seek(SeekFrom::End(0))?;
     let file_len2 = in_iid_count_div4_u64 * (in_sid_count as u64) + CB_HEADER_U64;
     if file_len != file_len2 {
-        return Err(BedError::IllFormed(PathBuf::from(path.as_ref()).display().to_string()).into());
+        return Err(BedError::IllFormed(path_ref_to_string(path)).into());
     }
 
     // Check and precompute for each iid_index
@@ -705,6 +709,7 @@ where
     TVal: BedVal,
     P: AsRef<Path>,
 {
+    let path = path.as_ref(); // Needed for multithreading
     let mut writer = BufWriter::new(File::create(&path)?);
     writer.write_all(&[BED_FILE_MAGIC1, BED_FILE_MAGIC2, 0x01])?;
 
@@ -717,7 +722,6 @@ where
     let heterozygous_allele = TVal::from(1);
     let homozygous_secondary_allele = TVal::from(2); // Minor Allele
 
-    let path_buf = PathBuf::from(path.as_ref());
     scope(|scope| {
         val.axis_iter(nd::Axis(1))
             .parallel_map_scoped(scope, {
@@ -736,7 +740,7 @@ where
                         } else if (use_nan && v0 != v0) || (!use_nan && v0 == missing) {
                             1
                         } else {
-                            return Err(BedError::BadValue(path_buf.display().to_string()));
+                            return Err(BedError::BadValue(path_ref_to_string(&path)));
                         };
                         // Possible optimization: We could pre-compute the conversion, the division, the mod, and the multiply*2
                         let i_div_4 = iid_i / 4;
@@ -1434,6 +1438,7 @@ pub struct Metadata {
 }
 
 fn lazy_or_skip_count<T>(array: &Option<Rc<nd::Array1<T>>>) -> Option<usize> {
+    // cmk0r
     array.as_ref().map(|array| array.len())
 }
 
@@ -1543,10 +1548,8 @@ pub enum MetadataFields {
 
 impl BedBuilder {
     fn new<P: AsRef<Path>>(path: P) -> Self {
-        let path: PathBuf = path.as_ref().into();
-
         Self {
-            path: Some(path),
+            path: Some(path.as_ref().to_owned()),
             fam_path: None,
             bim_path: None,
 
@@ -1776,7 +1779,7 @@ impl BedBuilder {
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     pub fn fam_path<P: AsRef<Path>>(mut self, path: P) -> Self {
-        self.fam_path = Some(Some(path.as_ref().into()));
+        self.fam_path = Some(Some(path.as_ref().to_owned()));
         self
     }
 
@@ -1799,7 +1802,7 @@ impl BedBuilder {
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     pub fn bim_path<P: AsRef<Path>>(mut self, path: P) -> Self {
-        self.bim_path = Some(Some(path.as_ref().into()));
+        self.bim_path = Some(Some(path.as_ref().to_owned()));
         self
     }
 
@@ -1997,11 +2000,15 @@ impl BedBuilder {
     }
 }
 
-fn to_metadata_path(bed_path: &Path, metadata_path: &Option<PathBuf>, extension: &str) -> PathBuf {
+fn to_metadata_path<P: AsRef<Path>>(
+    bed_path: P,
+    metadata_path: &Option<PathBuf>,
+    extension: &str,
+) -> PathBuf {
     if let Some(metadata_path) = metadata_path {
-        metadata_path.clone()
+        metadata_path.to_owned()
     } else {
-        bed_path.with_extension(extension)
+        bed_path.as_ref().with_extension(extension)
     }
 }
 
@@ -2286,6 +2293,7 @@ impl Bed {
     /// # Ok::<(), BedErrorPlus>(())
     pub fn fid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         self.unlazy_fam::<String>(self.metadata.fid.is_none(), MetadataFields::Fid, "fid")?;
+        // cmk0r
         Ok(self.metadata.fid.as_ref().unwrap())
     }
 
@@ -2311,6 +2319,7 @@ impl Bed {
     /// # Ok::<(), BedErrorPlus>(())
     pub fn iid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         self.unlazy_fam::<String>(self.metadata.iid.is_none(), MetadataFields::Iid, "iid")?;
+        // cmk0r
         Ok(self.metadata.iid.as_ref().unwrap())
     }
 
@@ -2743,9 +2752,11 @@ impl Bed {
         let num_threads = compute_num_threads(read_options.num_threads)?;
 
         let iid_hold = Hold::new(&read_options.iid_index, iid_count)?;
+        // cmk0r
         let iid_index = iid_hold.as_ref();
 
         let sid_hold = Hold::new(&read_options.sid_index, sid_count)?;
+        // cmk0r
         let sid_index = sid_hold.as_ref();
 
         let shape = val.shape();
@@ -2816,8 +2827,9 @@ impl Bed {
         let sid_count = self.sid_count()?;
 
         let iid_hold = Hold::new(&read_options.iid_index, iid_count)?;
+        // cmk0r
         let iid_index = iid_hold.as_ref();
-
+        // cmk0r
         let sid_hold = Hold::new(&read_options.sid_index, sid_count)?;
         let sid_index = sid_hold.as_ref();
 
@@ -5221,7 +5233,7 @@ where
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     pub fn fam_path<P: AsRef<Path>>(mut self, path: P) -> Self {
-        self.fam_path = Some(path.as_ref().into());
+        self.fam_path = Some(path.as_ref().to_owned());
         self
     }
 
@@ -5247,7 +5259,7 @@ where
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     pub fn bim_path<P: AsRef<Path>>(mut self, path: P) -> Self {
-        self.bim_path = Some(path.as_ref().into());
+        self.bim_path = Some(path.as_ref().to_owned());
         self
     }
 
@@ -5370,20 +5382,19 @@ where
         iid_count: usize,
         sid_count: usize,
     ) -> Result<WriteOptions<TVal>, BedErrorPlus> {
-        let path_buf = match self.path {
-            Some(ref path_buf) => path_buf,
-            None => {
-                return Err(UninitializedFieldError::from("path").into());
-            }
+        let path = if let Some(path) = self.path.as_ref() {
+            path
+        } else {
+            return Err(UninitializedFieldError::new("path").into());
         };
 
         let metadata = self.metadata.as_ref().unwrap();
         let metadata = metadata.fill(iid_count, sid_count)?;
 
         let write_options = WriteOptions {
-            path: path_buf.clone(),
-            fam_path: to_metadata_path(path_buf, &self.fam_path, "fam"),
-            bim_path: to_metadata_path(path_buf, &self.bim_path, "bim"),
+            path: path.to_owned(),
+            fam_path: to_metadata_path(path, &self.fam_path, "fam"),
+            bim_path: to_metadata_path(path, &self.bim_path, "bim"),
             is_a1_counted: self.is_a1_counted.unwrap_or(true),
             num_threads: self.num_threads.unwrap_or(None),
             missing_value: self.missing_value.unwrap_or_else(|| TVal::missing()),
@@ -5395,7 +5406,7 @@ where
 
     fn new<P: AsRef<Path>>(path: P) -> Self {
         Self {
-            path: Some(path.as_ref().into()),
+            path: Some(path.as_ref().to_owned()),
             fam_path: None,
             bim_path: None,
 
@@ -6252,8 +6263,9 @@ impl Metadata {
                 field_count += 1;
             }
             if field_count != 6 {
-                let s = path.as_ref().to_string_lossy().to_string();
-                return Err(BedError::MetadataFieldCount(6, field_count, s).into());
+                return Err(
+                    BedError::MetadataFieldCount(6, field_count, path_ref_to_string(path)).into(),
+                );
             }
         }
 
