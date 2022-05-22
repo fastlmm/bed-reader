@@ -1,9 +1,6 @@
 #![warn(missing_docs)]
 // !!!cmk 0 document three functions
-// !!!cmk later look at all {:?}
 // !!!cmk look at every unwrap
-// !!!cmk run clippy
-// !!!cmk upgrade rust and clippy
 
 // Inspired by C++ version by Chris Widmer and Carl Kadie
 
@@ -5458,6 +5455,18 @@ impl FromStringArray<i32> for i32 {
 }
 
 /// Asserts two 2-D arrays are equal, treating NaNs as values.
+///
+/// # Example
+/// ```
+/// use std::f64::NAN;
+/// use ndarray as nd;
+/// use bed_reader::assert_eq_nan;
+/// let val1 = nd::arr2(&[[1.0, 2.0], [3.0, NAN]]);
+/// let val2 = nd::arr2(&[[1.0, 2.0], [3.0, NAN]]);
+/// assert_eq_nan(&val1, &val2);
+/// # use bed_reader::BedErrorPlus;
+/// # Ok::<(), BedErrorPlus>(())
+/// ```
 pub fn assert_eq_nan<T: 'static + Copy + PartialEq + PartialOrd + Signed + From<i8>>(
     val: &nd::ArrayBase<nd::OwnedRepr<T>, nd::Dim<[usize; 2]>>,
     answer: &nd::ArrayBase<nd::OwnedRepr<T>, nd::Dim<[usize; 2]>>,
@@ -5471,6 +5480,18 @@ pub fn assert_eq_nan<T: 'static + Copy + PartialEq + PartialOrd + Signed + From<
 }
 
 /// True if and only if two 2-D arrays are equal, within a given tolerance and possibly treating NaNs as values.
+///
+/// # Example
+/// ```
+/// use std::f64::NAN;
+/// use ndarray as nd;
+/// use bed_reader::allclose;
+/// let val1 = nd::arr2(&[[1.0, 2.000000000001], [3.0, NAN]]);
+/// let val2 = nd::arr2(&[[1.0, 2.0], [3.0, NAN]]);
+/// assert!(allclose(&val1.view(), &val2.view(), 1e-08, true));
+/// # use bed_reader::BedErrorPlus;
+/// # Ok::<(), BedErrorPlus>(())
+/// ```
 pub fn allclose<
     T1: 'static + Copy + PartialEq + PartialOrd + Signed,
     T2: 'static + Copy + PartialEq + PartialOrd + Signed + Into<T1>,
@@ -5509,6 +5530,22 @@ pub fn allclose<
 }
 
 /// Return a path to a temporary directory.
+///
+/// # Example
+/// ```
+/// use ndarray as nd;
+/// use bed_reader::{tmp_path, WriteOptions};
+/// let output_folder = tmp_path()?;
+/// let output_file = output_folder.join("small.bed");
+/// let val = nd::array![
+///     [1.0, 0.0, f64::NAN, 0.0],
+///     [2.0, 0.0, f64::NAN, 2.0],
+///     [0.0, 1.0, 2.0, 0.0]
+/// ];
+/// WriteOptions::builder(output_file).write(&val)?;
+/// # use bed_reader::BedErrorPlus;
+/// # Ok::<(), BedErrorPlus>(())
+/// ```
 pub fn tmp_path() -> Result<PathBuf, BedErrorPlus> {
     let output_path = PathBuf::from(TempDir::default().as_ref());
     fs::create_dir(&output_path)?;

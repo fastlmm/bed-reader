@@ -1,9 +1,13 @@
 #[cfg(test)]
 use crate::allclose;
 #[cfg(test)]
+use crate::assert_eq_nan;
+#[cfg(test)]
 use crate::Bed;
 #[cfg(test)]
 use crate::ReadOptions;
+#[cfg(test)]
+use crate::WriteOptions;
 // https://stackoverflow.com/questions/32900809/how-to-suppress-function-is-never-used-warning-for-a-function-used-by-tests
 #[cfg(test)]
 use crate::file_aat_piece;
@@ -13,6 +17,8 @@ use crate::file_ata_piece;
 use crate::file_b_less_aatbx;
 #[cfg(test)]
 use crate::read_into_f64;
+#[cfg(test)]
+use crate::tmp_path;
 #[cfg(test)]
 use crate::try_div_4;
 #[cfg(test)]
@@ -33,6 +39,8 @@ use num_traits::abs;
 use std::f32;
 #[cfg(test)]
 use std::f64;
+#[cfg(test)]
+use std::f64::NAN;
 #[cfg(test)]
 use std::ops::Range;
 #[cfg(test)]
@@ -887,5 +895,26 @@ fn file_aat<P: AsRef<Path>>(
         }
         println!("val:\n{val:?}");
     }
+    Ok(())
+}
+
+#[test]
+fn test_allclose() -> Result<(), BedErrorPlus> {
+    let val1 = nd::arr2(&[[1.0, 2.000000000001], [3.0, NAN]]);
+    let val2 = nd::arr2(&[[1.0, 2.0], [3.0, NAN]]);
+    assert!(allclose(&val1.view(), &val2.view(), 1e-08, true));
+
+    let val1 = nd::arr2(&[[1.0, 2.0], [3.0, NAN]]);
+    assert_eq_nan(&val1, &val2);
+
+    let output_folder = tmp_path()?;
+    let output_file = output_folder.join("small.bed");
+    let val = nd::array![
+        [1.0, 0.0, f64::NAN, 0.0],
+        [2.0, 0.0, f64::NAN, 2.0],
+        [0.0, 1.0, 2.0, 0.0]
+    ];
+    WriteOptions::builder(output_file).write(&val)?;
+
     Ok(())
 }
