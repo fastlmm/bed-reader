@@ -1,6 +1,6 @@
 #![warn(missing_docs)]
-// !!!cmk 0 document three functions
 // !!!cmk look at every unwrap
+// !!!cmk look at every as_ref and as_mut
 
 // Inspired by C++ version by Chris Widmer and Carl Kadie
 
@@ -1438,7 +1438,6 @@ pub struct Metadata {
 }
 
 fn lazy_or_skip_count<T>(array: &Option<Rc<nd::Array1<T>>>) -> Option<usize> {
-    // cmk0r
     array.as_ref().map(|array| array.len())
 }
 
@@ -1586,6 +1585,7 @@ impl BedBuilder {
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to give different values.
     pub fn fid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, fid: I) -> Self {
+        // !!!cmk understand as_mut and unwrap
         self.metadata.as_mut().unwrap().set_fid(fid);
         self
     }
@@ -1993,6 +1993,7 @@ impl BedBuilder {
                 .metadata(metadata)
                 // !!!cmk00 should we check the lengths match here?
                 .build_no_file_check()
+                // !!!cmk look at this unwrap
                 .unwrap(),
         );
 
@@ -2293,8 +2294,7 @@ impl Bed {
     /// # Ok::<(), BedErrorPlus>(())
     pub fn fid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         self.unlazy_fam::<String>(self.metadata.fid.is_none(), MetadataFields::Fid, "fid")?;
-        // cmk0r
-        Ok(self.metadata.fid.as_ref().unwrap())
+        Ok(self.metadata.fid.as_ref().unwrap()) //unwrap always works because of lazy_fam
     }
 
     /// Individual id of each of individual (sample)
@@ -2319,8 +2319,7 @@ impl Bed {
     /// # Ok::<(), BedErrorPlus>(())
     pub fn iid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         self.unlazy_fam::<String>(self.metadata.iid.is_none(), MetadataFields::Iid, "iid")?;
-        // cmk0r
-        Ok(self.metadata.iid.as_ref().unwrap())
+        Ok(self.metadata.iid.as_ref().unwrap()) //unwrap always works because of lazy_fam
     }
 
     /// Father id of each of individual (sample)
@@ -2349,7 +2348,7 @@ impl Bed {
             MetadataFields::Father,
             "father",
         )?;
-        Ok(self.metadata.father.as_ref().unwrap())
+        Ok(self.metadata.father.as_ref().unwrap()) //unwrap always works because of lazy_fam
     }
 
     /// Mother id of each of individual (sample)
@@ -2378,7 +2377,7 @@ impl Bed {
             MetadataFields::Mother,
             "mother",
         )?;
-        Ok(self.metadata.mother.as_ref().unwrap())
+        Ok(self.metadata.mother.as_ref().unwrap()) //unwrap always works because of lazy_fam
     }
 
     /// Sex each of individual (sample)
@@ -2405,7 +2404,7 @@ impl Bed {
     /// # Ok::<(), BedErrorPlus>(())
     pub fn sex(&mut self) -> Result<&nd::Array1<i32>, BedErrorPlus> {
         self.unlazy_fam::<String>(self.metadata.sex.is_none(), MetadataFields::Sex, "sex")?;
-        Ok(self.metadata.sex.as_ref().unwrap())
+        Ok(self.metadata.sex.as_ref().unwrap()) //unwrap always works because of lazy_fam
     }
 
     /// A phenotype for each individual (seldom used)
@@ -2434,7 +2433,7 @@ impl Bed {
             MetadataFields::Pheno,
             "pheno",
         )?;
-        Ok(self.metadata.pheno.as_ref().unwrap())
+        Ok(self.metadata.pheno.as_ref().unwrap()) //unwrap always works because of lazy_fam
     }
 
     /// Chromosome of each SNP (variant)
@@ -2463,7 +2462,7 @@ impl Bed {
             MetadataFields::Chromosome,
             "chromosome",
         )?;
-        Ok(self.metadata.chromosome.as_ref().unwrap())
+        Ok(self.metadata.chromosome.as_ref().unwrap()) //unwrap always works because of lazy_bim
     }
 
     /// SNP id of each SNP (variant)
@@ -2488,7 +2487,7 @@ impl Bed {
     /// # Ok::<(), BedErrorPlus>(())
     pub fn sid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
         self.unlazy_bim::<String>(self.metadata.sid.is_none(), MetadataFields::Sid, "sid")?;
-        Ok(self.metadata.sid.as_ref().unwrap())
+        Ok(self.metadata.sid.as_ref().unwrap()) //unwrap always works because of lazy_bim
     }
 
     /// Centimorgan position of each SNP (variant)
@@ -2517,7 +2516,7 @@ impl Bed {
             MetadataFields::CmPosition,
             "cm_position",
         )?;
-        Ok(self.metadata.cm_position.as_ref().unwrap())
+        Ok(self.metadata.cm_position.as_ref().unwrap()) //unwrap always works because of lazy_bim
     }
 
     /// Base-pair position of each SNP (variant)
@@ -2546,7 +2545,7 @@ impl Bed {
             MetadataFields::BpPosition,
             "bp_position",
         )?;
-        Ok(self.metadata.bp_position.as_ref().unwrap())
+        Ok(self.metadata.bp_position.as_ref().unwrap()) //unwrap always works because of lazy_bim
     }
 
     /// First allele of each SNP (variant)
@@ -2575,7 +2574,7 @@ impl Bed {
             MetadataFields::Allele1,
             "allele_1",
         )?;
-        Ok(self.metadata.allele_1.as_ref().unwrap())
+        Ok(self.metadata.allele_1.as_ref().unwrap()) //unwrap always works because of lazy_bim
     }
 
     /// Second allele of each SNP (variant)
@@ -2604,7 +2603,7 @@ impl Bed {
             MetadataFields::Allele2,
             "allele_2",
         )?;
-        Ok(self.metadata.allele_2.as_ref().unwrap())
+        Ok(self.metadata.allele_2.as_ref().unwrap()) //unwrap always works because of lazy_bim
     }
 
     /// [`Metadata`](struct.Metadata.html) for this dataset, for example, the individual (sample) Ids.
@@ -2751,12 +2750,10 @@ impl Bed {
 
         let num_threads = compute_num_threads(read_options.num_threads)?;
 
+        // If we already have a Vec<isize>, reference it. If we don't, create one and reference it.
         let iid_hold = Hold::new(&read_options.iid_index, iid_count)?;
-        // cmk0r
         let iid_index = iid_hold.as_ref();
-
         let sid_hold = Hold::new(&read_options.sid_index, sid_count)?;
-        // cmk0r
         let sid_index = sid_hold.as_ref();
 
         let shape = val.shape();
@@ -2826,10 +2823,9 @@ impl Bed {
         let iid_count = self.iid_count()?;
         let sid_count = self.sid_count()?;
 
+        // If we already have a Vec<isize>, reference it. If we don't, create one and reference it.
         let iid_hold = Hold::new(&read_options.iid_index, iid_count)?;
-        // cmk0r
         let iid_index = iid_hold.as_ref();
-        // cmk0r
         let sid_hold = Hold::new(&read_options.sid_index, sid_count)?;
         let sid_index = sid_hold.as_ref();
 
@@ -3071,6 +3067,8 @@ impl Bed {
     }
 }
 
+/// If we already have a Vec<isize> remember a reference to it.
+/// If we don't, then create one.
 enum Hold<'a> {
     Copy(Vec<isize>),
     Ref(&'a Vec<isize>),
@@ -3093,12 +3091,6 @@ impl Hold<'_> {
         }
     }
 }
-
-// let hold = fun_name(&read_options.iid_index, iid_count)?;
-// let iid_index: &Vec<isize> = match hold {
-//     Hold::Ref(index) => index,
-//     Hold::Copy(ref index) => &index,
-// };
 
 fn compute_num_threads(option_num_threads: Option<usize>) -> Result<usize, BedErrorPlus> {
     let num_threads = if let Some(num_threads) = option_num_threads {
@@ -4595,6 +4587,7 @@ where
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     pub fn fid(&self) -> &nd::Array1<String> {
+        // unwrap always works because the WriteOptions constructor fills all metadata.
         self.metadata.fid.as_ref().unwrap()
     }
 
@@ -4624,6 +4617,7 @@ where
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     pub fn iid(&self) -> &nd::Array1<String> {
+        // unwrap always works because the WriteOptions constructor fills all metadata.
         self.metadata.iid.as_ref().unwrap()
     }
 
@@ -4646,6 +4640,7 @@ where
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     pub fn father(&self) -> &nd::Array1<String> {
+        // unwrap always works because the WriteOptions constructor fills all metadata.
         self.metadata.father.as_ref().unwrap()
     }
 
@@ -4668,6 +4663,7 @@ where
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     pub fn mother(&self) -> &nd::Array1<String> {
+        // unwrap always works because the WriteOptions constructor fills all metadata.
         self.metadata.mother.as_ref().unwrap()
     }
 
@@ -4692,6 +4688,7 @@ where
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     pub fn sex(&self) -> &nd::Array1<i32> {
+        // unwrap always works because the WriteOptions constructor fills all metadata.
         self.metadata.sex.as_ref().unwrap()
     }
 
@@ -4714,6 +4711,7 @@ where
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     pub fn pheno(&self) -> &nd::Array1<String> {
+        // unwrap always works because the WriteOptions constructor fills all metadata.
         self.metadata.pheno.as_ref().unwrap()
     }
 
@@ -4736,6 +4734,7 @@ where
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     pub fn chromosome(&self) -> &nd::Array1<String> {
+        // unwrap always works because the WriteOptions constructor fills all metadata.
         self.metadata.chromosome.as_ref().unwrap()
     }
 
@@ -4765,6 +4764,7 @@ where
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     pub fn sid(&self) -> &nd::Array1<String> {
+        // unwrap always works because the WriteOptions constructor fills all metadata.
         self.metadata.sid.as_ref().unwrap()
     }
 
@@ -4787,6 +4787,7 @@ where
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     pub fn cm_position(&self) -> &nd::Array1<f32> {
+        // unwrap always works because the WriteOptions constructor fills all metadata.
         self.metadata.cm_position.as_ref().unwrap()
     }
 
@@ -4809,6 +4810,7 @@ where
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     pub fn bp_position(&self) -> &nd::Array1<i32> {
+        // unwrap always works because the WriteOptions constructor fills all metadata.
         self.metadata.bp_position.as_ref().unwrap()
     }
 
@@ -4832,6 +4834,7 @@ where
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     pub fn allele_1(&self) -> &nd::Array1<String> {
+        // unwrap always works because the WriteOptions constructor fills all metadata.
         self.metadata.allele_1.as_ref().unwrap()
     }
 
@@ -4855,6 +4858,7 @@ where
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     pub fn allele_2(&self) -> &nd::Array1<String> {
+        // unwrap always works because the WriteOptions constructor fills all metadata.
         self.metadata.allele_2.as_ref().unwrap()
     }
 
@@ -5388,6 +5392,7 @@ where
             return Err(UninitializedFieldError::new("path").into());
         };
 
+        // unwrap always works because the metadata builder always initializes metadata
         let metadata = self.metadata.as_ref().unwrap();
         let metadata = metadata.fill(iid_count, sid_count)?;
 
@@ -5410,7 +5415,7 @@ where
             fam_path: None,
             bim_path: None,
 
-            metadata: Some(MetadataBuilder::default().build().unwrap()),
+            metadata: Some(Metadata::new()),
 
             is_a1_counted: None,
             num_threads: None,
@@ -5558,7 +5563,7 @@ pub fn allclose<
 /// # Ok::<(), BedErrorPlus>(())
 /// ```
 pub fn tmp_path() -> Result<PathBuf, BedErrorPlus> {
-    let output_path = PathBuf::from(TempDir::default().as_ref());
+    let output_path = TempDir::default().as_ref().to_owned();
     fs::create_dir(&output_path)?;
     Ok(output_path)
 }
@@ -5673,9 +5678,8 @@ impl MetadataBuilder {
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     pub fn iid<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, iid: I) -> &mut Self {
-        // !!!cmk00 should this be return mut?
         self.iid = Some(Some(Rc::new(
-            iid.into_iter().map(|s| s.as_ref().to_string()).collect(),
+            iid.into_iter().map(|s| s.as_ref().to_owned()).collect(),
         )));
         self
     }
@@ -5687,7 +5691,7 @@ impl MetadataBuilder {
     /// Providing them here avoids that file read and provides a way to give different values.
     pub fn father<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, father: I) -> &mut Self {
         self.father = Some(Some(Rc::new(
-            father.into_iter().map(|s| s.as_ref().to_string()).collect(),
+            father.into_iter().map(|s| s.as_ref().to_owned()).collect(),
         )));
         self
     }
@@ -5699,7 +5703,7 @@ impl MetadataBuilder {
     /// Providing them here avoids that file read and provides a way to give different values.
     pub fn mother<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, mother: I) -> &mut Self {
         self.mother = Some(Some(Rc::new(
-            mother.into_iter().map(|s| s.as_ref().to_string()).collect(),
+            mother.into_iter().map(|s| s.as_ref().to_owned()).collect(),
         )));
         self
     }
@@ -5722,7 +5726,7 @@ impl MetadataBuilder {
     /// Providing them here avoids that file read and provides a way to give different values.
     pub fn pheno<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, pheno: I) -> &mut Self {
         self.pheno = Some(Some(Rc::new(
-            pheno.into_iter().map(|s| s.as_ref().to_string()).collect(),
+            pheno.into_iter().map(|s| s.as_ref().to_owned()).collect(),
         )));
         self
     }
@@ -5739,7 +5743,7 @@ impl MetadataBuilder {
         self.chromosome = Some(Some(Rc::new(
             chromosome
                 .into_iter()
-                .map(|s| s.as_ref().to_string())
+                .map(|s| s.as_ref().to_owned())
                 .collect(),
         )));
         self
@@ -5765,7 +5769,7 @@ impl MetadataBuilder {
     /// ```
     pub fn sid<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, sid: I) -> &mut Self {
         self.sid = Some(Some(Rc::new(
-            sid.into_iter().map(|s| s.as_ref().to_string()).collect(),
+            sid.into_iter().map(|s| s.as_ref().to_owned()).collect(),
         )));
         self
     }
@@ -5799,7 +5803,7 @@ impl MetadataBuilder {
         self.allele_1 = Some(Some(Rc::new(
             allele_1
                 .into_iter()
-                .map(|s| s.as_ref().to_string())
+                .map(|s| s.as_ref().to_owned())
                 .collect(),
         )));
         self
@@ -5815,7 +5819,7 @@ impl MetadataBuilder {
         self.allele_2 = Some(Some(Rc::new(
             allele_2
                 .into_iter()
-                .map(|s| s.as_ref().to_string())
+                .map(|s| s.as_ref().to_owned())
                 .collect(),
         )));
         self
@@ -5943,15 +5947,13 @@ impl Metadata {
     ///
     /// > See [`Metadata::builder()`](struct.Metadata.html#method.builder)
     pub fn new() -> Metadata {
+        // Unwrap always works because an empty metadata builder always works.
         Metadata::builder().build().unwrap()
     }
 
     /// Optional family id of each of individual (sample)
     pub fn fid(&self) -> Option<&nd::Array1<String>> {
-        match self.fid {
-            Some(ref array) => Some(array.as_ref()),
-            None => None,
-        }
+        option_rc_as_ref(&self.fid)
     }
 
     /// Optional individual id of each of individual (sample)
@@ -5966,50 +5968,32 @@ impl Metadata {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())    
     pub fn iid(&self) -> Option<&nd::Array1<String>> {
-        match self.iid {
-            Some(ref array) => Some(array.as_ref()),
-            None => None,
-        }
+        option_rc_as_ref(&self.iid)
     }
 
     /// Optional father id of each of individual (sample)
     pub fn father(&self) -> Option<&nd::Array1<String>> {
-        match self.father {
-            Some(ref array) => Some(array.as_ref()),
-            None => None,
-        }
+        option_rc_as_ref(&self.father)
     }
 
     /// Optional mother id of each of individual (sample)
     pub fn mother(&self) -> Option<&nd::Array1<String>> {
-        match self.mother {
-            Some(ref array) => Some(array.as_ref()),
-            None => None,
-        }
+        option_rc_as_ref(&self.mother)
     }
 
     /// Optional sex each of individual (sample)
     pub fn sex(&self) -> Option<&nd::Array1<i32>> {
-        match self.sex {
-            Some(ref array) => Some(array.as_ref()),
-            None => None,
-        }
+        option_rc_as_ref(&self.sex)
     }
 
     /// Optional phenotype for each individual (seldom used)
     pub fn pheno(&self) -> Option<&nd::Array1<String>> {
-        match self.pheno {
-            Some(ref array) => Some(array.as_ref()),
-            None => None,
-        }
+        option_rc_as_ref(&self.pheno)
     }
 
     /// Optional chromosome of each SNP (variant)
     pub fn chromosome(&self) -> Option<&nd::Array1<String>> {
-        match self.chromosome {
-            Some(ref array) => Some(array.as_ref()),
-            None => None,
-        }
+        option_rc_as_ref(&self.chromosome)
     }
 
     /// Optional SNP id of each SNP (variant)
@@ -6024,42 +6008,27 @@ impl Metadata {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())    
     pub fn sid(&self) -> Option<&nd::Array1<String>> {
-        match self.sid {
-            Some(ref array) => Some(array.as_ref()),
-            None => None,
-        }
+        option_rc_as_ref(&self.sid)
     }
 
     /// Optional centimorgan position of each SNP (variant)
     pub fn cm_position(&self) -> Option<&nd::Array1<f32>> {
-        match self.cm_position {
-            Some(ref array) => Some(array.as_ref()),
-            None => None,
-        }
+        option_rc_as_ref(&self.cm_position)
     }
 
     /// Optional base-pair position of each SNP (variant)
     pub fn bp_position(&self) -> Option<&nd::Array1<i32>> {
-        match self.bp_position {
-            Some(ref array) => Some(array.as_ref()),
-            None => None,
-        }
+        option_rc_as_ref(&self.bp_position)
     }
 
     /// Optional first allele of each SNP (variant)
     pub fn allele_1(&self) -> Option<&nd::Array1<String>> {
-        match self.allele_1 {
-            Some(ref array) => Some(array.as_ref()),
-            None => None,
-        }
+        option_rc_as_ref(&self.allele_1)
     }
 
     /// Optional second allele of each SNP (variant)
     pub fn allele_2(&self) -> Option<&nd::Array1<String>> {
-        match self.allele_2 {
-            Some(ref array) => Some(array.as_ref()),
-            None => None,
-        }
+        option_rc_as_ref(&self.allele_2)
     }
 
     /// Create a new [`Metadata`](struct.Metadata.html) by filling in empty fields with a .fam file.
@@ -6324,6 +6293,9 @@ impl Metadata {
             todo!("add error message cmk00");
         }
 
+        // 1st as_ref turns Option<Rc<Array>> into Option<&Rc<Array>>
+        // unwrap always works because we checked that all the fields are present
+        // 2nd as as_ref turns &Rc<Array> into &Array
         nd::azip!((fid in self.fid.as_ref().unwrap().as_ref(),
                    iid in self.iid.as_ref().unwrap().as_ref(),
                    father in self.father.as_ref().unwrap().as_ref(),
@@ -6382,12 +6354,16 @@ impl Metadata {
             todo!("add error message cmk00");
         }
 
-        nd::azip!((chromosome in self.chromosome.as_ref().unwrap().as_ref(),
-        sid in self.sid.as_ref().unwrap().as_ref(),
-        cm_position in self.cm_position.as_ref().unwrap().as_ref(),
-        bp_position in self.bp_position.as_ref().unwrap().as_ref(),
-        allele_1 in self.allele_1.as_ref().unwrap().as_ref(),
-        allele_2 in self.allele_2.as_ref().unwrap().as_ref(),
+        // 1st as_ref turns Option<Rc<Array>> into Option<&Rc<Array>>
+        // unwrap always works because we checked that all the fields are present
+        // 2nd as as_ref turns &Rc<Array> into &Array
+        nd::azip!((
+            chromosome in self.chromosome.as_ref().unwrap().as_ref(),
+            sid in self.sid.as_ref().unwrap().as_ref(),
+            cm_position in self.cm_position.as_ref().unwrap().as_ref(),
+            bp_position in self.bp_position.as_ref().unwrap().as_ref(),
+            allele_1 in self.allele_1.as_ref().unwrap().as_ref(),
+            allele_2 in self.allele_2.as_ref().unwrap().as_ref(),
                 )
         {
             // !!!cmk later should these be \t?
@@ -6461,28 +6437,28 @@ impl Metadata {
 
     fn set_fid<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, fid: I) -> &Self {
         self.fid = Some(Rc::new(
-            fid.into_iter().map(|s| s.as_ref().to_string()).collect(),
+            fid.into_iter().map(|s| s.as_ref().to_owned()).collect(),
         ));
         self
     }
 
     fn set_iid<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, iid: I) -> &Self {
         self.iid = Some(Rc::new(
-            iid.into_iter().map(|s| s.as_ref().to_string()).collect(),
+            iid.into_iter().map(|s| s.as_ref().to_owned()).collect(),
         ));
         self
     }
 
     fn set_father<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, father: I) -> &Self {
         self.father = Some(Rc::new(
-            father.into_iter().map(|s| s.as_ref().to_string()).collect(),
+            father.into_iter().map(|s| s.as_ref().to_owned()).collect(),
         ));
         self
     }
 
     fn set_mother<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, mother: I) -> &Self {
         self.mother = Some(Rc::new(
-            mother.into_iter().map(|s| s.as_ref().to_string()).collect(),
+            mother.into_iter().map(|s| s.as_ref().to_owned()).collect(),
         ));
         self
     }
@@ -6494,7 +6470,7 @@ impl Metadata {
 
     fn set_pheno<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, pheno: I) -> &Self {
         self.pheno = Some(Rc::new(
-            pheno.into_iter().map(|s| s.as_ref().to_string()).collect(),
+            pheno.into_iter().map(|s| s.as_ref().to_owned()).collect(),
         ));
         self
     }
@@ -6503,7 +6479,7 @@ impl Metadata {
         self.chromosome = Some(Rc::new(
             chromosome
                 .into_iter()
-                .map(|s| s.as_ref().to_string())
+                .map(|s| s.as_ref().to_owned())
                 .collect(),
         ));
         self
@@ -6511,7 +6487,7 @@ impl Metadata {
 
     fn set_sid<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, sid: I) -> &Self {
         self.sid = Some(Rc::new(
-            sid.into_iter().map(|s| s.as_ref().to_string()).collect(),
+            sid.into_iter().map(|s| s.as_ref().to_owned()).collect(),
         ));
         self
     }
@@ -6530,7 +6506,7 @@ impl Metadata {
         self.allele_1 = Some(Rc::new(
             allele_1
                 .into_iter()
-                .map(|s| s.as_ref().to_string())
+                .map(|s| s.as_ref().to_owned())
                 .collect(),
         ));
         self
@@ -6540,7 +6516,7 @@ impl Metadata {
         self.allele_2 = Some(Rc::new(
             allele_2
                 .into_iter()
-                .map(|s| s.as_ref().to_string())
+                .map(|s| s.as_ref().to_owned())
                 .collect(),
         ));
         self
@@ -6553,5 +6529,12 @@ fn set_field<T>(
 ) {
     if let Some(array) = field1 {
         *field2 = Some(Some(array.clone()));
+    }
+}
+
+fn option_rc_as_ref<T>(field: &Option<Rc<nd::Array1<T>>>) -> Option<&nd::Array1<T>> {
+    match field {
+        Some(array) => Some(array.as_ref()),
+        None => None,
     }
 }

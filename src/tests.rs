@@ -46,11 +46,7 @@ use std::ops::Range;
 #[cfg(test)]
 use std::path::Path;
 #[cfg(test)]
-use std::path::PathBuf;
-#[cfg(test)]
 use std::{fs::File, io::BufReader};
-#[cfg(test)]
-use temp_testdir::TempDir;
 
 #[test]
 fn best_int8() {
@@ -265,14 +261,14 @@ fn index() {
 // cmk 0 Python has more tests, but they aren't needed in Rust until it gets fancy indexing
 
 #[test]
-fn writer() {
+fn writer() -> Result<(), BedErrorPlus> {
     let path = Path::new("bed_reader/tests/data/some_missing.bed");
 
     let mut bed = Bed::new(path).unwrap();
     let val = ReadOptions::builder().c().i8().read(&mut bed).unwrap();
 
-    let temp = TempDir::default();
-    let path2 = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_test.bed");
+    let output_folder = tmp_path()?;
+    let path2 = output_folder.join("rust_bed_reader_writer_test.bed");
 
     Bed::write(&val, &path2).unwrap();
 
@@ -291,7 +287,7 @@ fn writer() {
     let mut bed = Bed::new(path).unwrap();
     let val = ReadOptions::builder().c().f64().read(&mut bed).unwrap();
 
-    let path2 = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64.bed");
+    let path2 = output_folder.join("rust_bed_reader_writer_testf64.bed");
 
     Bed::write(&val, &path2).unwrap();
 
@@ -307,7 +303,7 @@ fn writer() {
 
     let mut val = ReadOptions::builder().c().f64().read(&mut bed).unwrap();
     val[(0, 0)] = 5.0;
-    let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_5.bed");
+    let path = output_folder.join("rust_bed_reader_writer_testf64_5.bed");
 
     if let Err(BedErrorPlus::BedError(BedError::BadValue(_))) = Bed::write(&val, &path) {
         assert!(!path.exists(), "file should not exist");
@@ -317,12 +313,14 @@ fn writer() {
 
     // let val = nd::Array2::zeros((0, 0));
     let val = nd::Array2::<f64>::zeros((0, 0));
-    let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_0s.bed");
+    let path = output_folder.join("rust_bed_reader_writer_testf64_0s.bed");
     Bed::write(&val, &path).unwrap();
 
     let val: nd::Array2<i8> = nd::Array2::zeros((3, 0));
-    let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_testf64_3_0.bed");
+    let path = output_folder.join("rust_bed_reader_writer_testf64_3_0.bed");
     Bed::write(&val, &path).unwrap();
+
+    Ok(())
 }
 
 #[test]
@@ -661,7 +659,7 @@ fn read_modes() {
 }
 
 #[test]
-fn zeros() {
+fn zeros() -> Result<(), BedErrorPlus> {
     let filename = "bed_reader/tests/data/some_missing.bed";
     let mut bed = Bed::new(filename).unwrap();
     let iid_count = bed.iid_count().unwrap();
@@ -724,8 +722,8 @@ fn zeros() {
     matrix_subset_no_alloc(&(in_val.view()), &[], &[], &mut out_val.view_mut()).unwrap();
 
     // Writing zero length vals
-    let temp = TempDir::default();
-    let path = PathBuf::from(temp.as_ref()).join("rust_bed_reader_writer_zeros.bed");
+    let output_folder = tmp_path()?;
+    let path = output_folder.join("rust_bed_reader_writer_zeros.bed");
 
     Bed::write(&out_val01, &path).unwrap();
     let in_val01 = Bed::new(&path).unwrap().read::<f64>().unwrap();
@@ -741,6 +739,8 @@ fn zeros() {
     let in_val00 = Bed::new(&path).unwrap().read::<f64>().unwrap();
     assert!(in_val00.shape() == [0, 0]);
     assert!(allclose(&in_val00.view(), &out_val00.view(), 1e-08, true));
+
+    Ok(())
 }
 #[test]
 fn file_ata_small() {
