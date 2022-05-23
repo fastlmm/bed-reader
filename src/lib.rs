@@ -1,7 +1,4 @@
 #![warn(missing_docs)]
-// !!!cmk look at every unwrap
-// !!!cmk look at every as_ref and as_mut
-
 // Inspired by C++ version by Chris Widmer and Carl Kadie
 
 // See: https://towardsdatascience.com/nine-rules-for-writing-python-extensions-in-rust-d35ea3a4ec29?sk=f8d808d5f414154fdb811e4137011437
@@ -181,8 +178,18 @@
 //! | `vec![true, false, true]` | `Vec<bool>`| Index positions 0 and 2. |
 //! | `[true, false, true]` | `[bool]`| Index positions 0 and 2.|
 //! | `ndarray::array![true, false, true]` | `ndarray::Array1<bool>`| Index positions 0 and 2.|
-
-// !!!cmk later Environment  variables
+//! | `s![true, false, true]` | `ndarray::SliceInfo1`| Index positions 0 and 2.|
+//!
+//! ### Environment Variables
+//!
+//! If [`ReadOptionsBuilder::num_threads`](struct.ReadOptionsBuilder.html#method.num_threads)
+//! or [`WriteOptionsBuilder::num_threads`](struct.WriteOptionsBuilder.html#method.num_threads) is not specified,
+//! the number of threads to use is determined by these environment variable (in order of priority):
+//!
+//! * `BED_READER_NUM_THREADS`
+//! * `NUM_THREADS`
+//!
+//! If neither of these environment variables are set, all processors are used.
 
 mod python_module;
 mod tests;
@@ -364,6 +371,10 @@ pub enum BedError {
     #[allow(missing_docs)]
     #[error("Expect ndarray of shape ({0}, {1}), but found shape ({2}, {3})")]
     InvalidShape(usize, usize, usize, usize),
+
+    #[allow(missing_docs)]
+    #[error("Can't write '{0}' metadata if some fields are None")]
+    MetadataMissingForWrite(String),
 }
 
 // Trait alias
@@ -1585,7 +1596,7 @@ impl BedBuilder {
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to give different values.
     pub fn fid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, fid: I) -> Self {
-        // !!!cmk understand as_mut and unwrap
+        // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_fid(fid);
         self
     }
@@ -1610,6 +1621,7 @@ impl BedBuilder {
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     pub fn iid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, iid: I) -> Self {
+        // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_iid(iid);
         self
     }
@@ -1620,6 +1632,7 @@ impl BedBuilder {
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to gi&ve different values.
     pub fn father<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, father: I) -> Self {
+        // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_father(father);
         self
     }
@@ -1630,6 +1643,7 @@ impl BedBuilder {
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to give different values.
     pub fn mother<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, mother: I) -> Self {
+        // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_mother(mother);
         self
     }
@@ -1640,6 +1654,7 @@ impl BedBuilder {
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to give different values.
     pub fn sex<I: IntoIterator<Item = i32>>(mut self, sex: I) -> Self {
+        // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_sex(sex);
         self
     }
@@ -1651,6 +1666,7 @@ impl BedBuilder {
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to give different values.
     pub fn pheno<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, pheno: I) -> Self {
+        // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_pheno(pheno);
         self
     }
@@ -1661,6 +1677,7 @@ impl BedBuilder {
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
     pub fn chromosome<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, chromosome: I) -> Self {
+        // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_chromosome(chromosome);
         self
     }
@@ -1695,6 +1712,7 @@ impl BedBuilder {
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
     pub fn cm_position<I: IntoIterator<Item = f32>>(mut self, cm_position: I) -> Self {
+        // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_cm_position(cm_position);
         self
     }
@@ -1705,6 +1723,7 @@ impl BedBuilder {
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
     pub fn bp_position<I: IntoIterator<Item = i32>>(mut self, bp_position: I) -> Self {
+        // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_bp_position(bp_position);
         self
     }
@@ -1715,6 +1734,7 @@ impl BedBuilder {
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
     pub fn allele_1<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, allele_1: I) -> Self {
+        // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_allele_1(allele_1);
         self
     }
@@ -1725,6 +1745,7 @@ impl BedBuilder {
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
     pub fn allele_2<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, allele_2: I) -> Self {
+        // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_allele_2(allele_2);
         self
     }
@@ -1812,6 +1833,7 @@ impl BedBuilder {
     /// This stops that recording. This is useful if the fid is not needed.
     /// Asking for the fid after skipping it results in an error.    
     pub fn skip_fid(mut self) -> Self {
+        // Unwrap will always work because BedBuilder starting with some skip_set
         self.skip_set.as_mut().unwrap().insert(MetadataFields::Fid);
         self
     }
@@ -1822,6 +1844,7 @@ impl BedBuilder {
     /// This stops that recording. This is useful if the iid is not needed.
     /// Asking for the iid after skipping it results in an error.
     pub fn skip_iid(mut self) -> Self {
+        // Unwrap will always work because BedBuilder starting with some skip_set
         self.skip_set.as_mut().unwrap().insert(MetadataFields::Iid);
         self
     }
@@ -1832,6 +1855,7 @@ impl BedBuilder {
     /// This stops that recording. This is useful if the father id is not needed.
     /// Asking for the father id after skipping it results in an error.    
     pub fn skip_father(mut self) -> Self {
+        // Unwrap will always work because BedBuilder starting with some skip_set
         self.skip_set
             .as_mut()
             .unwrap()
@@ -1845,6 +1869,7 @@ impl BedBuilder {
     /// This stops that recording. This is useful if the mother id is not needed.
     /// Asking for the mother id after skipping it results in an error.    
     pub fn skip_mother(mut self) -> Self {
+        // Unwrap will always work because BedBuilder starting with some skip_set
         self.skip_set
             .as_mut()
             .unwrap()
@@ -1858,6 +1883,7 @@ impl BedBuilder {
     /// This stops that recording. This is useful if sex is not needed.
     /// Asking for sex after skipping it results in an error.    
     pub fn skip_sex(mut self) -> Self {
+        // Unwrap will always work because BedBuilder starting with some skip_set
         self.skip_set.as_mut().unwrap().insert(MetadataFields::Sex);
         self
     }
@@ -1872,12 +1898,13 @@ impl BedBuilder {
     /// information is not needed.
     /// Asking for the phenotype after skipping it results in an error.    
     pub fn skip_pheno(mut self) -> Self {
+        // Unwrap will always work because BedBuilder starting with some skip_set
         self.skip_set
             .as_mut()
             .unwrap()
             .insert(MetadataFields::Pheno);
         self
-    } // cmk00d understand this as_mut
+    }
 
     /// Don't read the chromosome information from the .bim file.
     ///
@@ -1885,6 +1912,7 @@ impl BedBuilder {
     /// This stops that recording. This is useful if the chromosome is not needed.
     /// Asking for the chromosome after skipping it results in an error.    
     pub fn skip_chromosome(mut self) -> Self {
+        // Unwrap will always work because BedBuilder starting with some skip_set
         self.skip_set
             .as_mut()
             .unwrap()
@@ -1898,6 +1926,7 @@ impl BedBuilder {
     /// This stops that recording. This is useful if the sid is not needed.
     /// Asking for the sid after skipping it results in an error.    
     pub fn skip_sid(mut self) -> Self {
+        // Unwrap will always work because BedBuilder starting with some skip_set
         self.skip_set.as_mut().unwrap().insert(MetadataFields::Sid);
         self
     }
@@ -1908,6 +1937,7 @@ impl BedBuilder {
     /// This stops that recording. This is useful if the cm position is not needed.
     /// Asking for the cm position after skipping it results in an error.    
     pub fn skip_cm_position(mut self) -> Self {
+        // Unwrap will always work because BedBuilder starting with some skip_set
         self.skip_set
             .as_mut()
             .unwrap()
@@ -1921,6 +1951,7 @@ impl BedBuilder {
     /// This stops that recording. This is useful if the bp position is not needed.
     /// Asking for the cp position after skipping it results in an error.    
     pub fn skip_bp_position(mut self) -> Self {
+        // Unwrap will always work because BedBuilder starting with some skip_set
         self.skip_set
             .as_mut()
             .unwrap()
@@ -1935,6 +1966,7 @@ impl BedBuilder {
     /// This stops that recording. This is useful if allele 1 is not needed.
     /// Asking for allele 1 after skipping it results in an error.    
     pub fn skip_allele_1(mut self) -> Self {
+        // Unwrap will always work because BedBuilder starting with some skip_set
         self.skip_set
             .as_mut()
             .unwrap()
@@ -1948,6 +1980,7 @@ impl BedBuilder {
     /// This stops that recording. This is useful if allele 2 is not needed.
     /// Asking for allele 2 after skipping it results in an error.    
     pub fn skip_allele_2(mut self) -> Self {
+        // Unwrap will always work because BedBuilder starting with some skip_set
         self.skip_set
             .as_mut()
             .unwrap()
@@ -1989,12 +2022,10 @@ impl BedBuilder {
     pub fn metadata(mut self, metadata: &Metadata) -> Self {
         self.metadata = Some(
             Metadata::builder()
-                .metadata(&self.metadata.unwrap())
-                .metadata(metadata)
-                // !!!cmk00 should we check the lengths match here?
+                .metadata(&self.metadata.unwrap()) // unwrap is ok because we know we have metadata
+                .metadata(metadata) // consistent counts will be check later by the BedBuilder
                 .build_no_file_check()
-                // !!!cmk look at this unwrap
-                .unwrap(),
+                .unwrap(), // unwrap is ok because nothing can go wrong
         );
 
         self
@@ -2659,8 +2690,6 @@ impl Bed {
         }
     }
 
-    // !!!cmk 0 change this to one line.
-    // !!!cmk 0 somewhere say that reading metadata is lazy
     /// Read genotype data.
     ///
     /// > Also see [`ReadOptions::builder`](struct.ReadOptions.html#method.builder) which supports selection and options.
@@ -3332,7 +3361,7 @@ impl RangeNdSlice {
 
     // https://docs.rs/ndarray/0.15.4/ndarray/struct.ArrayBase.html#slicing
     fn to_vec(&self) -> Vec<isize> {
-        if self.start > self.end {
+        if self.start >= self.end {
             Vec::new()
         } else if !self.is_reversed {
             (self.start..self.end)
@@ -3464,7 +3493,6 @@ impl Index {
         }
     }
 
-    // !!!!cmk 0 test this
     /// Returns true if the [`Index`](enum.Index.html) is empty.
     pub fn is_empty(&self, count: usize) -> Result<bool, BedErrorPlus> {
         match self {
@@ -3960,7 +3988,8 @@ pub struct ReadOptions<TVal: BedVal> {
 
     /// Number of threads to use (defaults to all processors)
     ///
-    /// Can also be set with an environment variable. See cmk 0.
+    /// Can also be set with an environment variable.
+    /// See [Environment Variables](index.html#environment-variables).
     ///
     /// In this example, we read using only one thread.
     /// ```
@@ -4223,7 +4252,8 @@ impl<TVal: BedVal> ReadOptions<TVal> {
         self.is_a1_counted
     }
 
-    /// Number of threads to be used (`None` means set with environment variables or use all processors).
+    /// Number of threads to be used (`None` means set with
+    /// [Environment Variables](index.html#environment-variables) or use all processors).
     ///
     /// # Example
     /// ```
@@ -4489,8 +4519,7 @@ where
 
     /// Number of threads to use.
     ///
-    /// `None` means use an environment variable or all processors.
-    /// See cmk0
+    /// `None` means use [Environment Variables](index.html#environment-variables) or all processors.
     #[builder(default, setter(custom))]
     num_threads: Option<usize>,
 
@@ -5030,6 +5059,73 @@ where
     pub fn bim_path(&self) -> &PathBuf {
         &self.bim_path
     }
+
+    /// If allele 1 will be counted (defaults to true).
+    ///
+    /// # Example
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, WriteOptions, tmp_path};
+    /// let output_folder = tmp_path()?;
+    /// let output_file = output_folder.join("small.bed");
+    /// let write_options = WriteOptions::builder(output_file)
+    ///     .i8()
+    ///     .iid(["i1", "i2", "i3"])
+    ///     .sid(["s1", "s2", "s3", "s4"])
+    ///     .build(3, 4)?;
+    ///
+    /// assert!(write_options.is_a1_counted());
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
+    pub fn is_a1_counted(&self) -> bool {
+        self.is_a1_counted
+    }
+
+    /// Number of threads to be used (`None` means set with
+    /// [Environment Variables](index.html#environment-variables) or use all processors).
+    ///
+    /// # Example
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, WriteOptions, tmp_path};
+    /// let output_folder = tmp_path()?;
+    /// let output_file = output_folder.join("small.bed");
+    /// let write_options = WriteOptions::builder(output_file)
+    ///     .i8()
+    ///     .iid(["i1", "i2", "i3"])
+    ///     .sid(["s1", "s2", "s3", "s4"])
+    ///     .build(3, 4)?;
+    ///
+    /// assert!(write_options.num_threads().is_none());
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
+    pub fn num_threads(&self) -> Option<usize> {
+        self.num_threads
+    }
+
+    /// Value to be used for missing values (defaults to -127 or NaN).
+    ///
+    /// # Example
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, WriteOptions, tmp_path};
+    /// let output_folder = tmp_path()?;
+    /// let output_file = output_folder.join("small.bed");
+    /// let write_options = WriteOptions::builder(output_file)
+    ///     .i8()
+    ///     .iid(["i1", "i2", "i3"])
+    ///     .sid(["s1", "s2", "s3", "s4"])
+    ///     .build(3, 4)?;
+    ///
+    /// assert!(write_options.missing_value() == -127);
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
+    pub fn missing_value(&self) -> TVal {
+        self.missing_value
+    }
 }
 
 impl<TVal> WriteOptionsBuilder<TVal>
@@ -5057,6 +5153,7 @@ where
     /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
     ///
     pub fn fid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, fid: I) -> Self {
+        // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_fid(fid);
         self
     }
@@ -5068,6 +5165,7 @@ where
     /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
     ///
     pub fn iid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, iid: I) -> Self {
+        // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_iid(iid);
         self
     }
@@ -5079,6 +5177,7 @@ where
     /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
     ///
     pub fn father<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, father: I) -> Self {
+        // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_father(father);
         self
     }
@@ -5090,6 +5189,7 @@ where
     /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
     ///
     pub fn mother<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, mother: I) -> Self {
+        // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_mother(mother);
         self
     }
@@ -5098,6 +5198,7 @@ where
     ///
     /// 0 is unknown (default), 1 is male, 2 is female
     pub fn sex<I: IntoIterator<Item = i32>>(mut self, sex: I) -> Self {
+        // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_sex(sex);
         self
     }
@@ -5109,6 +5210,7 @@ where
     /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
     ///
     pub fn pheno<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, pheno: I) -> Self {
+        // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_pheno(pheno);
         self
     }
@@ -5117,6 +5219,7 @@ where
     ///
     /// Defaults to zeros.
     pub fn chromosome<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, chromosome: I) -> Self {
+        // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_chromosome(chromosome);
         self
     }
@@ -5136,6 +5239,7 @@ where
     ///
     /// Defaults to zeros.
     pub fn cm_position<I: IntoIterator<Item = f32>>(mut self, cm_position: I) -> Self {
+        // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_cm_position(cm_position);
         self
     }
@@ -5147,6 +5251,7 @@ where
     /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
     ///
     pub fn bp_position<I: IntoIterator<Item = i32>>(mut self, bp_position: I) -> Self {
+        // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_bp_position(bp_position);
         self
     }
@@ -5158,6 +5263,7 @@ where
     /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
     ///
     pub fn allele_1<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, allele_1: I) -> Self {
+        // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_allele_1(allele_1);
         self
     }
@@ -5169,6 +5275,7 @@ where
     /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
     ///
     pub fn allele_2<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, allele_2: I) -> Self {
+        // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_allele_2(allele_2);
         self
     }
@@ -5206,11 +5313,10 @@ where
     pub fn metadata(mut self, metadata: &Metadata) -> Self {
         self.metadata = Some(
             Metadata::builder()
-                .metadata(&self.metadata.unwrap())
+                .metadata(&self.metadata.unwrap()) // Unwrap will always work because WriteOptionsBuilder starting with some metadata
                 .metadata(metadata)
-                // !!!cmk00 should we check the lengths match here?
-                .build_no_file_check()
-                .unwrap(),
+                .build_no_file_check() // Don't need to check consistent counts here. Builder will do it.
+                .unwrap(), // Unwrap will always work nothing can go wrong
         );
         self
     }
@@ -5327,7 +5433,9 @@ where
 
     /// Number of threads to use (defaults to all processors)
     ///
-    /// Can also be set with an environment variable. See cmk 0.
+    /// Can also be set with an environment variable.
+    /// See [Environment Variables](index.html#environment-variables).
+    ///
     ///
     /// # Example:
     ///
@@ -5809,7 +5917,6 @@ impl MetadataBuilder {
         self
     }
 
-    // !!! cmk00a why is this &mut self, but other two similar ones are self?
     /// Override the allele 2 values found in the .bim file.
     ///
     /// By default, if allele 2 values are needed and haven't already been found,
@@ -6241,7 +6348,7 @@ impl Metadata {
         Ok((vec_of_vec, count))
     }
 
-    fn fam_all_some(&self) -> bool {
+    fn is_some_fam(&self) -> bool {
         self.fid.is_some()
             && self.iid.is_some()
             && self.father.is_some()
@@ -6249,7 +6356,7 @@ impl Metadata {
             && self.sex.is_some()
             && self.pheno.is_some()
     }
-    fn bim_all_some(&self) -> bool {
+    fn is_some_bim(&self) -> bool {
         self.chromosome.is_some()
             && self.sid.is_some()
             && self.cm_position.is_some()
@@ -6289,8 +6396,8 @@ impl Metadata {
         let mut writer = BufWriter::new(file);
         let mut result: Result<(), BedErrorPlus> = Ok(());
 
-        if !self.fam_all_some() {
-            todo!("add error message cmk00");
+        if !self.is_some_fam() {
+            return Err(BedError::MetadataMissingForWrite("fam".to_string()).into());
         }
 
         // 1st as_ref turns Option<Rc<Array>> into Option<&Rc<Array>>
@@ -6350,8 +6457,8 @@ impl Metadata {
         let mut writer = BufWriter::new(file);
         let mut result: Result<(), BedErrorPlus> = Ok(());
 
-        if !self.bim_all_some() {
-            todo!("add error message cmk00");
+        if !self.is_some_bim() {
+            return Err(BedError::MetadataMissingForWrite("bim".to_string()).into());
         }
 
         // 1st as_ref turns Option<Rc<Array>> into Option<&Rc<Array>>

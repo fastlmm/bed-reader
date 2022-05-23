@@ -5,6 +5,8 @@ use crate::assert_eq_nan;
 #[cfg(test)]
 use crate::Bed;
 #[cfg(test)]
+use crate::Index;
+#[cfg(test)]
 use crate::ReadOptions;
 #[cfg(test)]
 use crate::WriteOptions;
@@ -27,6 +29,8 @@ use crate::Dist;
 use crate::{impute_and_zero_mean_snps, matrix_subset_no_alloc};
 #[cfg(test)]
 use crate::{internal_read_no_alloc, read_no_alloc, BedError, BedErrorPlus};
+#[cfg(test)]
+use nd::s;
 #[cfg(test)]
 use ndarray as nd;
 #[cfg(test)]
@@ -916,5 +920,41 @@ fn test_allclose() -> Result<(), BedErrorPlus> {
     ];
     WriteOptions::builder(output_file).write(&val)?;
 
+    Ok(())
+}
+
+#[cfg(test)]
+fn expected_len(index: Index, count: usize, len: usize) -> Result<(), BedErrorPlus> {
+    assert!(index.to_vec(count)?.len() == len);
+    assert!(index.len(count)? == len);
+    assert!(index.is_empty(count)? == (len == 0));
+
+    Ok(())
+}
+
+#[test]
+fn index_len_is_empty() -> Result<(), BedErrorPlus> {
+    expected_len(s![0..0;-2].into(), 0, 0)?;
+    expected_len(s![0..;-2].into(), 4, 2)?;
+
+    expected_len(Index::All, 0, 0)?;
+    expected_len(Index::All, 2, 2)?;
+
+    expected_len((-1).into(), 2, 1)?;
+
+    expected_len((vec![] as Vec<isize>).into(), 0, 0)?;
+    expected_len(vec![2, -1].into(), 4, 2)?;
+
+    expected_len((nd::array![] as nd::Array1<isize>).into(), 0, 0)?;
+    expected_len(nd::array![2, -1].into(), 4, 2)?;
+
+    expected_len((vec![] as Vec<bool>).into(), 0, 0)?;
+    expected_len(vec![false, false, true, true].into(), 4, 2)?;
+
+    expected_len((nd::array![] as nd::Array1<isize>).into(), 0, 0)?;
+    expected_len(nd::array![false, false, true, true].into(), 4, 2)?;
+
+    expected_len((0..).into(), 0, 0)?;
+    expected_len((0..).into(), 2, 2)?;
     Ok(())
 }

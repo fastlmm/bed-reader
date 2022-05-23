@@ -430,7 +430,6 @@ fn readme_examples() -> Result<(), BedErrorPlus> {
     let unique = bed3.chromosome()?.iter().collect::<HashSet<_>>();
     println!("{unique:?}");
     // let is_5 = bed3.chromosome()?.map(|elem| elem == "5");
-    // !!!cmk00o why is as_ref needed? How can it be removed?
     let is_5 = nd::Zip::from(bed3.chromosome()?).par_map_collect(|elem| elem == "5");
     let val3 = ReadOptions::builder()
         .sid_index(is_5)
@@ -546,7 +545,6 @@ fn read_write() -> Result<(), BedErrorPlus> {
     // bim_filepath=bim_file,
     // )
 
-    // !!!cmk00p also have a test in which BedReader has its metadata set
     WriteOptions::builder(&output_file)
         .metadata(&metadata)
         .fam_path(&fam_file)
@@ -1338,7 +1336,6 @@ fn set_metadata() -> Result<(), BedErrorPlus> {
         .iid(["iid1", "iid2", "iid3"])
         .sid(["sid1", "sid2", "sid3", "sid4"])
         .build()?;
-    // !!!cmk00q should we pass a ref to BedBuilders's metadata?
     let mut bed = Bed::builder(file_name).metadata(&metadata).build()?;
     let metadata2 = bed.metadata()?;
     println!("{metadata2:?}");
@@ -1556,6 +1553,7 @@ fn write_options_metadata() -> Result<(), BedErrorPlus> {
         .build(3, 4)?;
     Bed::write_with_options(&val, &write_options)?;
 
+    // Here Allele_1 and Allele_2 get their default values of A1,A1,... and A2,A2,...
     let write_options = WriteOptions::builder(output_file)
         .fid(["fid1", "fid1", "fid2"])
         .iid(["iid1", "iid2", "iid3"])
@@ -1568,7 +1566,6 @@ fn write_options_metadata() -> Result<(), BedErrorPlus> {
         .cm_position([100.4, 2000.5, 4000.7, 7000.9])
         .bp_position([1, 100, 1000, 1004])
         .f32()
-        // !!!cmk00a note the allele's have default values
         .build(3, 4)?;
 
     let metadata = write_options.metadata();
@@ -1615,11 +1612,8 @@ fn metadata_same() -> Result<(), BedErrorPlus> {
     for file_index in 0..file_count {
         let output_file = temp_out.join(format!("random{file_index}.bed"));
 
-        // !!!cmk00r needs seed
-        let val = nd::Array::random((iid_count, sid_count), Uniform::from(-1..3));
-
-        // cmk00r println!("{val:?}");
-
+        let mut rng = StdRng::seed_from_u64(0);
+        let val = nd::Array::random_using((iid_count, sid_count), Uniform::from(-1..3), &mut rng);
         WriteOptions::builder(output_file)
             .metadata(&metadata)
             .missing_value(-1)
@@ -1628,7 +1622,6 @@ fn metadata_same() -> Result<(), BedErrorPlus> {
     Ok(())
 }
 
-// !!!cmk00s
 // A - apply to reading
 // B - extract from reading
 // C - apply to writing
@@ -1636,12 +1629,6 @@ fn metadata_same() -> Result<(), BedErrorPlus> {
 
 // CD
 // create 10 files with the same metadata
-
-// !!!cmk00s what are the structs?
-// !!!cmk00s can their fields by changed by users after construction?
-// !!!cmk00s can iid_count and sid_count be made inconsistent and will it be caught?
-// !!!cmk00s make sure can't set pub fields like path
-
 // structs: Metadata, Bed, ReadOptions, WriteOptions
 
 #[test]
@@ -1832,6 +1819,21 @@ fn read_and_fill_with_options() -> Result<(), BedErrorPlus> {
 #[test]
 fn bed_builder_metadata() -> Result<(), BedErrorPlus> {
     let file_name = "bed_reader/tests/data/small.bed";
+
+    // show that can fine errors
+    let metadata = Metadata::builder()
+        .iid(["i1", "i2", "i3"])
+        .sid(["s1", "s2", "s3", "s4"])
+        .build()?;
+    let result = Bed::builder(file_name)
+        .fid(["f1", "f2", "f3", "f4"])
+        .metadata(&metadata)
+        .build();
+    match result {
+        Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => {}
+        _ => panic!("should have failed"),
+    }
+
     let metadata = Metadata::builder()
         .iid(["i1", "i2", "i3"])
         .sid(["s1", "s2", "s3", "s4"])
@@ -2196,6 +2198,22 @@ fn metadata_inconsistent_count() -> Result<(), BedErrorPlus> {
         Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => {}
         _ => panic!("should be an error"),
     }
+
+    Ok(())
+}
+
+#[test]
+fn write_options_examples() -> Result<(), BedErrorPlus> {
+    let output_folder = tmp_path()?;
+    let output_file = output_folder.join("small.bed");
+    let write_options = WriteOptions::builder(output_file)
+        .i8()
+        .iid(["i1", "i2", "i3"])
+        .sid(["s1", "s2", "s3", "s4"])
+        .build(3, 4)?;
+    assert!(write_options.is_a1_counted());
+    assert!(write_options.num_threads().is_none());
+    assert!(write_options.missing_value() == -127);
 
     Ok(())
 }
