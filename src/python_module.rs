@@ -159,6 +159,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         WriteOptions::builder(filename)
             .is_a1_counted(is_a1_counted)
             .num_threads(num_threads)
+            .skip_fam(true)
+            .skip_bim(true)
             .write(&val)?;
 
         Ok(())
@@ -177,6 +179,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         WriteOptions::builder(filename)
             .is_a1_counted(is_a1_counted)
             .num_threads(num_threads)
+            .skip_fam(true)
+            .skip_bim(true)
             .write(&val)?;
 
         Ok(())
@@ -195,6 +199,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         WriteOptions::builder(filename)
             .is_a1_counted(is_a1_counted)
             .num_threads(num_threads)
+            .skip_fam(true)
+            .skip_bim(true)
             .write(&val)?;
 
         Ok(())

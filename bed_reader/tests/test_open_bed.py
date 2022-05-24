@@ -87,10 +87,21 @@ def test_overrides(shared_datadir):
         allele_1 = bed.allele_1
         allele_2 = bed.allele_2
     # lock in the expected results:
-    # np.savez(shared_datadir / "some_missing.properties.npz",fid=fid,iid=iid,
-    # father=father,mother=mother,sex=sex,pheno=pheno,chromosome=chromosome,
-    # sid=sid,cm_position=cm_position,bp_position=bp_position,
-    # allele_1=allele_1,allele_2=allele_2)
+    # np.savez(
+    #     shared_datadir / "some_missing.properties.npz",
+    #     fid=fid,
+    #     iid=iid,
+    #     father=father,
+    #     mother=mother,
+    #     sex=sex,
+    #     pheno=pheno,
+    #     chromosome=chromosome,
+    #     sid=sid,
+    #     cm_position=cm_position,
+    #     bp_position=bp_position,
+    #     allele_1=allele_1,
+    #     allele_2=allele_2,
+    # )
     property_dict = np.load(shared_datadir / "some_missing.properties.npz")
     assert np.array_equal(property_dict["fid"], fid)
     assert np.array_equal(property_dict["iid"], iid)

@@ -1,4 +1,5 @@
 #![warn(missing_docs)]
+// !!!cmk update python and test
 // Inspired by C++ version by Chris Widmer and Carl Kadie
 
 // See: https://towardsdatascience.com/nine-rules-for-writing-python-extensions-in-rust-d35ea3a4ec29?sk=f8d808d5f414154fdb811e4137011437
@@ -94,12 +95,11 @@
 //! ```
 //!
 //!  ## Project Links
-//!  * cmkDocumentation
+//!  * Documentation cmk
 //!  * Questions to [fastlmm-dev@python.org](mailto://fastlmm-dev@python.org)
 //!  * [Source code](https://github.com/fastlmm/bed-reader)
 //!  * [Bug Reports](https://github.com/fastlmm/bed-reader/issues)
-// !!!cmk 0 use github discussion instead?
-//!  * [Mailing list](https://mail.python.org/mailman3/lists/fastlmm-user.python.org)
+//!  * [Discussion](https://github.com/fastlmm/bed-reader/discussions/)
 //!  * [Project Website](https://fastlmm.github.io/)
 //!
 //! ## Main Functions
@@ -393,7 +393,6 @@ fn create_pool(num_threads: usize) -> Result<rayon::ThreadPool, BedErrorPlus> {
     }
 }
 
-//#!!!cmk later hide this from the docs
 #[allow(clippy::too_many_arguments)]
 fn read_no_alloc<TVal: BedVal, P: AsRef<Path>>(
     path: P,
@@ -527,7 +526,6 @@ fn try_div_4<T: Max + TryFrom<usize> + Sub<Output = T> + Div<Output = T> + Ord>(
     Ok((in_iid_count_div4, in_iid_count_div4_t))
 }
 
-// !!!cmk later could iid_index and sid_index be ExpectSizeIterator<Item=usize>?
 #[allow(clippy::too_many_arguments)]
 fn internal_read_no_alloc<TVal: BedVal, P: AsRef<Path>>(
     mut buf_reader: BufReader<File>,
@@ -867,7 +865,7 @@ fn impute_and_zero_mean_snps<
     }
 }
 
-// !!!cmk later move the other fast-lmm functions into their own package
+// Later move the other fast-lmm functions into their own package
 fn find_factor<T: Default + Copy + Debug + Sync + Send + Float + ToPrimitive + FromPrimitive>(
     dist: &Dist,
     mean_s: T,
@@ -1369,12 +1367,6 @@ fn file_aat_piece<T: Float + Sync + Send + AddAssign, P: AsRef<Path>>(
 // https://rust-lang.github.io/api-guidelines/
 // https://ricardomartins.cc/2016/08/03/convenient_and_idiomatic_conversions_in_rust
 
-// !!!cmk later write doc tests (see https://deterministic.space/elegant-apis-in-rust.html#what-makes-an-api-elegant)
-// !!!cmk later To enforce that every public API item is documented, use #![deny(missing_docs)].
-// !!!cmk later conventions for formatting Rust documentation https://deterministic.space/machine-readable-inline-markdown-code-cocumentation.html
-
-// !!!cmk later document and add issue that File(s) are not held, incorrectly allowing for the file to be changed between reads.
-
 /// Represents the metadata from PLINK .fam and .bim files.
 ///
 /// Construct with [`Metadata::builder`](struct.Metadata.html#method.builder) or [`Metadata::new`](struct.Metadata.html#method.new).
@@ -1452,12 +1444,6 @@ fn lazy_or_skip_count<T>(array: &Option<Rc<nd::Array1<T>>>) -> Option<usize> {
     array.as_ref().map(|array| array.len())
 }
 
-// !!!cmk later update these comments:
-// https://crates.io/crates/typed-builder
-// (or https://docs.rs/derive_builder/latest/derive_builder/)
-// Somehow ndarray can do this: 	Array::zeros((3, 4, 5).f())
-//       see https://docs.rs/ndarray/latest/ndarray/doc/ndarray_for_numpy_users/index.html
-
 /// Represents a PLINK .bed file that is open for reading genotype data and metadata.
 ///
 /// Construct with [`Bed::new`](struct.Bed.html#method.new) or [`Bed::builder`](struct.Bed.html#method.builder).
@@ -1494,7 +1480,7 @@ pub struct Bed {
     // don't emit a setter, but keep the field declaration on the builder
     /// The file name or path of the .bed file.
     #[builder(setter(custom))]
-    path: PathBuf, // !!!cmk later always clone?
+    path: PathBuf,
 
     #[builder(setter(custom))]
     #[builder(default = "None")]
@@ -1958,7 +1944,6 @@ impl BedBuilder {
             .insert(MetadataFields::BpPosition);
         self
     }
-    /// !!!cmk is there any way to un skip?
 
     /// Don't read the allele 1 information from the .bim file.
     ///
@@ -2044,8 +2029,6 @@ fn to_metadata_path<P: AsRef<Path>>(
     }
 }
 
-// !!!cmk later should bed builder be able to accept a metadata struct?
-
 impl Bed {
     /// Attempts to open a PLINK .bed file for reading. Supports options.
     ///
@@ -2057,6 +2040,9 @@ impl Bed {
     ///  * set the number of individuals (samples) or SNPs (variants)
     ///  * control checking the validity of the .bed file's header
     ///  * skip reading selected metadata
+    ///
+    /// Note that this method is a lazy about holding files, so unlike `std::fs::File::open(&path)`, it
+    /// will not necessarily lock the file(s).
     ///
     /// # Errors
     /// By default, this method will return an error if the file is missing or its header
@@ -2157,6 +2143,9 @@ impl Bed {
     /// Attempts to open a PLINK .bed file for reading. Does not support options.
     ///
     /// > Also see [`Bed::builder`](struct.Bed.html#method.builder), which does support options.
+    ///
+    /// Note that this method is a lazy about holding files, so unlike `std::fs::File::open(&path)`, it
+    /// will not necessarily lock the file(s).
     ///
     /// # Errors
     /// By default, this method will return an error if the file is missing or its header
@@ -2737,8 +2726,6 @@ impl Bed {
         self.read_with_options(&read_options)
     }
 
-    // !!!cmk later document that any .f() or .c() in read options is ignored
-
     /// Read genotype data with options, into a preallocated array.
     ///
     /// > Also see [`ReadOptionsBuilder::read_and_fill`](struct.ReadOptionsBuilder.html#method.read_and_fill).
@@ -2785,15 +2772,11 @@ impl Bed {
         let sid_hold = Hold::new(&read_options.sid_index, sid_count)?;
         let sid_index = sid_hold.as_ref();
 
-        let shape = val.shape();
-        if shape.len() != 2 || (shape[0], shape[1]) != (iid_index.len(), sid_index.len()) {
-            return Err(BedError::InvalidShape(
-                iid_index.len(),
-                sid_index.len(),
-                shape[0],
-                shape[1],
-            )
-            .into());
+        let dim = val.dim();
+        if dim != (iid_index.len(), sid_index.len()) {
+            return Err(
+                BedError::InvalidShape(iid_index.len(), sid_index.len(), dim.0, dim.1).into(),
+            );
         }
 
         read_no_alloc(
@@ -2982,19 +2965,20 @@ impl Bed {
         S: nd::Data<Elem = TVal>,
         TVal: BedVal,
     {
-        if val.shape()[0] != write_options.iid_count() {
+        let (iid_count, sid_count) = val.dim();
+        if iid_count != write_options.iid_count() {
             return Err(BedError::InconsistentCount(
                 "iid".to_string(),
                 write_options.iid_count(),
-                val.shape()[0],
+                iid_count,
             )
             .into());
         }
-        if val.shape()[1] != write_options.sid_count() {
+        if sid_count != write_options.sid_count() {
             return Err(BedError::InconsistentCount(
                 "sid".to_string(),
                 write_options.sid_count(),
-                val.shape()[1],
+                sid_count,
             )
             .into());
         }
@@ -3008,16 +2992,20 @@ impl Bed {
             num_threads,
         )?;
 
-        if let Err(e) = write_options.metadata.write_fam(write_options.fam_path()) {
-            // Clean up the file
-            let _ = fs::remove_file(&write_options.fam_path);
-            return Err(e);
+        if !write_options.skip_fam() {
+            if let Err(e) = write_options.metadata.write_fam(write_options.fam_path()) {
+                // Clean up the file
+                let _ = fs::remove_file(&write_options.fam_path);
+                return Err(e);
+            }
         }
 
-        if let Err(e) = write_options.metadata.write_bim(write_options.bim_path()) {
-            // Clean up the file
-            let _ = fs::remove_file(&write_options.bim_path);
-            return Err(e);
+        if !write_options.skip_bim() {
+            if let Err(e) = write_options.metadata.write_bim(write_options.bim_path()) {
+                // Clean up the file
+                let _ = fs::remove_file(&write_options.bim_path);
+                return Err(e);
+            }
         }
 
         Ok(())
@@ -3135,9 +3123,8 @@ fn compute_num_threads(option_num_threads: Option<usize>) -> Result<usize, BedEr
 }
 
 impl Index {
-    // !!!cmk later test every case
     // We can't define a 'From' because we want to add count at the last moment.
-    // Would be nice to not always allocate a new vec, maybe with Rc<[T]>?
+    // Later Would be nice to not always allocate a new vec, maybe with Rc<[T]>?
     // Even better would be to support an iterator from Index (an enum with fields).
 
     /// Turns an [`Index`](enum.Index.html) into a vector of usize indexes. Negative means count from end.
@@ -3159,7 +3146,6 @@ impl Index {
                     .map(|(i, _)| i as isize)
                     .collect())
             }
-            // !!!cmk later can we implement this without two allocations?
             Index::NDSliceInfo(nd_slice_info) => {
                 Ok(RangeNdSlice::new(nd_slice_info, count)?.to_vec())
             }
@@ -3278,7 +3264,6 @@ pub type SliceInfo1 =
 pub enum Index {
     // Could implement an enumerator, but it is complex and requires a 'match' on each next()
     //     https://stackoverflow.com/questions/65272613/how-to-implement-intoiterator-for-an-enum-of-iterable-variants
-    // !!!cmk later add docs to type typedbuilder stuff: https://docs.rs/typed-builder/latest/typed_builder/derive.TypedBuilder.html#customisation-with-attributes
     #[allow(missing_docs)]
     All,
     #[allow(missing_docs)]
@@ -3510,7 +3495,6 @@ impl Index {
     }
 }
 
-// !!!cmk later see if what ref conversions. See https://ricardomartins.cc/2016/08/03/convenient_and_idiomatic_conversions_in_rust
 impl From<SliceInfo1> for Index {
     fn from(slice_info: SliceInfo1) -> Index {
         Index::NDSliceInfo(slice_info)
@@ -3707,7 +3691,6 @@ impl From<&Vec<isize>> for Index {
     }
 }
 
-// !!!cmk later is ref &ndarray const array and bool OK
 impl From<&nd::ArrayView1<'_, bool>> for Index {
     fn from(view: &nd::ArrayView1<bool>) -> Index {
         Index::NDArrayBool(view.to_owned())
@@ -4503,7 +4486,7 @@ where
     TVal: BedVal,
 {
     #[builder(setter(custom))]
-    path: PathBuf, // !!!cmk later always clone?
+    path: PathBuf,
 
     #[builder(setter(custom))]
     fam_path: PathBuf,
@@ -4517,17 +4500,17 @@ where
     #[builder(setter(custom), default = "true")]
     is_a1_counted: bool,
 
-    /// Number of threads to use.
-    ///
-    /// `None` means use [Environment Variables](index.html#environment-variables) or all processors.
     #[builder(default, setter(custom))]
     num_threads: Option<usize>,
 
-    /// Value used for missing values (defaults to -127 or NaN)
-    ///
-    /// -127 is the default for i8 and NaN is the default for f32 and f64.
     #[builder(default = "TVal::missing()", setter(custom))]
     missing_value: TVal,
+
+    #[builder(setter(custom), default = "false")]
+    skip_fam: bool,
+
+    #[builder(setter(custom), default = "false")]
+    skip_bim: bool,
 }
 
 impl<TVal> WriteOptions<TVal>
@@ -5126,6 +5109,13 @@ where
     pub fn missing_value(&self) -> TVal {
         self.missing_value
     }
+
+    pub fn skip_fam(&self) -> bool {
+        self.skip_fam
+    }
+    pub fn skip_bim(&self) -> bool {
+        self.skip_bim
+    }
 }
 
 impl<TVal> WriteOptionsBuilder<TVal>
@@ -5431,6 +5421,16 @@ where
         self
     }
 
+    pub fn skip_fam(&mut self, skip_fam: bool) -> &mut Self {
+        self.skip_fam = Some(skip_fam);
+        self
+    }
+
+    pub fn skip_bim(&mut self, skip_bim: bool) -> &mut Self {
+        self.skip_bim = Some(skip_bim);
+        self
+    }
+
     /// Number of threads to use (defaults to all processors)
     ///
     /// Can also be set with an environment variable.
@@ -5511,6 +5511,8 @@ where
             is_a1_counted: self.is_a1_counted.unwrap_or(true),
             num_threads: self.num_threads.unwrap_or(None),
             missing_value: self.missing_value.unwrap_or_else(|| TVal::missing()),
+            skip_fam: self.skip_fam.unwrap_or(false),
+            skip_bim: self.skip_bim.unwrap_or(false),
 
             metadata,
         };
@@ -5528,6 +5530,8 @@ where
             is_a1_counted: None,
             num_threads: None,
             missing_value: None,
+            skip_fam: None,
+            skip_bim: None,
         }
     }
 }
@@ -5548,7 +5552,6 @@ impl FromStringArray<String> for String {
     }
 }
 
-// !!!cmk later test these
 impl FromStringArray<f32> for f32 {
     fn from_string_array(
         string_array: nd::Array1<String>,
@@ -6202,7 +6205,7 @@ impl Metadata {
             let array = vec
                 .iter()
                 .map(|s| s.parse::<i32>())
-                .collect::<Result<nd::Array1<i32>, _>>()?; // !!!cmk later test this error
+                .collect::<Result<nd::Array1<i32>, _>>()?;
             clone.sex = Some(Rc::new(array));
         }
         if clone.mother.is_none() && !skip_set.contains(&MetadataFields::Mother) {
@@ -6289,7 +6292,7 @@ impl Metadata {
             let array = vec
                 .iter()
                 .map(|s| s.parse::<i32>())
-                .collect::<Result<nd::Array1<i32>, _>>()?; // !!!cmk later test this error
+                .collect::<Result<nd::Array1<i32>, _>>()?;
             clone.bp_position = Some(Rc::new(array));
         }
         if clone.cm_position.is_none() && !skip_set.contains(&MetadataFields::CmPosition) {
@@ -6297,7 +6300,7 @@ impl Metadata {
             let array = vec
                 .iter()
                 .map(|s| s.parse::<f32>())
-                .collect::<Result<nd::Array1<f32>, _>>()?; // !!!cmk later test this error
+                .collect::<Result<nd::Array1<f32>, _>>()?;
             clone.cm_position = Some(Rc::new(array));
         }
 
@@ -6418,7 +6421,7 @@ impl Metadata {
                 *fid, *iid, *father, *mother, *sex, *pheno
             )
             {
-            result = Err(BedErrorPlus::IOError(e)); // !!!cmk later test this
+            result = Err(BedErrorPlus::IOError(e));
             }
         }});
         result?;
@@ -6479,11 +6482,12 @@ impl Metadata {
                 writer,
                 "{}\t{}\t{}\t{}\t{}\t{}",
                 *chromosome, *sid, *cm_position, *bp_position, *allele_1, *allele_2
-            )
-            {
-            result = Err(BedErrorPlus::IOError(e)); // !!!cmk later test this
+                )
+                {
+                result = Err(BedErrorPlus::IOError(e));
+                }
             }
-        }});
+        });
         result?;
 
         Ok(())

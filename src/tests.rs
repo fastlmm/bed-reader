@@ -262,8 +262,6 @@ fn index() {
     };
 }
 
-// cmk 0 Python has more tests, but they aren't needed in Rust until it gets fancy indexing
-
 #[test]
 fn writer() -> Result<(), BedErrorPlus> {
     let path = Path::new("bed_reader/tests/data/some_missing.bed");
@@ -282,7 +280,6 @@ fn writer() -> Result<(), BedErrorPlus> {
         std::fs::copy(from, to).unwrap();
     }
 
-    // !!! cmk later would be nice if could chain bed into read_options
     let mut bed2 = Bed::new(path2).unwrap();
     let val2 = ReadOptions::builder().c().i8().read(&mut bed2).unwrap();
 
@@ -631,7 +628,6 @@ fn read_modes() {
     let mut val_small_mode_1 = nd::Array2::<i8>::default((iid_count_s1, sid_count_s1));
     bed.read_and_fill(&mut val_small_mode_1.view_mut()).unwrap();
 
-    // !!! cmk later understand the .view_mut()
     let mut bed_too_short = Bed::builder("bed_reader/tests/data/small_too_short.bed")
         .fam_path("bed_reader/tests/data/small.fam")
         .bim_path("bed_reader/tests/data/small.bim")
@@ -682,14 +678,14 @@ fn zeros() -> Result<(), BedErrorPlus> {
         .f64()
         .read(&mut bed)
         .unwrap();
-    assert!(out_val10.shape() == [iid_count, 0]);
+    assert!(out_val10.dim() == (iid_count, 0));
 
     let out_val01 = ReadOptions::builder()
         .iid_index([0; 0])
         .f64()
         .read(&mut bed)
         .unwrap();
-    assert!(out_val01.shape() == [0, sid_count]);
+    assert!(out_val01.dim() == (0, sid_count));
 
     let out_val00 = ReadOptions::builder()
         .iid_index([0; 0])
@@ -697,11 +693,11 @@ fn zeros() -> Result<(), BedErrorPlus> {
         .f64()
         .read(&mut bed)
         .unwrap();
-    assert!(out_val00.shape() == [0, 0]);
+    assert!(out_val00.dim() == (0, 0));
 
     // Test subset on zero length indexes
 
-    let shape = (ref_val_float.shape()[0], ref_val_float.shape()[1], 1usize);
+    let shape = (ref_val_float.dim().0, ref_val_float.dim().1, 1usize);
     let in_val = ref_val_float.into_shape(shape).unwrap();
 
     let mut out_val = nd::Array3::<f64>::zeros((iid_count, 0, 1));
@@ -731,17 +727,17 @@ fn zeros() -> Result<(), BedErrorPlus> {
 
     Bed::write(&out_val01, &path).unwrap();
     let in_val01 = Bed::new(&path).unwrap().read::<f64>().unwrap();
-    assert!(in_val01.shape() == [0, sid_count]);
+    assert!(in_val01.dim() == (0, sid_count));
     assert!(allclose(&in_val01.view(), &out_val01.view(), 1e-08, true));
 
     Bed::write(&out_val10, &path).unwrap();
     let in_val10 = Bed::new(&path).unwrap().read::<f64>().unwrap();
-    assert!(in_val10.shape() == [iid_count, 0]);
+    assert!(in_val10.dim() == (iid_count, 0));
     assert!(allclose(&in_val10.view(), &out_val10.view(), 1e-08, true));
 
     Bed::write(&out_val00, &path).unwrap();
     let in_val00 = Bed::new(&path).unwrap().read::<f64>().unwrap();
-    assert!(in_val00.shape() == [0, 0]);
+    assert!(in_val00.dim() == (0, 0));
     assert!(allclose(&in_val00.view(), &out_val00.view(), 1e-08, true));
 
     Ok(())
@@ -796,7 +792,7 @@ fn file_ata<P: AsRef<Path>>(
 #[cfg(test)]
 fn insert_piece(sid_range: Range<usize>, piece: nd::Array2<f64>, val: &mut nd::ArrayViewMut2<f64>) {
     for range_index in sid_range.clone() {
-        for j in range_index - sid_range.start..piece.shape()[0] {
+        for j in range_index - sid_range.start..piece.dim().0 {
             // this is the inner loop, so pre-computing indexes would speed it up
             val[(range_index, j + sid_range.start)] = piece[(j, range_index - sid_range.start)];
             val[(j + sid_range.start, range_index)] = val[(range_index, j + sid_range.start)];

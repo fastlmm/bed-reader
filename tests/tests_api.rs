@@ -58,22 +58,12 @@ fn rusty_bed2() -> Result<(), BedErrorPlus> {
     Ok(())
 }
 
-// !!!cmk later ask reddit help (mention builder library creator)
-// macro_rules! read {
-//     ($b:expr,$x:expr) => {
-//         $b.read(ReadOptionsBuilder::default().$x.build())
-//     }; // () => {
-//        //      ReadOptionsBuilder::default().build()
-//        //};
-// }
-
 #[cfg(test)]
 use std::collections::HashSet;
 use std::panic::catch_unwind;
 
 #[test]
 fn rusty_bed3() -> Result<(), BedErrorPlus> {
-    // !!!cmk later also show mixing bool and full and none
     let file = "bed_reader/tests/data/plink_sim_10s_100v_10pmiss.bed";
     let mut bed = Bed::new(file)?;
     let iid_bool: nd::Array1<bool> = (0..bed.iid_count()?).map(|elem| (elem % 2) != 0).collect();
@@ -279,8 +269,6 @@ fn open_examples() -> Result<(), BedErrorPlus> {
     //     >>> print(bed.allele_2)   # not read and not offered
     //     None
 
-    // !!! cmk later document that if you skip and then give default value, its the last that matters.
-    // !!! cmk later test that sid_count/iid_count will raise an error if any metadata gives a different count
     let mut bed = Bed::builder(file_name).skip_allele_2().build()?;
     println!("{:?}", bed.iid()?);
 
@@ -382,8 +370,6 @@ fn readme_examples() -> Result<(), BedErrorPlus> {
     //  [ 0.  1.  2.  0.]]
     // >>> del bed
 
-    // !!!cmk later document use statements
-    // !!!cmk ask is there a rust crate for pulling down files if needed (using hash to check if file correct), like Python's Pooch
     let file_name = "bed_reader/tests/data/small.bed";
     let mut bed = Bed::new(file_name)?;
     let val = bed.read::<f64>()?;
@@ -407,8 +393,7 @@ fn readme_examples() -> Result<(), BedErrorPlus> {
         .iid_index(s![..;2])
         .sid_index(20..30)
         .read(&mut bed2)?;
-    println!("{:?}", val2.shape()); // !!!cmk0 on val's use shape instead of dim where possible???
-                                    // [50, 10]
+    println!("{:?}", val2.dim()); // (50, 10)
 
     // List the first 5 individual (sample) ids, the first 5 SNP (variant) ids, and every unique chromosome. Then, read every value in chromosome 5.
 
@@ -435,11 +420,11 @@ fn readme_examples() -> Result<(), BedErrorPlus> {
         .sid_index(is_5)
         .f64()
         .read(&mut bed3)?;
-    println!("{:?}", val3.shape());
+    println!("{:?}", val3.dim());
     // ["iid_0", "iid_1", "iid_2", "iid_3", "iid_4"], shape=[5], strides=[1], layout=CFcf (0xf), const ndim=1
     // ["sid_0", "sid_1", "sid_2", "sid_3", "sid_4"], shape=[5], strides=[1], layout=CFcf (0xf), const ndim=1
     // {"10", "11", "4", "21", "22", "14", "3", "12", "20", "15", "19", "8", "6", "18", "9", "2", "16", "13", "17", "1", "7", "5"}
-    // [100, 6]
+    // (100, 6)
     Ok(())
 }
 
@@ -600,7 +585,6 @@ fn range() -> Result<(), BedErrorPlus> {
 fn nd_slice() -> Result<(), BedErrorPlus> {
     let ndarray = nd::array![0, 1, 2, 3];
     println!("{:?}", ndarray.slice(nd::s![1..3])); // [1, 2]
-                                                   // This reverses Python's way cmk later make a note.
     println!("{:?}", ndarray.slice(nd::s![1..3;-1])); // [2, 1]
     #[allow(clippy::reversed_empty_ranges)]
     let slice = nd::s![3..1;-1];
@@ -829,7 +813,6 @@ fn fill() -> Result<(), BedErrorPlus> {
         .build()?;
 
     let mut val = nd::Array2::<i8>::default((3, 4));
-    // !!!cmk later understand this view_mut
     let result = bed.read_and_fill_with_options(&mut val.view_mut(), &read_options);
     match result {
         Err(BedErrorPlus::BedError(BedError::InvalidShape(_, _, _, _))) => {}
@@ -1351,9 +1334,6 @@ fn set_metadata() -> Result<(), BedErrorPlus> {
     Ok(())
 }
 
-// !!!cmk 0 in docs explain that vec<isize> given to *_index will move it.
-// !!!cmk 0 other things (like a borrow) will clone it.
-
 #[test]
 fn metadata_print() -> Result<(), BedErrorPlus> {
     let file_name = "bed_reader/tests/data/small.bed";
@@ -1783,7 +1763,7 @@ fn assert_same_result(result1: RrArray2, result23: (RrArray2, RrUsize)) {
         allclose(&result1.view(), &result2.view(), 0, true),
         "not close"
     );
-    assert!(result1.shape()[0] == result3, "not same length");
+    assert!(result1.dim().0 == result3, "not same length");
 }
 
 fn is_err2<T>(result_result: &Result<Result<T, BedErrorPlus>, BedErrorPlus>) -> bool {
@@ -2214,6 +2194,20 @@ fn write_options_examples() -> Result<(), BedErrorPlus> {
     assert!(write_options.is_a1_counted());
     assert!(write_options.num_threads().is_none());
     assert!(write_options.missing_value() == -127);
+
+    Ok(())
+}
+
+#[test]
+fn parsing_metadata() -> Result<(), BedErrorPlus> {
+    let mut bed = Bed::builder("bed_reader/tests/data/small.bed")
+        .bim_path("bed_reader/tests/data/small.bim_bad_positions")
+        .build()?;
+    let result = bed.cm_position();
+    match result {
+        Err(BedErrorPlus::IOError(_)) => {}
+        _ => panic!("should be an error"),
+    }
 
     Ok(())
 }

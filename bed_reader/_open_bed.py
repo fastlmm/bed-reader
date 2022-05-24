@@ -365,16 +365,16 @@ class open_bed:
         # Later happy with _iid_range and _sid_range or could it be done with
         # allocation them?
         if self._iid_range is None:
-            self._iid_range = np.arange(self.iid_count, dtype="uintp")
+            self._iid_range = np.arange(self.iid_count, dtype="intp")
         if self._sid_range is None:
-            self._sid_range = np.arange(self.sid_count, dtype="uintp")
+            self._sid_range = np.arange(self.sid_count, dtype="intp")
 
         iid_index = np.ascontiguousarray(
             self._iid_range[iid_index_or_slice_etc],
-            dtype="uintp",
+            dtype="intp",
         )
         sid_index = np.ascontiguousarray(
-            self._sid_range[sid_index_or_slice_etc], dtype="uintp"
+            self._sid_range[sid_index_or_slice_etc], dtype="intp"
         )
 
         if not force_python_only:
@@ -401,7 +401,7 @@ class open_bed:
                     str(self.filepath),
                     iid_count=self.iid_count,
                     sid_count=self.sid_count,
-                    count_a1=self.count_A1,
+                    is_a1_counted=self.count_A1,
                     iid_index=iid_index,
                     sid_index=sid_index,
                     val=val,
