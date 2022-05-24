@@ -410,6 +410,9 @@ fn readme_examples() -> Result<(), BedErrorPlus> {
     // (100, 6)
 
     let mut bed3 = Bed::new(file_name2)?;
+    let iid = bed3.iid()?;
+    let s = iid.slice(s![..5]);
+    println!("{:?}", s);
     println!("{:?}", bed3.iid()?.slice(s![..5]));
     println!("{:?}", bed3.sid()?.slice(s![..5]));
     let unique = bed3.chromosome()?.iter().collect::<HashSet<_>>();

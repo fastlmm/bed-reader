@@ -6265,7 +6265,7 @@ impl Metadata {
             field_vec.push(5);
         }
 
-        let (mut vec_of_vec, count) = self.read_fam_or_bim(&field_vec, false, path)?;
+        let (mut vec_of_vec, count) = self.read_fam_or_bim(&field_vec, true, path)?;
 
         let mut clone = self.clone();
 
@@ -6351,7 +6351,7 @@ impl Metadata {
         }
 
         let mut clone = self.clone();
-        let (mut vec_of_vec, count) = self.read_fam_or_bim(&field_vec, true, path)?;
+        let (mut vec_of_vec, count) = self.read_fam_or_bim(&field_vec, false, path)?;
 
         // unwraps are safe because we pop once for every push
         if clone.allele_2.is_none() && !skip_set.contains(&MetadataFields::Allele2) {
@@ -6403,12 +6403,13 @@ impl Metadata {
         let mut count = 0;
         for line in reader.lines() {
             let line = line?;
+            println!("{}", line);
             count += 1;
 
             let fields: Vec<&str> = if is_split_whitespace {
                 line.split_whitespace().collect()
             } else {
-                line.split(',').collect()
+                line.split('\t').collect()
             };
 
             if fields.len() != 6 {
@@ -6557,7 +6558,6 @@ impl Metadata {
             allele_2 in self.allele_2.as_ref().unwrap().as_ref(),
                 )
         {
-            // !!!cmk later should these be \t?
             if result.is_ok() {
                 if let Err(e) = writeln!(
                 writer,
