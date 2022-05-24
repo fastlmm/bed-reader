@@ -5110,9 +5110,46 @@ where
         self.missing_value
     }
 
+    /// If skipping writing .fam file.
+    ///
+    /// # Example
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, WriteOptions, tmp_path};
+    /// let output_folder = tmp_path()?;
+    /// let output_file = output_folder.join("small.bed");
+    /// let write_options = WriteOptions::builder(output_file)
+    ///     .i8()
+    ///     .skip_fam()
+    ///     .skip_bim()
+    ///     .build(3, 4)?;
+    /// assert!(write_options.skip_fam());
+    /// assert!(write_options.skip_bim());
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
     pub fn skip_fam(&self) -> bool {
         self.skip_fam
     }
+
+    /// If skipping writing .bim file.
+    ///
+    /// # Example
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, WriteOptions, tmp_path};
+    /// let output_folder = tmp_path()?;
+    /// let output_file = output_folder.join("small.bed");
+    /// let write_options = WriteOptions::builder(output_file)
+    ///     .i8()
+    ///     .skip_fam()
+    ///     .skip_bim()
+    ///     .build(3, 4)?;
+    /// assert!(write_options.skip_fam());
+    /// assert!(write_options.skip_bim());
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
     pub fn skip_bim(&self) -> bool {
         self.skip_bim
     }
@@ -5421,16 +5458,6 @@ where
         self
     }
 
-    pub fn skip_fam(&mut self, skip_fam: bool) -> &mut Self {
-        self.skip_fam = Some(skip_fam);
-        self
-    }
-
-    pub fn skip_bim(&mut self, skip_bim: bool) -> &mut Self {
-        self.skip_bim = Some(skip_bim);
-        self
-    }
-
     /// Number of threads to use (defaults to all processors)
     ///
     /// Can also be set with an environment variable.
@@ -5455,6 +5482,52 @@ where
     /// ```
     pub fn num_threads(&mut self, num_threads: usize) -> &mut Self {
         self.num_threads = Some(Some(num_threads));
+        self
+    }
+
+    /// Skip writing .fam file.
+    ///
+    /// # Example
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, WriteOptions, tmp_path};
+    /// let output_folder = tmp_path()?;
+    /// let output_file = output_folder.join("small.bed");
+    /// let write_options = WriteOptions::builder(output_file)
+    ///     .i8()
+    ///     .skip_fam()
+    ///     .skip_bim()
+    ///     .build(3, 4)?;
+    /// assert!(write_options.skip_fam());
+    /// assert!(write_options.skip_bim());
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
+    pub fn skip_fam(&mut self) -> &mut Self {
+        self.skip_fam = Some(true);
+        self
+    }
+
+    /// Skip writing .bim file.
+    ///
+    /// # Example
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, WriteOptions, tmp_path};
+    /// let output_folder = tmp_path()?;
+    /// let output_file = output_folder.join("small.bed");
+    /// let write_options = WriteOptions::builder(output_file)
+    ///     .i8()
+    ///     .skip_fam()
+    ///     .skip_bim()
+    ///     .build(3, 4)?;
+    /// assert!(write_options.skip_fam());
+    /// assert!(write_options.skip_bim());
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), BedErrorPlus>(())
+    /// ```
+    pub fn skip_bim(&mut self) -> &mut Self {
+        self.skip_bim = Some(true);
         self
     }
 
