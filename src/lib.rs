@@ -1,5 +1,4 @@
 #![warn(missing_docs)]
-// !!!cmk update python and test
 // Inspired by C++ version by Chris Widmer and Carl Kadie
 
 // See: https://towardsdatascience.com/nine-rules-for-writing-python-extensions-in-rust-d35ea3a4ec29?sk=f8d808d5f414154fdb811e4137011437
@@ -199,6 +198,7 @@ use nd::ShapeBuilder;
 use ndarray as nd;
 use std::cmp::Ordering;
 use std::collections::HashSet;
+use std::convert::TryFrom;
 use std::fs::{self};
 use std::io::Write;
 use std::ops::{Bound, Range, RangeBounds, RangeFrom, RangeInclusive, RangeTo, RangeToInclusive};
@@ -6265,7 +6265,7 @@ impl Metadata {
             field_vec.push(5);
         }
 
-        let (mut vec_of_vec, count) = self.read_fam_or_bim(&field_vec, path)?;
+        let (mut vec_of_vec, count) = self.read_fam_or_bim(&field_vec, false, path)?;
 
         let mut clone = self.clone();
 
@@ -6351,7 +6351,7 @@ impl Metadata {
         }
 
         let mut clone = self.clone();
-        let (mut vec_of_vec, count) = self.read_fam_or_bim(&field_vec, path)?;
+        let (mut vec_of_vec, count) = self.read_fam_or_bim(&field_vec, true, path)?;
 
         // unwraps are safe because we pop once for every push
         if clone.allele_2.is_none() && !skip_set.contains(&MetadataFields::Allele2) {
@@ -6392,6 +6392,7 @@ impl Metadata {
     fn read_fam_or_bim<P: AsRef<Path>>(
         &self,
         field_vec: &[usize],
+        is_split_whitespace: bool,
         path: P,
     ) -> Result<(Vec<Vec<String>>, usize), BedErrorPlus> {
         let mut vec_of_vec = vec![vec![]; field_vec.len()];
@@ -6403,21 +6404,28 @@ impl Metadata {
         for line in reader.lines() {
             let line = line?;
             count += 1;
-            let field = line.split_whitespace();
 
-            let mut field_count = 0;
+            let fields: Vec<&str> = if is_split_whitespace {
+                line.split_whitespace().collect()
+            } else {
+                line.split(',').collect()
+            };
+
+            if fields.len() != 6 {
+                return Err(BedError::MetadataFieldCount(
+                    6,
+                    fields.len(),
+                    path_ref_to_string(path),
+                )
+                .into());
+            }
+
             let mut of_interest_count = 0;
-            for field in field {
-                if field_vec.contains(&field_count) {
+            for (field_index, field) in fields.iter().enumerate() {
+                if field_vec.contains(&field_index) {
                     vec_of_vec[of_interest_count].push(field.to_string());
                     of_interest_count += 1;
                 }
-                field_count += 1;
-            }
-            if field_count != 6 {
-                return Err(
-                    BedError::MetadataFieldCount(6, field_count, path_ref_to_string(path)).into(),
-                );
             }
         }
 
@@ -6490,7 +6498,7 @@ impl Metadata {
             if result.is_ok() {
                 if let Err(e) = writeln!(
                 writer,
-                "{}\t{}\t{}\t{}\t{}\t{}",
+                "{} {} {} {} {} {}",
                 *fid, *iid, *father, *mother, *sex, *pheno
             )
             {

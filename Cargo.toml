@@ -22,7 +22,7 @@ keywords = [
     "python",
     "snps",
 ]
-edition = "2021"
+edition = "2018"
 
 # !!!cmk later https://rust-lang.github.io/api-guidelines/necessities.html
 
