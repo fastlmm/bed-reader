@@ -22,7 +22,7 @@ keywords = [
     "python",
     "snps",
 ]
-edition = "2018"
+edition = "2021"
 
 # !!!cmk later https://rust-lang.github.io/api-guidelines/necessities.html
 
@@ -54,15 +54,15 @@ crate-type = ["cdylib", "rlib"]
 thiserror = "1.0.30"
 num-traits = "0.2.14"
 ndarray-npy = { version = "0.8.1", default-features = false }
-rayon = "1.5.1"
-numpy = "0.16.0"
+rayon = "1.5.2"
+numpy = "0.16.2"
 ndarray = { version = "0.15.4", features = ["approx", "rayon"] }
-approx = "0.5.0"
+approx = "0.5.1"
 statrs = "0.15.0"
 byteorder = { version = "1.4.3", default-features = false }
-pyo3 = { version = "0.16.1", features = ["extension-module"] }
+pyo3 = { version = "0.16.4", features = ["extension-module"] }
 dpc-pariter = "0.4.0"                                            # // cmk pariter = "0.5.1"
-derive_builder = "0.10.2"
+derive_builder = "0.11.1"
 temp_testdir = "0.2.3"
 
 [dev-dependencies]
