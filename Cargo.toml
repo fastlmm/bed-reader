@@ -9,19 +9,7 @@ description = "Read and write the PLINK BED format, simply and efficiently."
 exclude = ["tests/*", "doc/*", "docs/*"]
 readme = "README.md"
 license = "Apache 2.0"
-keywords = [
-    "bioinformatics",
-    "plink",
-    "genomics",
-    "genetics",
-    "file-format",
-    "reader",
-    "genotype",
-    "bed-format",
-    "writer",
-    "python",
-    "snps",
-]
+keywords = ["bioinformatics", "plink", "genomics", "genotype", "snps"]
 edition = "2021"
 
 # !!!cmk later https://rust-lang.github.io/api-guidelines/necessities.html
