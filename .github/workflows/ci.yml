@@ -59,7 +59,7 @@ jobs:
       run: python -m pip install --upgrade pip maturin
 
     - name: Test Rust
-      run: cargo test --verbose
+      run: cargo test --verbose --no-default-features
 
 
     - name: Build wheel with Maturin - Linux
