@@ -8,7 +8,7 @@ repository = "https://github.com/fastlmm/bed-reader"
 description = "Read and write the PLINK BED format, simply and efficiently."
 exclude = ["tests/*", "doc/*", "docs/*"]
 readme = "README.md"
-license = "Apache 2.0"
+license = "Apache-2.0"
 keywords = ["bioinformatics", "plink", "genomics", "genotype", "snps"]
 edition = "2021"
 
