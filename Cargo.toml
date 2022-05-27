@@ -53,7 +53,7 @@ crate-type = ["cdylib", "rlib"]
 [features]
 # https://github.com/PyO3/pyo3/discussions/2271
 extension-module = ["pyo3/extension-module"]
-
+default = ["extension-module"]
 
 [dependencies]
 thiserror = "1.0.30"
