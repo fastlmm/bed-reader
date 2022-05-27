@@ -3,11 +3,11 @@
 [package]
 authors = ["FaST-LMM Team <fastlmm-dev@python.org>"]
 name = "bed-reader"
-version = "0.2.9"
+version = "0.2.10"
 repository = "https://github.com/fastlmm/bed-reader"
 description = "Read and write the PLINK BED format, simply and efficiently."
 exclude = ["tests/*", "doc/*", "docs/*"]
-readme = "README.md"
+readme = "README-rust.md"
 license = "Apache-2.0"
 keywords = ["bioinformatics", "plink", "genomics", "genotype", "snps"]
 edition = "2021"
