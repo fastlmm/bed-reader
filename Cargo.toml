@@ -48,7 +48,12 @@ Documentation = "http://fastlmm.github.io/bed-reader"
 name = "bed_reader"
 # !!!cmk later what's the effects of adding "rlib" to allow doc tests to work?
 # !!!cmk later https://github.com/rust-lang/cargo/issues/6659
-crate-type = ["rlib"] #cdylib"] # cmk , "rlib"]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# https://github.com/PyO3/pyo3/discussions/2271
+extension-module = ["pyo3/extension-module"]
+
 
 [dependencies]
 thiserror = "1.0.30"

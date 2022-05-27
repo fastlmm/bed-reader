@@ -9,5 +9,9 @@ multi_line_output = 3
 [tool.black]
 line-length = 88
 
+[tool.maturin]
+# https://github.com/PyO3/pyo3/discussions/2271
+cargo-extra-args = "--features extension-module"
+
 [build]
 rustflags = ["-C", "link-arg=-fuse-ld=lld"]
