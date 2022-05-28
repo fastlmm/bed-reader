@@ -1,14 +1,14 @@
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [package]
-authors = ["FaST-LMM Team <fastlmm-dev@python.org>"]
+version = "0.2.14"
 name = "bed-reader"
-version = "0.2.13"
-repository = "https://github.com/fastlmm/bed-reader"
 description = "Read and write the PLINK BED format, simply and efficiently."
-exclude = ["tests/*", "doc/*", "docs/*"]
+repository = "https://github.com/fastlmm/bed-reader"
 readme = "README-rust.md"
 documentation = "https://docs.rs/bed-reader/latest/bed_reader/"
+authors = ["FaST-LMM Team <fastlmm-dev@python.org>"]
+exclude = ["tests/*", "doc/*", "docs/*"]
 license = "Apache-2.0"
 keywords = ["bioinformatics", "plink", "genomics", "genotype", "snps"]
 categories = ["science"]
@@ -42,9 +42,8 @@ name = "bed_reader"
 crate-type = ["cdylib", "rlib"]
 
 [features]
-fancy-feature = ["pyo3"]
-# # https://github.com/PyO3/pyo3/discussions/2271
-# extension-module = ["pyo3/extension-module"]
+# https://github.com/PyO3/pyo3/discussions/2271
+extension-module = ["pyo3"]
 
 [dependencies]
 thiserror = "1.0.30"
@@ -56,8 +55,8 @@ ndarray = { version = "0.15.4", features = ["approx", "rayon"] }
 approx = "0.5.1"
 statrs = "0.15.0"
 byteorder = { version = "1.4.3", default-features = false }
-pyo3 = { version = "0.16.4", optional = true }                   # features = ["extension-module"] }
-dpc-pariter = "0.4.0"                                            # // cmk pariter = "0.5.1"
+pyo3 = { version = "0.16.4", features = ["extension-module"], optional = true }
+dpc-pariter = "0.4.0"                                                           # // cmk pariter = "0.5.1"
 derive_builder = "0.11.1"
 temp_testdir = "0.2.3"
 

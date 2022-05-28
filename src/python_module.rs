@@ -1,4 +1,4 @@
-#![cfg(feature = "fancy-feature")]
+#![cfg(feature = "extension-module")]
 use numpy::{PyArray1, PyArray2, PyArray3};
 
 use pyo3::{
