@@ -53,7 +53,7 @@ Read every second individual and SNPs (variants) from 20 to 30.
 
 List the first 5 individual (sample) ids, the
 first 5 SNP (variant) ids, and every unique
-chromosome. Then, read every value in chromosome 5.
+chromosome. Then, read every genomic value in chromosome 5.
 
 ```python
 >>> with open_bed(file_name2) as bed3:

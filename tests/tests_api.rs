@@ -395,7 +395,8 @@ fn readme_examples() -> Result<(), BedErrorPlus> {
         .read(&mut bed2)?;
     println!("{:?}", val2.dim()); // (50, 10)
 
-    // List the first 5 individual (sample) ids, the first 5 SNP (variant) ids, and every unique chromosome. Then, read every value in chromosome 5.
+    // List the first 5 individual (sample) ids, the first 5 SNP (variant) ids,
+    // and every unique chromosome. Then, read every genomic value in chromosome 5.
 
     // >>> with open_bed(file_name2) as bed3:
     // ...     print(bed3.iid[:5])

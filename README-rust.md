@@ -58,9 +58,7 @@ assert!(val.dim() == (50, 10));
 ```
 
 List the first 5 individual (sample) ids, the first 5 SNP (variant) ids,
-and every unique chromosome. Then, read every value in chromosome 5.
-
-use bed_reader;
+and every unique chromosome. Then, read every genomic value in chromosome 5.
 
 ```rust
 use std::collections::HashSet;

@@ -64,7 +64,7 @@
 //! ```
 //!
 //! List the first 5 individual (sample) ids, the first 5 SNP (variant) ids,
-//! and every unique chromosome. Then, read every value in chromosome 5.
+//! and every unique chromosome. Then, read every genomic value in chromosome 5.
 //!
 //! ```
 //! # use ndarray as nd;
