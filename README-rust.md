@@ -19,58 +19,68 @@ Features
 Examples
 --------
 
-Read genomic data from a .bed file.
+*Sample files available* [*here on Github*](https://github.com/fastlmm/bed-reader/tree/master/bed_reader/tests/data).
+
+Read all genotype data from a .bed file.
 
 ```rust
-use bed_reader;
+use ndarray as nd;
+use bed_reader::{Bed, ReadOptions, assert_eq_nan};
 
-fn main() {
-    let file_name = sample_file("small.bed");
-    mut bed = bed_reader::open_bed(file_name)?;
-    let val = bed.read()?;
-    println!("{val:?}");
-}
+let file_name = "small.bed";
+let mut bed = Bed::new(file_name)?;
+let val = ReadOptions::builder().f64().read(&mut bed)?;
+
+assert_eq_nan(
+    &val,
+    &nd::array![
+        [1.0, 0.0, f64::NAN, 0.0],
+        [2.0, 0.0, f64::NAN, 2.0],
+        [0.0, 1.0, 2.0, 0.0]
+    ],
+);
 ```
 
-Read every second individual and SNPs (variants) from 20 to 30.
+Read individual (samples) from 20 to 30 and every second SNP (variant).
 
 ```rust
-use bed_reader;
+use ndarray::s;
 
-fn main() {
-    let file_name2 = sample_file("some_missing.bed");
-    mut bed2 = bed_reader::open_bed(file_name2)?;
-    let val2 = bed2.read(index=(::2,20:30))?;
-    println!("{val2:?}");
-}
+let file_name = "some_missing.bed";
+let mut bed = Bed::new(file_name)?;
+let val = ReadOptions::builder()
+    .iid_index(s![..;2])
+    .sid_index(20..30)
+    .f64()
+    .read(&mut bed)?;
+
+assert!(val.dim() == (50, 10));
 ```
 
-List the first 5 individual (sample) ids, the
-first 5 SNP (variant) ids, and every unique
-chromosome. Then, read every value in chromosome 5.
+List the first 5 individual (sample) ids, the first 5 SNP (variant) ids,
+and every unique chromosome. Then, read every value in chromosome 5.
 
 use bed_reader;
-
-cmk See slicing macro s! https://docs.rs/ndarray/latest/ndarray/macro.s.html
 
 ```rust
-fn main() {
-    let file_name2 = sample_file("some_missing.bed");
-    mut bed3 = bed_reader::open_bed(file_name2)?;
-    println!("{:?}", bed3.iid[:5]);
-    println!("{:?}", bed3.sid[:5]);
-    println!("{:?}", bed3.chromosome.unique());
-    let val3 = bed.read(index=np.s_[:,bed3.chromosome=='5'])?;
-    println!("{:?}", val3);
-}
-```
-cmk how do you show output?
+use std::collections::HashSet;
 
-Links
+let mut bed = Bed::new(file_name)?;
+println!("{:?}", bed.iid()?.slice(s![..5])); // Outputs ndarray: ["iid_0", "iid_1", "iid_2", "iid_3", "iid_4"]
+println!("{:?}", bed.sid()?.slice(s![..5])); // Outputs ndarray: ["sid_0", "sid_1", "sid_2", "sid_3", "sid_4"]
+println!("{:?}", bed.chromosome()?.iter().collect::<HashSet<_>>());
+// Outputs: {"12", "10", "4", "8", "19", "21", "9", "15", "6", "16", "13", "7", "17", "18", "1", "22", "11", "2", "20", "3", "5", "14"}
+let val = ReadOptions::builder()
+    .sid_index(bed.chromosome()?.map(|elem| elem == "5"))
+    .f64()
+    .read(&mut bed)?;
+
+assert!(val.dim() == (100, 6));
+```
+
+Additional Links
 -----
 
-cmk update
-- **Questions to**: [fastlmm-dev@python.org](mailto:fastlmm-dev@python.org)
+- [**Questions via Email**](mailto:fastlmm-dev@python.org)
+- [**Discussion**](https://github.com/fastlmm/bed-reader/discussions/)
 - [**Bug reports**](https://github.com/fastlmm/bed-reader/issues)
-- [**Mailing list**](https://mail.python.org/mailman3/lists/fastlmm-user.python.org)
-- [**Project Website**](https://fastlmm.github.io/)

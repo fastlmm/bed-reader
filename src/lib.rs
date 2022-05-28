@@ -25,8 +25,7 @@
 //!
 //! ```
 //! use ndarray as nd;
-//! use bed_reader::{Bed, ReadOptions};
-//! use bed_reader::assert_eq_nan;
+//! use bed_reader::{Bed, ReadOptions, assert_eq_nan};
 //!
 //! let file_name = "bed_reader/tests/data/small.bed";
 //! let mut bed = Bed::new(file_name)?;
@@ -48,9 +47,7 @@
 //!
 //! ```
 //! # use ndarray as nd;
-//! # use bed_reader::Bed;
-//! # use bed_reader::assert_eq_nan;
-//! use bed_reader::ReadOptions;
+//! # use bed_reader::{Bed, ReadOptions, assert_eq_nan};
 //! use ndarray::s;
 //!
 //! let file_name = "bed_reader/tests/data/some_missing.bed";
@@ -71,10 +68,8 @@
 //!
 //! ```
 //! # use ndarray as nd;
-//! # use bed_reader::Bed;
-//! # use bed_reader::assert_eq_nan;
-//! # use bed_reader::ReadOptions;
 //! # use ndarray::s;
+//! # use bed_reader::{Bed, ReadOptions, assert_eq_nan};
 //! # let file_name = "bed_reader/tests/data/some_missing.bed";
 //! use std::collections::HashSet;
 //!
@@ -93,12 +88,12 @@
 //! # Ok::<(), BedErrorPlus>(())
 //! ```
 //!
-//!  ## Project Links
-//!  * Documentation cmk
-//!  * Questions to [fastlmm-dev@python.org](mailto://fastlmm-dev@python.org)
+//!  ##
+//!  * [Installation](https://crates.io/crates/bed-reader)
+//!  * [Questions via email](mailto://fastlmm-dev@python.org)
 //!  * [Source code](https://github.com/fastlmm/bed-reader)
-//!  * [Bug Reports](https://github.com/fastlmm/bed-reader/issues)
 //!  * [Discussion](https://github.com/fastlmm/bed-reader/discussions/)
+//!  * [Bug Reports](https://github.com/fastlmm/bed-reader/issues)
 //!  * [Project Website](https://fastlmm.github.io/)
 //!
 //! ## Main Functions
