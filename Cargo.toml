@@ -42,8 +42,9 @@ name = "bed_reader"
 crate-type = ["cdylib", "rlib"]
 
 [features]
-# https://github.com/PyO3/pyo3/discussions/2271
-extension-module = ["pyo3/extension-module"]
+fancy-feature = ["pyo3"]
+# # https://github.com/PyO3/pyo3/discussions/2271
+# extension-module = ["pyo3/extension-module"]
 
 [dependencies]
 thiserror = "1.0.30"
@@ -55,7 +56,7 @@ ndarray = { version = "0.15.4", features = ["approx", "rayon"] }
 approx = "0.5.1"
 statrs = "0.15.0"
 byteorder = { version = "1.4.3", default-features = false }
-pyo3 = { version = "0.16.4", features = ["extension-module"] }
+pyo3 = { version = "0.16.4", optional = true }                   # features = ["extension-module"] }
 dpc-pariter = "0.4.0"                                            # // cmk pariter = "0.5.1"
 derive_builder = "0.11.1"
 temp_testdir = "0.2.3"

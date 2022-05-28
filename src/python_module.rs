@@ -1,4 +1,6 @@
+#![cfg(feature = "fancy-feature")]
 use numpy::{PyArray1, PyArray2, PyArray3};
+
 use pyo3::{
     exceptions::PyIOError,
     exceptions::PyIndexError,

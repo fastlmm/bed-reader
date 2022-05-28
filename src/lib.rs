@@ -88,7 +88,8 @@
 //! # Ok::<(), BedErrorPlus>(())
 //! ```
 //!
-//!  ##
+//!  ## Project Links
+//!
 //!  * [Installation](https://crates.io/crates/bed-reader)
 //!  * [Questions via email](mailto://fastlmm-dev@python.org)
 //!  * [Source code](https://github.com/fastlmm/bed-reader)
@@ -771,56 +772,13 @@ fn count_lines<P: AsRef<Path>>(path: P) -> Result<usize, BedErrorPlus> {
     Ok(count)
 }
 
-fn matrix_subset_no_alloc<
-    TIn: Copy + Default + Debug + Sync + Send + Sized,
-    TOut: Copy + Default + Debug + Sync + Send + From<TIn>,
->(
-    in_val: &nd::ArrayView3<'_, TIn>,
-    iid_index: &[usize],
-    sid_index: &[usize],
-    out_val: &mut nd::ArrayViewMut3<'_, TOut>,
-) -> Result<(), BedErrorPlus> {
-    let out_iid_count = iid_index.len();
-    let out_sid_count = sid_index.len();
-    let did_count = in_val.dim().2;
-
-    if (out_iid_count, out_sid_count, did_count) != out_val.dim() {
-        return Err(BedError::SubsetMismatch(
-            out_iid_count,
-            out_sid_count,
-            out_val.dim().0,
-            out_val.dim().1,
-        )
-        .into());
-    }
-
-    // If output is F-order (or in general if iid stride is no more than sid_stride)
-    if out_val.stride_of(nd::Axis(0)) <= out_val.stride_of(nd::Axis(1)) {
-        // (No error are possible in the par_azip, so don't have to collect and check them)
-        nd::par_azip!((mut out_col in out_val.axis_iter_mut(nd::Axis(1)),
-                    in_sid_i_pr in sid_index) {
-            let in_col = in_val.index_axis(nd::Axis(1), *in_sid_i_pr);
-            for did_i in 0..did_count
-            {
-                for (out_iid_i, in_iid_i_ptr) in iid_index.iter().enumerate() {
-                    out_col[(out_iid_i,did_i)] = in_col[(*in_iid_i_ptr,did_i)].into();
-                }
-            }
-        });
-        Ok(())
-    } else {
-        //If output is C-order, transpose input and output and recurse
-        let in_val_t = in_val.view().permuted_axes([1, 0, 2]);
-        let mut out_val_t = out_val.view_mut().permuted_axes([1, 0, 2]);
-        matrix_subset_no_alloc(&in_val_t, sid_index, iid_index, &mut out_val_t)
-    }
-}
-
+#[allow(dead_code)]
 enum Dist {
     Unit,
     Beta { a: f64, b: f64 },
 }
 
+#[allow(dead_code)]
 fn impute_and_zero_mean_snps<
     T: Default + Copy + Debug + Sync + Send + Float + ToPrimitive + FromPrimitive,
 >(
@@ -861,6 +819,7 @@ fn impute_and_zero_mean_snps<
 }
 
 // Later move the other fast-lmm functions into their own package
+#[allow(dead_code)]
 fn find_factor<T: Default + Copy + Debug + Sync + Send + Float + ToPrimitive + FromPrimitive>(
     dist: &Dist,
     mean_s: T,
@@ -895,6 +854,7 @@ fn find_factor<T: Default + Copy + Debug + Sync + Send + Float + ToPrimitive + F
     }
 }
 
+#[allow(dead_code)]
 fn _process_sid<T: Default + Copy + Debug + Sync + Send + Float + ToPrimitive + FromPrimitive>(
     col: &mut nd::ArrayViewMut1<'_, T>,
     apply_in_place: bool,
@@ -963,6 +923,7 @@ fn _process_sid<T: Default + Copy + Debug + Sync + Send + Float + ToPrimitive + 
     Ok(())
 }
 
+#[allow(dead_code)]
 fn _process_all_iids<
     T: Default + Copy + Debug + Sync + Send + Float + ToPrimitive + FromPrimitive,
 >(
@@ -1065,6 +1026,7 @@ fn _process_all_iids<
     Ok(())
 }
 
+#[allow(dead_code)]
 fn file_b_less_aatbx<P: AsRef<Path>>(
     a_filename: P,
     offset: u64,
@@ -1120,10 +1082,12 @@ fn file_b_less_aatbx<P: AsRef<Path>>(
     Ok(())
 }
 
+#[allow(dead_code)]
 fn read_into_f64(src: &mut BufReader<File>, dst: &mut [f64]) -> std::io::Result<()> {
     src.read_f64_into::<LittleEndian>(dst)
 }
 
+#[allow(dead_code)]
 fn read_into_f32(src: &mut BufReader<File>, dst: &mut [f32]) -> std::io::Result<()> {
     src.read_f32_into::<LittleEndian>(dst)
 }
@@ -1187,6 +1151,7 @@ for output in output_list:
 // where ncols <= (col_count-col_start)
 // Makes only one pass through the file.
 #[allow(clippy::too_many_arguments)]
+#[allow(dead_code)]
 fn file_ata_piece<T: Float + Send + Sync + AddAssign, P: AsRef<Path>>(
     path: P,
     offset: u64,
@@ -1216,6 +1181,7 @@ fn file_ata_piece<T: Float + Send + Sync + AddAssign, P: AsRef<Path>>(
     )
 }
 
+#[allow(dead_code)]
 fn _file_ata_piece_internal<T: Float + Send + Sync + AddAssign, P: AsRef<Path>>(
     path: P,
     offset: u64,
@@ -1278,6 +1244,7 @@ fn _file_ata_piece_internal<T: Float + Send + Sync + AddAssign, P: AsRef<Path>>(
     Ok(())
 }
 
+#[allow(dead_code)]
 fn col_product<T: Float + AddAssign>(col_i: &[T], col_j: &[T]) -> T {
     assert!(col_i.len() == col_j.len()); // real assert
     let mut product = T::zero();
@@ -1296,6 +1263,7 @@ fn col_product<T: Float + AddAssign>(col_i: &[T], col_j: &[T]) -> T {
 // where ncols <= (row_count-row_start)
 // Makes only one pass through the file.
 #[allow(clippy::too_many_arguments)]
+#[allow(dead_code)]
 fn file_aat_piece<T: Float + Sync + Send + AddAssign, P: AsRef<Path>>(
     path: P,
     offset: u64,
@@ -6723,5 +6691,51 @@ fn option_rc_as_ref<T>(field: &Option<Rc<nd::Array1<T>>>) -> Option<&nd::Array1<
     match field {
         Some(array) => Some(array.as_ref()),
         None => None,
+    }
+}
+
+#[allow(dead_code)]
+fn matrix_subset_no_alloc<
+    TIn: Copy + Default + Debug + Sync + Send + Sized,
+    TOut: Copy + Default + Debug + Sync + Send + From<TIn>,
+>(
+    in_val: &nd::ArrayView3<'_, TIn>,
+    iid_index: &[usize],
+    sid_index: &[usize],
+    out_val: &mut nd::ArrayViewMut3<'_, TOut>,
+) -> Result<(), BedErrorPlus> {
+    let out_iid_count = iid_index.len();
+    let out_sid_count = sid_index.len();
+    let did_count = in_val.dim().2;
+
+    if (out_iid_count, out_sid_count, did_count) != out_val.dim() {
+        return Err(BedError::SubsetMismatch(
+            out_iid_count,
+            out_sid_count,
+            out_val.dim().0,
+            out_val.dim().1,
+        )
+        .into());
+    }
+
+    // If output is F-order (or in general if iid stride is no more than sid_stride)
+    if out_val.stride_of(nd::Axis(0)) <= out_val.stride_of(nd::Axis(1)) {
+        // (No error are possible in the par_azip, so don't have to collect and check them)
+        nd::par_azip!((mut out_col in out_val.axis_iter_mut(nd::Axis(1)),
+                    in_sid_i_pr in sid_index) {
+            let in_col = in_val.index_axis(nd::Axis(1), *in_sid_i_pr);
+            for did_i in 0..did_count
+            {
+                for (out_iid_i, in_iid_i_ptr) in iid_index.iter().enumerate() {
+                    out_col[(out_iid_i,did_i)] = in_col[(*in_iid_i_ptr,did_i)].into();
+                }
+            }
+        });
+        Ok(())
+    } else {
+        //If output is C-order, transpose input and output and recurse
+        let in_val_t = in_val.view().permuted_axes([1, 0, 2]);
+        let mut out_val_t = out_val.view_mut().permuted_axes([1, 0, 2]);
+        matrix_subset_no_alloc(&in_val_t, sid_index, iid_index, &mut out_val_t)
     }
 }
