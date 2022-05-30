@@ -1,29 +1,19 @@
-#[cfg(test)]
 use bed_reader::allclose;
-#[cfg(test)]
 use bed_reader::assert_eq_nan;
-#[cfg(test)]
+use bed_reader::sample_bed_file;
+use bed_reader::sample_file;
+use bed_reader::sample_files;
 use bed_reader::tmp_path;
-#[cfg(test)]
 use bed_reader::Bed;
-#[cfg(test)]
 use bed_reader::BedError;
-#[cfg(test)]
 use bed_reader::BedErrorPlus;
-#[cfg(test)]
 use bed_reader::Metadata;
 use bed_reader::MetadataFields;
-#[cfg(test)]
 use bed_reader::ReadOptions;
-#[cfg(test)]
 use bed_reader::SliceInfo1;
-#[cfg(test)]
 use bed_reader::WriteOptions;
-#[cfg(test)]
 use ndarray as nd;
-#[cfg(test)]
 use ndarray::s;
-#[cfg(test)]
 use ndarray_rand::{rand::prelude::StdRng, rand::SeedableRng, rand_distr::Uniform, RandomExt};
 
 #[test]
@@ -124,8 +114,8 @@ fn bad_header() -> Result<(), BedErrorPlus> {
 
 #[test]
 fn doc_test_test() -> Result<(), BedErrorPlus> {
-    let file_name = "bed_reader/tests/data/small.bed";
-    let mut bed = Bed::new(file_name)?;
+    let file_name = sample_bed_file("small.bed")?;
+    let mut bed = Bed::new(&file_name)?;
     let val = bed.read::<f64>()?;
     assert_eq_nan(
         &val,
@@ -136,8 +126,8 @@ fn doc_test_test() -> Result<(), BedErrorPlus> {
         ],
     );
 
-    let file_name2 = "bed_reader/tests/data/some_missing.bed";
-    let mut bed2 = Bed::new(file_name2)?;
+    let file_name2 = sample_bed_file("some_missing.bed")?;
+    let mut bed2 = Bed::new(&file_name2)?;
     let val2 = ReadOptions::builder()
         .f64()
         .iid_index(s![..;2])
@@ -145,7 +135,7 @@ fn doc_test_test() -> Result<(), BedErrorPlus> {
         .read(&mut bed2)?;
     assert!(val2.dim() == (50, 10));
 
-    let mut bed3 = Bed::new(file_name2)?;
+    let mut bed3 = Bed::new(&file_name2)?;
     println!("{:?}", bed3.iid()?.slice(s![..5]));
     println!("{:?}", bed3.sid()?.slice(s![..5]));
     println!("{:?}", bed3.chromosome()?.iter().collect::<HashSet<_>>());
@@ -160,9 +150,9 @@ fn doc_test_test() -> Result<(), BedErrorPlus> {
 
 #[test]
 fn open_examples() -> Result<(), BedErrorPlus> {
-    //     >>> from bed_reader import open_bed, sample_file
+    //     >>> from bed_reader import open_bed, sample_bed_file
     //     >>>
-    //     >>> file_name = sample_file("small.bed")
+    //     >>> file_name = sample_bed_file("small.bed")
     //     >>> bed = open_bed(file_name)
     //     >>> print(bed.iid)
     //     ['iid1' 'iid2' 'iid3']
@@ -283,7 +273,7 @@ fn open_examples() -> Result<(), BedErrorPlus> {
 
 #[test]
 fn metadata_etc() -> Result<(), BedErrorPlus> {
-    // >>> file_name = sample_file("small.bed")
+    // >>> file_name = sample_bed_file("small.bed")
     // >>> with open_bed(file_name) as bed:
     // ...     print(bed.sex)
     // [1 2 0]
@@ -339,9 +329,10 @@ fn num_threads() -> Result<(), BedErrorPlus> {
 
 #[test]
 fn fam_and_bim() -> Result<(), BedErrorPlus> {
-    let mut bed = Bed::builder("bed_reader/tests/data/small.deb")
-        .fam_path("bed_reader/tests/data/small.maf")
-        .bim_path("bed_reader/tests/data/small.mib")
+    let deb_maf_mib = sample_files(["small.deb", "small.maf", "small.mib"])?;
+    let mut bed = Bed::builder(&deb_maf_mib[0])
+        .fam_path(&deb_maf_mib[1])
+        .bim_path(&deb_maf_mib[2])
         .build()?;
 
     println!("{:?}", bed.iid()?);
@@ -359,9 +350,9 @@ fn readme_examples() -> Result<(), BedErrorPlus> {
     // Read genomic data from a .bed file.
 
     // >>> import numpy as np
-    // >>> from bed_reader import open_bed, sample_file
+    // >>> from bed_reader import open_bed, sample_bed_file
     // >>>
-    // >>> file_name = sample_file("small.bed")
+    // >>> file_name = sample_bed_file("small.bed")
     // >>> bed = open_bed(file_name)
     // >>> val = bed.read()
     // >>> print(val)
@@ -380,15 +371,15 @@ fn readme_examples() -> Result<(), BedErrorPlus> {
 
     // Read every second individual and SNPs (variants) from 20 to 30.
 
-    // >>> file_name2 = sample_file("some_missing.bed")
+    // >>> file_name2 = sample_bed_file("some_missing.bed")
     // >>> bed2 = open_bed(file_name2)
     // >>> val2 = bed2.read(index=np.s_[::2,20:30])
     // >>> print(val2.shape)
     // (50, 10)
     // >>> del bed2
 
-    let file_name2 = "bed_reader/tests/data/some_missing.bed";
-    let mut bed2 = Bed::new(file_name2)?;
+    let file_name2 = sample_bed_file("some_missing.bed")?;
+    let mut bed2 = Bed::new(&file_name2)?;
     let val2 = ReadOptions::<f64>::builder()
         .iid_index(s![..;2])
         .sid_index(20..30)
@@ -410,7 +401,7 @@ fn readme_examples() -> Result<(), BedErrorPlus> {
     //  '3' '4' '5' '6' '7' '8' '9']
     // (100, 6)
 
-    let mut bed3 = Bed::new(file_name2)?;
+    let mut bed3 = Bed::new(&file_name2)?;
     let iid = bed3.iid()?;
     let s = iid.slice(s![..5]);
     println!("{:?}", s);
@@ -1022,7 +1013,7 @@ fn negative_indexing() -> Result<(), BedErrorPlus> {
 
 #[test]
 fn index_doc() -> Result<(), BedErrorPlus> {
-    let file_name = "bed_reader/tests/data/some_missing.bed";
+    let file_name = sample_bed_file("some_missing.bed")?;
     let mut bed = Bed::new(file_name)?;
     println!("{:?}", bed.dim()?); // prints (100, 100)
 
@@ -1088,7 +1079,7 @@ fn index_doc() -> Result<(), BedErrorPlus> {
 
 #[test]
 fn index_options() -> Result<(), BedErrorPlus> {
-    let mut bed = Bed::new("bed_reader/tests/data/some_missing.bed")?;
+    let mut bed = Bed::new(sample_bed_file("some_missing.bed")?)?;
     let index: () = ();
 
     let all = ReadOptions::builder()
@@ -1373,7 +1364,7 @@ fn metadata_print() -> Result<(), BedErrorPlus> {
 
 #[test]
 fn iid_index() -> Result<(), BedErrorPlus> {
-    let file_name = "bed_reader/tests/data/some_missing.bed";
+    let file_name = sample_bed_file("some_missing.bed")?;
     let mut bed = Bed::new(file_name)?;
 
     // Read the individual at index position 3
@@ -2212,6 +2203,37 @@ fn parsing_metadata() -> Result<(), BedErrorPlus> {
         Err(BedErrorPlus::IOError(_)) => {}
         _ => panic!("should be an error"),
     }
+
+    Ok(())
+}
+
+#[test]
+fn read_fam() -> Result<(), BedErrorPlus> {
+    let skip_set = HashSet::<MetadataFields>::new();
+    let metadata_empty = Metadata::new();
+    let (metadata_fam, _) = metadata_empty.read_fam(sample_file("small.fam")?, &skip_set)?;
+    // metadata_empty.read_fam("bed_reader/tests/data/small.fam", &skip_set)?;
+    println!("{:?}", metadata_fam.iid()); // Outputs optional ndarray Some(["iid1", "iid2", "iid3"]...)
+    Ok(())
+}
+
+#[test]
+fn testlib_intro() -> Result<(), BedErrorPlus> {
+    use bed_reader::{assert_eq_nan, sample_bed_file, Bed, ReadOptions};
+    use ndarray as nd;
+    use ndarray::s;
+    let file_name = sample_bed_file("some_missing.bed")?;
+    use std::collections::HashSet;
+
+    let mut bed = Bed::new(file_name)?;
+    println!("{:?}", bed.iid()?.slice(s![..5])); // Outputs ndarray: ["iid_0", "iid_1", "iid_2", "iid_3", "iid_4"]
+    println!("{:?}", bed.sid()?.slice(s![..5])); // Outputs ndarray: ["sid_0", "sid_1", "sid_2", "sid_3", "sid_4"]
+    println!("{:?}", bed.chromosome()?.iter().collect::<HashSet<_>>());
+    // Outputs: {"12", "10", "4", "8", "19", "21", "9", "15", "6", "16", "13", "7", "17", "18", "1", "22", "11", "2", "20", "3", "5", "14"}
+    let val = ReadOptions::builder()
+        .sid_index(bed.chromosome()?.map(|elem| elem == "5"))
+        .f64()
+        .read(&mut bed)?;
 
     Ok(())
 }

@@ -20,7 +20,9 @@ use crate::file_b_less_aatbx;
 #[cfg(test)]
 use crate::read_into_f64;
 #[cfg(test)]
-use crate::sample_file;
+use crate::sample_bed_file;
+#[cfg(test)]
+use crate::sample_files;
 #[cfg(test)]
 use crate::tmp_path;
 #[cfg(test)]
@@ -56,7 +58,7 @@ use std::{fs::File, io::BufReader};
 
 #[test]
 fn best_int8() {
-    let filename = sample_file("some_missing.bed").unwrap();
+    let filename = sample_bed_file("some_missing.bed").unwrap();
 
     for output_order_is_f in [true, false].iter() {
         let mut bed = Bed::new(&filename).unwrap();
@@ -109,7 +111,7 @@ fn read_test() {
 
 #[test]
 fn rest_reader_bed() -> Result<(), BedErrorPlus> {
-    let file = sample_file("some_missing.bed")?;
+    let file = sample_bed_file("some_missing.bed")?;
     let is_a1_counted = false;
 
     let ref_val = reference_val(is_a1_counted);
@@ -151,7 +153,7 @@ fn reference_val(is_a1_counted: bool) -> nd::Array2<f64> {
 
 #[test]
 fn index() {
-    let filename = sample_file("some_missing.bed").unwrap();
+    let filename = sample_bed_file("some_missing.bed").unwrap();
     let ref_val_float = reference_val(true);
 
     let val: nd::Array2<f64> = Bed::new(&filename).unwrap().read().unwrap();
@@ -266,7 +268,7 @@ fn index() {
 
 #[test]
 fn writer() -> Result<(), BedErrorPlus> {
-    let path = sample_file("some_missing.bed").unwrap();
+    let path = sample_bed_file("some_missing.bed").unwrap();
 
     let mut bed = Bed::new(&path).unwrap();
     let val = ReadOptions::builder().c().i8().read(&mut bed).unwrap();
@@ -384,7 +386,7 @@ fn subset1() {
 
 #[test]
 fn fill_in() {
-    let filename = sample_file("some_missing.bed").unwrap();
+    let filename = sample_bed_file("some_missing.bed").unwrap();
 
     for output_is_orderf_ptr in [false, true].iter() {
         let mut bed = Bed::builder(&filename).build().unwrap();
@@ -622,7 +624,7 @@ fn read_errors() {
 
 #[test]
 fn read_modes() -> Result<(), BedErrorPlus> {
-    let filename = sample_file("small.bed")?;
+    let filename = sample_bed_file("small.bed")?;
     let mut bed = Bed::new(filename)?;
     let iid_count_s1 = bed.iid_count()?;
     let sid_count_s1 = bed.sid_count()?;
@@ -660,7 +662,7 @@ fn read_modes() -> Result<(), BedErrorPlus> {
 
 #[test]
 fn zeros() -> Result<(), BedErrorPlus> {
-    let filename = sample_file("some_missing.bed")?;
+    let filename = sample_bed_file("some_missing.bed")?;
     let mut bed = Bed::new(&filename).unwrap();
     let iid_count = bed.iid_count().unwrap();
     let sid_count = bed.sid_count().unwrap();
@@ -957,10 +959,18 @@ fn index_len_is_empty() -> Result<(), BedErrorPlus> {
 
 #[test]
 fn test_sample_file() -> Result<(), BedErrorPlus> {
-    let filename = sample_file("small.bed")?;
+    let filename = sample_bed_file("small.bed")?;
     let mut bed = Bed::new(filename)?;
     println!("{}", bed.iid_count()?);
     println!("{}", bed.sid_count()?);
+
+    let deb_maf_mib = sample_files(["small.deb", "small.maf", "small.mib"])?;
+    let mut bed = Bed::builder(&deb_maf_mib[0])
+        .fam_path(&deb_maf_mib[1])
+        .bim_path(&deb_maf_mib[2])
+        .build()?;
+    println!("{:?}", bed.iid()?); // Outputs ndarray ["iid1", "iid2", "iid3"]
+    println!("{:?}", bed.sid()?); // Outputs ndarray ["sid1", "sid2", "sid3", "sid4"]
 
     Ok(())
 }
