@@ -20,6 +20,8 @@ use crate::file_b_less_aatbx;
 #[cfg(test)]
 use crate::read_into_f64;
 #[cfg(test)]
+use crate::sample_file;
+#[cfg(test)]
 use crate::tmp_path;
 #[cfg(test)]
 use crate::try_div_4;
@@ -54,10 +56,10 @@ use std::{fs::File, io::BufReader};
 
 #[test]
 fn best_int8() {
-    let filename = "bed_reader/tests/data/some_missing.bed";
+    let filename = sample_file("some_missing.bed").unwrap();
 
     for output_order_is_f in [true, false].iter() {
-        let mut bed = Bed::new(filename).unwrap();
+        let mut bed = Bed::new(&filename).unwrap();
         let val = ReadOptions::builder()
             .is_f(*output_order_is_f)
             .i8()
@@ -107,7 +109,7 @@ fn read_test() {
 
 #[test]
 fn rest_reader_bed() -> Result<(), BedErrorPlus> {
-    let file = "bed_reader/tests/data/some_missing.bed";
+    let file = sample_file("some_missing.bed")?;
     let is_a1_counted = false;
 
     let ref_val = reference_val(is_a1_counted);
@@ -149,13 +151,13 @@ fn reference_val(is_a1_counted: bool) -> nd::Array2<f64> {
 
 #[test]
 fn index() {
-    let filename = "bed_reader/tests/data/some_missing.bed";
+    let filename = sample_file("some_missing.bed").unwrap();
     let ref_val_float = reference_val(true);
 
-    let val: nd::Array2<f64> = Bed::new(filename).unwrap().read().unwrap();
+    let val: nd::Array2<f64> = Bed::new(&filename).unwrap().read().unwrap();
     assert!(allclose(&ref_val_float.view(), &val.view(), 1e-08, true));
 
-    let mut bed = Bed::new(filename).unwrap();
+    let mut bed = Bed::new(&filename).unwrap();
     let val: nd::Array2<f32> = ReadOptions::builder()
         .sid_index(2)
         .f32()
@@ -264,9 +266,9 @@ fn index() {
 
 #[test]
 fn writer() -> Result<(), BedErrorPlus> {
-    let path = Path::new("bed_reader/tests/data/some_missing.bed");
+    let path = sample_file("some_missing.bed").unwrap();
 
-    let mut bed = Bed::new(path).unwrap();
+    let mut bed = Bed::new(&path).unwrap();
     let val = ReadOptions::builder().c().i8().read(&mut bed).unwrap();
 
     let output_folder = tmp_path()?;
@@ -285,7 +287,7 @@ fn writer() -> Result<(), BedErrorPlus> {
 
     assert!(allclose(&val.view(), &val2.view(), 0, true));
 
-    let mut bed = Bed::new(path).unwrap();
+    let mut bed = Bed::new(&path).unwrap();
     let val = ReadOptions::builder().c().f64().read(&mut bed).unwrap();
 
     let path2 = output_folder.join("rust_bed_reader_writer_testf64.bed");
@@ -382,10 +384,10 @@ fn subset1() {
 
 #[test]
 fn fill_in() {
-    let filename = "bed_reader/tests/data/some_missing.bed";
+    let filename = sample_file("some_missing.bed").unwrap();
 
     for output_is_orderf_ptr in [false, true].iter() {
-        let mut bed = Bed::builder(filename).build().unwrap();
+        let mut bed = Bed::builder(&filename).build().unwrap();
         let mut val = ReadOptions::builder()
             .is_f(*output_is_orderf_ptr)
             .f64()
@@ -417,7 +419,7 @@ fn fill_in() {
             _ => panic!("test failure"),
         }
 
-        let mut bed = Bed::builder(filename).build().unwrap();
+        let mut bed = Bed::builder(&filename).build().unwrap();
         let mut val = ReadOptions::builder()
             .is_f(*output_is_orderf_ptr)
             .f64()
@@ -619,20 +621,19 @@ fn read_errors() {
 }
 
 #[test]
-fn read_modes() {
-    let filename = "bed_reader/tests/data/small.bed";
-    let mut bed = Bed::new(filename).unwrap();
-    let iid_count_s1 = bed.iid_count().unwrap();
-    let sid_count_s1 = bed.sid_count().unwrap();
+fn read_modes() -> Result<(), BedErrorPlus> {
+    let filename = sample_file("small.bed")?;
+    let mut bed = Bed::new(filename)?;
+    let iid_count_s1 = bed.iid_count()?;
+    let sid_count_s1 = bed.sid_count()?;
 
     let mut val_small_mode_1 = nd::Array2::<i8>::default((iid_count_s1, sid_count_s1));
-    bed.read_and_fill(&mut val_small_mode_1.view_mut()).unwrap();
+    bed.read_and_fill(&mut val_small_mode_1.view_mut())?;
 
     let mut bed_too_short = Bed::builder("bed_reader/tests/data/small_too_short.bed")
         .fam_path("bed_reader/tests/data/small.fam")
         .bim_path("bed_reader/tests/data/small.bim")
-        .build()
-        .unwrap();
+        .build()?;
     let result = bed_too_short.read_and_fill(&mut val_small_mode_1.view_mut());
     match result {
         Err(BedErrorPlus::BedError(BedError::IllFormed(_))) => (),
@@ -640,28 +641,27 @@ fn read_modes() {
     };
 
     let mut val_small_mode_0 = nd::Array2::<i8>::default((sid_count_s1, iid_count_s1));
-    let mut bed_mode0 = Bed::new("bed_reader/tests/data/smallmode0.bed").unwrap();
-    bed_mode0
-        .read_and_fill(&mut val_small_mode_0.view_mut())
-        .unwrap();
+    let mut bed_mode0 = Bed::new("bed_reader/tests/data/smallmode0.bed")?;
+    bed_mode0.read_and_fill(&mut val_small_mode_0.view_mut())?;
     assert_eq!(val_small_mode_0.t(), val_small_mode_1);
 
     let mut bed_small_mode_bad = Bed::builder("bed_reader/tests/data/smallmodebad.bed")
         .fam_path("bed_reader/tests/data/small.fam")
         .bim_path("bed_reader/tests/data/small.bim")
-        .build()
-        .unwrap();
+        .build()?;
     let result = bed_small_mode_bad.read_and_fill(&mut val_small_mode_1.view_mut());
     match result {
         Err(BedErrorPlus::BedError(BedError::BadMode(_))) => (),
         _ => panic!("test failure"),
     };
+
+    Ok(())
 }
 
 #[test]
 fn zeros() -> Result<(), BedErrorPlus> {
-    let filename = "bed_reader/tests/data/some_missing.bed";
-    let mut bed = Bed::new(filename).unwrap();
+    let filename = sample_file("some_missing.bed")?;
+    let mut bed = Bed::new(&filename).unwrap();
     let iid_count = bed.iid_count().unwrap();
     let sid_count = bed.sid_count().unwrap();
     let iid_index_full = (0..iid_count).collect::<Vec<usize>>();
@@ -669,7 +669,7 @@ fn zeros() -> Result<(), BedErrorPlus> {
     let ref_val_float = reference_val(true);
 
     // Test read on zero length indexes
-    let mut bed = Bed::new(filename).unwrap();
+    let mut bed = Bed::new(&filename).unwrap();
     let val: nd::Array2<f32> = bed.read().unwrap();
     assert!(allclose(&ref_val_float.view(), &val.view(), 1e-08, true));
 
@@ -952,5 +952,15 @@ fn index_len_is_empty() -> Result<(), BedErrorPlus> {
 
     expected_len((0..).into(), 0, 0)?;
     expected_len((0..).into(), 2, 2)?;
+    Ok(())
+}
+
+#[test]
+fn test_sample_file() -> Result<(), BedErrorPlus> {
+    let filename = sample_file("small.bed")?;
+    let mut bed = Bed::new(filename)?;
+    println!("{}", bed.iid_count()?);
+    println!("{}", bed.sid_count()?);
+
     Ok(())
 }

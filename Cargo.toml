@@ -37,8 +37,6 @@ Documentation = "http://fastlmm.github.io/bed-reader"
 
 [lib]
 name = "bed_reader"
-# !!!cmk later what's the effects of adding "rlib" to allow doc tests to work?
-# !!!cmk later https://github.com/rust-lang/cargo/issues/6659
 crate-type = ["cdylib", "rlib"]
 
 [features]
@@ -59,6 +57,8 @@ pyo3 = { version = "0.16.4", features = ["extension-module"], optional = true }
 dpc-pariter = "0.4.0"                                                           # // cmk pariter = "0.5.1"
 derive_builder = "0.11.1"
 temp_testdir = "0.2.3"
+ureq = "2.0.2"
+directories = "4.0.1"
 
 [dev-dependencies]
 ndarray-rand = "0.14.0"

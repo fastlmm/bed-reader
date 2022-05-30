@@ -25,9 +25,9 @@
 //!
 //! ```
 //! use ndarray as nd;
-//! use bed_reader::{Bed, ReadOptions, assert_eq_nan};
+//! use bed_reader::{Bed, ReadOptions, assert_eq_nan, sample_file};
 //!
-//! let file_name = "bed_reader/tests/data/small.bed";
+//! let file_name = sample_file("small.bed")?;
 //! let mut bed = Bed::new(file_name)?;
 //! let val = ReadOptions::builder().f64().read(&mut bed)?;
 //!
@@ -47,10 +47,10 @@
 //!
 //! ```
 //! # use ndarray as nd;
-//! # use bed_reader::{Bed, ReadOptions, assert_eq_nan};
+//! # use bed_reader::{Bed, ReadOptions, assert_eq_nan, sample_file};
 //! use ndarray::s;
 //!
-//! let file_name = "bed_reader/tests/data/some_missing.bed";
+//! let file_name = sample_file("some_missing.bed")?;
 //! let mut bed = Bed::new(file_name)?;
 //! let val = ReadOptions::builder()
 //!     .iid_index(s![..;2])
@@ -69,8 +69,8 @@
 //! ```
 //! # use ndarray as nd;
 //! # use ndarray::s;
-//! # use bed_reader::{Bed, ReadOptions, assert_eq_nan};
-//! # let file_name = "bed_reader/tests/data/some_missing.bed";
+//! # use bed_reader::{Bed, ReadOptions, assert_eq_nan, sample_file};
+//! # let file_name = sample_file("some_missing.bed")?;
 //! use std::collections::HashSet;
 //!
 //! let mut bed = Bed::new(file_name)?;
@@ -210,6 +210,7 @@ use temp_testdir::TempDir;
 // !!! might want to use this instead use typed_builder::TypedBuilder;
 
 use byteorder::{LittleEndian, ReadBytesExt};
+use directories::ProjectDirs;
 use dpc_pariter::{scope, IteratorExt};
 use num_traits::{abs, Float, FromPrimitive, Signed, ToPrimitive};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
@@ -264,6 +265,10 @@ pub enum BedErrorPlus {
     #[allow(missing_docs)]
     #[error(transparent)]
     ParseFloatError(#[from] ParseFloatError),
+
+    #[allow(missing_docs)]
+    #[error(transparent)]
+    UreqError(#[from] ureq::Error),
 }
 // https://docs.rs/thiserror/1.0.23/thiserror/
 
@@ -1340,10 +1345,10 @@ fn file_aat_piece<T: Float + Sync + Send + AddAssign, P: AsRef<Path>>(
 /// Create a random file with the same metadata.
 /// ```
 /// use ndarray as nd;
-/// use bed_reader::{Bed, WriteOptions, tmp_path};
+/// use bed_reader::{Bed, WriteOptions, tmp_path, sample_file};
 /// use ndarray_rand::{rand::prelude::StdRng, rand::SeedableRng, rand_distr::Uniform, RandomExt};
 ///
-/// let mut bed = Bed::new("bed_reader/tests/data/small.bed")?;
+/// let mut bed = Bed::new(sample_file("small.bed")?)?;
 /// let metadata = bed.metadata()?;
 /// let shape = bed.dim()?;
 ///
@@ -1417,10 +1422,10 @@ fn lazy_or_skip_count<T>(array: &Option<Rc<nd::Array1<T>>>) -> Option<usize> {
 /// and all the genotype data.
 /// ```
 /// use ndarray as nd;
-/// use bed_reader::{Bed, ReadOptions};
+/// use bed_reader::{Bed, ReadOptions, sample_file};
 /// use bed_reader::assert_eq_nan;
 ///
-/// let file_name = "bed_reader/tests/data/small.bed";
+/// let file_name = sample_file("small.bed")?;
 /// let mut bed = Bed::new(file_name)?;
 /// println!("{:?}", bed.iid()?); // Outputs ndarray ["iid1", "iid2", "iid3"]
 /// let val = ReadOptions::builder().f64().read(&mut bed)?;
@@ -1557,9 +1562,8 @@ impl BedBuilder {
     /// Providing them here avoids that file read and provides a way to give different values.
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::Bed;
-    /// use bed_reader::assert_eq_nan;
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// use bed_reader::{Bed, assert_eq_nan, sample_file};
+    /// let file_name = sample_file("small.bed")?;
     /// use bed_reader::ReadOptions;
     ///
     /// let mut bed = Bed::builder(file_name)
@@ -1638,10 +1642,8 @@ impl BedBuilder {
     /// Providing them here avoids that file read and provides a way to give different values.
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::Bed;
-    /// use bed_reader::assert_eq_nan;
-    /// let file_name = "bed_reader/tests/data/small.bed";
-    /// use bed_reader::ReadOptions;
+    /// use bed_reader::{Bed, ReadOptions, assert_eq_nan, sample_file};
+    /// let file_name = sample_file("small.bed")?;
     ///
     /// let mut bed = Bed::builder(file_name)
     ///    .sid(["SNP1", "SNP2", "SNP3", "SNP4"])
@@ -1739,7 +1741,7 @@ impl BedBuilder {
     /// Read .bed, .fam, and .bim files with non-standard names.
     /// ```
     /// use bed_reader::{Bed, ReadOptions};
-    /// let mut bed = Bed::builder("bed_reader/tests/data/small.deb")
+    /// let mut bed = Bed::builder("bed_reader/tests/data/small.deb") // cmk
     ///    .fam_path("bed_reader/tests/data/small.maf")
     ///    .bim_path("bed_reader/tests/data/small.mib")
     ///    .build()?;
@@ -1948,9 +1950,9 @@ impl BedBuilder {
     /// it is read from the *.bim file.
     ///```
     /// use ndarray as nd;
-    /// use bed_reader::{Bed, Metadata};
+    /// use bed_reader::{Bed, Metadata, sample_file};
     ///
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let metadata = Metadata::builder()
     ///     .iid(["i1", "i2", "i3"])
     ///     .sid(["s1", "s2", "s3", "s4"])
@@ -2020,10 +2022,9 @@ impl Bed {
     ///
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::Bed;
-    /// use bed_reader::assert_eq_nan;
+    /// use bed_reader::{Bed, assert_eq_nan, sample_file};
     ///
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::builder(file_name).build()?;
     /// println!("{:?}", bed.iid()?); // Outputs ndarray ["iid1", "iid2", "iid3"]
     /// println!("{:?}", bed.sid()?); // Outputs ndarray ["snp1", "snp2", "snp3", "snp4"]
@@ -2044,10 +2045,8 @@ impl Bed {
     /// Replace [`iid`](struct.Bed.html#method.iid).
     /// ```
     /// # use ndarray as nd;
-    /// # use bed_reader::Bed;
-    /// # use bed_reader::assert_eq_nan;
-    /// # let file_name = "bed_reader/tests/data/small.bed";
-    /// use bed_reader::ReadOptions;
+    /// # use bed_reader::{Bed, ReadOptions, assert_eq_nan, sample_file};
+    /// # let file_name = sample_file("small.bed")?;
     ///
     /// let mut bed = Bed::builder(file_name)
     ///    .iid(["sample1", "sample2", "sample3"])
@@ -2060,10 +2059,8 @@ impl Bed {
     /// .bim files need never be opened.
     /// ```
     /// # use ndarray as nd;
-    /// # use bed_reader::Bed;
-    /// # use bed_reader::assert_eq_nan;
-    /// # let file_name = "bed_reader/tests/data/small.bed";
-    /// # use bed_reader::ReadOptions;
+    /// # use bed_reader::{Bed, ReadOptions, assert_eq_nan, sample_file};
+    /// # let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::builder(file_name).iid_count(3).sid_count(4).build()?;
     /// let val = bed.read::<f64>()?;
     ///
@@ -2081,10 +2078,8 @@ impl Bed {
     /// Mark some properties as "don’t read or offer".
     /// ```
     /// # use ndarray as nd;
-    /// # use bed_reader::Bed;
-    /// # use bed_reader::assert_eq_nan;
-    /// # let file_name = "bed_reader/tests/data/small.bed";
-    /// # use bed_reader::ReadOptions;
+    /// # use bed_reader::{Bed, ReadOptions, assert_eq_nan, sample_file};
+    /// # let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::builder(file_name)
     ///     .skip_father()
     ///     .skip_mother()
@@ -2122,10 +2117,9 @@ impl Bed {
     ///
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::Bed;
-    /// use bed_reader::assert_eq_nan;
+    /// use bed_reader::{Bed, assert_eq_nan, sample_file};
     ///
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// println!("{:?}", bed.iid()?); // Outputs ndarray: ["iid1", "iid2", "iid3"]
     /// println!("{:?}", bed.sid()?); // Outputs ndarray: ["sid1", "sid2", "sid3", "sid4"]
@@ -2147,10 +2141,8 @@ impl Bed {
     /// at index position 2.
     /// ```
     /// # use ndarray as nd;
-    /// # use bed_reader::Bed;
-    /// # use bed_reader::assert_eq_nan;
-    /// # let file_name = "bed_reader/tests/data/small.bed";
-    /// use bed_reader::ReadOptions;
+    /// # use bed_reader::{Bed, ReadOptions, assert_eq_nan, sample_file};
+    /// # let file_name = sample_file("small.bed")?;
     ///
     /// let mut bed = Bed::new(file_name)?;
     /// let val = ReadOptions::builder().sid_index(2).f64().read(&mut bed)?;
@@ -2175,10 +2167,9 @@ impl Bed {
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{Bed, ReadOptions};
-    /// use bed_reader::assert_eq_nan;
+    /// use bed_reader::{Bed, ReadOptions, assert_eq_nan, sample_file};
     ///
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let iid_count = bed.iid_count()?;
     ///
@@ -2208,10 +2199,9 @@ impl Bed {
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{Bed, ReadOptions};
-    /// use bed_reader::assert_eq_nan;
+    /// use bed_reader::{Bed, ReadOptions, assert_eq_nan, sample_file};
     ///
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let sid_count = bed.sid_count()?;
     ///
@@ -2244,7 +2234,7 @@ impl Bed {
     /// use bed_reader::{Bed, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let dim = bed.dim()?;
     ///
@@ -2269,7 +2259,7 @@ impl Bed {
     /// use bed_reader::{Bed, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let fid = bed.fid()?;
     /// println!("{fid:?}"); // Outputs ndarray ["fid1", "fid1", "fid2"]
@@ -2294,7 +2284,7 @@ impl Bed {
     /// use bed_reader::{Bed, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let iid = bed.iid()?;    ///
     /// println!("{iid:?}"); // Outputs ndarray ["iid1", "iid2", "iid3"]
@@ -2319,7 +2309,7 @@ impl Bed {
     /// use bed_reader::{Bed, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let father = bed.father()?;
     /// println!("{father:?}"); // Outputs ndarray ["iid23", "iid23", "iid22"]
@@ -2348,7 +2338,7 @@ impl Bed {
     /// use bed_reader::{Bed, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let mother = bed.mother()?;
     /// println!("{mother:?}"); // Outputs ndarray ["iid34", "iid34", "iid33"]
@@ -2379,7 +2369,7 @@ impl Bed {
     /// use bed_reader::{Bed, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let sex = bed.sex()?;
     /// println!("{sex:?}"); // Outputs ndarray [1, 2, 0]
@@ -2404,7 +2394,7 @@ impl Bed {
     /// use bed_reader::{Bed, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let pheno = bed.pheno()?;
     /// println!("{pheno:?}"); // Outputs ndarray ["red", "red", "blue"]
@@ -2433,7 +2423,7 @@ impl Bed {
     /// use bed_reader::{Bed, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let chromosome = bed.chromosome()?;
     /// println!("{chromosome:?}"); // Outputs ndarray ["1", "1", "5", "Y"]
@@ -2462,7 +2452,7 @@ impl Bed {
     /// use bed_reader::{Bed, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let sid = bed.sid()?;
     /// println!("{sid:?}"); // Outputs ndarray "sid1", "sid2", "sid3", "sid4"]
@@ -2487,7 +2477,7 @@ impl Bed {
     /// use bed_reader::{Bed, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let cm_position = bed.cm_position()?;
     /// println!("{cm_position:?}"); // Outputs ndarray [100.4, 2000.5, 4000.7, 7000.9]
@@ -2516,7 +2506,7 @@ impl Bed {
     /// use bed_reader::{Bed, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let bp_position = bed.bp_position()?;
     /// println!("{bp_position:?}"); // Outputs ndarray [1, 100, 1000, 1004]
@@ -2545,7 +2535,7 @@ impl Bed {
     /// use bed_reader::{Bed, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let allele_1 = bed.allele_1()?;
     /// println!("{allele_1:?}"); // Outputs ndarray ["A", "T", "A", "T"]
@@ -2574,7 +2564,7 @@ impl Bed {
     /// use bed_reader::{Bed, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let allele_2 = bed.allele_2()?;
     /// println!("{allele_2:?}"); // Outputs ndarray ["A", "C", "C", "G"]
@@ -2600,7 +2590,7 @@ impl Bed {
     /// use ndarray as nd;
     /// use bed_reader::Bed;
     ///
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let metadata = bed.metadata()?;
     /// println!("{0:?}", metadata.iid()); // Outputs Some(["iid1", "iid2", "iid3"] ...)
@@ -2658,7 +2648,7 @@ impl Bed {
     /// use bed_reader::{Bed, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let val = bed.read::<f64>()?;
     ///
@@ -2709,7 +2699,7 @@ impl Bed {
     /// use bed_reader::assert_eq_nan;
     ///
     /// // Read the SNPs indexed by 2.
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let read_options = ReadOptions::builder().sid_index(2).build()?;
     /// let mut val = nd::Array2::<f64>::default((3, 1));
@@ -2772,7 +2762,7 @@ impl Bed {
     /// use bed_reader::{Bed, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let mut val = nd::Array2::<i8>::default(bed.dim()?);
     /// bed.read_and_fill(&mut val.view_mut())?;
@@ -2835,7 +2825,7 @@ impl Bed {
     /// use bed_reader::assert_eq_nan;
     ///
     /// // Read the SNPs indexed by 2.
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let read_options = ReadOptions::builder().sid_index(2).f64().build()?;
     /// let val = bed.read_with_options(&read_options)?;
@@ -3158,7 +3148,7 @@ pub type SliceInfo1 =
 /// use bed_reader::assert_eq_nan;
 /// use ndarray::s;
 ///
-/// let file_name = "bed_reader/tests/data/some_missing.bed";
+/// let file_name = sample_file("some_missing.bed")?;
 /// let mut bed = Bed::new(file_name)?;
 /// println!("{:?}", bed.dim()?); // prints (100, 100)
 ///
@@ -3756,7 +3746,7 @@ pub struct ReadOptions<TVal: BedVal> {
     /// use bed_reader::{Bed, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let val = ReadOptions::builder().missing_value(-1).i8().read(&mut bed)?;
     ///
@@ -3790,7 +3780,7 @@ pub struct ReadOptions<TVal: BedVal> {
     /// use bed_reader::ReadOptions;
     /// use ndarray::s;
     ///
-    /// let file_name = "bed_reader/tests/data/some_missing.bed";
+    /// let file_name = sample_file("some_missing.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     ///
     /// // Read the individual at index position 3
@@ -3862,7 +3852,7 @@ pub struct ReadOptions<TVal: BedVal> {
     /// use bed_reader::ReadOptions;
     /// use ndarray::s;
     ///
-    /// let file_name = "bed_reader/tests/data/some_missing.bed";
+    /// let file_name = sample_file("some_missing.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     ///
     /// // Read the SNP at index position 3
@@ -3943,7 +3933,7 @@ pub struct ReadOptions<TVal: BedVal> {
     /// use bed_reader::{Bed, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let val = ReadOptions::builder().num_threads(1).i8().read(&mut bed)?;
     ///
@@ -3986,7 +3976,7 @@ impl<TVal: BedVal> ReadOptions<TVal> {
     /// use bed_reader::assert_eq_nan;
     ///
     /// // Read all data from a .bed file into an ndarray of f64.
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let val = ReadOptions::builder().f64().read(&mut bed)?;
     ///
@@ -4092,7 +4082,7 @@ impl<TVal: BedVal> ReadOptions<TVal> {
     /// let read_options = ReadOptions::builder().sid_index([2, 3, 0]).i8().build()?;
     /// assert_eq!(read_options.missing_value(), -127);
     ///
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let val = bed.read_with_options(&read_options)?;
 
@@ -4116,7 +4106,7 @@ impl<TVal: BedVal> ReadOptions<TVal> {
     /// println!("{0:?}", read_options.iid_index()); // Outputs 'All'
     /// println!("{0:?}", read_options.sid_index()); // Outputs 'Vec([2, 3, 0])'
     ///
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let val = bed.read_with_options(&read_options)?;
 
@@ -4140,7 +4130,7 @@ impl<TVal: BedVal> ReadOptions<TVal> {
     /// println!("{0:?}", read_options.iid_index()); // Outputs 'All'
     /// println!("{0:?}", read_options.sid_index()); // Outputs 'Vec([2, 3, 0])'
     ///
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let val = bed.read_with_options(&read_options)?;
 
@@ -4163,7 +4153,7 @@ impl<TVal: BedVal> ReadOptions<TVal> {
     /// let read_options = ReadOptions::builder().sid_index([2, 3, 0]).i8().build()?;
     /// assert_eq!(read_options.is_f(), true);
     ///
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let val = bed.read_with_options(&read_options)?;
 
@@ -4186,7 +4176,7 @@ impl<TVal: BedVal> ReadOptions<TVal> {
     /// let read_options = ReadOptions::builder().sid_index([2, 3, 0]).i8().build()?;
     /// assert_eq!(read_options.is_a1_counted(), true);
     ///
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let val = bed.read_with_options(&read_options)?;
 
@@ -4210,7 +4200,7 @@ impl<TVal: BedVal> ReadOptions<TVal> {
     /// let read_options = ReadOptions::builder().sid_index([2, 3, 0]).i8().build()?;
     /// assert_eq!(read_options.num_threads(), None);
     ///
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let val = bed.read_with_options(&read_options)?;
 
@@ -4251,7 +4241,7 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     /// use bed_reader::assert_eq_nan;
     ///
     /// // Read the SNPs indexed by 2.
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let mut val = nd::Array2::<f64>::default((3, 1));
     /// ReadOptions::builder()
@@ -4301,7 +4291,7 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     /// use bed_reader::{Bed, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let val = ReadOptions::builder().count_a1().i8().read(&mut bed)?;
     ///
@@ -4331,7 +4321,7 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     /// use bed_reader::{Bed, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let val = ReadOptions::builder().count_a2().i8().read(&mut bed)?;
     ///
@@ -4361,7 +4351,7 @@ impl ReadOptionsBuilder<i8> {
     /// use bed_reader::{Bed, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let val = ReadOptions::builder().i8().read(&mut bed)?;
     ///
@@ -4390,7 +4380,7 @@ impl ReadOptionsBuilder<f32> {
     /// use bed_reader::{Bed, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let val = ReadOptions::builder().f32().read(&mut bed)?;
     ///
@@ -4419,7 +4409,7 @@ impl ReadOptionsBuilder<f64> {
     /// use bed_reader::{Bed, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let val = ReadOptions::builder().f64().read(&mut bed)?;
     ///
@@ -5284,7 +5274,7 @@ where
     /// use bed_reader::{Bed, WriteOptions, tmp_path};
     /// use ndarray_rand::{rand::prelude::StdRng, rand::SeedableRng, rand_distr::Uniform, RandomExt};
     ///
-    /// let mut bed = Bed::new("bed_reader/tests/data/small.bed")?;
+    /// let mut bed = Bed::new(sample_file("small.bed")?)?;
     /// let metadata = bed.metadata()?;
     /// let shape = bed.dim()?;
     ///
@@ -5376,7 +5366,7 @@ where
     /// use bed_reader::{Bed, WriteOptions, tmp_path};
     /// use ndarray_rand::{rand::prelude::StdRng, rand::SeedableRng, rand_distr::Uniform, RandomExt};
     ///
-    /// let mut bed = Bed::new("bed_reader/tests/data/small.bed")?;
+    /// let mut bed = Bed::new(sample_file("small.bed")?)?;
     /// let metadata = bed.metadata()?;
     /// let shape = bed.dim()?;
     ///
@@ -5815,7 +5805,7 @@ impl MetadataBuilder {
     /// use ndarray as nd;
     /// use bed_reader::Bed;
     /// use bed_reader::assert_eq_nan;
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     ///
     /// let mut bed = Bed::builder(file_name)
     ///    .iid(["sample1", "sample2", "sample3"])
@@ -5905,7 +5895,7 @@ impl MetadataBuilder {
     /// use ndarray as nd;
     /// use bed_reader::Bed;
     /// use bed_reader::assert_eq_nan;
-    /// let file_name = "bed_reader/tests/data/small.bed";
+    /// let file_name = sample_file("small.bed")?;
     ///
     /// let mut bed = Bed::builder(file_name)
     ///    .sid(["SNP1", "SNP2", "SNP3", "SNP4"])
@@ -6737,5 +6727,50 @@ fn matrix_subset_no_alloc<
         let in_val_t = in_val.view().permuted_axes([1, 0, 2]);
         let mut out_val_t = out_val.view_mut().permuted_axes([1, 0, 2]);
         matrix_subset_no_alloc(&in_val_t, sid_index, iid_index, &mut out_val_t)
+    }
+}
+
+/// cmk need docs
+pub fn sample_file<S: AsRef<str>>(file_name: S) -> Result<PathBuf, BedErrorPlus> {
+    let cache_dir = cache_dir_cmk()?;
+    let url_root =
+        "https://raw.githubusercontent.com/fastlmm/bed-reader/master/bed_reader/tests/data/";
+
+    let bed_path = cache_dir.join(file_name.as_ref());
+    // !!!cmk do hash test instead
+    if !bed_path.exists() {
+        for ext in ["bed", "bim", "fam"].iter() {
+            let file_path = bed_path.with_extension(ext);
+            let url = format!(
+                "{url_root}{}.{ext}",
+                bed_path.file_stem().unwrap().to_str().unwrap()
+            );
+            download(url, &file_path)?;
+        }
+    }
+
+    Ok(bed_path)
+}
+
+fn download<S: AsRef<str>, P: AsRef<Path>>(url: S, file_path: P) -> Result<(), BedErrorPlus> {
+    let r1 = ureq::get(url.as_ref());
+    let r2 = r1.call();
+    let r3 = r2?;
+    let mut reader = r3.into_reader();
+    let mut file = File::create(&file_path)?;
+    std::io::copy(&mut reader, &mut file)?;
+    Ok(())
+}
+
+fn cache_dir_cmk() -> Result<PathBuf, BedErrorPlus> {
+    // !!!cmk look for env var first
+    if let Some(proj_dirs) = ProjectDirs::from("github.io", "fastlmm", "bed-reader") {
+        let cache_dir = proj_dirs.cache_dir();
+        if !cache_dir.exists() {
+            fs::create_dir_all(&cache_dir)?;
+        }
+        Ok(cache_dir.to_owned())
+    } else {
+        todo!("Err(BedError::CacheDirError.into())");
     }
 }
