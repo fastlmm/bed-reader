@@ -6257,14 +6257,14 @@ impl Metadata {
     /// ```
     /// use ndarray as nd;
     /// use std::collections::HashSet;
-    /// use bed_reader::{Metadata, MetadataFields};
+    /// use bed_reader::{Metadata, MetadataFields, sample_file};
     ///
     /// let skip_set = HashSet::<MetadataFields>::new();
     /// let metadata_empty = Metadata::new();
     /// let (metadata_fam, iid_count) =
-    ///     metadata_empty.read_fam("bed_reader/tests/data/small.fam", &skip_set)?;
+    ///     metadata_empty.read_fam(sample_file("small.fam")?, &skip_set)?;
     /// let (metadata_bim, sid_count) =
-    ///     metadata_fam.read_bim("bed_reader/tests/data/small.bim", &skip_set)?;
+    ///     metadata_fam.read_bim(sample_file("small.bim")?, &skip_set)?;
     /// assert_eq!(iid_count, 3);
     /// assert_eq!(sid_count, 4);
     /// println!("{0:?}", metadata_bim.iid()); // Outputs optional ndarray Some(["iid1", "iid2", "iid3"]...)
