@@ -3,6 +3,8 @@ use crate::allclose;
 #[cfg(test)]
 use crate::assert_eq_nan;
 #[cfg(test)]
+use crate::cache_dir;
+#[cfg(test)]
 use crate::Bed;
 #[cfg(test)]
 use crate::Index;
@@ -17,6 +19,8 @@ use crate::file_aat_piece;
 use crate::file_ata_piece;
 #[cfg(test)]
 use crate::file_b_less_aatbx;
+#[cfg(test)]
+use crate::hash_file;
 #[cfg(test)]
 use crate::read_into_f64;
 #[cfg(test)]
@@ -52,11 +56,11 @@ use std::f64;
 #[cfg(test)]
 use std::f64::NAN;
 #[cfg(test)]
+use std::io::BufReader;
+#[cfg(test)]
 use std::ops::Range;
 #[cfg(test)]
 use std::path::Path;
-#[cfg(test)]
-use std::{fs::File, io::BufReader};
 
 #[test]
 fn best_int8() {
@@ -246,7 +250,7 @@ fn index() {
     };
 
     let mut ignore_val = nd::Array2::zeros((1, 1));
-    let buf_reader = BufReader::new(File::open(&bed_fam[0]).unwrap());
+    let buf_reader = BufReader::new(std::fs::File::open(&bed_fam[0]).unwrap());
     let result5 = internal_read_no_alloc(
         buf_reader,
         "ignore",
@@ -978,5 +982,18 @@ fn test_sample_file() -> Result<(), BedErrorPlus> {
     println!("{:?}", bed.iid()?); // Outputs ndarray ["iid1", "iid2", "iid3"]
     println!("{:?}", bed.sid()?); // Outputs ndarray ["sid1", "sid2", "sid3", "sid4"]
 
+    Ok(())
+}
+
+#[test]
+fn compute_hashes() -> Result<(), BedErrorPlus> {
+    let cache_dir = cache_dir()?;
+    let paths = std::fs::read_dir(cache_dir)?;
+    for path in paths {
+        let path = path?.path();
+        let hash = hash_file(&path)?;
+        let stem = path.file_name().unwrap().to_str().unwrap();
+        println!("{stem} {hash}");
+    }
     Ok(())
 }

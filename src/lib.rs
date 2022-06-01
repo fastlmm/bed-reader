@@ -192,8 +192,9 @@ use core::fmt::Debug;
 use derive_builder::{Builder, UninitializedFieldError};
 use nd::ShapeBuilder;
 use ndarray as nd;
+use sha2::{Digest, Sha256};
 use std::cmp::Ordering;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
 use std::fs::{self};
 use std::io::Write;
@@ -376,6 +377,10 @@ pub enum BedError {
     #[allow(missing_docs)]
     #[error("Can't write '{0}' metadata if some fields are None")]
     MetadataMissingForWrite(String),
+
+    #[allow(missing_docs)]
+    #[error("Unknown sample file '{0}'")]
+    UnknownSampleFile(String),
 }
 
 // Trait alias
@@ -6754,32 +6759,86 @@ pub fn sample_files<I: IntoIterator<Item = P>, P: AsRef<Path>>(
     path_list: I,
 ) -> Result<Vec<PathBuf>, BedErrorPlus> {
     let cache_dir = cache_dir()?;
+    let hash_registry = hash_registry()?;
     let url_root =
         "https://raw.githubusercontent.com/fastlmm/bed-reader/rustybed/bed_reader/tests/data/";
-
     let mut local_list: Vec<PathBuf> = Vec::new();
+
     for file_name in path_list {
+        let file_path = file_name.as_ref();
+        let hash = if let Some(hash) = hash_registry.get(file_path) {
+            hash
+        } else {
+            return Err(BedError::UnknownSampleFile(file_path.display().to_string()).into());
+        };
         let path = cache_dir.join(file_name.as_ref());
-        // !!!cmk do hash test instead
-        // !!!cmk make download atomic
-        // !!!cmk test hash after download
-        if !path.exists() {
-            let url = format!("{url_root}{}", path.file_name().unwrap().to_str().unwrap());
-            download(url, &path)?;
-        }
+        let url = format!("{url_root}{}", path.file_name().unwrap().to_str().unwrap());
+        download_hash(url, &hash, &path)?;
         local_list.push(path);
     }
 
     Ok(local_list)
 }
 
+// !!!cmk make download atomic
+fn download_hash<U: AsRef<str>, H: AsRef<str>, P: AsRef<Path>>(
+    url: U,
+    hash: H,
+    path: P,
+) -> Result<(), BedErrorPlus> {
+    let path = path.as_ref();
+    if !path.exists() {
+        download(url, &path)?;
+        if !path.exists() {
+            todo!("return Err(BedError::DownloadFailed(url.as_ref().to_owned()).into());");
+        }
+    }
+    let actual_hash = hash_file(&path)?;
+    if !actual_hash.eq(hash.as_ref()) {
+        todo!("return Err(BedError::WrongHash(url.as_ref().to_owned()).into());");
+    }
+    Ok(())
+}
+
+fn hash_file<P: AsRef<Path>>(path: P) -> Result<String, BedErrorPlus> {
+    let mut sha256 = Sha256::new();
+    let mut file = fs::File::open(path)?;
+
+    std::io::copy(&mut file, &mut sha256)?;
+    let hash_bytes = sha256.finalize();
+
+    let hex_hash = base16ct::lower::encode_string(&hash_bytes);
+    Ok(hex_hash)
+}
+
 fn download<S: AsRef<str>, P: AsRef<Path>>(url: S, file_path: P) -> Result<(), BedErrorPlus> {
     // cmk
-    let req = ureq::get(url.as_ref()).call()?;
-    let mut reader = req.into_reader();
-    let mut file = File::create(&file_path)?;
-    std::io::copy(&mut reader, &mut file)?;
+    // let req = ureq::get(url.as_ref()).call()?;
+    // let mut reader = req.into_reader();
+    // let mut file = File::create(&file_path)?;
+    // std::io::copy(&mut reader, &mut file)?;
     Ok(())
+}
+
+// cmk review and remove unwraps
+fn hash_registry() -> Result<HashMap<PathBuf, String>, BedErrorPlus> {
+    let mut hash_map = HashMap::new();
+    // !!!cmk what if run from a different directory?
+    let file = fs::File::open("bed_reader/tests/registry.txt")?;
+    let reader = std::io::BufReader::new(file);
+    for line in reader.lines() {
+        let line = line?;
+        let mut parts = line.split_whitespace();
+        let url = parts.next().unwrap(); // !!!cmk
+        let url = PathBuf::from(url);
+        let hash = parts.next().unwrap();
+        // check number of fields is 2
+        if parts.next().is_some() {
+            todo!("return Err(BedError::RegistryFileError.into());");
+        }
+        hash_map.insert(url, hash.to_owned());
+    }
+    Ok(hash_map)
 }
 
 fn cache_dir() -> Result<PathBuf, BedErrorPlus> {
