@@ -6781,6 +6781,7 @@ pub fn sample_files<I: IntoIterator<Item = P>, P: AsRef<Path>>(
 }
 
 // !!!cmk make download atomic
+// https://stackoverflow.com/questions/58006033/how-to-run-setup-code-before-any-tests-run-in-rust
 fn download_hash<U: AsRef<str>, H: AsRef<str>, P: AsRef<Path>>(
     url: U,
     hash: H,
@@ -6811,12 +6812,12 @@ fn hash_file<P: AsRef<Path>>(path: P) -> Result<String, BedErrorPlus> {
     Ok(hex_hash)
 }
 
+// cmk
 fn download<S: AsRef<str>, P: AsRef<Path>>(url: S, file_path: P) -> Result<(), BedErrorPlus> {
-    // cmk
-    // let req = ureq::get(url.as_ref()).call()?;
-    // let mut reader = req.into_reader();
-    // let mut file = File::create(&file_path)?;
-    // std::io::copy(&mut reader, &mut file)?;
+    let req = ureq::get(url.as_ref()).call()?;
+    let mut reader = req.into_reader();
+    let mut file = File::create(&file_path)?;
+    std::io::copy(&mut reader, &mut file)?;
     Ok(())
 }
 
