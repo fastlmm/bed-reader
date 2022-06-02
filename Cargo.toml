@@ -61,6 +61,7 @@ ureq = { version = "2.4.0", features = [] }
 directories = "4.0.1"
 sha2 = "0.10.2"
 base16ct = { version = "0.1.1", features = ["alloc"] }
+ctor = "0.1.22"
 
 [dev-dependencies]
 ndarray-rand = "0.14.0"

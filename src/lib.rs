@@ -379,8 +379,12 @@ pub enum BedError {
     MetadataMissingForWrite(String),
 
     #[allow(missing_docs)]
-    #[error("Unknown sample file '{0}'")]
-    UnknownSampleFile(String),
+    #[error("Unknown or bad sample file '{0}'")]
+    UnknownOrBadSampleFile(String),
+
+    #[allow(missing_docs)]
+    #[error("The registry of sample files is invalid")]
+    SampleRegistryProblem(),
 }
 
 // Trait alias
@@ -6316,7 +6320,6 @@ impl Metadata {
         }
         if clone.bp_position.is_none() && !skip_set.contains(&MetadataFields::BpPosition) {
             let vec = vec_of_vec.pop().unwrap();
-            println!("cmk {vec:?}");
             let array = vec
                 .iter()
                 .map(|s| s.parse::<i32>())
@@ -6358,7 +6361,6 @@ impl Metadata {
         let mut count = 0;
         for line in reader.lines() {
             let line = line?;
-            // !!!cmk println!("{}", line);
             count += 1;
 
             let fields: Vec<&str> = if is_split_whitespace {
@@ -6741,7 +6743,7 @@ pub fn sample_bed_file<P: AsRef<Path>>(bed_path: P) -> Result<PathBuf, BedErrorP
     }
 
     let vec = sample_files(path_list)?;
-    // cmk what if no files?
+    assert!(vec.len() == 3);
     Ok(vec[0].clone())
 }
 
@@ -6752,35 +6754,43 @@ pub fn sample_file<P: AsRef<Path>>(path: P) -> Result<PathBuf, BedErrorPlus> {
     Ok(vec[0].clone())
 }
 
-// !!!cmk change vec to any slice
-
 /// cmk need docs
-pub fn sample_files<I: IntoIterator<Item = P>, P: AsRef<Path>>(
-    path_list: I,
-) -> Result<Vec<PathBuf>, BedErrorPlus> {
+pub fn sample_files<I, P>(path_list: I) -> Result<Vec<PathBuf>, BedErrorPlus>
+where
+    I: IntoIterator<Item = P>,
+    P: AsRef<Path>,
+{
     let cache_dir = cache_dir()?;
     let hash_registry = hash_registry()?;
     let url_root =
         "https://raw.githubusercontent.com/fastlmm/bed-reader/rustybed/bed_reader/tests/data/";
     let mut local_list: Vec<PathBuf> = Vec::new();
 
-    for file_name in path_list {
-        let file_path = file_name.as_ref();
-        let hash = if let Some(hash) = hash_registry.get(file_path) {
+    for path in path_list {
+        let path = path.as_ref();
+
+        let path_as_string = if let Some(path_as_string) = path.to_str() {
+            path_as_string
+        } else {
+            return Err(BedError::UnknownOrBadSampleFile("???".to_string()).into());
+        };
+
+        let hash = if let Some(hash) = hash_registry.get(path) {
             hash
         } else {
-            return Err(BedError::UnknownSampleFile(file_path.display().to_string()).into());
+            return Err(BedError::UnknownOrBadSampleFile(path_as_string.to_string()).into());
         };
-        let path = cache_dir.join(file_name.as_ref());
-        let url = format!("{url_root}{}", path.file_name().unwrap().to_str().unwrap());
-        download_hash(url, &hash, &path)?;
-        local_list.push(path);
+
+        let local_path = cache_dir.join(path);
+        let url = format!("{url_root}{path_as_string}");
+        download_hash(url, &hash, &local_path)?;
+        local_list.push(local_path);
     }
 
     Ok(local_list)
 }
 
-// !!!cmk make download atomic
+// !!!cmk00 make download atomic
 // https://stackoverflow.com/questions/58006033/how-to-run-setup-code-before-any-tests-run-in-rust
 fn download_hash<U: AsRef<str>, H: AsRef<str>, P: AsRef<Path>>(
     url: U,
@@ -6812,7 +6822,6 @@ fn hash_file<P: AsRef<Path>>(path: P) -> Result<String, BedErrorPlus> {
     Ok(hex_hash)
 }
 
-// cmk
 fn download<S: AsRef<str>, P: AsRef<Path>>(url: S, file_path: P) -> Result<(), BedErrorPlus> {
     let req = ureq::get(url.as_ref()).call()?;
     let mut reader = req.into_reader();
@@ -6821,29 +6830,36 @@ fn download<S: AsRef<str>, P: AsRef<Path>>(url: S, file_path: P) -> Result<(), B
     Ok(())
 }
 
-// cmk review and remove unwraps
 fn hash_registry() -> Result<HashMap<PathBuf, String>, BedErrorPlus> {
     let mut hash_map = HashMap::new();
-    // !!!cmk what if run from a different directory?
+    // !!!cmk00 what if run from a different directory?
     let file = fs::File::open("bed_reader/tests/registry.txt")?;
     let reader = std::io::BufReader::new(file);
     for line in reader.lines() {
         let line = line?;
         let mut parts = line.split_whitespace();
-        let url = parts.next().unwrap(); // !!!cmk
-        let url = PathBuf::from(url);
-        let hash = parts.next().unwrap();
-        // check number of fields is 2
+
+        let url = if let Some(url) = parts.next() {
+            PathBuf::from(url)
+        } else {
+            return Err(BedError::SampleRegistryProblem().into());
+        };
+        let hash = if let Some(hash) = parts.next() {
+            hash.to_string()
+        } else {
+            return Err(BedError::SampleRegistryProblem().into());
+        };
         if parts.next().is_some() {
-            todo!("return Err(BedError::RegistryFileError.into());");
+            return Err(BedError::SampleRegistryProblem().into());
         }
+
         hash_map.insert(url, hash.to_owned());
     }
     Ok(hash_map)
 }
 
 fn cache_dir() -> Result<PathBuf, BedErrorPlus> {
-    // !!!cmk look for env var first
+    // !!!cmk00 look for env var first
     if let Some(proj_dirs) = ProjectDirs::from("github.io", "fastlmm", "bed-reader") {
         let cache_dir = proj_dirs.cache_dir();
         if !cache_dir.exists() {
