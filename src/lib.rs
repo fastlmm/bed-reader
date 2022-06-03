@@ -200,6 +200,7 @@ use std::fs::{self};
 use std::io::Write;
 use std::ops::{Bound, Range, RangeBounds, RangeFrom, RangeInclusive, RangeTo, RangeToInclusive};
 use std::rc::Rc;
+use std::sync::Mutex;
 use std::{
     env,
     fs::File,
@@ -385,6 +386,22 @@ pub enum BedError {
     #[allow(missing_docs)]
     #[error("The registry of sample files is invalid")]
     SampleRegistryProblem(),
+
+    #[allow(missing_docs)]
+    #[error("Samples construction failed with error: {0}")]
+    SamplesConstructionFailed(String),
+
+    #[allow(missing_docs)]
+    #[error("Downloaded sample file not seen: {0}")]
+    DownloadedSampleFileNotSeen(String),
+
+    #[allow(missing_docs)]
+    #[error("Downloaded sample file has wrong hash: {0},expected: {1}, actual: {2}")]
+    DownloadedSampleFileWrongHash(String, String, String),
+
+    #[allow(missing_docs)]
+    #[error("Cannot create cache directory")]
+    CannotCreateCacheDir(),
 }
 
 // Trait alias
@@ -6734,6 +6751,28 @@ fn matrix_subset_no_alloc<
     }
 }
 
+struct Samples {
+    cache_dir: PathBuf,
+    hash_registry: HashMap<PathBuf, String>,
+    url_root: String,
+}
+
+#[ctor::ctor]
+static STATIC_SAMPLES: Mutex<Result<Samples, BedErrorPlus>> = Mutex::new(new_samples());
+
+fn new_samples() -> Result<Samples, BedErrorPlus> {
+    let cache_dir = cache_dir()?;
+    let hash_registry = hash_registry()?;
+
+    Ok(Samples {
+        cache_dir,
+        hash_registry,
+        url_root:
+            "https://raw.githubusercontent.com/fastlmm/bed-reader/rustybed/bed_reader/tests/data/"
+                .to_string(),
+    })
+}
+
 /// cmk need docs
 pub fn sample_bed_file<P: AsRef<Path>>(bed_path: P) -> Result<PathBuf, BedErrorPlus> {
     let mut path_list: Vec<PathBuf> = Vec::new();
@@ -6760,12 +6799,21 @@ where
     I: IntoIterator<Item = P>,
     P: AsRef<Path>,
 {
-    let cache_dir = cache_dir()?;
-    let hash_registry = hash_registry()?;
-    let url_root =
-        "https://raw.githubusercontent.com/fastlmm/bed-reader/rustybed/bed_reader/tests/data/";
-    let mut local_list: Vec<PathBuf> = Vec::new();
+    let lock = match STATIC_SAMPLES.lock() {
+        Ok(lock) => lock,
+        Err(err) => err.into_inner(),
+    };
+    let samples = match lock.as_ref() {
+        Ok(samples) => samples,
+        Err(e) => {
+            return Err(BedError::SamplesConstructionFailed(e.to_string()).into());
+        }
+    };
+    let hash_registry = &samples.hash_registry;
+    let cache_dir = &samples.cache_dir;
+    let url_root = &samples.url_root;
 
+    let mut local_list: Vec<PathBuf> = Vec::new();
     for path in path_list {
         let path = path.as_ref();
 
@@ -6801,12 +6849,17 @@ fn download_hash<U: AsRef<str>, H: AsRef<str>, P: AsRef<Path>>(
     if !path.exists() {
         download(url, &path)?;
         if !path.exists() {
-            todo!("return Err(BedError::DownloadFailed(url.as_ref().to_owned()).into());");
+            return Err(BedError::DownloadedSampleFileNotSeen(path.display().to_string()).into());
         }
     }
     let actual_hash = hash_file(&path)?;
     if !actual_hash.eq(hash.as_ref()) {
-        todo!("return Err(BedError::WrongHash(url.as_ref().to_owned()).into());");
+        return Err(BedError::DownloadedSampleFileWrongHash(
+            path.display().to_string(),
+            hash.as_ref().to_string(),
+            actual_hash,
+        )
+        .into());
     }
     Ok(())
 }
@@ -6867,6 +6920,6 @@ fn cache_dir() -> Result<PathBuf, BedErrorPlus> {
         }
         Ok(cache_dir.to_owned())
     } else {
-        todo!("Err(BedError::CacheDirError.into())");
+        Err(BedError::CannotCreateCacheDir().into())
     }
 }
