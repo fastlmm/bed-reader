@@ -6760,6 +6760,10 @@ struct Samples {
     url_root: String,
 }
 
+// Here we set up to parse at run time. We could/should parse at compile time. See:
+// https://stackoverflow.com/questions/50553370/how-do-i-use-include-str-for-multiple-files-or-an-entire-directory
+static SAMPLE_REGISTRY_CONTENTS: &str = include_str!("../bed_reader/tests/registry.txt");
+
 #[ctor::ctor]
 static STATIC_SAMPLES: Mutex<Result<Samples, BedErrorPlus>> = Mutex::new(new_samples());
 
@@ -6888,10 +6892,7 @@ fn download<S: AsRef<str>, P: AsRef<Path>>(url: S, file_path: P) -> Result<(), B
 fn hash_registry() -> Result<HashMap<PathBuf, String>, BedErrorPlus> {
     let mut hash_map = HashMap::new();
     // !!!cmk00 what if run from a different directory?
-    let file = fs::File::open("bed_reader/tests/registry.txt")?;
-    let reader = std::io::BufReader::new(file);
-    for line in reader.lines() {
-        let line = line?;
+    for line in SAMPLE_REGISTRY_CONTENTS.lines() {
         let mut parts = line.split_whitespace();
 
         let url = if let Some(url) = parts.next() {
