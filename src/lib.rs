@@ -185,6 +185,9 @@
 //! * `NUM_THREADS`
 //!
 //! If neither of these environment variables are set, all processors are used.
+//!
+//! Any requested sample file will be downloaded to `BED_READER_DATA_DIR`. If that environment variable is not set,
+//! a cache folder, appropriate to the OS, will be used.
 
 mod python_module;
 mod tests;
@@ -6838,7 +6841,6 @@ where
     Ok(local_list)
 }
 
-// !!!cmk00 make download atomic
 // https://stackoverflow.com/questions/58006033/how-to-run-setup-code-before-any-tests-run-in-rust
 fn download_hash<U: AsRef<str>, H: AsRef<str>, P: AsRef<Path>>(
     url: U,
@@ -6912,14 +6914,16 @@ fn hash_registry() -> Result<HashMap<PathBuf, String>, BedErrorPlus> {
 }
 
 fn cache_dir() -> Result<PathBuf, BedErrorPlus> {
-    // !!!cmk00 look for env var first
-    if let Some(proj_dirs) = ProjectDirs::from("github.io", "fastlmm", "bed-reader") {
-        let cache_dir = proj_dirs.cache_dir();
-        if !cache_dir.exists() {
-            fs::create_dir_all(&cache_dir)?;
-        }
-        Ok(cache_dir.to_owned())
+    // Return BED_READER_DATA_DIR is present
+    let cache_dir = if let Ok(cache_dir) = std::env::var("BED_READER_DATA_DIR") {
+        PathBuf::from(cache_dir)
+    } else if let Some(proj_dirs) = ProjectDirs::from("github.io", "fastlmm", "bed-reader") {
+        proj_dirs.cache_dir().to_owned()
     } else {
-        Err(BedError::CannotCreateCacheDir().into())
+        return Err(BedError::CannotCreateCacheDir().into());
+    };
+    if !cache_dir.exists() {
+        fs::create_dir_all(&cache_dir)?;
     }
+    Ok(cache_dir)
 }
