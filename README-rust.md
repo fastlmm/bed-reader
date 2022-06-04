@@ -19,8 +19,6 @@ Features
 Examples
 --------
 
-*Sample files available* [*here on Github*](https://github.com/fastlmm/bed-reader/tree/master/bed_reader/tests/data).
-
 Read all genotype data from a .bed file.
 
 ```rust
@@ -88,9 +86,13 @@ assert!(val.dim() == (100, 6));
 # Ok::<(), BedErrorPlus>(())
 ```
 
-Additional Links
+Project Links
 -----
 
-- [**Questions via Email**](mailto:fastlmm-dev@python.org)
-- [**Discussion**](https://github.com/fastlmm/bed-reader/discussions/)
-- [**Bug reports**](https://github.com/fastlmm/bed-reader/issues)
+* [**Installation**](https://crates.io/crates/bed-reader)
+* [**Questions via email**](mailto://fastlmm-dev@python.org)
+* [**Source code**](https://github.com/fastlmm/bed-reader)
+* [**Discussion**](https://github.com/fastlmm/bed-reader/discussions/)
+* [**Bug Reports**](https://github.com/fastlmm/bed-reader/issues)
+* [**Project Website**](https://fastlmm.github.io/)
+

@@ -1,105 +1,11 @@
 #![warn(missing_docs)]
-#![doc = include_str!("../README-rust.md")]
 // Inspired by C++ version by Chris Widmer and Carl Kadie
 
 // See: https://towardsdatascience.com/nine-rules-for-writing-python-extensions-in-rust-d35ea3a4ec29?sk=f8d808d5f414154fdb811e4137011437
 // for an article on how this project uses Rust to create a Python extension.
 
 // For Rust API tips see https://rust-lang.github.io/api-guidelines/necessities.html
-
-//! # bed-reader
-//!
-//! Read and write the PLINK BED format, simply and efficiently.
-//!
-//! Features:
-//!   * Fast multi-threaded engine.
-//!   * Supports many indexing methods. Select data by individuals (samples) and/or SNPs (variants).
-//!   * Used by Python packages [PySnpTools], [FaST-LMM], and [PyStatGen].
-//!   * Supports [PLINK 1.9].
-//!
-//! [PySnpTools]: https://github.com/fastlmm/PySnpTools
-//! [FaST-LMM]: https://github.com/fastlmm/FaST-LMM
-//! [PyStatGen]: https://github.com/pystatgen
-//! [PLINK 1.9]: https://www.cog-genomics.org/plink2/formats
-//!
-//! ## Usage
-//!
-//! Read all genotype data from a .bed file.
-//!
-//! ```
-//! use ndarray as nd;
-//! use bed_reader::{Bed, ReadOptions, assert_eq_nan, sample_bed_file};
-//!
-//! let file_name = sample_bed_file("small.bed")?;
-//! let mut bed = Bed::new(file_name)?;
-//! let val = ReadOptions::builder().f64().read(&mut bed)?;
-//!
-//! assert_eq_nan(
-//!     &val,
-//!     &nd::array![
-//!         [1.0, 0.0, f64::NAN, 0.0],
-//!         [2.0, 0.0, f64::NAN, 2.0],
-//!         [0.0, 1.0, 2.0, 0.0]
-//!     ],
-//! );
-//! # use bed_reader::BedErrorPlus;
-//! # Ok::<(), BedErrorPlus>(())
-//! ```
-//!
-//! Read individual (samples) from 20 to 30 and every second SNP (variant).
-//!
-//! ```
-//! # use ndarray as nd;
-//! # use bed_reader::{Bed, ReadOptions, assert_eq_nan, sample_bed_file};
-//! use ndarray::s;
-//!
-//! let file_name = sample_bed_file("some_missing.bed")?;
-//! let mut bed = Bed::new(file_name)?;
-//! let val = ReadOptions::builder()
-//!     .iid_index(s![..;2])
-//!     .sid_index(20..30)
-//!     .f64()
-//!     .read(&mut bed)?;
-//!
-//! assert!(val.dim() == (50, 10));
-//! # use bed_reader::BedErrorPlus;
-//! # Ok::<(), BedErrorPlus>(())
-//! ```
-//!
-//! List the first 5 individual (sample) ids, the first 5 SNP (variant) ids,
-//! and every unique chromosome. Then, read every genomic value in chromosome 5.
-//!
-//! ```
-//! # use ndarray as nd;
-//! # use ndarray::s;
-//! # use bed_reader::{Bed, ReadOptions, assert_eq_nan, sample_bed_file};
-//! # let file_name = sample_bed_file("some_missing.bed")?;
-//! use std::collections::HashSet;
-//!
-//! let mut bed = Bed::new(file_name)?;
-//! println!("{:?}", bed.iid()?.slice(s![..5])); // Outputs ndarray: ["iid_0", "iid_1", "iid_2", "iid_3", "iid_4"]
-//! println!("{:?}", bed.sid()?.slice(s![..5])); // Outputs ndarray: ["sid_0", "sid_1", "sid_2", "sid_3", "sid_4"]
-//! println!("{:?}", bed.chromosome()?.iter().collect::<HashSet<_>>());
-//! // Outputs: {"12", "10", "4", "8", "19", "21", "9", "15", "6", "16", "13", "7", "17", "18", "1", "22", "11", "2", "20", "3", "5", "14"}
-//! let val = ReadOptions::builder()
-//!     .sid_index(bed.chromosome()?.map(|elem| elem == "5"))
-//!     .f64()
-//!     .read(&mut bed)?;
-//!
-//! assert!(val.dim() == (100, 6));
-//! # use bed_reader::BedErrorPlus;
-//! # Ok::<(), BedErrorPlus>(())
-//! ```
-//!
-//!  ## Project Links
-//!
-//!  * [Installation](https://crates.io/crates/bed-reader)
-//!  * [Questions via email](mailto://fastlmm-dev@python.org)
-//!  * [Source code](https://github.com/fastlmm/bed-reader)
-//!  * [Discussion](https://github.com/fastlmm/bed-reader/discussions/)
-//!  * [Bug Reports](https://github.com/fastlmm/bed-reader/issues)
-//!  * [Project Website](https://fastlmm.github.io/)
-//!
+#![doc = include_str!("../README-rust.md")]
 //! ## Main Functions
 //!
 //! | Function | Description |
