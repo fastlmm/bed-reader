@@ -37,15 +37,16 @@ assert_eq_nan(
         [0.0, 1.0, 2.0, 0.0]
     ],
 );
-# use bed_reader::BedErrorPlus; // needed for doctest
+# use bed_reader::BedErrorPlus; // '#' needed for doctest
 # Ok::<(), BedErrorPlus>(())
 ```
 
 Read individual (samples) from 20 to 30 and every second SNP (variant).
 
 ```rust
+# // '#' needed for doctest
+# use bed_reader::{Bed, ReadOptions, assert_eq_nan, sample_bed_file};
 use ndarray::s;
-use bed_reader::{Bed, ReadOptions, assert_eq_nan, sample_bed_file};
 
 let file_name = sample_bed_file("some_missing.bed")?;
 let mut bed = Bed::new(file_name)?;
@@ -56,7 +57,7 @@ let val = ReadOptions::builder()
     .read(&mut bed)?;
 
 assert!(val.dim() == (50, 10));
-# use bed_reader::BedErrorPlus; // needed for doctest
+# use bed_reader::BedErrorPlus; // '#' needed for doctest
 # Ok::<(), BedErrorPlus>(())
 ```
 
@@ -64,11 +65,11 @@ List the first 5 individual (sample) ids, the first 5 SNP (variant) ids,
 and every unique chromosome. Then, read every genomic value in chromosome 5.
 
 ```rust
-use ndarray::s;
+# use ndarray::s; // '#' needed for doctest
+# use bed_reader::{Bed, ReadOptions, assert_eq_nan, sample_bed_file};
+# let file_name = sample_bed_file("some_missing.bed")?;
 use std::collections::HashSet;
-use bed_reader::{Bed, ReadOptions, assert_eq_nan, sample_bed_file};
 
-let file_name = sample_bed_file("some_missing.bed")?;
 let mut bed = Bed::new(file_name)?;
 println!("{:?}", bed.iid()?.slice(s![..5])); // Outputs ndarray: ["iid_0", "iid_1", "iid_2", "iid_3", "iid_4"]
 println!("{:?}", bed.sid()?.slice(s![..5])); // Outputs ndarray: ["sid_0", "sid_1", "sid_2", "sid_3", "sid_4"]
@@ -80,7 +81,7 @@ let val = ReadOptions::builder()
     .read(&mut bed)?;
 
 assert!(val.dim() == (100, 6));
-# use bed_reader::BedErrorPlus; // needed for doctest
+# use bed_reader::BedErrorPlus; // '#' needed for doctest
 # Ok::<(), BedErrorPlus>(())
 ```
 

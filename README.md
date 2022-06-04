@@ -4,7 +4,9 @@
 ![PyPI](https://img.shields.io/pypi/v/bed-reader)
 
 
-Read and write the PLINK BED format, simply and efficiently. 
+Read and write the PLINK BED format, simply and efficiently.
+
+*This is the Python README. For Rust, see [README-rust.md](README-rust.md).*
 
 Features:
 
@@ -17,7 +19,6 @@ Install
 ====================
 
     pip install bed-reader
-
 
 Usage
 ========
@@ -36,7 +37,6 @@ Read genomic data from a .bed file.
  [ 2.  0. nan  2.]
  [ 0.  1.  2.  0.]]
 >>> del bed
-
 ```
 
 Read every second individual and SNPs (variants) from 20 to 30.
@@ -48,7 +48,6 @@ Read every second individual and SNPs (variants) from 20 to 30.
 >>> print(val2.shape)
 (50, 10)
 >>> del bed2
-
 ```
 
 List the first 5 individual (sample) ids, the
@@ -67,7 +66,6 @@ chromosome. Then, read every genomic value in chromosome 5.
 ['1' '10' '11' '12' '13' '14' '15' '16' '17' '18' '19' '2' '20' '21' '22'
  '3' '4' '5' '6' '7' '8' '9']
 (100, 6)
-
 ```
 
 Project Links
