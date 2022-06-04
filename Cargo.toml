@@ -1,7 +1,7 @@
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [package]
-version = "0.2.16"
+version = "0.2.17"
 name = "bed-reader"
 description = "Read and write the PLINK BED format, simply and efficiently."
 repository = "https://github.com/fastlmm/bed-reader"
@@ -14,8 +14,6 @@ keywords = ["bioinformatics", "plink", "genomics", "genotype", "snps"]
 categories = ["science"]
 edition = "2021"
 homepage = "https://fastlmm.github.io/"
-
-# !!!cmk later https://rust-lang.github.io/api-guidelines/necessities.html
 
 [package.metadata.maturin]
 requires-python = ">=3.7"

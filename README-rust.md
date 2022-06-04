@@ -25,9 +25,9 @@ Read all genotype data from a .bed file.
 
 ```rust
 use ndarray as nd;
-use bed_reader::{Bed, ReadOptions, assert_eq_nan};
+use bed_reader::{Bed, ReadOptions, assert_eq_nan, sample_bed_file};
 
-let file_name = "small.bed";
+let file_name = sample_bed_file("small.bed")?;
 let mut bed = Bed::new(file_name)?;
 let val = ReadOptions::builder().f64().read(&mut bed)?;
 
@@ -39,14 +39,18 @@ assert_eq_nan(
         [0.0, 1.0, 2.0, 0.0]
     ],
 );
+# use bed_reader::BedErrorPlus;
+# Ok::<(), BedErrorPlus>(())
 ```
 
 Read individual (samples) from 20 to 30 and every second SNP (variant).
 
 ```rust
+# use ndarray as nd;
+# use bed_reader::{Bed, ReadOptions, assert_eq_nan, sample_bed_file};
 use ndarray::s;
 
-let file_name = "some_missing.bed";
+let file_name = sample_bed_file("some_missing.bed")?;
 let mut bed = Bed::new(file_name)?;
 let val = ReadOptions::builder()
     .iid_index(s![..;2])
@@ -55,12 +59,18 @@ let val = ReadOptions::builder()
     .read(&mut bed)?;
 
 assert!(val.dim() == (50, 10));
+# use bed_reader::BedErrorPlus;
+# Ok::<(), BedErrorPlus>(())
 ```
 
 List the first 5 individual (sample) ids, the first 5 SNP (variant) ids,
 and every unique chromosome. Then, read every genomic value in chromosome 5.
 
 ```rust
+# use ndarray as nd;
+# use ndarray::s;
+# use bed_reader::{Bed, ReadOptions, assert_eq_nan, sample_bed_file};
+# let file_name = sample_bed_file("some_missing.bed")?;
 use std::collections::HashSet;
 
 let mut bed = Bed::new(file_name)?;
@@ -74,6 +84,8 @@ let val = ReadOptions::builder()
     .read(&mut bed)?;
 
 assert!(val.dim() == (100, 6));
+# use bed_reader::BedErrorPlus;
+# Ok::<(), BedErrorPlus>(())
 ```
 
 Additional Links

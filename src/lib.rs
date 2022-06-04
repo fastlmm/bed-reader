@@ -1,8 +1,11 @@
 #![warn(missing_docs)]
+#![doc = include_str!("../README-rust.md")]
 // Inspired by C++ version by Chris Widmer and Carl Kadie
 
 // See: https://towardsdatascience.com/nine-rules-for-writing-python-extensions-in-rust-d35ea3a4ec29?sk=f8d808d5f414154fdb811e4137011437
 // for an article on how this project uses Rust to create a Python extension.
+
+// For Rust API tips see https://rust-lang.github.io/api-guidelines/necessities.html
 
 //! # bed-reader
 //!
@@ -177,16 +180,17 @@
 //!
 //! ### Environment Variables
 //!
-//! If [`ReadOptionsBuilder::num_threads`](struct.ReadOptionsBuilder.html#method.num_threads)
-//! or [`WriteOptionsBuilder::num_threads`](struct.WriteOptionsBuilder.html#method.num_threads) is not specified,
-//! the number of threads to use is determined by these environment variable (in order of priority):
-//!
 //! * `BED_READER_NUM_THREADS`
 //! * `NUM_THREADS`
 //!
+//! If [`ReadOptionsBuilder::num_threads`](struct.ReadOptionsBuilder.html#method.num_threads)
+//! or [`WriteOptionsBuilder::num_threads`](struct.WriteOptionsBuilder.html#method.num_threads) is not specified,
+//! the number of threads to use is determined by these environment variable (in order of priority):
 //! If neither of these environment variables are set, all processors are used.
 //!
-//! Any requested sample file will be downloaded to `BED_READER_DATA_DIR`. If that environment variable is not set,
+//! * `BED_READER_DATA_DIR`
+//!
+//! Any requested sample file will be downloaded to this directory. If the environment variable is not set,
 //! a cache folder, appropriate to the OS, will be used.
 
 mod python_module;
@@ -2078,7 +2082,6 @@ impl Bed {
     /// # use ndarray as nd;
     /// # use bed_reader::{Bed, ReadOptions, assert_eq_nan, sample_bed_file};
     /// # let file_name = sample_bed_file("small.bed")?;
-    ///
     /// let mut bed = Bed::builder(file_name)
     ///    .iid(["sample1", "sample2", "sample3"])
     ///    .build()?;
@@ -6780,7 +6783,12 @@ fn new_samples() -> Result<Samples, BedErrorPlus> {
     })
 }
 
-/// cmk need docs
+/// Returns the local path to a sample .bed file. If necessary, the file will be downloaded.
+///
+/// The .fam and .bim files will also be downloaded, if they are not already present.
+/// SHA256 hashes are used to verify that the files are correct.
+/// The files will be in a directory determined by environment variable `BED_READER_DATA_DIR`.
+/// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
 pub fn sample_bed_file<P: AsRef<Path>>(bed_path: P) -> Result<PathBuf, BedErrorPlus> {
     let mut path_list: Vec<PathBuf> = Vec::new();
     for ext in ["bed", "bim", "fam"].iter() {
@@ -6793,14 +6801,22 @@ pub fn sample_bed_file<P: AsRef<Path>>(bed_path: P) -> Result<PathBuf, BedErrorP
     Ok(vec[0].clone())
 }
 
-/// cmk need docs
+/// Returns the local path to a sample file. If necessary, the file will be downloaded.
+///
+/// A SHA256 hash is used to verify that the file is correct.
+/// The file will be in a directory determined by environment variable `BED_READER_DATA_DIR`.
+/// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
 pub fn sample_file<P: AsRef<Path>>(path: P) -> Result<PathBuf, BedErrorPlus> {
     let path_list = vec![path.as_ref().to_path_buf()];
     let vec = sample_files(path_list)?;
     Ok(vec[0].clone())
 }
 
-/// cmk need docs
+/// Returns the local paths to a list of files. If necessary, the files will be downloaded.
+///
+/// SHA256 hashes are used to verify that the files are correct.
+/// The files will be in a directory determined by environment variable `BED_READER_DATA_DIR`.
+/// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
 pub fn sample_files<I, P>(path_list: I) -> Result<Vec<PathBuf>, BedErrorPlus>
 where
     I: IntoIterator<Item = P>,
@@ -6891,7 +6907,6 @@ fn download<S: AsRef<str>, P: AsRef<Path>>(url: S, file_path: P) -> Result<(), B
 
 fn hash_registry() -> Result<HashMap<PathBuf, String>, BedErrorPlus> {
     let mut hash_map = HashMap::new();
-    // !!!cmk00 what if run from a different directory?
     for line in SAMPLE_REGISTRY_CONTENTS.lines() {
         let mut parts = line.split_whitespace();
 

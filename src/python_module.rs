@@ -28,8 +28,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     impl std::convert::From<BedErrorPlus> for PyErr {
         fn from(err: BedErrorPlus) -> PyErr {
             match err {
-                BedErrorPlus::IOError(_) => PyIOError::new_err(err.to_string()),
-                BedErrorPlus::ThreadPoolError(_) => PyValueError::new_err(err.to_string()),
                 BedErrorPlus::BedError(BedError::IidIndexTooBig(_))
                 | BedErrorPlus::BedError(BedError::SidIndexTooBig(_))
                 | BedErrorPlus::BedError(BedError::IndexMismatch(_, _, _, _))
@@ -37,7 +35,9 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
                 | BedErrorPlus::BedError(BedError::SubsetMismatch(_, _, _, _)) => {
                     PyIndexError::new_err(err.to_string())
                 }
-                // !!!cmk later update with any new errors
+
+                BedErrorPlus::IOError(_) => PyIOError::new_err(err.to_string()),
+
                 _ => PyValueError::new_err(err.to_string()),
             }
         }

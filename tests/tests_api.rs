@@ -423,8 +423,6 @@ fn readme_examples() -> Result<(), BedErrorPlus> {
     Ok(())
 }
 
-// !!!cmk later re-write python_module.rs to use the new Rust API (may need .fill() and .fill_with_defaults())
-
 #[test]
 fn write_docs() -> Result<(), BedErrorPlus> {
     // In this example, all properties are given.
