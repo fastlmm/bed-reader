@@ -2230,3 +2230,18 @@ fn lib_intro() -> Result<(), BedErrorPlus> {
 
     Ok(())
 }
+
+#[test]
+fn metadata_iid_sid2() -> Result<(), BedErrorPlus> {
+    let metadata = Metadata::builder()
+        .iid(["sample1", "sample2", "sample3"])
+        .build()?;
+    println!("{:?}", metadata.iid()); // Outputs ndarray Some(["sample1", "sample2", "sample3"])
+
+    let metadata = Metadata::builder()
+        .sid(["SNP1", "SNP2", "SNP3", "SNP4"])
+        .build()?;
+    println!("{:?}", metadata.sid()); // Outputs ndarray Some(["SNP1", "SNP2", "SNP3", "SNP4"])
+
+    Ok(())
+}

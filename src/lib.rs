@@ -72,7 +72,7 @@
 //! | `2` | `isize` | Index position 2 |
 //! | `-1` | `isize` | Last index position |
 //! | `vec![0, 10, -2]` | `Vec<isize>` | Index positions 0, 10, and 2nd from last |
-//! | `[0, 10, -2]` | `[isize]` | Index positions 0, 10, and 2nd from last |
+//! | `[0, 10, -2]` | `[isize]` & `[isize;n]` | Index positions 0, 10, and 2nd from last |
 //! | `ndarray::array![0, 10, -2]` | `ndarray::Array1<isize>` | Index positions 0, 10, and 2nd from last |
 //! | `10..20` | `Range<usize>` | Index positions 10 (inclusive) to 20 (exclusive). *Note: Rust ranges don't support negatives* |
 //! | `..=19` | `RangeInclusive<usize>` | Index positions 0 (inclusive) to 19 (inclusive). *Note: Rust ranges don't support negatives* |
@@ -80,7 +80,7 @@
 //! | `s![10..20;2]` | `ndarray::SliceInfo1` | Index positions 10 (inclusive) to 20 (exclusive) in steps of 2 |
 //! | `s![-20..-10;-2]` | `ndarray::SliceInfo1` | 10th from last (exclusive) to 20th from last (inclusive), in steps of -2 |
 //! | `vec![true, false, true]` | `Vec<bool>`| Index positions 0 and 2. |
-//! | `[true, false, true]` | `[bool]`| Index positions 0 and 2.|
+//! | `[true, false, true]` | `[bool]` & `[bool;n]`| Index positions 0 and 2.|
 //! | `ndarray::array![true, false, true]` | `ndarray::Array1<bool>`| Index positions 0 and 2.|
 //! | `s![true, false, true]` | `ndarray::SliceInfo1`| Index positions 0 and 2.|
 //!
@@ -3184,6 +3184,23 @@ pub struct RangeAny {
 }
 
 impl RangeAny {
+    fn new<T: RangeBounds<usize>>(range_thing: &T) -> RangeAny {
+        let start_bound = range_thing.start_bound();
+        let start = match start_bound {
+            Bound::Included(&start) => Some(start),
+            Bound::Excluded(&start) => Some(start + 1),
+            Bound::Unbounded => None,
+        };
+
+        let end_bound = range_thing.end_bound();
+        let end = match end_bound {
+            Bound::Included(&end) => Some(end + 1),
+            Bound::Excluded(&end) => Some(end),
+            Bound::Unbounded => None,
+        };
+        RangeAny { start, end }
+    }
+
     // https://stackoverflow.com/questions/55925523/array-cannot-be-indexed-by-rangefull
     fn to_range(&self, count: usize) -> Result<Range<usize>, BedErrorPlus> {
         let start = if let Some(start) = self.start {
@@ -3393,164 +3410,81 @@ impl From<SliceInfo1> for Index {
         Index::NDSliceInfo(slice_info)
     }
 }
-
-fn to_range_any<T: RangeBounds<usize>>(range_thing: T) -> RangeAny {
-    let start_bound = range_thing.start_bound();
-    let start = match start_bound {
-        Bound::Included(&start) => Some(start),
-        Bound::Excluded(&start) => Some(start + 1),
-        Bound::Unbounded => None,
-    };
-
-    let end_bound = range_thing.end_bound();
-    let end = match end_bound {
-        Bound::Included(&end) => Some(end + 1),
-        Bound::Excluded(&end) => Some(end),
-        Bound::Unbounded => None,
-    };
-    RangeAny { start, end }
-}
-
-impl From<RangeFull> for RangeAny {
-    fn from(range_thing: RangeFull) -> RangeAny {
-        to_range_any(range_thing)
+impl From<&SliceInfo1> for Index {
+    fn from(slice_info: &SliceInfo1) -> Index {
+        Index::NDSliceInfo(slice_info.to_owned())
     }
 }
 
 impl From<RangeFull> for Index {
     fn from(range_thing: RangeFull) -> Index {
-        Index::RangeAny(range_thing.into())
-    }
-}
-
-impl From<&RangeFull> for RangeAny {
-    fn from(range_thing: &RangeFull) -> RangeAny {
-        to_range_any(*range_thing)
+        Index::RangeAny(RangeAny::new(&range_thing))
     }
 }
 
 impl From<&RangeFull> for Index {
     fn from(range_thing: &RangeFull) -> Index {
-        Index::RangeAny(range_thing.into())
-    }
-}
-impl From<Range<usize>> for RangeAny {
-    fn from(range_thing: Range<usize>) -> RangeAny {
-        to_range_any(range_thing)
-    }
-}
-
-impl From<&Range<usize>> for RangeAny {
-    fn from(range_thing: &Range<usize>) -> RangeAny {
-        let range_thing = range_thing.clone();
-        to_range_any(range_thing)
+        Index::RangeAny(RangeAny::new(range_thing))
     }
 }
 
 impl From<Range<usize>> for Index {
     fn from(range_thing: Range<usize>) -> Index {
-        Index::RangeAny(range_thing.into())
+        Index::RangeAny(RangeAny::new(&range_thing))
     }
 }
 
 impl From<&Range<usize>> for Index {
     fn from(range_thing: &Range<usize>) -> Index {
-        Index::RangeAny(range_thing.into())
-    }
-}
-
-impl From<RangeFrom<usize>> for RangeAny {
-    fn from(range_thing: RangeFrom<usize>) -> RangeAny {
-        to_range_any(range_thing)
+        Index::RangeAny(RangeAny::new(range_thing))
     }
 }
 
 impl From<RangeFrom<usize>> for Index {
     fn from(range_thing: RangeFrom<usize>) -> Index {
-        Index::RangeAny(range_thing.into())
-    }
-}
-
-impl From<&RangeFrom<usize>> for RangeAny {
-    fn from(range_thing: &RangeFrom<usize>) -> RangeAny {
-        to_range_any(range_thing.clone())
+        Index::RangeAny(RangeAny::new(&range_thing))
     }
 }
 
 impl From<&RangeFrom<usize>> for Index {
     fn from(range_thing: &RangeFrom<usize>) -> Index {
-        Index::RangeAny(range_thing.into())
-    }
-}
-
-impl From<RangeInclusive<usize>> for RangeAny {
-    fn from(range_thing: RangeInclusive<usize>) -> RangeAny {
-        to_range_any(range_thing)
+        Index::RangeAny(RangeAny::new(range_thing))
     }
 }
 
 impl From<RangeInclusive<usize>> for Index {
     fn from(range_thing: RangeInclusive<usize>) -> Index {
-        Index::RangeAny(range_thing.into())
-    }
-}
-
-impl From<&RangeInclusive<usize>> for RangeAny {
-    fn from(range_thing: &RangeInclusive<usize>) -> RangeAny {
-        to_range_any(range_thing.clone())
+        Index::RangeAny(RangeAny::new(&range_thing))
     }
 }
 
 impl From<&RangeInclusive<usize>> for Index {
     fn from(range_thing: &RangeInclusive<usize>) -> Index {
-        Index::RangeAny(range_thing.into())
-    }
-}
-
-impl From<RangeTo<usize>> for RangeAny {
-    fn from(range_thing: RangeTo<usize>) -> RangeAny {
-        to_range_any(range_thing)
+        Index::RangeAny(RangeAny::new(range_thing))
     }
 }
 
 impl From<RangeTo<usize>> for Index {
     fn from(range_thing: RangeTo<usize>) -> Index {
-        Index::RangeAny(range_thing.into())
-    }
-}
-
-impl From<&RangeTo<usize>> for RangeAny {
-    fn from(range_thing: &RangeTo<usize>) -> RangeAny {
-        to_range_any(*range_thing)
+        Index::RangeAny(RangeAny::new(&range_thing))
     }
 }
 
 impl From<&RangeTo<usize>> for Index {
     fn from(range_thing: &RangeTo<usize>) -> Index {
-        Index::RangeAny(range_thing.into())
-    }
-}
-
-impl From<RangeToInclusive<usize>> for RangeAny {
-    fn from(range_thing: RangeToInclusive<usize>) -> RangeAny {
-        to_range_any(range_thing)
+        Index::RangeAny(RangeAny::new(range_thing))
     }
 }
 
 impl From<RangeToInclusive<usize>> for Index {
     fn from(range_thing: RangeToInclusive<usize>) -> Index {
-        Index::RangeAny(range_thing.into())
-    }
-}
-impl From<&RangeToInclusive<usize>> for RangeAny {
-    fn from(range_thing: &RangeToInclusive<usize>) -> RangeAny {
-        to_range_any(*range_thing)
+        Index::RangeAny(RangeAny::new(&range_thing))
     }
 }
 
 impl From<&RangeToInclusive<usize>> for Index {
     fn from(range_thing: &RangeToInclusive<usize>) -> Index {
-        Index::RangeAny(range_thing.into())
+        Index::RangeAny(RangeAny::new(range_thing))
     }
 }
 
@@ -3578,6 +3512,11 @@ impl From<&nd::ArrayView1<'_, isize>> for Index {
     }
 }
 
+impl From<Vec<isize>> for Index {
+    fn from(vec: Vec<isize>) -> Index {
+        Index::Vec(vec)
+    }
+}
 impl From<&Vec<isize>> for Index {
     fn from(vec_ref: &Vec<isize>) -> Index {
         Index::Vec(vec_ref.clone())
@@ -3619,12 +3558,12 @@ impl From<isize> for Index {
         Index::One(one)
     }
 }
-
-impl From<Vec<isize>> for Index {
-    fn from(vec: Vec<isize>) -> Index {
-        Index::Vec(vec)
+impl From<&isize> for Index {
+    fn from(one: &isize) -> Index {
+        Index::One(one.to_owned())
     }
 }
+
 impl From<nd::Array1<isize>> for Index {
     fn from(nd_array: nd::Array1<isize>) -> Index {
         Index::NDArray(nd_array)
@@ -5739,13 +5678,12 @@ impl MetadataBuilder {
     /// Providing them here avoids that file read and provides a way to give different values.
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{Bed, assert_eq_nan, sample_bed_file};
-    /// let file_name = sample_bed_file("small.bed")?;
+    /// use bed_reader::{Metadata, assert_eq_nan};
     ///
-    /// let mut bed = Bed::builder(file_name)
+    /// let metadata = Metadata::builder()
     ///    .iid(["sample1", "sample2", "sample3"])
     ///    .build()?;
-    /// println!("{:?}", bed.iid()?); // Outputs ndarray ["sample1", "sample2", "sample3"]
+    /// println!("{:?}", metadata.iid()); // Outputs ndarray Some(["sample1", "sample2", "sample3"])
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
@@ -5828,13 +5766,12 @@ impl MetadataBuilder {
     /// Providing them here avoids that file read and provides a way to give different values.
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{Bed, assert_eq_nan, sample_bed_file};
-    /// let file_name = sample_bed_file("small.bed")?;
+    /// use bed_reader::{Metadata, assert_eq_nan};
     ///
-    /// let mut bed = Bed::builder(file_name)
+    /// let metadata = Metadata::builder()
     ///    .sid(["SNP1", "SNP2", "SNP3", "SNP4"])
     ///    .build()?;
-    /// println!("{:?}", bed.sid()?); // Outputs ndarray ["SNP1", "SNP2", "SNP3", "SNP4"]
+    /// println!("{:?}", metadata.sid()); // Outputs ndarray Some(["SNP1", "SNP2", "SNP3", "SNP4"])
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```

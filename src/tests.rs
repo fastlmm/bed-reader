@@ -1,18 +1,10 @@
+// https://stackoverflow.com/questions/32900809/how-to-suppress-function-is-never-used-warning-for-a-function-used-by-tests
 #[cfg(test)]
 use crate::allclose;
 #[cfg(test)]
 use crate::assert_eq_nan;
 #[cfg(test)]
 use crate::cache_dir;
-#[cfg(test)]
-use crate::Bed;
-#[cfg(test)]
-use crate::Index;
-#[cfg(test)]
-use crate::ReadOptions;
-#[cfg(test)]
-use crate::WriteOptions;
-// https://stackoverflow.com/questions/32900809/how-to-suppress-function-is-never-used-warning-for-a-function-used-by-tests
 #[cfg(test)]
 use crate::file_aat_piece;
 #[cfg(test)]
@@ -34,7 +26,19 @@ use crate::tmp_path;
 #[cfg(test)]
 use crate::try_div_4;
 #[cfg(test)]
+use crate::Bed;
+#[cfg(test)]
 use crate::Dist;
+#[cfg(test)]
+use crate::Index;
+#[cfg(test)]
+use crate::Metadata;
+#[cfg(test)]
+use crate::ReadOptions;
+#[cfg(test)]
+use crate::SliceInfo1;
+#[cfg(test)]
+use crate::WriteOptions;
 #[cfg(test)]
 use crate::{impute_and_zero_mean_snps, matrix_subset_no_alloc};
 #[cfg(test)]
@@ -60,7 +64,11 @@ use std::io::BufReader;
 #[cfg(test)]
 use std::ops::Range;
 #[cfg(test)]
+use std::ops::RangeInclusive;
+#[cfg(test)]
 use std::path::Path;
+#[cfg(test)]
+use std::path::PathBuf;
 
 #[test]
 fn best_int8() {
@@ -995,5 +1003,163 @@ fn compute_hashes() -> Result<(), BedErrorPlus> {
         let stem = path.file_name().unwrap().to_str().unwrap();
         println!("{stem} {hash}");
     }
+    Ok(())
+}
+
+#[test]
+fn demo_path() -> Result<(), BedErrorPlus> {
+    let path: &str = "bed_reader/tests/data/small.bed";
+    let _ = Bed::new(&path)?; // borrow a &str
+    let _ = Bed::new(path)?; // move a &str
+    let path: String = "bed_reader/tests/data/small.bed".to_string();
+    let _ = Bed::new(&path)?; // borrow a String
+    let path2: &String = &path;
+    let _ = Bed::new(&path2)?; // borrow a &String
+    let _ = Bed::new(path2)?; // move a &String
+    let _ = Bed::new(path)?; // move a String
+    let path: &Path = Path::new("bed_reader/tests/data/small.bed");
+    let _ = Bed::new(&path)?; // borrow a Path
+    let _ = Bed::new(path)?; // move a Path
+    let path: PathBuf = PathBuf::from("bed_reader/tests/data/small.bed");
+    let _ = Bed::new(&path)?; // borrow a PathBuf
+    let path2: &PathBuf = &path;
+    let _ = Bed::new(&path2)?; // borrow a &PathBuf
+    let _ = Bed::new(path2)?; // move a &PathBuf
+    let _ = Bed::new(path)?; // move a PathBuf
+    Ok(())
+}
+
+#[allow(clippy::single_char_pattern)]
+#[test]
+fn demo_iter() -> Result<(), BedErrorPlus> {
+    let list: [&str; 3] = ["i1", "i2", "i3"];
+    let _ = Metadata::builder().iid(&list).build()?; // borrow fixed-size array
+    let _ = Metadata::builder().iid(list).build()?; // move fixed-size array
+    let list: [String; 3] = ["i1".to_string(), "i2".to_string(), "i3".to_string()];
+    let _ = Metadata::builder().iid(&list).build()?; // borrow fixed-size array of String
+    let _ = Metadata::builder().iid(list).build()?; // move fixed-size array of String
+    let list: Vec<&str> = vec!["i1", "i2", "i3"];
+    let _ = Metadata::builder().iid(&list).build()?; // borrow Vec<&str>
+    let list2 = &list[..]; // borrowed slice
+    let _ = Metadata::builder().iid(list2).build()?; // borrow slice
+    let _ = Metadata::builder().iid(list).build()?; // move Vec<&str>
+    let list = nd::array!["i1", "i2", "i3"];
+    let _ = Metadata::builder().iid(&list).build()?; // borrow ndarray
+    let _ = Metadata::builder().iid(list).build()?; // move ndarray
+    let list: std::str::Split<&str> = "i1,i2,i3".split(",");
+    let _ = Metadata::builder().iid(list).build()?; // move iterator
+    Ok(())
+}
+
+#[test]
+fn demo_index() -> Result<(), BedErrorPlus> {
+    let index: () = ();
+    let _ = ReadOptions::builder().iid_index(index).i8().build()?;
+
+    let index: isize = 2;
+    let _ = ReadOptions::builder().iid_index(&index).i8().build()?;
+    let _ = ReadOptions::builder().iid_index(index).i8().build()?;
+
+    let index = ..;
+    let _ = ReadOptions::builder().iid_index(&index).i8().build()?;
+    let _ = ReadOptions::builder().iid_index(index).i8().build()?;
+
+    let index: RangeInclusive<usize> = 0..=3;
+    let _ = ReadOptions::builder().iid_index(&index).i8().build()?;
+    let _ = ReadOptions::builder().iid_index(index).i8().build()?;
+
+    let index: SliceInfo1 = s![..;2];
+    let _ = ReadOptions::builder().iid_index(&index).i8().build()?;
+    let _ = ReadOptions::builder().iid_index(index).i8().build()?;
+
+    let index: [isize; 2] = [2, 5];
+    let _ = ReadOptions::builder().iid_index(&index).i8().build()?;
+    let _ = ReadOptions::builder().iid_index(index).i8().build()?;
+
+    let index: Vec<isize> = vec![2, 5];
+    let _ = ReadOptions::builder().iid_index(&index).i8().build()?;
+    let _ = ReadOptions::builder().iid_index(index).i8().build()?;
+
+    let index: &[isize] = &vec![2, 5][..];
+    let _ = ReadOptions::builder().iid_index(index).i8().build()?;
+
+    let index: nd::Array1<isize> = nd::array![2, 5];
+    let _ = ReadOptions::builder().iid_index(&index).i8().build()?;
+    let _ = ReadOptions::builder().iid_index(index).i8().build()?;
+
+    let index: [bool; 3] = [false, false, true];
+    let _ = ReadOptions::builder().iid_index(&index).i8().build()?;
+    let _ = ReadOptions::builder().iid_index(index).i8().build()?;
+
+    let index: Vec<bool> = vec![false, false, true];
+    let _ = ReadOptions::builder().iid_index(&index).i8().build()?;
+    let _ = ReadOptions::builder().iid_index(index).i8().build()?;
+
+    let index: &[bool] = &vec![false, false, true][..];
+    let _ = ReadOptions::builder().iid_index(index).i8().build()?;
+
+    let index: nd::Array1<bool> = nd::array![false, false, true];
+    let _ = ReadOptions::builder().iid_index(&index).i8().build()?;
+    let _ = ReadOptions::builder().iid_index(index).i8().build()?;
+
+    Ok(())
+}
+
+#[test]
+fn use_index() -> Result<(), BedErrorPlus> {
+    fn len100(index: Index) -> Result<usize, BedErrorPlus> {
+        let len = index.len(100)?;
+        Ok(len)
+    }
+
+    let index: () = ();
+    let _ = len100(index.into())?;
+
+    let index = 2;
+    let _ = len100((&index).into())?;
+    let _ = len100(index.into())?;
+
+    let index = ..;
+    let _ = len100((&index).into())?;
+    let _ = len100(index.into())?;
+
+    let index = 0..=3;
+    let _ = len100((&index).into())?;
+    let _ = len100(index.into())?;
+
+    let index = s![..;2];
+    let _ = len100((&index).into())?;
+    let _ = len100(index.into())?;
+
+    let index = [2, 5];
+    let _ = len100((&index).into())?;
+    let _ = len100(index.into())?;
+
+    let index = vec![2, 5];
+    let _ = len100((&index).into())?;
+    let _ = len100(index.into())?;
+
+    let index = &vec![2, 5][..];
+    let _ = len100(index.into())?;
+
+    let index = nd::array![2, 5];
+    let _ = len100((&index).into())?;
+    let _ = len100(index.into())?;
+
+    let index = [false, false, true];
+    let _ = len100((&index).into())?;
+    let _ = len100(index.into())?;
+
+    let index = vec![false, false, true];
+    let _ = len100((&index).into())?;
+    let _ = len100(index.into())?;
+
+    let index = &vec![false, false, true][..];
+    let _ = len100(index.into())?;
+
+    let index = nd::array![false, false, true];
+    let _ = len100((&index).into())?;
+    let _ = len100(index.into())?;
+
     Ok(())
 }
