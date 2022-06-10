@@ -41,7 +41,7 @@ assert_eq_nan(
 # Ok::<(), BedErrorPlus>(())
 ```
 
-Read individual (samples) from 20 to 30 and every second SNP (variant).
+Read every second individual (samples) and SNPs (variants) 20 to 30.
 
 ```rust
 # // '#' needed for doctest

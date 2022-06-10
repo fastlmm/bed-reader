@@ -3512,6 +3512,12 @@ impl From<&nd::ArrayView1<'_, isize>> for Index {
     }
 }
 
+impl From<nd::ArrayView1<'_, isize>> for Index {
+    fn from(view: nd::ArrayView1<isize>) -> Index {
+        Index::NDArray(view.to_owned())
+    }
+}
+
 impl From<Vec<isize>> for Index {
     fn from(vec: Vec<isize>) -> Index {
         Index::Vec(vec)
@@ -3520,6 +3526,12 @@ impl From<Vec<isize>> for Index {
 impl From<&Vec<isize>> for Index {
     fn from(vec_ref: &Vec<isize>) -> Index {
         Index::Vec(vec_ref.clone())
+    }
+}
+
+impl From<nd::ArrayView1<'_, bool>> for Index {
+    fn from(view: nd::ArrayView1<bool>) -> Index {
+        Index::NDArrayBool(view.to_owned())
     }
 }
 
