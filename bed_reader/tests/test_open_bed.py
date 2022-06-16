@@ -782,12 +782,23 @@ def test_noncontig_indexes(shared_datadir):
             )
 
 
+def test_bed_reading_example():
+    import numpy as np
+    from bed_reader import open_bed, sample_file
+
+    file_name = sample_file("small.bed")
+    with open_bed(file_name, count_A1=False) as bed:
+        val = bed.read(index=np.s_[:, :3], dtype="int8", order="C", num_threads=1)
+        print(val.shape)
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
     shared_datadir = Path(r"D:\OneDrive\programs\bed-reader\bed_reader\tests\data")
     tmp_path = Path(r"m:/deldir/tests")
-    test_zero_files(tmp_path)
+    test_bed_reading_example()
+    # test_zero_files(tmp_path)
     # test_index(shared_datadir)
     # test_c_reader_bed(shared_datadir)
     # test_read1(shared_datadir)

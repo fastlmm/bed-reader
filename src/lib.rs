@@ -72,7 +72,7 @@
 //! | `2` | `isize` | Index position 2 |
 //! | `-1` | `isize` | Last index position |
 //! | `vec![0, 10, -2]` | `Vec<isize>` | Index positions 0, 10, and 2nd from last |
-//! | `[0, 10, -2]` | `[isize]` & `[isize;n]` | Index positions 0, 10, and 2nd from last |
+//! | `[0, 10, -2]` | `[isize]` and `[isize;n]` | Index positions 0, 10, and 2nd from last |
 //! | `ndarray::array![0, 10, -2]` | `ndarray::Array1<isize>` | Index positions 0, 10, and 2nd from last |
 //! | `10..20` | `Range<usize>` | Index positions 10 (inclusive) to 20 (exclusive). *Note: Rust ranges don't support negatives* |
 //! | `..=19` | `RangeInclusive<usize>` | Index positions 0 (inclusive) to 19 (inclusive). *Note: Rust ranges don't support negatives* |
@@ -80,9 +80,8 @@
 //! | `s![10..20;2]` | `ndarray::SliceInfo1` | Index positions 10 (inclusive) to 20 (exclusive) in steps of 2 |
 //! | `s![-20..-10;-2]` | `ndarray::SliceInfo1` | 10th from last (exclusive) to 20th from last (inclusive), in steps of -2 |
 //! | `vec![true, false, true]` | `Vec<bool>`| Index positions 0 and 2. |
-//! | `[true, false, true]` | `[bool]` & `[bool;n]`| Index positions 0 and 2.|
+//! | `[true, false, true]` | `[bool]` and `[bool;n]`| Index positions 0 and 2.|
 //! | `ndarray::array![true, false, true]` | `ndarray::Array1<bool>`| Index positions 0 and 2.|
-//! | `s![true, false, true]` | `ndarray::SliceInfo1`| Index positions 0 and 2.|
 //!
 //! ### Environment Variables
 //!
@@ -5671,11 +5670,7 @@ impl MetadataBuilder {
         Ok(metadata)
     }
 
-    /// Override the family id (fid) values found in the .fam file.
-    ///
-    /// By default, if fid values are needed and haven't already been found,
-    /// they will be read from the .fam file.
-    /// Providing them here avoids that file read and provides a way to give different values.
+    /// Set the family id (fid) values.
     pub fn fid<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, fid: I) -> &mut Self {
         self.fid = Some(Some(Rc::new(
             fid.into_iter().map(|s| s.as_ref().to_string()).collect(),
@@ -5683,11 +5678,7 @@ impl MetadataBuilder {
         self
     }
 
-    /// Override the individual id (iid) values found in the .fam file.
-    ///
-    /// By default, if iid values are needed and haven't already been found,
-    /// they will be read from the .fam file.
-    /// Providing them here avoids that file read and provides a way to give different values.
+    /// Set the individual id (iid) values.
     /// ```
     /// use ndarray as nd;
     /// use bed_reader::{Metadata, assert_eq_nan};
@@ -5706,11 +5697,7 @@ impl MetadataBuilder {
         self
     }
 
-    /// Override the father values found in the .fam file.
-    ///nd
-    /// By default, if father values are needed and haven't already been found,
-    /// they will be read from the .fam file.
-    /// Providing them here avoids that file read and provides a way to give different values.
+    /// Set the father values.
     pub fn father<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, father: I) -> &mut Self {
         self.father = Some(Some(Rc::new(
             father.into_iter().map(|s| s.as_ref().to_owned()).collect(),
@@ -5718,11 +5705,7 @@ impl MetadataBuilder {
         self
     }
 
-    /// Override the mother values found in the .fam file.
-    ///
-    /// By default, if mother values are needed and haven't already been found,
-    /// they will be read from the .fam file.
-    /// Providing them here avoids that file read and provides a way to give different values.
+    /// Override the mother values.
     pub fn mother<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, mother: I) -> &mut Self {
         self.mother = Some(Some(Rc::new(
             mother.into_iter().map(|s| s.as_ref().to_owned()).collect(),
@@ -5730,22 +5713,13 @@ impl MetadataBuilder {
         self
     }
 
-    /// Override the sex values found in the .fam file.
-    ///
-    /// By default, if sex values are needed and haven't already been found,
-    /// they will be read from the .fam file.
-    /// Providing them here avoids that file read and provides a way to give different values.
+    /// Override the sex values.
     pub fn sex<I: IntoIterator<Item = i32>>(&mut self, sex: I) -> &mut Self {
         self.sex = Some(Some(Rc::new(sex.into_iter().collect())));
         self
     }
 
-    /// Override the phenotype values found in the .fam file.
-    ///
-    /// Note that the phenotype values in the .fam file are seldom used.
-    /// By default, if phenotype values are needed and haven't already been found,
-    /// they will be read from the .fam file.
-    /// Providing them here avoids that file read and provides a way to give different values.
+    /// Override the phenotype values.
     pub fn pheno<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, pheno: I) -> &mut Self {
         self.pheno = Some(Some(Rc::new(
             pheno.into_iter().map(|s| s.as_ref().to_owned()).collect(),
@@ -5753,11 +5727,7 @@ impl MetadataBuilder {
         self
     }
 
-    /// Override the chromosome values found in the .bim file.
-    ///
-    /// By default, if chromosome values are needed and haven't already been found,
-    /// they will be read from the .bim file.
-    /// Providing them here avoids that file read and provides a way to give different values.
+    /// Override the chromosome values.
     pub fn chromosome<I: IntoIterator<Item = T>, T: AsRef<str>>(
         &mut self,
         chromosome: I,
@@ -5771,11 +5741,7 @@ impl MetadataBuilder {
         self
     }
 
-    /// Override the SNP id (sid) values found in the .fam file.
-    ///
-    /// By default, if sid values are needed and haven't already been found,
-    /// they will be read from the .bim file.
-    /// Providing them here avoids that file read and provides a way to give different values.
+    /// Override the SNP id (sid) values.
     /// ```
     /// use ndarray as nd;
     /// use bed_reader::{Metadata, assert_eq_nan};
@@ -5794,31 +5760,19 @@ impl MetadataBuilder {
         self
     }
 
-    /// Override the centimorgan position values found in the .bim file.
-    ///
-    /// By default, if centimorgan position values are needed and haven't already been found,
-    /// they will be read from the .bim file.
-    /// Providing them here avoids that file read and provides a way to give different values.
+    /// Override the centimorgan position values.
     pub fn cm_position<I: IntoIterator<Item = f32>>(&mut self, cm_position: I) -> &mut Self {
         self.cm_position = Some(Some(Rc::new(cm_position.into_iter().collect())));
         self
     }
 
-    /// Override the base-pair position values found in the .bim file.
-    ///
-    /// By default, if base-pair position values are needed and haven't already been found,
-    /// they will be read from the .bim file.
-    /// Providing them here avoids that file read and provides a way to give different values.
+    /// Override the base-pair position values.
     pub fn bp_position<I: IntoIterator<Item = i32>>(&mut self, bp_position: I) -> &mut Self {
         self.bp_position = Some(Some(Rc::new(bp_position.into_iter().collect())));
         self
     }
 
-    /// Override the allele 1 values found in the .bim file.
-    ///
-    /// By default, if allele 1 values are needed and haven't already been found,
-    /// they will be read from the .bim file.
-    /// Providing them here avoids that file read and provides a way to give different values.
+    /// Override the allele 1 values.
     pub fn allele_1<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, allele_1: I) -> &mut Self {
         self.allele_1 = Some(Some(Rc::new(
             allele_1
@@ -5829,11 +5783,7 @@ impl MetadataBuilder {
         self
     }
 
-    /// Override the allele 2 values found in the .bim file.
-    ///
-    /// By default, if allele 2 values are needed and haven't already been found,
-    /// they will be read from the .bim file.
-    /// Providing them here avoids that file read and provides a way to give different values.
+    /// Override the allele 2 values.
     pub fn allele_2<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, allele_2: I) -> &mut Self {
         self.allele_2 = Some(Some(Rc::new(
             allele_2

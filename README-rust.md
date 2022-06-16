@@ -13,7 +13,7 @@ Features
 
 * Fast and multi-threaded
 * Supports many indexing methods. Slice data by individuals (samples) and/or SNPs (variants).
-* The [Python-facing API](https://pypi.org/project/bed-reader/) for this library is used by [PySnpTools](https://github.com/fastlmm/PySnpTools), [FaST-LMM](https://github.com/fastlmm/FaST-LMM), and [PyStatGen](https://github.com/pystatgen).
+* The Python-facing APIs for this library is used by [PySnpTools](https://github.com/fastlmm/PySnpTools), [FaST-LMM](https://github.com/fastlmm/FaST-LMM), and [PyStatGen](https://github.com/pystatgen).
 * Supports [PLINK 1.9](https://www.cog-genomics.org/plink2/formats).
 
 Examples
@@ -89,6 +89,7 @@ Project Links
 -----
 
 * [**Installation**](https://crates.io/crates/bed-reader)
+* [**Documentation**](https://docs.rs/bed-reader/)
 * [**Questions via email**](mailto://fastlmm-dev@python.org)
 * [**Source code**](https://github.com/fastlmm/bed-reader)
 * [**Discussion**](https://github.com/fastlmm/bed-reader/discussions/)

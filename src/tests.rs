@@ -1124,6 +1124,38 @@ fn demo_index() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
+fn demo_index2() -> Result<(), BedErrorPlus> {
+    let _ = ReadOptions::builder().iid_index(()).i8().build()?;
+    let _ = ReadOptions::builder().iid_index(2).i8().build()?;
+    let _ = ReadOptions::builder().iid_index(..).i8().build()?;
+    let _ = ReadOptions::builder().iid_index(0..=3).i8().build()?;
+    let _ = ReadOptions::builder().iid_index(s![..;2]).i8().build()?;
+    let _ = ReadOptions::builder().iid_index([2, 5]).i8().build()?;
+    let _ = ReadOptions::builder().iid_index(vec![2, 5]).i8().build()?;
+    let _ = ReadOptions::builder()
+        .iid_index(&vec![2, 5][..])
+        .i8()
+        .build()?;
+    let _ = ReadOptions::builder()
+        .iid_index(nd::array![2, 5])
+        .i8()
+        .build()?;
+    let _ = ReadOptions::builder()
+        .iid_index([false, false, true])
+        .i8()
+        .build()?;
+    let _ = ReadOptions::builder()
+        .iid_index(vec![false, false, true])
+        .i8()
+        .build()?;
+    let _ = ReadOptions::builder()
+        .iid_index(nd::array![false, false, true])
+        .i8()
+        .build()?;
+    Ok(())
+}
+
+#[test]
 fn use_index() -> Result<(), BedErrorPlus> {
     fn len100(index: Index) -> Result<usize, BedErrorPlus> {
         let len = index.len(100)?;
@@ -1185,5 +1217,19 @@ fn use_index() -> Result<(), BedErrorPlus> {
     let _ = len100((&index).into())?;
     let _ = len100(index.into())?;
 
+    Ok(())
+}
+
+#[test]
+fn another_bed_read_example() -> Result<(), BedErrorPlus> {
+    let filename = sample_bed_file("small.bed")?;
+    let mut bed = Bed::new(filename)?;
+    let val = ReadOptions::builder()
+        .sid_index(..3)
+        .i8()
+        .c()
+        .num_threads(1)
+        .read(&mut bed)?;
+    println!("{:?}", val.dim());
     Ok(())
 }

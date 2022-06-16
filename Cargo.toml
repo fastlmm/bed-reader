@@ -1,7 +1,7 @@
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [package]
-version = "0.2.19"
+version = "0.2.20"
 name = "bed-reader"
 description = "Read and write the PLINK BED format, simply and efficiently."
 repository = "https://github.com/fastlmm/bed-reader"
@@ -52,7 +52,7 @@ approx = "0.5.1"
 statrs = "0.15.0"
 byteorder = { version = "1.4.3", default-features = false }
 pyo3 = { version = "0.16.4", features = ["extension-module"], optional = true }
-dpc-pariter = "0.4.0"                                                           # // cmk pariter = "0.5.1"
+dpc-pariter = "0.4.0"                                                           # //  pariter = "0.5.1"
 derive_builder = "0.11.1"
 temp_testdir = "0.2.3"
 ureq = { version = "2.4.0", features = [] }
