@@ -784,6 +784,7 @@ def test_noncontig_indexes(shared_datadir):
 
 def test_bed_reading_example():
     import numpy as np
+
     from bed_reader import open_bed, sample_file
 
     file_name = sample_file("small.bed")
