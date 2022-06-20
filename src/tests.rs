@@ -1157,65 +1157,66 @@ fn demo_index2() -> Result<(), BedErrorPlus> {
 
 #[test]
 fn use_index() -> Result<(), BedErrorPlus> {
-    fn len100(index: Index) -> Result<usize, BedErrorPlus> {
+    fn len100(index: impl Into<Index>) -> Result<usize, BedErrorPlus> {
+        let index = index.into();
         let len = index.len(100)?;
         Ok(len)
     }
 
     let index: () = ();
-    let _ = len100(index.into())?;
+    let _ = len100(index)?;
 
     let index = 2;
-    let _ = len100((&index).into())?;
-    let _ = len100(index.into())?;
+    let _ = len100(&index)?;
+    let _ = len100(index)?;
 
     let index = ..;
-    let _ = len100((&index).into())?;
-    let _ = len100(index.into())?;
+    let _ = len100(&index)?;
+    let _ = len100(index)?;
 
     let index = 0..=3;
-    let _ = len100((&index).into())?;
-    let _ = len100(index.into())?;
+    let _ = len100(&index)?;
+    let _ = len100(index)?;
 
     let index = s![..;2];
-    let _ = len100((&index).into())?;
-    let _ = len100(index.into())?;
+    let _ = len100(&index)?;
+    let _ = len100(index)?;
 
     let index = [2, 5];
-    let _ = len100((&index).into())?;
-    let _ = len100(index.into())?;
+    let _ = len100(&index)?;
+    let _ = len100(index)?;
 
     let index = vec![2, 5];
-    let _ = len100((&index).into())?;
-    let _ = len100(index.into())?;
+    let _ = len100(&index)?;
+    let _ = len100(index)?;
 
     let index = &vec![2, 5][..];
-    let _ = len100(index.into())?;
+    let _ = len100(index)?;
 
     let index = nd::array![2, 5];
     let view = index.view();
-    let _ = len100((&view).into())?;
-    let _ = len100(view.into())?;
-    let _ = len100((&index).into())?;
-    let _ = len100(index.into())?;
+    let _ = len100(&view)?;
+    let _ = len100(view)?;
+    let _ = len100(&index)?;
+    let _ = len100(index)?;
 
     let index = [false, false, true];
-    let _ = len100((&index).into())?;
-    let _ = len100(index.into())?;
+    let _ = len100(&index)?;
+    let _ = len100(index)?;
 
     let index = vec![false, false, true];
-    let _ = len100((&index).into())?;
-    let _ = len100(index.into())?;
+    let _ = len100(&index)?;
+    let _ = len100(index)?;
 
     let index = &vec![false, false, true][..];
-    let _ = len100(index.into())?;
+    let _ = len100(index)?;
 
     let index = nd::array![false, false, true];
     let view = index.view();
-    let _ = len100((&view).into())?;
-    let _ = len100(view.into())?;
-    let _ = len100((&index).into())?;
-    let _ = len100(index.into())?;
+    let _ = len100(&view)?;
+    let _ = len100(view)?;
+    let _ = len100(&index)?;
+    let _ = len100(index)?;
 
     Ok(())
 }
