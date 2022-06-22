@@ -6,7 +6,7 @@
 
 Read and write the PLINK BED format, simply and efficiently.
 
-*This is the Python README. For Rust, see [README-rust.md](README-rust.md).*
+*This is the Python README. For Rust, see [README-rust.md](https://crates.io/crates/bed-reader).*
 
 Features:
 
