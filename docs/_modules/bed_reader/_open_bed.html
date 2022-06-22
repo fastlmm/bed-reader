@@ -3,17 +3,16 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>bed_reader._open_bed &mdash; Bed Reader 0.2.9 documentation</title>
-      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <title>bed_reader._open_bed &mdash; Bed Reader 0.2.21 documentation</title><link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
-  
-        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+  <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
         <script src="../../_static/jquery.js"></script>
         <script src="../../_static/underscore.js"></script>
         <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/language_data.js"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" /> 
@@ -27,7 +26,7 @@
             <a href="../../index.html" class="icon icon-home"> Bed Reader
           </a>
               <div class="version">
-                0.2.9
+                0.2.21
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
@@ -75,7 +74,7 @@
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
 
-<span class="kn">from</span> <span class="nn">.bed_reader</span> <span class="kn">import</span> <span class="n">read_f32</span><span class="p">,</span> <span class="n">read_f64</span><span class="p">,</span> <span class="n">read_i8</span>
+<span class="kn">from</span> <span class="nn">.bed_reader</span> <span class="kn">import</span> <span class="n">read_f32</span><span class="p">,</span> <span class="n">read_f64</span><span class="p">,</span> <span class="n">read_i8</span>  <span class="c1"># type: ignore</span>
 
 
 <span class="c1"># https://stackoverflow.com/questions/845058/how-to-get-line-count-of-a-large-file-cheaply-in-python</span>
@@ -431,16 +430,16 @@
         <span class="c1"># Later happy with _iid_range and _sid_range or could it be done with</span>
         <span class="c1"># allocation them?</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_iid_range</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_iid_range</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">iid_count</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;uintp&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_iid_range</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">iid_count</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;intp&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sid_range</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_sid_range</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sid_count</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;uintp&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_sid_range</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sid_count</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;intp&quot;</span><span class="p">)</span>
 
         <span class="n">iid_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_iid_range</span><span class="p">[</span><span class="n">iid_index_or_slice_etc</span><span class="p">],</span>
-            <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;uintp&quot;</span><span class="p">,</span>
+            <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;intp&quot;</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">sid_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_sid_range</span><span class="p">[</span><span class="n">sid_index_or_slice_etc</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;uintp&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_sid_range</span><span class="p">[</span><span class="n">sid_index_or_slice_etc</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;intp&quot;</span>
         <span class="p">)</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="n">force_python_only</span><span class="p">:</span>
@@ -467,7 +466,7 @@
                     <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">),</span>
                     <span class="n">iid_count</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">iid_count</span><span class="p">,</span>
                     <span class="n">sid_count</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sid_count</span><span class="p">,</span>
-                    <span class="n">count_a1</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">count_A1</span><span class="p">,</span>
+                    <span class="n">is_a1_counted</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">count_A1</span><span class="p">,</span>
                     <span class="n">iid_index</span><span class="o">=</span><span class="n">iid_index</span><span class="p">,</span>
                     <span class="n">sid_index</span><span class="o">=</span><span class="n">sid_index</span><span class="p">,</span>
                     <span class="n">val</span><span class="o">=</span><span class="n">val</span><span class="p">,</span>
