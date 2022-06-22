@@ -1,3 +1,7 @@
+[project]
+name = "bed-reader"
+readme = "README.md"
+
 [build-system]
 requires = ["maturin==0.12.5"]
 build-backend = "maturin"
