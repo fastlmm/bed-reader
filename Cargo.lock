@@ -46,15 +46,13 @@ checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
 
 [[package]]
 name = "bed-reader"
-version = "0.2.22"
+version = "0.2.23"
 dependencies = [
  "approx 0.5.1",
- "base16ct",
  "byteorder",
- "ctor",
  "derive_builder",
- "directories",
  "dpc-pariter",
+ "fetch-hash",
  "ndarray",
  "ndarray-npy",
  "ndarray-rand",
@@ -62,11 +60,8 @@ dependencies = [
  "numpy",
  "pyo3",
  "rayon",
- "sha2",
  "statrs",
- "temp_testdir",
  "thiserror",
- "ureq",
 ]
 
 [[package]]
@@ -375,6 +370,19 @@ name = "fake-simd"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e88a8acf291dafb59c2d96e8f59828f3838bb1a70398823ade51a84de6a6deed"
+
+[[package]]
+name = "fetch-hash"
+version = "0.1.1"
+dependencies = [
+ "base16ct",
+ "ctor",
+ "directories",
+ "sha2",
+ "temp_testdir",
+ "thiserror",
+ "ureq",
+]
 
 [[package]]
 name = "flate2"

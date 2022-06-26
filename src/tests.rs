@@ -4,15 +4,11 @@ use crate::allclose;
 #[cfg(test)]
 use crate::assert_eq_nan;
 #[cfg(test)]
-use crate::cache_dir;
-#[cfg(test)]
 use crate::file_aat_piece;
 #[cfg(test)]
 use crate::file_ata_piece;
 #[cfg(test)]
 use crate::file_b_less_aatbx;
-#[cfg(test)]
-use crate::hash_file;
 #[cfg(test)]
 use crate::read_into_f64;
 #[cfg(test)]
@@ -1002,18 +998,6 @@ fn test_sample_file() -> Result<(), BedErrorPlus> {
     Ok(())
 }
 
-#[test]
-fn compute_hashes() -> Result<(), BedErrorPlus> {
-    let cache_dir = cache_dir()?;
-    let paths = std::fs::read_dir(cache_dir)?;
-    for path in paths {
-        let path = path?.path();
-        let hash = hash_file(&path)?;
-        let stem = path.file_name().unwrap().to_str().unwrap();
-        println!("{stem} {hash}");
-    }
-    Ok(())
-}
 
 #[test]
 fn demo_path() -> Result<(), BedErrorPlus> {

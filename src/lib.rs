@@ -102,17 +102,16 @@ mod python_module;
 mod tests;
 use core::fmt::Debug;
 use derive_builder::{Builder, UninitializedFieldError};
+use fetch_hash::{FetchHash, FetchHashError};
 use nd::ShapeBuilder;
 use ndarray as nd;
-use sha2::{Digest, Sha256};
 use std::cmp::Ordering;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::convert::TryFrom;
 use std::fs::{self};
 use std::io::Write;
 use std::ops::{Bound, Range, RangeBounds, RangeFrom, RangeInclusive, RangeTo, RangeToInclusive};
 use std::rc::Rc;
-use std::sync::Mutex;
 use std::{
     env,
     fs::File,
@@ -120,11 +119,8 @@ use std::{
     ops::RangeFull,
     path::{Path, PathBuf},
 };
-use temp_testdir::TempDir;
-// !!! might want to use this instead use typed_builder::TypedBuilder;
 
 use byteorder::{LittleEndian, ReadBytesExt};
-use directories::ProjectDirs;
 use dpc_pariter::{scope, IteratorExt};
 use num_traits::{abs, Float, FromPrimitive, Signed, ToPrimitive};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
@@ -182,7 +178,7 @@ pub enum BedErrorPlus {
 
     #[allow(missing_docs)]
     #[error(transparent)]
-    UreqError(#[from] ureq::Error),
+    FetchHash(#[from] FetchHashError),
 }
 // https://docs.rs/thiserror/1.0.23/thiserror/
 
@@ -5586,9 +5582,10 @@ pub fn allclose<
 /// # Ok::<(), BedErrorPlus>(())
 /// ```
 pub fn tmp_path() -> Result<PathBuf, BedErrorPlus> {
-    let output_path = TempDir::default().as_ref().to_owned();
-    fs::create_dir(&output_path)?;
-    Ok(output_path)
+    match fetch_hash::tmp_path() {
+        Ok(path) => Ok(path),
+        Err(e) => Err(e.into()),
+    }
 }
 
 impl WriteOptionsBuilder<i8> {
@@ -6562,31 +6559,15 @@ fn matrix_subset_no_alloc<
     }
 }
 
-struct Samples {
-    cache_dir: PathBuf,
-    hash_registry: HashMap<PathBuf, String>,
-    url_root: String,
-}
-
-// Here we set up to parse at run time. We could/should parse at compile time. See:
-// https://stackoverflow.com/questions/50553370/how-do-i-use-include-str-for-multiple-files-or-an-entire-directory
-static SAMPLE_REGISTRY_CONTENTS: &str = include_str!("../bed_reader/tests/registry.txt");
-
-#[ctor::ctor]
-static STATIC_SAMPLES: Mutex<Result<Samples, BedErrorPlus>> = Mutex::new(new_samples());
-
-fn new_samples() -> Result<Samples, BedErrorPlus> {
-    let cache_dir = cache_dir()?;
-    let hash_registry = hash_registry()?;
-
-    Ok(Samples {
-        cache_dir,
-        hash_registry,
-        url_root:
-            "https://raw.githubusercontent.com/fastlmm/bed-reader/rustybed/bed_reader/tests/data/"
-                .to_string(),
-    })
-}
+#[fetch_hash::ctor]
+static STATIC_FETCH_HASH: FetchHash = FetchHash::new(
+    include_str!("../bed_reader/tests/registry.txt"),
+    "https://raw.githubusercontent.com/fastlmm/bed-reader/rustybed/bed_reader/tests/data/",
+    "BED_READER_DATA_DIR",
+    "github.io",
+    "fastlmm",
+    "bed-reader",
+);
 
 /// Returns the local path to a sample .bed file. If necessary, the file will be downloaded.
 ///
@@ -6612,9 +6593,10 @@ pub fn sample_bed_file<P: AsRef<Path>>(bed_path: P) -> Result<PathBuf, BedErrorP
 /// The file will be in a directory determined by environment variable `BED_READER_DATA_DIR`.
 /// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
 pub fn sample_file<P: AsRef<Path>>(path: P) -> Result<PathBuf, BedErrorPlus> {
-    let path_list = vec![path.as_ref().to_path_buf()];
-    let vec = sample_files(path_list)?;
-    Ok(vec[0].clone())
+    match STATIC_FETCH_HASH.fetch_file(path) {
+        Ok(path) => Ok(path),
+        Err(e) => Err(e.into()),
+    }
 }
 
 /// Returns the local paths to a list of files. If necessary, the files will be downloaded.
@@ -6627,124 +6609,8 @@ where
     I: IntoIterator<Item = P>,
     P: AsRef<Path>,
 {
-    let lock = match STATIC_SAMPLES.lock() {
-        Ok(lock) => lock,
-        Err(err) => err.into_inner(),
-    };
-    let samples = match lock.as_ref() {
-        Ok(samples) => samples,
-        Err(e) => {
-            return Err(BedError::SamplesConstructionFailed(e.to_string()).into());
-        }
-    };
-    let hash_registry = &samples.hash_registry;
-    let cache_dir = &samples.cache_dir;
-    let url_root = &samples.url_root;
-
-    let mut local_list: Vec<PathBuf> = Vec::new();
-    for path in path_list {
-        let path = path.as_ref();
-
-        let path_as_string = if let Some(path_as_string) = path.to_str() {
-            path_as_string
-        } else {
-            return Err(BedError::UnknownOrBadSampleFile("???".to_string()).into());
-        };
-
-        let hash = if let Some(hash) = hash_registry.get(path) {
-            hash
-        } else {
-            return Err(BedError::UnknownOrBadSampleFile(path_as_string.to_string()).into());
-        };
-
-        let local_path = cache_dir.join(path);
-        let url = format!("{url_root}{path_as_string}");
-        download_hash(url, &hash, &local_path)?;
-        local_list.push(local_path);
+    match STATIC_FETCH_HASH.fetch_files(path_list) {
+        Ok(path) => Ok(path),
+        Err(e) => Err(e.into()),
     }
-
-    Ok(local_list)
-}
-
-// https://stackoverflow.com/questions/58006033/how-to-run-setup-code-before-any-tests-run-in-rust
-fn download_hash<U: AsRef<str>, H: AsRef<str>, P: AsRef<Path>>(
-    url: U,
-    hash: H,
-    path: P,
-) -> Result<(), BedErrorPlus> {
-    let path = path.as_ref();
-    if !path.exists() {
-        download(url, &path)?;
-        if !path.exists() {
-            return Err(BedError::DownloadedSampleFileNotSeen(path.display().to_string()).into());
-        }
-    }
-    let actual_hash = hash_file(&path)?;
-    if !actual_hash.eq(hash.as_ref()) {
-        return Err(BedError::DownloadedSampleFileWrongHash(
-            path.display().to_string(),
-            hash.as_ref().to_string(),
-            actual_hash,
-        )
-        .into());
-    }
-    Ok(())
-}
-
-fn hash_file<P: AsRef<Path>>(path: P) -> Result<String, BedErrorPlus> {
-    let mut sha256 = Sha256::new();
-    let mut file = fs::File::open(path)?;
-
-    std::io::copy(&mut file, &mut sha256)?;
-    let hash_bytes = sha256.finalize();
-
-    let hex_hash = base16ct::lower::encode_string(&hash_bytes);
-    Ok(hex_hash)
-}
-
-fn download<S: AsRef<str>, P: AsRef<Path>>(url: S, file_path: P) -> Result<(), BedErrorPlus> {
-    let req = ureq::get(url.as_ref()).call()?;
-    let mut reader = req.into_reader();
-    let mut file = File::create(&file_path)?;
-    std::io::copy(&mut reader, &mut file)?;
-    Ok(())
-}
-
-fn hash_registry() -> Result<HashMap<PathBuf, String>, BedErrorPlus> {
-    let mut hash_map = HashMap::new();
-    for line in SAMPLE_REGISTRY_CONTENTS.lines() {
-        let mut parts = line.split_whitespace();
-
-        let url = if let Some(url) = parts.next() {
-            PathBuf::from(url)
-        } else {
-            return Err(BedError::SampleRegistryProblem().into());
-        };
-        let hash = if let Some(hash) = parts.next() {
-            hash.to_string()
-        } else {
-            return Err(BedError::SampleRegistryProblem().into());
-        };
-        if parts.next().is_some() {
-            return Err(BedError::SampleRegistryProblem().into());
-        }
-
-        hash_map.insert(url, hash.to_owned());
-    }
-    Ok(hash_map)
-}
-
-fn cache_dir() -> Result<PathBuf, BedErrorPlus> {
-    // Return BED_READER_DATA_DIR is present
-    let cache_dir = if let Ok(cache_dir) = std::env::var("BED_READER_DATA_DIR") {
-        PathBuf::from(cache_dir)
-    } else if let Some(proj_dirs) = ProjectDirs::from("github.io", "fastlmm", "bed-reader") {
-        proj_dirs.cache_dir().to_owned()
-    } else {
-        return Err(BedError::CannotCreateCacheDir().into());
-    };
-    if !cache_dir.exists() {
-        fs::create_dir_all(&cache_dir)?;
-    }
-    Ok(cache_dir)
 }
