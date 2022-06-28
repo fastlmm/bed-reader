@@ -42,8 +42,6 @@ crate-type = ["cdylib", "rlib"]
 extension-module = ["pyo3"]
 
 [dependencies]
-fetch-hash = { path = "../fetch-hash", version = "0.1.1" } # cmk
-
 thiserror = "1.0.30"
 num-traits = "0.2.14"
 ndarray-npy = { version = "0.8.1", default-features = false }
@@ -56,6 +54,7 @@ byteorder = { version = "1.4.3", default-features = false }
 pyo3 = { version = "0.16.4", features = ["extension-module"], optional = true }
 dpc-pariter = "0.4.0"                                                           # //  pariter = "0.5.1"
 derive_builder = "0.11.1"
+fetch-hash = "0.1.1"
 
 [dev-dependencies]
 ndarray-rand = "0.14.0"
