@@ -102,7 +102,7 @@ mod python_module;
 mod tests;
 use core::fmt::Debug;
 use derive_builder::{Builder, UninitializedFieldError};
-use fetch_hash::{FetchHash, FetchHashError};
+use fetch_data::{FetchData, FetchDataError};
 use nd::ShapeBuilder;
 use ndarray as nd;
 use std::cmp::Ordering;
@@ -178,7 +178,7 @@ pub enum BedErrorPlus {
 
     #[allow(missing_docs)]
     #[error(transparent)]
-    FetchHash(#[from] FetchHashError),
+    FetchData(#[from] FetchDataError),
 }
 // https://docs.rs/thiserror/1.0.23/thiserror/
 
@@ -5564,30 +5564,6 @@ pub fn allclose<
         })
 }
 
-/// Return a path to a temporary directory.
-///
-/// # Example
-/// ```
-/// use ndarray as nd;
-/// use bed_reader::{tmp_path, WriteOptions};
-/// let output_folder = tmp_path()?;
-/// let output_file = output_folder.join("small.bed");
-/// let val = nd::array![
-///     [1.0, 0.0, f64::NAN, 0.0],
-///     [2.0, 0.0, f64::NAN, 2.0],
-///     [0.0, 1.0, 2.0, 0.0]
-/// ];
-/// WriteOptions::builder(output_file).write(&val)?;
-/// # use bed_reader::BedErrorPlus;
-/// # Ok::<(), BedErrorPlus>(())
-/// ```
-pub fn tmp_path() -> Result<PathBuf, BedErrorPlus> {
-    match fetch_hash::tmp_path() {
-        Ok(path) => Ok(path),
-        Err(e) => Err(e.into()),
-    }
-}
-
 impl WriteOptionsBuilder<i8> {
     /// The input ndarray will be i8.
     pub fn i8(self) -> Self {
@@ -6559,8 +6535,8 @@ fn matrix_subset_no_alloc<
     }
 }
 
-#[fetch_hash::ctor]
-static STATIC_FETCH_HASH: FetchHash = FetchHash::new(
+#[fetch_data::ctor]
+static STATIC_FETCH_DATA: FetchData = FetchData::new(
     include_str!("../bed_reader/tests/registry.txt"),
     "https://raw.githubusercontent.com/fastlmm/bed-reader/rustybed/bed_reader/tests/data/",
     "BED_READER_DATA_DIR",
@@ -6593,7 +6569,7 @@ pub fn sample_bed_file<P: AsRef<Path>>(bed_path: P) -> Result<PathBuf, BedErrorP
 /// The file will be in a directory determined by environment variable `BED_READER_DATA_DIR`.
 /// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
 pub fn sample_file<P: AsRef<Path>>(path: P) -> Result<PathBuf, BedErrorPlus> {
-    match STATIC_FETCH_HASH.fetch_file(path) {
+    match STATIC_FETCH_DATA.fetch_file(path) {
         Ok(path) => Ok(path),
         Err(e) => Err(e.into()),
     }
@@ -6609,7 +6585,7 @@ where
     I: IntoIterator<Item = P>,
     P: AsRef<Path>,
 {
-    match STATIC_FETCH_HASH.fetch_files(path_list) {
+    match STATIC_FETCH_DATA.fetch_files(path_list) {
         Ok(path) => Ok(path),
         Err(e) => Err(e.into()),
     }

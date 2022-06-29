@@ -52,7 +52,7 @@ dependencies = [
  "byteorder",
  "derive_builder",
  "dpc-pariter",
- "fetch-hash",
+ "fetch-data",
  "ndarray",
  "ndarray-npy",
  "ndarray-rand",
@@ -372,10 +372,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e88a8acf291dafb59c2d96e8f59828f3838bb1a70398823ade51a84de6a6deed"
 
 [[package]]
-name = "fetch-hash"
-version = "0.1.1"
+name = "fetch-data"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4dabe9e8514e7cdc350f423cf580cb320b8b489f5707e22552effb6e384ddfe1"
+checksum = "fb8994f3975932ec28ad807bd717a4efb3b5ee86fb9c17c62bdba2c2967e7bae"
 dependencies = [
  "base16ct",
  "ctor",

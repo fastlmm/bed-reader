@@ -18,8 +18,6 @@ use crate::sample_file;
 #[cfg(test)]
 use crate::sample_files;
 #[cfg(test)]
-use crate::tmp_path;
-#[cfg(test)]
 use crate::try_div_4;
 #[cfg(test)]
 use crate::Bed;
@@ -39,6 +37,8 @@ use crate::WriteOptions;
 use crate::{impute_and_zero_mean_snps, matrix_subset_no_alloc};
 #[cfg(test)]
 use crate::{internal_read_no_alloc, read_no_alloc, BedError, BedErrorPlus};
+#[cfg(test)]
+use fetch_data::TempDir;
 #[cfg(test)]
 use nd::s;
 #[cfg(test)]
@@ -285,7 +285,7 @@ fn writer() -> Result<(), BedErrorPlus> {
     let mut bed = Bed::new(&path).unwrap();
     let val = ReadOptions::builder().c().i8().read(&mut bed).unwrap();
 
-    let output_folder = tmp_path()?;
+    let output_folder = TempDir::default();
     let path2 = output_folder.join("rust_bed_reader_writer_test.bed");
 
     Bed::write(&val, &path2).unwrap();
@@ -738,7 +738,7 @@ fn zeros() -> Result<(), BedErrorPlus> {
     matrix_subset_no_alloc(&(in_val.view()), &[], &[], &mut out_val.view_mut()).unwrap();
 
     // Writing zero length vals
-    let output_folder = tmp_path()?;
+    let output_folder = TempDir::default();
     let path = output_folder.join("rust_bed_reader_writer_zeros.bed");
 
     Bed::write(&out_val01, &path).unwrap();
@@ -923,7 +923,7 @@ fn test_allclose() -> Result<(), BedErrorPlus> {
     let val1 = nd::arr2(&[[1.0, 2.0], [3.0, NAN]]);
     assert_eq_nan(&val1, &val2);
 
-    let output_folder = tmp_path()?;
+    let output_folder = TempDir::default();
     let output_file = output_folder.join("small.bed");
     let val = nd::array![
         [1.0, 0.0, f64::NAN, 0.0],
@@ -997,7 +997,6 @@ fn test_sample_file() -> Result<(), BedErrorPlus> {
 
     Ok(())
 }
-
 
 #[test]
 fn demo_path() -> Result<(), BedErrorPlus> {

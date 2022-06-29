@@ -3,7 +3,6 @@ use bed_reader::assert_eq_nan;
 use bed_reader::sample_bed_file;
 use bed_reader::sample_file;
 use bed_reader::sample_files;
-use bed_reader::tmp_path;
 use bed_reader::Bed;
 use bed_reader::BedError;
 use bed_reader::BedErrorPlus;
@@ -12,6 +11,7 @@ use bed_reader::MetadataFields;
 use bed_reader::ReadOptions;
 use bed_reader::SliceInfo1;
 use bed_reader::WriteOptions;
+use fetch_data::TempDir;
 use ndarray as nd;
 use ndarray::s;
 use ndarray_rand::{rand::prelude::StdRng, rand::SeedableRng, rand_distr::Uniform, RandomExt};
@@ -449,7 +449,7 @@ fn write_docs() -> Result<(), BedErrorPlus> {
     //     ... }
     //     >>> to_bed(output_file, val, properties=properties)
 
-    let output_folder = tmp_path()?;
+    let output_folder = TempDir::default();
 
     let output_file = output_folder.join("small.bed");
     let val = nd::array![
@@ -510,7 +510,7 @@ fn read_write() -> Result<(), BedErrorPlus> {
     // fam_file = tmp_path / "small.maf"
     // bim_file = tmp_path / "small.mib"
 
-    let temp_out = tmp_path()?;
+    let temp_out = TempDir::default();
     let output_file = temp_out.join("small.deb");
     let fam_file = temp_out.join("small.maf");
     let bim_file = temp_out.join("small.mib");
@@ -1420,7 +1420,7 @@ fn write_options_metadata() -> Result<(), BedErrorPlus> {
     // B: giving val (early, late)
     // C: setting iid_count
 
-    let output_folder = tmp_path()?;
+    let output_folder = TempDir::default();
     let output_file = output_folder.join("small.bed");
 
     // <none>
@@ -1559,7 +1559,7 @@ fn metadata_use() -> Result<(), BedErrorPlus> {
     let mut rng = StdRng::seed_from_u64(0);
     let val = nd::Array::random_using(shape, Uniform::from(-1..3), &mut rng);
 
-    let temp_out = tmp_path()?;
+    let temp_out = TempDir::default();
     let output_file = temp_out.join("random.bed");
     WriteOptions::builder(output_file)
         .metadata(&metadata)
@@ -1580,7 +1580,7 @@ fn metadata_same() -> Result<(), BedErrorPlus> {
         .sid((0..sid_count).map(|sid_index| format!("sid_{sid_index}")))
         .build()?;
 
-    let temp_out = tmp_path()?;
+    let temp_out = TempDir::default();
 
     for file_index in 0..file_count {
         let output_file = temp_out.join(format!("random{file_index}.bed"));
@@ -1837,7 +1837,7 @@ fn bed_builder_metadata() -> Result<(), BedErrorPlus> {
 
 #[test]
 fn write_options_builder_metadata() -> Result<(), BedErrorPlus> {
-    let output_folder = tmp_path()?;
+    let output_folder = TempDir::default();
 
     let output_file = output_folder.join("small_m.bed");
     let metadata = Metadata::builder()
@@ -1884,7 +1884,7 @@ fn metadata_builder() -> Result<(), BedErrorPlus> {
     let mut rng = StdRng::seed_from_u64(0);
     let val = nd::Array::random_using((3, 4), Uniform::from(-1..3), &mut rng);
 
-    let temp_out = tmp_path()?;
+    let temp_out = TempDir::default();
     let output_file = temp_out.join("random.bed");
     WriteOptions::builder(output_file)
         .metadata(&metadata)
@@ -1932,11 +1932,11 @@ fn metadata_fam_bim_write() -> Result<(), BedErrorPlus> {
         .build()?;
     let metadata_filled = metadata0.fill(3, 4)?;
 
-    let temp_out = tmp_path()?;
+    let temp_out = TempDir::default();
     let output_file = temp_out.join("no_bed.fam");
     metadata_filled.write_fam(output_file)?;
 
-    let temp_out = tmp_path()?;
+    let temp_out = TempDir::default();
     let output_file = temp_out.join("no_bed.bim");
     metadata_filled.write_bim(output_file)?;
 
@@ -1972,7 +1972,7 @@ fn read_options_properties() -> Result<(), BedErrorPlus> {
 
 #[test]
 fn write_options_properties() -> Result<(), BedErrorPlus> {
-    let output_folder = tmp_path()?;
+    let output_folder = TempDir::default();
     let output_file = output_folder.join("small.bed");
     let write_options = WriteOptions::builder(output_file)
         .f64()
@@ -2018,7 +2018,7 @@ fn write_options_properties() -> Result<(), BedErrorPlus> {
 
 #[test]
 fn write_options_builder() -> Result<(), BedErrorPlus> {
-    let output_folder = tmp_path()?;
+    let output_folder = TempDir::default();
     let output_file = output_folder.join("small.bed");
     let val = nd::array![[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]];
 
@@ -2026,7 +2026,7 @@ fn write_options_builder() -> Result<(), BedErrorPlus> {
         .num_threads(1)
         .write(&val)?;
 
-    let output_folder = tmp_path()?;
+    let output_folder = TempDir::default();
     let output_file = output_folder.join("small.deb");
     let val = nd::array![[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]];
 
@@ -2092,7 +2092,7 @@ fn bed_inconsistent_count() -> Result<(), BedErrorPlus> {
 // WriteOptions, file set iid and fid and metadata and iid_count, and check if error is caught
 #[test]
 fn write_options_inconsistent_count() -> Result<(), BedErrorPlus> {
-    let temp_out = tmp_path()?;
+    let temp_out = TempDir::default();
     let output_file = temp_out.join("small.bed");
 
     // WriteOptions: fid vs build
@@ -2176,7 +2176,7 @@ fn metadata_inconsistent_count() -> Result<(), BedErrorPlus> {
 
 #[test]
 fn write_options_examples() -> Result<(), BedErrorPlus> {
-    let output_folder = tmp_path()?;
+    let output_folder = TempDir::default();
     let output_file = output_folder.join("small.bed");
     let write_options = WriteOptions::builder(output_file)
         .i8()
