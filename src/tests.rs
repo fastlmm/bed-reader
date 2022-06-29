@@ -38,8 +38,6 @@ use crate::{impute_and_zero_mean_snps, matrix_subset_no_alloc};
 #[cfg(test)]
 use crate::{internal_read_no_alloc, read_no_alloc, BedError, BedErrorPlus};
 #[cfg(test)]
-use fetch_data::TempDir;
-#[cfg(test)]
 use nd::s;
 #[cfg(test)]
 use ndarray as nd;
@@ -65,6 +63,8 @@ use std::ops::RangeInclusive;
 use std::path::Path;
 #[cfg(test)]
 use std::path::PathBuf;
+#[cfg(test)]
+use temp_testdir::TempDir;
 
 #[test]
 fn best_int8() {

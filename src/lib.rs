@@ -1279,7 +1279,7 @@ fn file_aat_piece<T: Float + Sync + Send + AddAssign, P: AsRef<Path>>(
 /// Create a random file with the same metadata.
 /// ```
 /// use ndarray as nd;
-/// use bed_reader::{Bed, WriteOptions, tmp_path, sample_bed_file};
+/// use bed_reader::{Bed, WriteOptions, sample_bed_file};
 /// use ndarray_rand::{rand::prelude::StdRng, rand::SeedableRng, rand_distr::Uniform, RandomExt};
 ///
 /// let mut bed = Bed::new(sample_bed_file("small.bed")?)?;
@@ -1289,7 +1289,7 @@ fn file_aat_piece<T: Float + Sync + Send + AddAssign, P: AsRef<Path>>(
 /// let mut rng = StdRng::seed_from_u64(0);
 /// let val = nd::Array::random_using(shape, Uniform::from(-1..3), &mut rng);
 ///
-/// let temp_out = tmp_path()?;
+/// let temp_out = temp_testdir::TempDir::default();
 /// let output_file = temp_out.join("random.bed");
 /// WriteOptions::builder(output_file)
 ///     .metadata(&metadata)
@@ -2796,9 +2796,9 @@ impl Bed {
     /// In this example, write genotype data using default metadata.
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{Bed, WriteOptions, tmp_path};
+    /// use bed_reader::{Bed, WriteOptions};
     ///
-    /// let output_folder = tmp_path()?;
+    /// let output_folder = temp_testdir::TempDir::default();
     /// let output_file = output_folder.join("small.bed");
     ///
     /// let val = nd::array![[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]];
@@ -2826,7 +2826,7 @@ impl Bed {
     /// # Example
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{Bed, WriteOptions, tmp_path};
+    /// use bed_reader::{Bed, WriteOptions};
     ///
     /// let val = nd::array![
     ///     [1.0, 0.0, f64::NAN, 0.0],
@@ -2834,7 +2834,7 @@ impl Bed {
     ///     [0.0, 1.0, 2.0, 0.0]
     /// ];
     ///
-    /// let output_folder = tmp_path()?;
+    /// let output_folder = temp_testdir::TempDir::default();
     /// let output_file = output_folder.join("small.bed");
     /// let write_options = WriteOptions::builder(output_file)
     ///     .iid(["iid1", "iid2", "iid3"])
@@ -4368,9 +4368,9 @@ where
     /// In this example, all metadata is given one item at a time.
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{Bed, WriteOptions, tmp_path};
+    /// use bed_reader::{Bed, WriteOptions};
     ///
-    /// let output_folder = tmp_path()?;
+    /// let output_folder = temp_testdir::TempDir::default();
     /// let output_file = output_folder.join("small.bed");
     /// let val = nd::array![
     ///     [1.0, 0.0, f64::NAN, 0.0],
@@ -4399,8 +4399,8 @@ where
     /// it is an array of zeros, the default chromosome value.
     /// ```
     /// # use ndarray as nd;
-    /// # use bed_reader::{Bed, WriteOptions, tmp_path};
-    /// # let output_folder = tmp_path()?;
+    /// # use bed_reader::{Bed, WriteOptions};
+    /// # let output_folder = temp_testdir::TempDir::default();
     /// let output_file2 = output_folder.join("small2.bed");
     /// let val = nd::array![[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]];
     ///
@@ -4420,8 +4420,8 @@ where
     /// # Example
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{WriteOptions, tmp_path};
-    /// let output_folder = tmp_path()?;
+    /// use bed_reader::{WriteOptions};
+    /// let output_folder = temp_testdir::TempDir::default();
     /// let output_file = output_folder.join("small.bed");
     /// let write_options = WriteOptions::builder(output_file)
     ///     .f64()
@@ -4443,8 +4443,8 @@ where
     /// # Example
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{Bed, WriteOptions, tmp_path};
-    /// let output_folder = tmp_path()?;
+    /// use bed_reader::{Bed, WriteOptions};
+    /// let output_folder = temp_testdir::TempDir::default();
     /// let output_file = output_folder.join("small.bed");
     /// let write_options = WriteOptions::builder(output_file)
     ///     .f64()
@@ -4473,8 +4473,8 @@ where
     /// # Example
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{WriteOptions, tmp_path};
-    /// let output_folder = tmp_path()?;
+    /// use bed_reader::WriteOptions;
+    /// let output_folder = temp_testdir::TempDir::default();
     /// let output_file = output_folder.join("small.bed");
     /// let write_options = WriteOptions::builder(output_file)
     ///     .f64()
@@ -4496,8 +4496,8 @@ where
     /// # Example
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{WriteOptions, tmp_path};
-    /// let output_folder = tmp_path()?;
+    /// use bed_reader::WriteOptions;
+    /// let output_folder = temp_testdir::TempDir::default();
     /// let output_file = output_folder.join("small.bed");
     /// let write_options = WriteOptions::builder(output_file)
     ///     .f64()
@@ -4521,8 +4521,8 @@ where
     /// # Example
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{WriteOptions, tmp_path};
-    /// let output_folder = tmp_path()?;
+    /// use bed_reader::WriteOptions;
+    /// let output_folder = temp_testdir::TempDir::default();
     /// let output_file = output_folder.join("small.bed");
     /// let write_options = WriteOptions::builder(output_file)
     ///     .f64()
@@ -4544,8 +4544,8 @@ where
     /// # Example
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{WriteOptions, tmp_path};
-    /// let output_folder = tmp_path()?;
+    /// use bed_reader::WriteOptions;
+    /// let output_folder = temp_testdir::TempDir::default();
     /// let output_file = output_folder.join("small.bed");
     /// let write_options = WriteOptions::builder(output_file)
     ///     .f64()
@@ -4567,8 +4567,8 @@ where
     /// # Example
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{WriteOptions, tmp_path};
-    /// let output_folder = tmp_path()?;
+    /// use bed_reader::WriteOptions;
+    /// let output_folder = temp_testdir::TempDir::default();
     /// let output_file = output_folder.join("small.bed");
     /// let write_options = WriteOptions::builder(output_file)
     ///     .f64()
@@ -4590,8 +4590,8 @@ where
     /// # Example
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{Bed, WriteOptions, tmp_path};
-    /// let output_folder = tmp_path()?;
+    /// use bed_reader::{Bed, WriteOptions};
+    /// let output_folder = temp_testdir::TempDir::default();
     /// let output_file = output_folder.join("small.bed");
     /// let write_options = WriteOptions::builder(output_file)
     ///     .f64()
@@ -4620,8 +4620,8 @@ where
     /// # Example
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{WriteOptions, tmp_path};
-    /// let output_folder = tmp_path()?;
+    /// use bed_reader::WriteOptions;
+    /// let output_folder = temp_testdir::TempDir::default();
     /// let output_file = output_folder.join("small.bed");
     /// let write_options = WriteOptions::builder(output_file)
     ///     .f64()
@@ -4643,8 +4643,8 @@ where
     /// # Example
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{Bed, WriteOptions, tmp_path};
-    /// let output_folder = tmp_path()?;
+    /// use bed_reader::{Bed, WriteOptions};
+    /// let output_folder = temp_testdir::TempDir::default();
     /// let output_file = output_folder.join("small.bed");
     /// let write_options = WriteOptions::builder(output_file)
     ///     .f64()
@@ -4666,8 +4666,8 @@ where
     /// # Example
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{Bed, WriteOptions, tmp_path};
-    /// let output_folder = tmp_path()?;
+    /// use bed_reader::{Bed, WriteOptions};
+    /// let output_folder = temp_testdir::TempDir::default();
     /// let output_file = output_folder.join("small.bed");
     /// let write_options = WriteOptions::builder(output_file)
     ///     .f64()
@@ -4690,8 +4690,8 @@ where
     /// # Example
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{Bed, WriteOptions, tmp_path};
-    /// let output_folder = tmp_path()?;
+    /// use bed_reader::{Bed, WriteOptions};
+    /// let output_folder = temp_testdir::TempDir::default();
     /// let output_file = output_folder.join("small.bed");
     /// let write_options = WriteOptions::builder(output_file)
     ///     .f64()
@@ -4720,8 +4720,8 @@ where
     /// # Example
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{Bed, WriteOptions, tmp_path};
-    /// let output_folder = tmp_path()?;
+    /// use bed_reader::{Bed, WriteOptions};
+    /// let output_folder = temp_testdir::TempDir::default();
     /// let output_file = output_folder.join("small.bed");
     /// let write_options = WriteOptions::builder(output_file)
     ///     .f64()
@@ -4743,8 +4743,8 @@ where
     /// # Example
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{Bed, WriteOptions, tmp_path};
-    /// let output_folder = tmp_path()?;
+    /// use bed_reader::{Bed, WriteOptions};
+    /// let output_folder = temp_testdir::TempDir::default();
     /// let output_file = output_folder.join("small.bed");
     /// let write_options = WriteOptions::builder(output_file)
     ///     .f64()
@@ -4766,8 +4766,8 @@ where
     /// # Example
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{Bed, WriteOptions, tmp_path};
-    /// let output_folder = tmp_path()?;
+    /// use bed_reader::{Bed, WriteOptions};
+    /// let output_folder = temp_testdir::TempDir::default();
     /// let output_file = output_folder.join("small.bed");
     /// let write_options = WriteOptions::builder(output_file)
     ///     .f64()
@@ -4789,8 +4789,8 @@ where
     /// # Example
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{Bed, WriteOptions, tmp_path};
-    /// let output_folder = tmp_path()?;
+    /// use bed_reader::{Bed, WriteOptions};
+    /// let output_folder = temp_testdir::TempDir::default();
     /// let output_file = output_folder.join("small.bed");
     /// let write_options = WriteOptions::builder(output_file)
     ///     .f64()
@@ -4811,8 +4811,8 @@ where
     /// # Example
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{Bed, WriteOptions, tmp_path};
-    /// let output_folder = tmp_path()?;
+    /// use bed_reader::{Bed, WriteOptions};
+    /// let output_folder = temp_testdir::TempDir::default();
     /// let output_file = output_folder.join("small.bed");
     /// let write_options = WriteOptions::builder(output_file)
     ///     .f64()
@@ -4835,8 +4835,8 @@ where
     /// # Example
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{Bed, WriteOptions, tmp_path};
-    /// let output_folder = tmp_path()?;
+    /// use bed_reader::{Bed, WriteOptions};
+    /// let output_folder = temp_testdir::TempDir::default();
     /// let output_file = output_folder.join("small.bed");
     /// let write_options = WriteOptions::builder(output_file)
     ///     .f64()
@@ -4859,8 +4859,8 @@ where
     /// # Example
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{Bed, WriteOptions, tmp_path};
-    /// let output_folder = tmp_path()?;
+    /// use bed_reader::{Bed, WriteOptions};
+    /// let output_folder = temp_testdir::TempDir::default();
     /// let output_file = output_folder.join("small.bed");
     /// let write_options = WriteOptions::builder(output_file)
     ///     .f64()
@@ -4883,8 +4883,8 @@ where
     /// # Example
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{Bed, WriteOptions, tmp_path};
-    /// let output_folder = tmp_path()?;
+    /// use bed_reader::{Bed, WriteOptions};
+    /// let output_folder = temp_testdir::TempDir::default();
     /// let output_file = output_folder.join("small.bed");
     /// let write_options = WriteOptions::builder(output_file)
     ///     .i8()
@@ -4906,8 +4906,8 @@ where
     /// # Example
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{Bed, WriteOptions, tmp_path};
-    /// let output_folder = tmp_path()?;
+    /// use bed_reader::{Bed, WriteOptions};
+    /// let output_folder = temp_testdir::TempDir::default();
     /// let output_file = output_folder.join("small.bed");
     /// let write_options = WriteOptions::builder(output_file)
     ///     .i8()
@@ -4928,8 +4928,8 @@ where
     /// # Example
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{Bed, WriteOptions, tmp_path};
-    /// let output_folder = tmp_path()?;
+    /// use bed_reader::{Bed, WriteOptions};
+    /// let output_folder = temp_testdir::TempDir::default();
     /// let output_file = output_folder.join("small.bed");
     /// let write_options = WriteOptions::builder(output_file)
     ///     .i8()
@@ -4950,8 +4950,8 @@ where
     /// # Example
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{Bed, WriteOptions, tmp_path};
-    /// let output_folder = tmp_path()?;
+    /// use bed_reader::{Bed, WriteOptions};
+    /// let output_folder = temp_testdir::TempDir::default();
     /// let output_file = output_folder.join("small.bed");
     /// let write_options = WriteOptions::builder(output_file)
     ///     .i8()
@@ -4972,8 +4972,8 @@ where
     /// # Example
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{Bed, WriteOptions, tmp_path};
-    /// let output_folder = tmp_path()?;
+    /// use bed_reader::{Bed, WriteOptions};
+    /// let output_folder = temp_testdir::TempDir::default();
     /// let output_file = output_folder.join("small.bed");
     /// let write_options = WriteOptions::builder(output_file)
     ///     .i8()
@@ -5153,7 +5153,7 @@ where
     /// Create a random file with the same metadata.
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{Bed, WriteOptions, tmp_path, sample_bed_file};
+    /// use bed_reader::{Bed, WriteOptions, sample_bed_file};
     /// use ndarray_rand::{rand::prelude::StdRng, rand::SeedableRng, rand_distr::Uniform, RandomExt};
     ///
     /// let mut bed = Bed::new(sample_bed_file("small.bed")?)?;
@@ -5163,7 +5163,7 @@ where
     /// let mut rng = StdRng::seed_from_u64(0);
     /// let val = nd::Array::random_using(shape, Uniform::from(-1..3), &mut rng);
     ///
-    /// let temp_out = tmp_path()?;
+    /// let temp_out = temp_testdir::TempDir::default();
     /// let output_file = temp_out.join("random.bed");
     /// WriteOptions::builder(output_file)
     ///     .metadata(&metadata)
@@ -5192,8 +5192,8 @@ where
     /// Write .bed, .fam, and .bim files with non-standard names.
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{WriteOptions,tmp_path};
-    /// let output_folder = tmp_path()?;
+    /// use bed_reader::WriteOptions;
+    /// let output_folder = temp_testdir::TempDir::default();
     /// let output_file = output_folder.join("small.deb");
     /// let val = nd::array![[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]];
 
@@ -5218,8 +5218,8 @@ where
     /// Write .bed, .fam, and .bim files with non-standard names.
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{WriteOptions,tmp_path};
-    /// let output_folder = tmp_path()?;
+    /// use bed_reader::{WriteOptions};
+    /// let output_folder = temp_testdir::TempDir::default();
     /// let output_file = output_folder.join("small.deb");
     /// let val = nd::array![[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]];
 
@@ -5245,7 +5245,7 @@ where
     /// Create a random file with the same metadata.
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{Bed, WriteOptions, tmp_path, sample_bed_file};
+    /// use bed_reader::{Bed, WriteOptions, sample_bed_file};
     /// use ndarray_rand::{rand::prelude::StdRng, rand::SeedableRng, rand_distr::Uniform, RandomExt};
     ///
     /// let mut bed = Bed::new(sample_bed_file("small.bed")?)?;
@@ -5255,7 +5255,7 @@ where
     /// let mut rng = StdRng::seed_from_u64(0);
     /// let val = nd::Array::random_using(shape, Uniform::from(-1..3), &mut rng);
     ///
-    /// let temp_out = tmp_path()?;
+    /// let temp_out = temp_testdir::TempDir::default();
     /// let output_file = temp_out.join("random.bed");
     /// WriteOptions::builder(output_file)
     ///     .metadata(&metadata)
@@ -5304,8 +5304,8 @@ where
     /// Write using only one thread.
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{WriteOptions, tmp_path};
-    /// let output_folder = tmp_path()?;
+    /// use bed_reader::WriteOptions;
+    /// let output_folder = temp_testdir::TempDir::default();
     /// let output_file = output_folder.join("small.bed");
     /// let val = nd::array![[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]];
 
@@ -5325,8 +5325,8 @@ where
     /// # Example
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{Bed, WriteOptions, tmp_path};
-    /// let output_folder = tmp_path()?;
+    /// use bed_reader::{Bed, WriteOptions};
+    /// let output_folder = temp_testdir::TempDir::default();
     /// let output_file = output_folder.join("small.bed");
     /// let write_options = WriteOptions::builder(output_file)
     ///     .i8()
@@ -5348,8 +5348,8 @@ where
     /// # Example
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{Bed, WriteOptions, tmp_path};
-    /// let output_folder = tmp_path()?;
+    /// use bed_reader::{Bed, WriteOptions};
+    /// let output_folder = temp_testdir::TempDir::default();
     /// let output_file = output_folder.join("small.bed");
     /// let write_options = WriteOptions::builder(output_file)
     ///     .i8()
@@ -5376,9 +5376,9 @@ where
     /// default values. Then use it to write a .bed file.
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{WriteOptions, tmp_path, Bed};
+    /// use bed_reader::{WriteOptions, Bed};
     ///
-    /// let output_folder = tmp_path()?;
+    /// let output_folder = temp_testdir::TempDir::default();
     /// let output_file = output_folder.join("small.bed");
     /// let write_options = WriteOptions::builder(output_file)
     ///     .f64()
@@ -5862,7 +5862,7 @@ impl Metadata {
     /// Create a random file with the metadata.
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{Metadata, WriteOptions, tmp_path};
+    /// use bed_reader::{Metadata, WriteOptions};
     /// use ndarray_rand::{rand::prelude::StdRng, rand::SeedableRng, rand_distr::Uniform, RandomExt};
     ///
     /// let metadata = Metadata::builder()
@@ -5872,7 +5872,7 @@ impl Metadata {
     /// let mut rng = StdRng::seed_from_u64(0);
     /// let val = nd::Array::random_using((3, 4), Uniform::from(-1..3), &mut rng);
 
-    /// let temp_out = tmp_path()?;
+    /// let temp_out = temp_testdir::TempDir::default();
     /// let output_file = temp_out.join("random.bed");
     /// WriteOptions::builder(output_file)
     ///     .metadata(&metadata)
@@ -6220,7 +6220,7 @@ impl Metadata {
     ///```
     /// use ndarray as nd;
     /// use std::collections::HashSet;
-    /// use bed_reader::{Metadata, tmp_path};
+    /// use bed_reader::Metadata;
     ///
     /// let metadata0 = Metadata::builder()
     ///     .iid(["i1", "i2", "i3"])
@@ -6228,7 +6228,7 @@ impl Metadata {
     ///     .build()?;
     /// let metadata_filled = metadata0.fill(3, 4)?;
 
-    /// let temp_out = tmp_path()?;
+    /// let temp_out = temp_testdir::TempDir::default();
     /// let output_file = temp_out.join("no_bed.fam");
     /// metadata_filled.write_fam(output_file)?;
     /// # use bed_reader::BedErrorPlus;
@@ -6281,7 +6281,7 @@ impl Metadata {
     ///```
     /// use ndarray as nd;
     /// use std::collections::HashSet;
-    /// use bed_reader::{Metadata, tmp_path};
+    /// use bed_reader::Metadata;
     ///
     /// let metadata0 = Metadata::builder()
     ///     .iid(["i1", "i2", "i3"])
@@ -6289,7 +6289,7 @@ impl Metadata {
     ///     .build()?;
     /// let metadata_filled = metadata0.fill(3, 4)?;
 
-    /// let temp_out = tmp_path()?;
+    /// let temp_out = temp_testdir::TempDir::default();
     /// let output_file = temp_out.join("no_bed.bim");
     /// metadata_filled.write_bim(output_file)?;
     /// # use bed_reader::BedErrorPlus;

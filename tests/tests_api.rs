@@ -11,10 +11,10 @@ use bed_reader::MetadataFields;
 use bed_reader::ReadOptions;
 use bed_reader::SliceInfo1;
 use bed_reader::WriteOptions;
-use fetch_data::TempDir;
 use ndarray as nd;
 use ndarray::s;
 use ndarray_rand::{rand::prelude::StdRng, rand::SeedableRng, rand_distr::Uniform, RandomExt};
+use temp_testdir::TempDir;
 
 #[test]
 fn rusty_bed1() -> Result<(), BedErrorPlus> {
