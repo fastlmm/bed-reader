@@ -20,8 +20,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest] # cmk , windows-latest, macOS-latest]
-        python-version: [3.7] # cmk, 3.8, 3.9, "3.10"]
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+        python-version: [3.7, 3.8, 3.9, "3.10"]
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout
@@ -59,9 +59,8 @@ jobs:
     - name: Install Maturin
       run: python -m pip install --upgrade pip maturin
 
-    # cmk
-    # - name: Test Rust
-    #   run: cargo test --verbose --no-default-features
+    - name: Test Rust
+      run: cargo test --verbose --no-default-features
 
     - name: Build wheel with Maturin - Linux
       if: startsWith(matrix.os, 'ubuntu')
