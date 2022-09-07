@@ -20,8 +20,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest] # [ubuntu-latest, windows-latest, macOS-latest]
-        python-version: ["3.10"] # [3.7, 3.8, 3.9, "3.10"]
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+        python-version: [3.7, 3.8, 3.9, "3.10"]
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout
@@ -61,7 +61,6 @@ jobs:
     - name: Test Rust
       run: cargo test --verbose --no-default-features
 
-
     - name: Build wheel with Maturin - Linux
       if: startsWith(matrix.os, 'ubuntu')
       run: |
@@ -80,7 +79,7 @@ jobs:
         cp target/wheels/*.whl .
       shell: bash
 
-    - name: Test Python
+    - name: Test Python - Non-Windows
       if: runner.os != 'Windows'
       run: |
         cd testdir

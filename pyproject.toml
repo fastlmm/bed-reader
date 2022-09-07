@@ -10,6 +10,11 @@ classifiers = [
     "Programming Language :: Python",
 ]
 
+[project.urls]
+Homepage = "https://fastlmm.github.io"
+"Source Code" = "https://github.com/fastlmm/bed-reader"
+"Bug Tracker" = "https://github.com/fastlmm/bed-reader/issues"
+Documentation = "http://fastlmm.github.io/bed-reader"
 
 [build-system]
 requires = ["maturin==0.12.5"]
@@ -27,11 +32,6 @@ line-length = 88
 cargo-extra-args = "--features extension-module"
 requires-python = ">=3.7"
 requires-dist = ["numpy>=1.13.3", "pandas>=0.25.1", "pooch>=1.1.1"]
-Homepage = "https://fastlmm.github.io"
-"Source Code" = "https://github.com/fastlmm/bed-reader"
-"Bug Tracker" = "https://github.com/fastlmm/bed-reader/issues"
-Documentation = "http://fastlmm.github.io/bed-reader"
-
 
 [build]
 # https://nnethercote.github.io/perf-book/compile-times.html
