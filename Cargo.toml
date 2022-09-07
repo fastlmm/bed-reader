@@ -15,6 +15,10 @@ categories = ["science"]
 edition = "2021"
 homepage = "https://fastlmm.github.io/"
 
+[package.metadata.maturin]
+requires-python = ">=3.7"
+requires-dist = ["numpy>=1.13.3", "pandas>=0.25.1", "pooch>=1.1.1"]
+
 [lib]
 name = "bed_reader"
 crate-type = ["cdylib", "rlib"]
