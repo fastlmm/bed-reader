@@ -15,31 +15,15 @@ categories = ["science"]
 edition = "2021"
 homepage = "https://fastlmm.github.io/"
 
-[package.metadata.maturin]
-requires-python = ">=3.7"
-classifiers = [
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python",
-]
-requires-dist = ["numpy>=1.13.3", "pandas>=0.25.1", "pooch>=1.1.1"]
-
-[package.metadata.maturin.project-url]
-Homepage = "https://fastlmm.github.io"
-"Source Code" = "https://github.com/fastlmm/bed-reader"
-"Bug Tracker" = "https://github.com/fastlmm/bed-reader/issues"
-Documentation = "http://fastlmm.github.io/bed-reader"
-
 [lib]
 name = "bed_reader"
 crate-type = ["cdylib", "rlib"]
 
 [features]
 # https://github.com/PyO3/pyo3/discussions/2271
-extension-module = ["pyo3"]
+# https://pyo3.rs/latest/faq.html#i-cant-run-cargo-test-or-i-cant-build-in-a-cargo-workspace-im-having-linker-issues-like-symbol-not-found-or-undefined-reference-to-_pyexc_systemerror
+extension-module = ["pyo3/extension-module"]
+default = ["extension-module"]
 
 [dependencies]
 thiserror = "1.0.30"
