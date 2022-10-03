@@ -334,8 +334,9 @@ fn create_pool(num_threads: usize) -> Result<rayon::ThreadPool, BedErrorPlus> {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn read_no_alloc<TVal: BedVal, P: AsRef<Path>>(
-    path: P,
+#[anyinput]
+fn read_no_alloc<TVal: BedVal>(
+    path: AnyPath,
     iid_count: usize,
     sid_count: usize,
     is_a1_counted: bool,
@@ -345,8 +346,6 @@ fn read_no_alloc<TVal: BedVal, P: AsRef<Path>>(
     num_threads: usize,
     val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
 ) -> Result<(), BedErrorPlus> {
-    let path = path.as_ref(); // Needed for multithreading
-
     create_pool(num_threads)?.install(|| {
         let (buf_reader, bytes_vector) = open_and_check(&path)?;
 
@@ -383,11 +382,13 @@ fn read_no_alloc<TVal: BedVal, P: AsRef<Path>>(
     Ok(())
 }
 
-fn path_ref_to_string<P: AsRef<Path>>(path: P) -> String {
-    PathBuf::from(path.as_ref()).display().to_string()
+#[anyinput]
+fn path_ref_to_string(path: AnyPath) -> String {
+    PathBuf::from(path).display().to_string()
 }
 
-fn open_and_check<P: AsRef<Path>>(path: P) -> Result<(BufReader<File>, Vec<u8>), BedErrorPlus> {
+#[anyinput]
+fn open_and_check(path: AnyPath) -> Result<(BufReader<File>, Vec<u8>), BedErrorPlus> {
     let mut buf_reader = BufReader::new(File::open(&path)?);
     let mut bytes_vector: Vec<u8> = vec![0; CB_HEADER_USIZE];
     buf_reader.read_exact(&mut bytes_vector)?;
@@ -608,8 +609,9 @@ fn set_up_two_bits_to_value<TVal: From<i8>>(count_a1: bool, missing_value: TVal)
 
 // Thanks to Dawid for his dpc-pariter library that makes this function scale.
 // https://dpc.pw/adding-parallelism-to-your-rust-iterators
-fn write_val<S, TVal, P>(
-    path: P,
+#[anyinput]
+fn write_val<S, TVal>(
+    path: AnyPath,
     val: &nd::ArrayBase<S, nd::Ix2>,
     is_a1_counted: bool,
     missing: TVal,
@@ -618,7 +620,6 @@ fn write_val<S, TVal, P>(
 where
     S: nd::Data<Elem = TVal>,
     TVal: BedVal,
-    P: AsRef<Path>,
 {
     let (iid_count, sid_count) = val.dim();
 
@@ -628,7 +629,7 @@ where
     // We create and write to a file.
     // If there is an error, we will delete it.
     if let Err(e) = write_internal(
-        &path,
+        path,
         iid_count_div4,
         val,
         is_a1_counted,
@@ -644,8 +645,9 @@ where
 }
 
 // https://www.reddit.com/r/rust/comments/mo4s8e/difference_between_reference_and_view_in_ndarray/
-fn write_internal<S, TVal, P>(
-    path: P,
+#[anyinput]
+fn write_internal<S, TVal>(
+    path: AnyPath,
     iid_count_div4: usize,
     //val: &nd::ArrayView2<'_, TVal>,
     val: &nd::ArrayBase<S, nd::Ix2>,
@@ -656,9 +658,7 @@ fn write_internal<S, TVal, P>(
 where
     S: nd::Data<Elem = TVal>,
     TVal: BedVal,
-    P: AsRef<Path>,
 {
-    let path = path.as_ref(); // Needed for multithreading
     let mut writer = BufWriter::new(File::create(&path)?);
     writer.write_all(&[BED_FILE_MAGIC1, BED_FILE_MAGIC2, 0x01])?;
 
@@ -709,7 +709,8 @@ where
     .map_err(|_e| BedError::PanickedThread())?
 }
 
-fn count_lines<P: AsRef<Path>>(path: P) -> Result<usize, BedErrorPlus> {
+#[anyinput]
+fn count_lines(path: AnyPath) -> Result<usize, BedErrorPlus> {
     let file = File::open(path)?;
     let reader = BufReader::new(file);
     let count = reader.lines().count();
@@ -1450,9 +1451,10 @@ pub enum MetadataFields {
 }
 
 impl BedBuilder {
-    fn new<P: AsRef<Path>>(path: P) -> Self {
+    #[anyinput]
+    fn new(path: AnyPath) -> Self {
         Self {
-            path: Some(path.as_ref().to_owned()),
+            path: Some(path.to_owned()),
             fam_path: None,
             bim_path: None,
 
@@ -2044,7 +2046,8 @@ impl Bed {
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     ///
-    pub fn builder<P: AsRef<Path>>(path: P) -> BedBuilder {
+    #[anyinput]
+    pub fn builder(path: AnyPath) -> BedBuilder {
         BedBuilder::new(path)
     }
 
@@ -2101,7 +2104,8 @@ impl Bed {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
-    pub fn new<P: AsRef<Path>>(path: P) -> Result<Self, BedErrorPlus> {
+    #[anyinput]
+    pub fn new(path: AnyPath) -> Result<Self, BedErrorPlus> {
         Bed::builder(path).build()
     }
 
@@ -4426,7 +4430,8 @@ where
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
-    pub fn builder<P: AsRef<Path>>(path: P) -> WriteOptionsBuilder<TVal> {
+    #[anyinput]
+    pub fn builder(path: AnyPath) -> WriteOptionsBuilder<TVal> {
         WriteOptionsBuilder::new(path)
     }
 
@@ -5454,9 +5459,10 @@ where
         Ok(write_options)
     }
 
-    fn new<P: AsRef<Path>>(path: P) -> Self {
+    #[anyinput]
+    fn new(path: AnyPath) -> Self {
         Self {
-            path: Some(path.as_ref().to_owned()),
+            path: Some(path.to_owned()),
             fam_path: None,
             bim_path: None,
 
@@ -6625,8 +6631,9 @@ pub fn sample_bed_file<P: AsRef<Path>>(bed_path: P) -> Result<PathBuf, BedErrorP
 /// A SHA256 hash is used to verify that the file is correct.
 /// The file will be in a directory determined by environment variable `BED_READER_DATA_DIR`.
 /// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
-pub fn sample_file<P: AsRef<Path>>(path: P) -> Result<PathBuf, BedErrorPlus> {
-    let path_list = vec![path.as_ref().to_path_buf()];
+#[anyinput]
+pub fn sample_file(path: AnyPath) -> Result<PathBuf, BedErrorPlus> {
+    let path_list = vec![path.to_path_buf()];
     let vec = sample_files(path_list)?;
     Ok(vec[0].clone())
 }
@@ -6681,12 +6688,12 @@ where
 }
 
 // https://stackoverflow.com/questions/58006033/how-to-run-setup-code-before-any-tests-run-in-rust
-fn download_hash<U: AsRef<str>, H: AsRef<str>, P: AsRef<Path>>(
+#[anyinput]
+fn download_hash<U: AsRef<str>, H: AsRef<str>>(
     url: U,
     hash: H,
-    path: P,
+    path: AnyPath,
 ) -> Result<(), BedErrorPlus> {
-    let path = path.as_ref();
     if !path.exists() {
         download(url, &path)?;
         if !path.exists() {
@@ -6705,7 +6712,8 @@ fn download_hash<U: AsRef<str>, H: AsRef<str>, P: AsRef<Path>>(
     Ok(())
 }
 
-fn hash_file<P: AsRef<Path>>(path: P) -> Result<String, BedErrorPlus> {
+#[anyinput]
+fn hash_file(path: AnyPath) -> Result<String, BedErrorPlus> {
     let mut sha256 = Sha256::new();
     let mut file = fs::File::open(path)?;
 
