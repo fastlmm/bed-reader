@@ -1948,7 +1948,7 @@ impl BedBuilder {
 fn to_metadata_path(
     bed_path: AnyPath,
     metadata_path: &Option<PathBuf>,
-    extension: &str,
+    extension: AnyString,
 ) -> PathBuf {
     if let Some(metadata_path) = metadata_path {
         metadata_path.to_owned()
@@ -5652,6 +5652,7 @@ impl WriteOptionsBuilder<f64> {
         self
     }
 }
+
 fn check_counts(
     count_vec: Vec<Option<usize>>,
     option_xid_count: &mut Option<usize>,

@@ -1069,6 +1069,7 @@ fn demo_iter() -> Result<(), BedErrorPlus> {
 
 #[test]
 fn demo_index() -> Result<(), BedErrorPlus> {
+    #[allow(clippy::let_unit_value)]
     let index: () = ();
     let _ = ReadOptions::builder().iid_index(index).i8().build()?;
 
@@ -1167,6 +1168,7 @@ fn use_index() -> Result<(), BedErrorPlus> {
         Ok(len)
     }
 
+    #[allow(clippy::let_unit_value)]
     let index: () = ();
     let _ = len100(index)?;
 

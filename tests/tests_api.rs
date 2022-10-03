@@ -1078,6 +1078,7 @@ fn index_doc() -> Result<(), BedErrorPlus> {
 #[test]
 fn index_options() -> Result<(), BedErrorPlus> {
     let mut bed = Bed::new(sample_bed_file("some_missing.bed")?)?;
+    #[allow(clippy::let_unit_value)]
     let index: () = ();
 
     let all = ReadOptions::builder()
