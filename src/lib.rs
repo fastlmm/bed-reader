@@ -468,9 +468,10 @@ fn try_div_4<T: Max + TryFrom<usize> + Sub<Output = T> + Div<Output = T> + Ord>(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn internal_read_no_alloc<TVal: BedVal, P: AsRef<Path>>(
+#[anyinput]
+fn internal_read_no_alloc<TVal: BedVal>(
     mut buf_reader: BufReader<File>,
-    path: P,
+    path: AnyPath,
     in_iid_count: usize,
     in_sid_count: usize,
     is_a1_counted: bool,
@@ -972,8 +973,9 @@ fn _process_all_iids<
 }
 
 #[allow(dead_code)]
-fn file_b_less_aatbx<P: AsRef<Path>>(
-    a_filename: P,
+#[anyinput]
+fn file_b_less_aatbx(
+    a_filename: AnyPath,
     offset: u64,
     iid_count: usize,
     b1: &mut nd::ArrayViewMut2<'_, f64>,
@@ -1097,8 +1099,9 @@ for output in output_list:
 // Makes only one pass through the file.
 #[allow(clippy::too_many_arguments)]
 #[allow(dead_code)]
-fn file_ata_piece<T: Float + Send + Sync + AddAssign, P: AsRef<Path>>(
-    path: P,
+#[anyinput]
+fn file_ata_piece<T: Float + Send + Sync + AddAssign>(
+    path: AnyPath,
     offset: u64,
     row_count: usize,
     col_count: usize,
@@ -1127,8 +1130,9 @@ fn file_ata_piece<T: Float + Send + Sync + AddAssign, P: AsRef<Path>>(
 }
 
 #[allow(dead_code)]
-fn _file_ata_piece_internal<T: Float + Send + Sync + AddAssign, P: AsRef<Path>>(
-    path: P,
+#[anyinput]
+fn _file_ata_piece_internal<T: Float + Send + Sync + AddAssign>(
+    path: AnyPath,
     offset: u64,
     row_count: usize,
     col_start: usize,
@@ -1209,8 +1213,9 @@ fn col_product<T: Float + AddAssign>(col_i: &[T], col_j: &[T]) -> T {
 // Makes only one pass through the file.
 #[allow(clippy::too_many_arguments)]
 #[allow(dead_code)]
-fn file_aat_piece<T: Float + Sync + Send + AddAssign, P: AsRef<Path>>(
-    path: P,
+#[anyinput]
+fn file_aat_piece<T: Float + Sync + Send + AddAssign>(
+    path: AnyPath,
     offset: u64,
     row_count: usize,
     col_count: usize,
@@ -1611,7 +1616,8 @@ impl BedBuilder {
     /// By default, if centimorgan position values are needed and haven't already been found,
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn cm_position<I: IntoIterator<Item = f32>>(mut self, cm_position: I) -> Self {
+    #[anyinput]
+    pub fn cm_position(mut self, cm_position: AnyIter<f32>) -> Self {
         // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_cm_position(cm_position);
         self
@@ -1622,7 +1628,8 @@ impl BedBuilder {
     /// By default, if base-pair position values are needed and haven't already been found,
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn bp_position<I: IntoIterator<Item = i32>>(mut self, bp_position: I) -> Self {
+    #[anyinput]
+    pub fn bp_position(mut self, bp_position: AnyIter<i32>) -> Self {
         // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_bp_position(bp_position);
         self
@@ -1702,8 +1709,9 @@ impl BedBuilder {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
-    pub fn fam_path<P: AsRef<Path>>(mut self, path: P) -> Self {
-        self.fam_path = Some(Some(path.as_ref().to_owned()));
+    #[anyinput]
+    pub fn fam_path(mut self, path: AnyPath) -> Self {
+        self.fam_path = Some(Some(path.to_owned()));
         self
     }
 
@@ -1726,8 +1734,9 @@ impl BedBuilder {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
-    pub fn bim_path<P: AsRef<Path>>(mut self, path: P) -> Self {
-        self.bim_path = Some(Some(path.as_ref().to_owned()));
+    #[anyinput]
+    pub fn bim_path(mut self, path: AnyPath) -> Self {
+        self.bim_path = Some(Some(path.to_owned()));
         self
     }
 
@@ -1935,15 +1944,16 @@ impl BedBuilder {
     }
 }
 
-fn to_metadata_path<P: AsRef<Path>>(
-    bed_path: P,
+#[anyinput]
+fn to_metadata_path(
+    bed_path: AnyPath,
     metadata_path: &Option<PathBuf>,
     extension: &str,
 ) -> PathBuf {
     if let Some(metadata_path) = metadata_path {
         metadata_path.to_owned()
     } else {
-        bed_path.as_ref().with_extension(extension)
+        bed_path.with_extension(extension)
     }
 }
 
@@ -5236,8 +5246,9 @@ where
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
-    pub fn fam_path<P: AsRef<Path>>(mut self, path: P) -> Self {
-        self.fam_path = Some(path.as_ref().to_owned());
+    #[anyinput]
+    pub fn fam_path(mut self, path: AnyPath) -> Self {
+        self.fam_path = Some(path.to_owned());
         self
     }
 
@@ -5262,8 +5273,9 @@ where
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
-    pub fn bim_path<P: AsRef<Path>>(mut self, path: P) -> Self {
-        self.bim_path = Some(path.as_ref().to_owned());
+    #[anyinput]
+    pub fn bim_path(mut self, path: AnyPath) -> Self {
+        self.bim_path = Some(path.to_owned());
         self
     }
 
@@ -5744,7 +5756,7 @@ impl MetadataBuilder {
 
     /// Override the sex values.
     #[anyinput]
-    pub fn sex<I: IntoIterator<Item = i32>>(&mut self, sex: AnyIter<i32>) -> &mut Self {
+    pub fn sex(&mut self, sex: AnyIter<i32>) -> &mut Self {
         self.sex = Some(Some(Rc::new(sex.collect())));
         self
     }
@@ -6056,9 +6068,10 @@ impl Metadata {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
-    pub fn read_fam<P: AsRef<Path>>(
+    #[anyinput]
+    pub fn read_fam(
         &self,
-        path: P,
+        path: AnyPath,
         skip_set: &HashSet<MetadataFields>,
     ) -> Result<(Metadata, usize), BedErrorPlus> {
         let mut field_vec: Vec<usize> = Vec::new();
@@ -6141,9 +6154,10 @@ impl Metadata {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
-    pub fn read_bim<P: AsRef<Path>>(
+    #[anyinput]
+    pub fn read_bim(
         &self,
-        path: P,
+        path: AnyPath,
         skip_set: &HashSet<MetadataFields>,
     ) -> Result<(Metadata, usize), BedErrorPlus> {
         let mut field_vec: Vec<usize> = Vec::new();
@@ -6206,11 +6220,12 @@ impl Metadata {
         Ok((clone, count))
     }
 
-    fn read_fam_or_bim<P: AsRef<Path>>(
+    #[anyinput]
+    fn read_fam_or_bim(
         &self,
         field_vec: &[usize],
         is_split_whitespace: bool,
-        path: P,
+        path: AnyPath,
     ) -> Result<(Vec<Vec<String>>, usize), BedErrorPlus> {
         let mut vec_of_vec = vec![vec![]; field_vec.len()];
 
@@ -6292,7 +6307,8 @@ impl Metadata {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
-    pub fn write_fam<P: AsRef<Path>>(&self, path: P) -> Result<(), BedErrorPlus> {
+    #[anyinput]
+    pub fn write_fam(&self, path: AnyPath) -> Result<(), BedErrorPlus> {
         let file = File::create(path)?;
         let mut writer = BufWriter::new(file);
         let mut result: Result<(), BedErrorPlus> = Ok(());
@@ -6353,7 +6369,8 @@ impl Metadata {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
-    pub fn write_bim<P: AsRef<Path>>(&self, path: P) -> Result<(), BedErrorPlus> {
+    #[anyinput]
+    pub fn write_bim(&self, path: AnyPath) -> Result<(), BedErrorPlus> {
         let file = File::create(path)?;
         let mut writer = BufWriter::new(file);
         let mut result: Result<(), BedErrorPlus> = Ok(());
@@ -6614,10 +6631,11 @@ fn new_samples() -> Result<Samples, BedErrorPlus> {
 /// SHA256 hashes are used to verify that the files are correct.
 /// The files will be in a directory determined by environment variable `BED_READER_DATA_DIR`.
 /// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
-pub fn sample_bed_file<P: AsRef<Path>>(bed_path: P) -> Result<PathBuf, BedErrorPlus> {
+#[anyinput]
+pub fn sample_bed_file(bed_path: AnyPath) -> Result<PathBuf, BedErrorPlus> {
     let mut path_list: Vec<PathBuf> = Vec::new();
     for ext in ["bed", "bim", "fam"].iter() {
-        let file_path = bed_path.as_ref().with_extension(ext);
+        let file_path = bed_path.with_extension(ext);
         path_list.push(file_path);
     }
 
@@ -6643,10 +6661,9 @@ pub fn sample_file(path: AnyPath) -> Result<PathBuf, BedErrorPlus> {
 /// SHA256 hashes are used to verify that the files are correct.
 /// The files will be in a directory determined by environment variable `BED_READER_DATA_DIR`.
 /// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
-pub fn sample_files<I, P>(path_list: I) -> Result<Vec<PathBuf>, BedErrorPlus>
+#[anyinput]
+pub fn sample_files(path_list: AnyIter<AnyPath>) -> Result<Vec<PathBuf>, BedErrorPlus>
 where
-    I: IntoIterator<Item = P>,
-    P: AsRef<Path>,
 {
     let lock = match STATIC_SAMPLES.lock() {
         Ok(lock) => lock,
@@ -6689,11 +6706,7 @@ where
 
 // https://stackoverflow.com/questions/58006033/how-to-run-setup-code-before-any-tests-run-in-rust
 #[anyinput]
-fn download_hash<U: AsRef<str>, H: AsRef<str>>(
-    url: U,
-    hash: H,
-    path: AnyPath,
-) -> Result<(), BedErrorPlus> {
+fn download_hash(url: AnyString, hash: AnyString, path: AnyPath) -> Result<(), BedErrorPlus> {
     if !path.exists() {
         download(url, &path)?;
         if !path.exists() {
@@ -6701,10 +6714,10 @@ fn download_hash<U: AsRef<str>, H: AsRef<str>>(
         }
     }
     let actual_hash = hash_file(&path)?;
-    if !actual_hash.eq(hash.as_ref()) {
+    if !actual_hash.eq(hash) {
         return Err(BedError::DownloadedSampleFileWrongHash(
             path.display().to_string(),
-            hash.as_ref().to_string(),
+            hash.to_string(),
             actual_hash,
         )
         .into());
@@ -6724,8 +6737,9 @@ fn hash_file(path: AnyPath) -> Result<String, BedErrorPlus> {
     Ok(hex_hash)
 }
 
-fn download<S: AsRef<str>, P: AsRef<Path>>(url: S, file_path: P) -> Result<(), BedErrorPlus> {
-    let req = ureq::get(url.as_ref()).call()?;
+#[anyinput]
+fn download(url: AnyString, file_path: AnyPath) -> Result<(), BedErrorPlus> {
+    let req = ureq::get(url).call()?;
     let mut reader = req.into_reader();
     let mut file = File::create(&file_path)?;
     std::io::copy(&mut reader, &mut file)?;
