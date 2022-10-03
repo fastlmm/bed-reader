@@ -100,6 +100,7 @@
 
 mod python_module;
 mod tests;
+use anyinput_derive::anyinput;
 use core::fmt::Debug;
 use derive_builder::{Builder, UninitializedFieldError};
 use nd::ShapeBuilder;
@@ -1487,7 +1488,8 @@ impl BedBuilder {
     /// By default, if fid values are needed and haven't already been found,
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn fid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, fid: I) -> Self {
+    #[anyinput]
+    pub fn fid(mut self, fid: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_fid(fid);
         self
@@ -1511,7 +1513,8 @@ impl BedBuilder {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
-    pub fn iid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, iid: I) -> Self {
+    #[anyinput]
+    pub fn iid(mut self, iid: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_iid(iid);
         self
@@ -1522,7 +1525,8 @@ impl BedBuilder {
     /// By default, if father values are needed and haven't already been found,
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to gi&ve different values.
-    pub fn father<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, father: I) -> Self {
+    #[anyinput]
+    pub fn father(mut self, father: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_father(father);
         self
@@ -1533,7 +1537,8 @@ impl BedBuilder {
     /// By default, if mother values are needed and haven't already been found,
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn mother<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, mother: I) -> Self {
+    #[anyinput]
+    pub fn mother(mut self, mother: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_mother(mother);
         self
@@ -1544,7 +1549,8 @@ impl BedBuilder {
     /// By default, if sex values are needed and haven't already been found,
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn sex<I: IntoIterator<Item = i32>>(mut self, sex: I) -> Self {
+    #[anyinput]
+    pub fn sex(mut self, sex: AnyIter<i32>) -> Self {
         // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_sex(sex);
         self
@@ -1556,7 +1562,8 @@ impl BedBuilder {
     /// By default, if phenotype values are needed and haven't already been found,
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn pheno<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, pheno: I) -> Self {
+    #[anyinput]
+    pub fn pheno(mut self, pheno: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_pheno(pheno);
         self
@@ -1567,7 +1574,8 @@ impl BedBuilder {
     /// By default, if chromosome values are needed and haven't already been found,
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn chromosome<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, chromosome: I) -> Self {
+    #[anyinput]
+    pub fn chromosome(mut self, chromosome: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_chromosome(chromosome);
         self
@@ -1590,7 +1598,8 @@ impl BedBuilder {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
-    pub fn sid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, sid: I) -> Self {
+    #[anyinput]
+    pub fn sid(mut self, sid: AnyIter<AnyString>) -> Self {
         self.metadata.as_mut().unwrap().set_sid(sid);
         self
     }
@@ -1622,7 +1631,8 @@ impl BedBuilder {
     /// By default, if allele 1 values are needed and haven't already been found,
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn allele_1<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, allele_1: I) -> Self {
+    #[anyinput]
+    pub fn allele_1(mut self, allele_1: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_allele_1(allele_1);
         self
@@ -1633,7 +1643,8 @@ impl BedBuilder {
     /// By default, if allele 2 values are needed and haven't already been found,
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn allele_2<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, allele_2: I) -> Self {
+    #[anyinput]
+    pub fn allele_2(mut self, allele_2: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_allele_2(allele_2);
         self
@@ -5018,7 +5029,8 @@ where
     ///
     /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
     ///
-    pub fn fid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, fid: I) -> Self {
+    #[anyinput]
+    pub fn fid(mut self, fid: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_fid(fid);
         self
@@ -5030,7 +5042,8 @@ where
     ///
     /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
     ///
-    pub fn iid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, iid: I) -> Self {
+    #[anyinput]
+    pub fn iid(mut self, iid: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_iid(iid);
         self
@@ -5042,7 +5055,8 @@ where
     ///
     /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
     ///
-    pub fn father<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, father: I) -> Self {
+    #[anyinput]
+    pub fn father(mut self, father: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_father(father);
         self
@@ -5054,7 +5068,8 @@ where
     ///
     /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
     ///
-    pub fn mother<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, mother: I) -> Self {
+    #[anyinput]
+    pub fn mother(mut self, mother: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_mother(mother);
         self
@@ -5063,7 +5078,8 @@ where
     /// Set the sex for each individual (sample).
     ///
     /// 0 is unknown (default), 1 is male, 2 is female
-    pub fn sex<I: IntoIterator<Item = i32>>(mut self, sex: I) -> Self {
+    #[anyinput]
+    pub fn sex(mut self, sex: AnyIter<i32>) -> Self {
         // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_sex(sex);
         self
@@ -5075,7 +5091,8 @@ where
     ///
     /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
     ///
-    pub fn pheno<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, pheno: I) -> Self {
+    #[anyinput]
+    pub fn pheno(mut self, pheno: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_pheno(pheno);
         self
@@ -5084,7 +5101,8 @@ where
     /// Set the chromosome for each SNP (variant).
     ///
     /// Defaults to zeros.
-    pub fn chromosome<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, chromosome: I) -> Self {
+    #[anyinput]
+    pub fn chromosome(mut self, chromosome: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_chromosome(chromosome);
         self
@@ -5096,7 +5114,8 @@ where
     ///
     /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
     ///
-    pub fn sid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, sid: I) -> Self {
+    #[anyinput]
+    pub fn sid(mut self, sid: AnyIter<AnyString>) -> Self {
         self.metadata.as_mut().unwrap().set_sid(sid);
         self
     }
@@ -5104,7 +5123,8 @@ where
     /// Set the centimorgan position for each SNP (variant).
     ///
     /// Defaults to zeros.
-    pub fn cm_position<I: IntoIterator<Item = f32>>(mut self, cm_position: I) -> Self {
+    #[anyinput]
+    pub fn cm_position(mut self, cm_position: AnyIter<f32>) -> Self {
         // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_cm_position(cm_position);
         self
@@ -5116,7 +5136,8 @@ where
     ///
     /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
     ///
-    pub fn bp_position<I: IntoIterator<Item = i32>>(mut self, bp_position: I) -> Self {
+    #[anyinput]
+    pub fn bp_position(mut self, bp_position: AnyIter<i32>) -> Self {
         // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_bp_position(bp_position);
         self
@@ -5128,7 +5149,8 @@ where
     ///
     /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
     ///
-    pub fn allele_1<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, allele_1: I) -> Self {
+    #[anyinput]
+    pub fn allele_1(mut self, allele_1: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_allele_1(allele_1);
         self
@@ -5140,7 +5162,8 @@ where
     ///
     /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
     ///
-    pub fn allele_2<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, allele_2: I) -> Self {
+    #[anyinput]
+    pub fn allele_2(mut self, allele_2: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_allele_2(allele_2);
         self
@@ -5671,10 +5694,9 @@ impl MetadataBuilder {
     }
 
     /// Set the family id (fid) values.
-    pub fn fid<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, fid: I) -> &mut Self {
-        self.fid = Some(Some(Rc::new(
-            fid.into_iter().map(|s| s.as_ref().to_string()).collect(),
-        )));
+    #[anyinput]
+    pub fn fid(&mut self, fid: AnyIter<AnyString>) -> &mut Self {
+        self.fid = Some(Some(Rc::new(fid.map(|s| s.as_ref().to_string()).collect())));
         self
     }
 
@@ -5690,53 +5712,51 @@ impl MetadataBuilder {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
-    pub fn iid<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, iid: I) -> &mut Self {
-        self.iid = Some(Some(Rc::new(
-            iid.into_iter().map(|s| s.as_ref().to_owned()).collect(),
-        )));
+    #[anyinput]
+    pub fn iid(&mut self, iid: AnyIter<AnyString>) -> &mut Self {
+        self.iid = Some(Some(Rc::new(iid.map(|s| s.as_ref().to_owned()).collect())));
         self
     }
 
     /// Set the father values.
-    pub fn father<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, father: I) -> &mut Self {
+    #[anyinput]
+    pub fn father(&mut self, father: AnyIter<AnyString>) -> &mut Self {
         self.father = Some(Some(Rc::new(
-            father.into_iter().map(|s| s.as_ref().to_owned()).collect(),
+            father.map(|s| s.as_ref().to_owned()).collect(),
         )));
         self
     }
 
     /// Override the mother values.
-    pub fn mother<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, mother: I) -> &mut Self {
+    #[anyinput]
+    pub fn mother(&mut self, mother: AnyIter<AnyString>) -> &mut Self {
         self.mother = Some(Some(Rc::new(
-            mother.into_iter().map(|s| s.as_ref().to_owned()).collect(),
+            mother.map(|s| s.as_ref().to_owned()).collect(),
         )));
         self
     }
 
     /// Override the sex values.
-    pub fn sex<I: IntoIterator<Item = i32>>(&mut self, sex: I) -> &mut Self {
-        self.sex = Some(Some(Rc::new(sex.into_iter().collect())));
+    #[anyinput]
+    pub fn sex<I: IntoIterator<Item = i32>>(&mut self, sex: AnyIter<i32>) -> &mut Self {
+        self.sex = Some(Some(Rc::new(sex.collect())));
         self
     }
 
     /// Override the phenotype values.
-    pub fn pheno<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, pheno: I) -> &mut Self {
+    #[anyinput]
+    pub fn pheno(&mut self, pheno: AnyIter<AnyString>) -> &mut Self {
         self.pheno = Some(Some(Rc::new(
-            pheno.into_iter().map(|s| s.as_ref().to_owned()).collect(),
+            pheno.map(|s| s.as_ref().to_owned()).collect(),
         )));
         self
     }
 
     /// Override the chromosome values.
-    pub fn chromosome<I: IntoIterator<Item = T>, T: AsRef<str>>(
-        &mut self,
-        chromosome: I,
-    ) -> &mut Self {
+    #[anyinput]
+    pub fn chromosome(&mut self, chromosome: AnyIter<AnyString>) -> &mut Self {
         self.chromosome = Some(Some(Rc::new(
-            chromosome
-                .into_iter()
-                .map(|s| s.as_ref().to_owned())
-                .collect(),
+            chromosome.map(|s| s.as_ref().to_owned()).collect(),
         )));
         self
     }
@@ -5753,7 +5773,8 @@ impl MetadataBuilder {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
-    pub fn sid<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, sid: I) -> &mut Self {
+    #[anyinput]
+    pub fn sid(&mut self, sid: AnyIter<AnyString>) -> &mut Self {
         self.sid = Some(Some(Rc::new(
             sid.into_iter().map(|s| s.as_ref().to_owned()).collect(),
         )));
@@ -5761,19 +5782,22 @@ impl MetadataBuilder {
     }
 
     /// Override the centimorgan position values.
-    pub fn cm_position<I: IntoIterator<Item = f32>>(&mut self, cm_position: I) -> &mut Self {
+    #[anyinput]
+    pub fn cm_position(&mut self, cm_position: AnyIter<f32>) -> &mut Self {
         self.cm_position = Some(Some(Rc::new(cm_position.into_iter().collect())));
         self
     }
 
     /// Override the base-pair position values.
-    pub fn bp_position<I: IntoIterator<Item = i32>>(&mut self, bp_position: I) -> &mut Self {
+    #[anyinput]
+    pub fn bp_position(&mut self, bp_position: AnyIter<i32>) -> &mut Self {
         self.bp_position = Some(Some(Rc::new(bp_position.into_iter().collect())));
         self
     }
 
     /// Override the allele 1 values.
-    pub fn allele_1<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, allele_1: I) -> &mut Self {
+    #[anyinput]
+    pub fn allele_1(&mut self, allele_1: AnyIter<AnyString>) -> &mut Self {
         self.allele_1 = Some(Some(Rc::new(
             allele_1
                 .into_iter()
@@ -5784,7 +5808,8 @@ impl MetadataBuilder {
     }
 
     /// Override the allele 2 values.
-    pub fn allele_2<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, allele_2: I) -> &mut Self {
+    #[anyinput]
+    pub fn allele_2(&mut self, allele_2: AnyIter<AnyString>) -> &mut Self {
         self.allele_2 = Some(Some(Rc::new(
             allele_2
                 .into_iter()
@@ -6412,90 +6437,79 @@ impl Metadata {
         Ok(metadata)
     }
 
-    fn set_fid<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, fid: I) -> &Self {
+    #[anyinput]
+    fn set_fid(&mut self, fid: AnyIter<AnyString>) -> &Self {
         self.fid = Some(Rc::new(
             fid.into_iter().map(|s| s.as_ref().to_owned()).collect(),
         ));
         self
     }
 
-    fn set_iid<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, iid: I) -> &Self {
+    #[anyinput]
+    fn set_iid(&mut self, iid: AnyIter<AnyString>) -> &Self {
         self.iid = Some(Rc::new(
             iid.into_iter().map(|s| s.as_ref().to_owned()).collect(),
         ));
         self
     }
 
-    fn set_father<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, father: I) -> &Self {
-        self.father = Some(Rc::new(
-            father.into_iter().map(|s| s.as_ref().to_owned()).collect(),
-        ));
+    #[anyinput]
+    fn set_father(&mut self, father: AnyIter<AnyString>) -> &Self {
+        self.father = Some(Rc::new(father.map(|s| s.as_ref().to_owned()).collect()));
         self
     }
 
-    fn set_mother<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, mother: I) -> &Self {
-        self.mother = Some(Rc::new(
-            mother.into_iter().map(|s| s.as_ref().to_owned()).collect(),
-        ));
+    #[anyinput]
+    fn set_mother(&mut self, mother: AnyIter<AnyString>) -> &Self {
+        self.mother = Some(Rc::new(mother.map(|s| s.as_ref().to_owned()).collect()));
         self
     }
 
-    fn set_sex<I: IntoIterator<Item = i32>>(&mut self, sex: I) -> &Self {
-        self.sex = Some(Rc::new(sex.into_iter().collect()));
+    #[anyinput]
+    fn set_sex(&mut self, sex: AnyIter<i32>) -> &Self {
+        self.sex = Some(Rc::new(sex.collect()));
         self
     }
 
-    fn set_pheno<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, pheno: I) -> &Self {
-        self.pheno = Some(Rc::new(
-            pheno.into_iter().map(|s| s.as_ref().to_owned()).collect(),
-        ));
+    #[anyinput]
+    fn set_pheno(&mut self, pheno: AnyIter<AnyString>) -> &Self {
+        self.pheno = Some(Rc::new(pheno.map(|s| s.as_ref().to_owned()).collect()));
         self
     }
 
-    fn set_chromosome<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, chromosome: I) -> &Self {
-        self.chromosome = Some(Rc::new(
-            chromosome
-                .into_iter()
-                .map(|s| s.as_ref().to_owned())
-                .collect(),
-        ));
+    #[anyinput]
+    fn set_chromosome(&mut self, chromosome: AnyIter<AnyString>) -> &Self {
+        self.chromosome = Some(Rc::new(chromosome.map(|s| s.as_ref().to_owned()).collect()));
         self
     }
 
-    fn set_sid<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, sid: I) -> &Self {
-        self.sid = Some(Rc::new(
-            sid.into_iter().map(|s| s.as_ref().to_owned()).collect(),
-        ));
+    #[anyinput]
+    fn set_sid(&mut self, sid: AnyIter<AnyString>) -> &Self {
+        self.sid = Some(Rc::new(sid.map(|s| s.as_ref().to_owned()).collect()));
         self
     }
 
-    fn set_cm_position<I: IntoIterator<Item = f32>>(&mut self, cm_position: I) -> &Self {
+    #[anyinput]
+    fn set_cm_position(&mut self, cm_position: AnyIter<f32>) -> &Self {
         self.cm_position = Some(Rc::new(cm_position.into_iter().collect()));
         self
     }
 
-    fn set_bp_position<I: IntoIterator<Item = i32>>(&mut self, bp_position: I) -> &Self {
+    #[anyinput]
+    fn set_bp_position(&mut self, bp_position: AnyIter<i32>) -> &Self {
         self.bp_position = Some(Rc::new(bp_position.into_iter().collect()));
         self
     }
 
-    fn set_allele_1<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, allele_1: I) -> &Self {
-        self.allele_1 = Some(Rc::new(
-            allele_1
-                .into_iter()
-                .map(|s| s.as_ref().to_owned())
-                .collect(),
-        ));
+    #[anyinput]
+    fn set_allele_1(&mut self, allele_1: AnyIter<AnyString>) -> &Self {
+        self.allele_1 = Some(Rc::new(allele_1.map(|s| s.as_ref().to_owned()).collect()));
         self
     }
 
-    fn set_allele_2<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, allele_2: I) -> &Self {
-        self.allele_2 = Some(Rc::new(
-            allele_2
-                .into_iter()
-                .map(|s| s.as_ref().to_owned())
-                .collect(),
-        ));
+    #[anyinput]
+    fn set_allele_2(&mut self, allele_2: AnyIter<AnyString>) -> &Self {
+        self.allele_2 = Some(Rc::new(allele_2.map(|s| s.as_ref().to_owned()).collect()));
         self
     }
 }
