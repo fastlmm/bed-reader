@@ -100,7 +100,7 @@
 
 mod python_module;
 mod tests;
-use anyinput_derive::anyinput;
+use anyinput::anyinput;
 use core::fmt::Debug;
 use derive_builder::{Builder, UninitializedFieldError};
 use nd::ShapeBuilder;

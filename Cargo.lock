@@ -20,25 +20,34 @@ dependencies = [
 ]
 
 [[package]]
-name = "anyinput-derive"
+name = "anyinput"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e2ec2a895de7dabffcad59e3f6a1d9d30d4c998ea70ea3e57a179ea75658bdd2"
 dependencies = [
- "anyinput-helper",
- "proc-macro2",
- "quote",
- "syn",
+ "anyinput-derive",
 ]
 
 [[package]]
-name = "anyinput-helper"
+name = "anyinput-core"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b90313e954ed91c137da06fc223736cb3eeb07863739e0ff84713c934601500c"
 dependencies = [
  "ndarray",
  "proc-macro2",
  "quote",
  "strum",
  "syn",
- "uuid",
+]
+
+[[package]]
+name = "anyinput-derive"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "41519363ff7dcb13d8825d246f8eb3e7d2b9c688832e67ab3126d1297c2d0b51"
+dependencies = [
+ "anyinput-core",
 ]
 
 [[package]]
@@ -79,9 +88,9 @@ checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
 
 [[package]]
 name = "bed-reader"
-version = "0.2.24"
+version = "0.2.25"
 dependencies = [
- "anyinput-derive",
+ "anyinput",
  "approx 0.5.1",
  "base16ct",
  "byteorder",
@@ -1292,15 +1301,6 @@ dependencies = [
  "idna",
  "matches",
  "percent-encoding",
-]
-
-[[package]]
-name = "uuid"
-version = "1.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd6469f4314d5f1ffec476e05f17cc9a78bc7a27a6a857842170bdf8d6f98d2f"
-dependencies = [
- "getrandom",
 ]
 
 [[package]]

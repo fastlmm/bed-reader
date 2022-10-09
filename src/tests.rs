@@ -44,7 +44,7 @@ use crate::{impute_and_zero_mean_snps, matrix_subset_no_alloc};
 #[cfg(test)]
 use crate::{internal_read_no_alloc, read_no_alloc, BedError, BedErrorPlus};
 #[cfg(test)]
-use anyinput_derive::anyinput;
+use anyinput::anyinput;
 #[cfg(test)]
 use nd::s;
 #[cfg(test)]

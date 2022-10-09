@@ -1,7 +1,7 @@
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [package]
-version = "0.2.24"
+version = "0.2.25"
 name = "bed-reader"
 description = "Read and write the PLINK BED format, simply and efficiently."
 repository = "https://github.com/fastlmm/bed-reader"
@@ -48,7 +48,7 @@ directories = "4.0.1"
 sha2 = "0.10.2"
 base16ct = { version = "0.1.1", features = ["alloc"] }
 ctor = "0.1.22"
-anyinput-derive = { version = "0.1.0", path = "../anyinput/anyinput-derive" }
+anyinput = { version = "0.1.0", features = ["ndarray"] }
 
 [dev-dependencies]
 ndarray-rand = "0.14.0"
