@@ -21,9 +21,9 @@ dependencies = [
 
 [[package]]
 name = "anyinput"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2ec2a895de7dabffcad59e3f6a1d9d30d4c998ea70ea3e57a179ea75658bdd2"
+checksum = "48e86c3ae45a8d8499fc992bde73d4b589ba8f47a2164ba4469a5ff52aefe030"
 dependencies = [
  "anyinput-derive",
 ]
