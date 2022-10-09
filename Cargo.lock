@@ -21,18 +21,18 @@ dependencies = [
 
 [[package]]
 name = "anyinput"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "48e86c3ae45a8d8499fc992bde73d4b589ba8f47a2164ba4469a5ff52aefe030"
+checksum = "e816043ee7c49de7ad64f71f4969e43cb1b4f60f9ac0ad2d68d18ba4bd858f1e"
 dependencies = [
  "anyinput-derive",
 ]
 
 [[package]]
 name = "anyinput-core"
-version = "0.1.0"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b90313e954ed91c137da06fc223736cb3eeb07863739e0ff84713c934601500c"
+checksum = "09cb88c0146304b9b2d6ca9bccc5b3c517d0f1bda21b5038d0edf8add336415d"
 dependencies = [
  "ndarray",
  "proc-macro2",
@@ -43,9 +43,9 @@ dependencies = [
 
 [[package]]
 name = "anyinput-derive"
-version = "0.1.0"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41519363ff7dcb13d8825d246f8eb3e7d2b9c688832e67ab3126d1297c2d0b51"
+checksum = "862223e07a4feac0de1e06887182d0b6ddcfb04997126065a7237b1a987074ac"
 dependencies = [
  "anyinput-core",
 ]
