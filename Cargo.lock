@@ -21,18 +21,18 @@ dependencies = [
 
 [[package]]
 name = "anyinput"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e816043ee7c49de7ad64f71f4969e43cb1b4f60f9ac0ad2d68d18ba4bd858f1e"
+checksum = "8305385806d6dee8d1a137f9f027d765b1150bb7b054ead80fe01b8b71c23a04"
 dependencies = [
  "anyinput-derive",
 ]
 
 [[package]]
 name = "anyinput-core"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "09cb88c0146304b9b2d6ca9bccc5b3c517d0f1bda21b5038d0edf8add336415d"
+checksum = "4c7af4299968390c3960d5f83f2a977fbf6c1fe0e348aa7eee9a75f15e7aa9ed"
 dependencies = [
  "ndarray",
  "proc-macro2",
@@ -43,9 +43,9 @@ dependencies = [
 
 [[package]]
 name = "anyinput-derive"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "862223e07a4feac0de1e06887182d0b6ddcfb04997126065a7237b1a987074ac"
+checksum = "9d4b60790ed15b65972c286afc02a25421048ecf01cd3791c48e1172d9d22f0a"
 dependencies = [
  "anyinput-core",
 ]
@@ -88,12 +88,15 @@ checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
 
 [[package]]
 name = "bed-reader"
-version = "0.2.25"
+version = "0.2.26"
 dependencies = [
  "anyinput",
  "approx 0.5.1",
+ "base16ct",
  "byteorder",
+ "ctor",
  "derive_builder",
+ "directories",
  "dpc-pariter",
  "fetch-data",
  "ndarray",
@@ -103,9 +106,11 @@ dependencies = [
  "numpy",
  "pyo3",
  "rayon",
+ "sha2",
  "statrs",
  "temp_testdir",
  "thiserror",
+ "ureq",
 ]
 
 [[package]]
@@ -128,12 +133,6 @@ name = "bumpalo"
 version = "3.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c1ad822118d20d2c234f427000d5acc36eabe1e29a348c89b63dd60b13f28e5d"
-
-[[package]]
-name = "bytemuck"
-version = "1.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f5715e491b5a1598fc2bef5a606847b5dc1d48ea625bd3c02c00de8285591da"
 
 [[package]]
 name = "bytemuck"
@@ -382,21 +381,6 @@ name = "either"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "90e5c1c8368803113bf0c9584fc495a58b86dc8a29edbf8fe877d21d9507e797"
-
-[[package]]
-name = "fetch-data"
-version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "26d7a90719faafe5e775061952ad8d888313b10b258abae64c68450785339aa1"
-dependencies = [
- "base16ct",
- "ctor",
- "directories",
- "sha2",
- "temp_testdir",
- "thiserror",
- "ureq",
-]
 
 [[package]]
 name = "fetch-data"
@@ -699,9 +683,9 @@ dependencies = [
 
 [[package]]
 name = "numpy"
-version = "0.17.1"
+version = "0.17.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6522ac2e780f532432a7c7f5dbadbfcea9ff1cf4dd858fb509ca13061a928413"
+checksum = "a462c1af5ba1fddec1488c4646993a23ae7931f9e170ccba23e9c7c834277797"
 dependencies = [
  "ahash",
  "libc",
@@ -844,9 +828,9 @@ dependencies = [
 
 [[package]]
 name = "pyo3-build-config"
-version = "0.17.1"
+version = "0.17.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc4cf18c20f4f09995f3554e6bcf9b09bd5e4d6b67c562fdfaafa644526ba479"
+checksum = "bf0708c9ed01692635cbf056e286008e5a2927ab1a5e48cdd3aeb1ba5a6fef47"
 dependencies = [
  "once_cell",
  "target-lexicon",
@@ -876,9 +860,9 @@ dependencies = [
 
 [[package]]
 name = "pyo3-macros-backend"
-version = "0.17.1"
+version = "0.17.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "85752a767ee19399a78272cc2ab625cd7d373b2e112b4b13db28de71fa892784"
+checksum = "f22bb49f6a7348c253d7ac67a6875f2dc65f36c2ae64a82c381d528972bea6d6"
 dependencies = [
  "proc-macro2",
  "quote",

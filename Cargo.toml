@@ -43,8 +43,13 @@ pyo3 = { version = "0.17.1", features = ["extension-module"], optional = true }
 dpc-pariter = "0.4.0"                                                           # //  pariter = "0.5.1"
 derive_builder = "0.11.1"
 temp_testdir = "0.2.3"
-fetch-data = "0.1.4"
+ureq = { version = "2.4.0", features = [] }
+directories = "4.0.1"
+sha2 = "0.10.2"
+base16ct = { version = "0.1.1", features = ["alloc"] }
+ctor = "0.1.22"
 anyinput = { version = "0.1.3", features = ["ndarray"] }
+fetch-data = "0.1.4"
 
 [dev-dependencies]
 ndarray-rand = "0.14.0"
