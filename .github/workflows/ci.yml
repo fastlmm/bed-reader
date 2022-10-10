@@ -71,6 +71,14 @@ jobs:
         cp target/wheels/*manylinux_*.whl .
       shell: bash
 
+    - name: Build sdist with Maturin - Linux
+      if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.9'
+      run: |
+        maturin list-python
+        docker run --rm -v $(pwd):/io ghcr.io/pyo3/maturin sdist --out target/wheels
+        ls -las target/wheels
+      shell: bash
+
     - name: Build wheel with Maturin - Non-Linux
       if: "!startsWith(matrix.os, 'ubuntu')"
       run: |
