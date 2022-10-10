@@ -100,6 +100,7 @@
 
 mod python_module;
 mod tests;
+use anyinput::anyinput;
 use core::fmt::Debug;
 use derive_builder::{Builder, UninitializedFieldError};
 use fetch_data::{FetchData, FetchDataError};
@@ -329,8 +330,9 @@ fn create_pool(num_threads: usize) -> Result<rayon::ThreadPool, BedErrorPlus> {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn read_no_alloc<TVal: BedVal, P: AsRef<Path>>(
-    path: P,
+#[anyinput]
+fn read_no_alloc<TVal: BedVal>(
+    path: AnyPath,
     iid_count: usize,
     sid_count: usize,
     is_a1_counted: bool,
@@ -340,8 +342,6 @@ fn read_no_alloc<TVal: BedVal, P: AsRef<Path>>(
     num_threads: usize,
     val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
 ) -> Result<(), BedErrorPlus> {
-    let path = path.as_ref(); // Needed for multithreading
-
     create_pool(num_threads)?.install(|| {
         let (buf_reader, bytes_vector) = open_and_check(&path)?;
 
@@ -378,11 +378,13 @@ fn read_no_alloc<TVal: BedVal, P: AsRef<Path>>(
     Ok(())
 }
 
-fn path_ref_to_string<P: AsRef<Path>>(path: P) -> String {
-    PathBuf::from(path.as_ref()).display().to_string()
+#[anyinput]
+fn path_ref_to_string(path: AnyPath) -> String {
+    PathBuf::from(path).display().to_string()
 }
 
-fn open_and_check<P: AsRef<Path>>(path: P) -> Result<(BufReader<File>, Vec<u8>), BedErrorPlus> {
+#[anyinput]
+fn open_and_check(path: AnyPath) -> Result<(BufReader<File>, Vec<u8>), BedErrorPlus> {
     let mut buf_reader = BufReader::new(File::open(&path)?);
     let mut bytes_vector: Vec<u8> = vec![0; CB_HEADER_USIZE];
     buf_reader.read_exact(&mut bytes_vector)?;
@@ -462,9 +464,10 @@ fn try_div_4<T: Max + TryFrom<usize> + Sub<Output = T> + Div<Output = T> + Ord>(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn internal_read_no_alloc<TVal: BedVal, P: AsRef<Path>>(
+#[anyinput]
+fn internal_read_no_alloc<TVal: BedVal>(
     mut buf_reader: BufReader<File>,
-    path: P,
+    path: AnyPath,
     in_iid_count: usize,
     in_sid_count: usize,
     is_a1_counted: bool,
@@ -603,8 +606,9 @@ fn set_up_two_bits_to_value<TVal: From<i8>>(count_a1: bool, missing_value: TVal)
 
 // Thanks to Dawid for his dpc-pariter library that makes this function scale.
 // https://dpc.pw/adding-parallelism-to-your-rust-iterators
-fn write_val<S, TVal, P>(
-    path: P,
+#[anyinput]
+fn write_val<S, TVal>(
+    path: AnyPath,
     val: &nd::ArrayBase<S, nd::Ix2>,
     is_a1_counted: bool,
     missing: TVal,
@@ -613,7 +617,6 @@ fn write_val<S, TVal, P>(
 where
     S: nd::Data<Elem = TVal>,
     TVal: BedVal,
-    P: AsRef<Path>,
 {
     let (iid_count, sid_count) = val.dim();
 
@@ -623,7 +626,7 @@ where
     // We create and write to a file.
     // If there is an error, we will delete it.
     if let Err(e) = write_internal(
-        &path,
+        path,
         iid_count_div4,
         val,
         is_a1_counted,
@@ -639,8 +642,9 @@ where
 }
 
 // https://www.reddit.com/r/rust/comments/mo4s8e/difference_between_reference_and_view_in_ndarray/
-fn write_internal<S, TVal, P>(
-    path: P,
+#[anyinput]
+fn write_internal<S, TVal>(
+    path: AnyPath,
     iid_count_div4: usize,
     //val: &nd::ArrayView2<'_, TVal>,
     val: &nd::ArrayBase<S, nd::Ix2>,
@@ -651,9 +655,7 @@ fn write_internal<S, TVal, P>(
 where
     S: nd::Data<Elem = TVal>,
     TVal: BedVal,
-    P: AsRef<Path>,
 {
-    let path = path.as_ref(); // Needed for multithreading
     let mut writer = BufWriter::new(File::create(&path)?);
     writer.write_all(&[BED_FILE_MAGIC1, BED_FILE_MAGIC2, 0x01])?;
 
@@ -704,7 +706,8 @@ where
     .map_err(|_e| BedError::PanickedThread())?
 }
 
-fn count_lines<P: AsRef<Path>>(path: P) -> Result<usize, BedErrorPlus> {
+#[anyinput]
+fn count_lines(path: AnyPath) -> Result<usize, BedErrorPlus> {
     let file = File::open(path)?;
     let reader = BufReader::new(file);
     let count = reader.lines().count();
@@ -966,8 +969,9 @@ fn _process_all_iids<
 }
 
 #[allow(dead_code)]
-fn file_b_less_aatbx<P: AsRef<Path>>(
-    a_filename: P,
+#[anyinput]
+fn file_b_less_aatbx(
+    a_filename: AnyPath,
     offset: u64,
     iid_count: usize,
     b1: &mut nd::ArrayViewMut2<'_, f64>,
@@ -1091,8 +1095,9 @@ for output in output_list:
 // Makes only one pass through the file.
 #[allow(clippy::too_many_arguments)]
 #[allow(dead_code)]
-fn file_ata_piece<T: Float + Send + Sync + AddAssign, P: AsRef<Path>>(
-    path: P,
+#[anyinput]
+fn file_ata_piece<T: Float + Send + Sync + AddAssign>(
+    path: AnyPath,
     offset: u64,
     row_count: usize,
     col_count: usize,
@@ -1121,8 +1126,9 @@ fn file_ata_piece<T: Float + Send + Sync + AddAssign, P: AsRef<Path>>(
 }
 
 #[allow(dead_code)]
-fn _file_ata_piece_internal<T: Float + Send + Sync + AddAssign, P: AsRef<Path>>(
-    path: P,
+#[anyinput]
+fn _file_ata_piece_internal<T: Float + Send + Sync + AddAssign>(
+    path: AnyPath,
     offset: u64,
     row_count: usize,
     col_start: usize,
@@ -1203,8 +1209,9 @@ fn col_product<T: Float + AddAssign>(col_i: &[T], col_j: &[T]) -> T {
 // Makes only one pass through the file.
 #[allow(clippy::too_many_arguments)]
 #[allow(dead_code)]
-fn file_aat_piece<T: Float + Sync + Send + AddAssign, P: AsRef<Path>>(
-    path: P,
+#[anyinput]
+fn file_aat_piece<T: Float + Sync + Send + AddAssign>(
+    path: AnyPath,
     offset: u64,
     row_count: usize,
     col_count: usize,
@@ -1445,9 +1452,10 @@ pub enum MetadataFields {
 }
 
 impl BedBuilder {
-    fn new<P: AsRef<Path>>(path: P) -> Self {
+    #[anyinput]
+    fn new(path: AnyPath) -> Self {
         Self {
-            path: Some(path.as_ref().to_owned()),
+            path: Some(path.to_owned()),
             fam_path: None,
             bim_path: None,
 
@@ -1483,7 +1491,8 @@ impl BedBuilder {
     /// By default, if fid values are needed and haven't already been found,
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn fid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, fid: I) -> Self {
+    #[anyinput]
+    pub fn fid(mut self, fid: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_fid(fid);
         self
@@ -1507,7 +1516,8 @@ impl BedBuilder {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
-    pub fn iid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, iid: I) -> Self {
+    #[anyinput]
+    pub fn iid(mut self, iid: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_iid(iid);
         self
@@ -1518,7 +1528,8 @@ impl BedBuilder {
     /// By default, if father values are needed and haven't already been found,
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to gi&ve different values.
-    pub fn father<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, father: I) -> Self {
+    #[anyinput]
+    pub fn father(mut self, father: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_father(father);
         self
@@ -1529,7 +1540,8 @@ impl BedBuilder {
     /// By default, if mother values are needed and haven't already been found,
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn mother<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, mother: I) -> Self {
+    #[anyinput]
+    pub fn mother(mut self, mother: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_mother(mother);
         self
@@ -1540,7 +1552,8 @@ impl BedBuilder {
     /// By default, if sex values are needed and haven't already been found,
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn sex<I: IntoIterator<Item = i32>>(mut self, sex: I) -> Self {
+    #[anyinput]
+    pub fn sex(mut self, sex: AnyIter<i32>) -> Self {
         // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_sex(sex);
         self
@@ -1552,7 +1565,8 @@ impl BedBuilder {
     /// By default, if phenotype values are needed and haven't already been found,
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn pheno<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, pheno: I) -> Self {
+    #[anyinput]
+    pub fn pheno(mut self, pheno: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_pheno(pheno);
         self
@@ -1563,7 +1577,8 @@ impl BedBuilder {
     /// By default, if chromosome values are needed and haven't already been found,
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn chromosome<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, chromosome: I) -> Self {
+    #[anyinput]
+    pub fn chromosome(mut self, chromosome: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_chromosome(chromosome);
         self
@@ -1586,7 +1601,8 @@ impl BedBuilder {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
-    pub fn sid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, sid: I) -> Self {
+    #[anyinput]
+    pub fn sid(mut self, sid: AnyIter<AnyString>) -> Self {
         self.metadata.as_mut().unwrap().set_sid(sid);
         self
     }
@@ -1596,7 +1612,8 @@ impl BedBuilder {
     /// By default, if centimorgan position values are needed and haven't already been found,
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn cm_position<I: IntoIterator<Item = f32>>(mut self, cm_position: I) -> Self {
+    #[anyinput]
+    pub fn cm_position(mut self, cm_position: AnyIter<f32>) -> Self {
         // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_cm_position(cm_position);
         self
@@ -1607,7 +1624,8 @@ impl BedBuilder {
     /// By default, if base-pair position values are needed and haven't already been found,
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn bp_position<I: IntoIterator<Item = i32>>(mut self, bp_position: I) -> Self {
+    #[anyinput]
+    pub fn bp_position(mut self, bp_position: AnyIter<i32>) -> Self {
         // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_bp_position(bp_position);
         self
@@ -1618,7 +1636,8 @@ impl BedBuilder {
     /// By default, if allele 1 values are needed and haven't already been found,
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn allele_1<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, allele_1: I) -> Self {
+    #[anyinput]
+    pub fn allele_1(mut self, allele_1: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_allele_1(allele_1);
         self
@@ -1629,7 +1648,8 @@ impl BedBuilder {
     /// By default, if allele 2 values are needed and haven't already been found,
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
-    pub fn allele_2<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, allele_2: I) -> Self {
+    #[anyinput]
+    pub fn allele_2(mut self, allele_2: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_allele_2(allele_2);
         self
@@ -1685,8 +1705,9 @@ impl BedBuilder {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
-    pub fn fam_path<P: AsRef<Path>>(mut self, path: P) -> Self {
-        self.fam_path = Some(Some(path.as_ref().to_owned()));
+    #[anyinput]
+    pub fn fam_path(mut self, path: AnyPath) -> Self {
+        self.fam_path = Some(Some(path.to_owned()));
         self
     }
 
@@ -1709,8 +1730,9 @@ impl BedBuilder {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
-    pub fn bim_path<P: AsRef<Path>>(mut self, path: P) -> Self {
-        self.bim_path = Some(Some(path.as_ref().to_owned()));
+    #[anyinput]
+    pub fn bim_path(mut self, path: AnyPath) -> Self {
+        self.bim_path = Some(Some(path.to_owned()));
         self
     }
 
@@ -1918,15 +1940,16 @@ impl BedBuilder {
     }
 }
 
-fn to_metadata_path<P: AsRef<Path>>(
-    bed_path: P,
+#[anyinput]
+fn to_metadata_path(
+    bed_path: AnyPath,
     metadata_path: &Option<PathBuf>,
-    extension: &str,
+    extension: AnyString,
 ) -> PathBuf {
     if let Some(metadata_path) = metadata_path {
         metadata_path.to_owned()
     } else {
-        bed_path.as_ref().with_extension(extension)
+        bed_path.with_extension(extension)
     }
 }
 
@@ -2029,7 +2052,8 @@ impl Bed {
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
     ///
-    pub fn builder<P: AsRef<Path>>(path: P) -> BedBuilder {
+    #[anyinput]
+    pub fn builder(path: AnyPath) -> BedBuilder {
         BedBuilder::new(path)
     }
 
@@ -2086,7 +2110,8 @@ impl Bed {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
-    pub fn new<P: AsRef<Path>>(path: P) -> Result<Self, BedErrorPlus> {
+    #[anyinput]
+    pub fn new(path: AnyPath) -> Result<Self, BedErrorPlus> {
         Bed::builder(path).build()
     }
 
@@ -4411,7 +4436,8 @@ where
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
-    pub fn builder<P: AsRef<Path>>(path: P) -> WriteOptionsBuilder<TVal> {
+    #[anyinput]
+    pub fn builder(path: AnyPath) -> WriteOptionsBuilder<TVal> {
         WriteOptionsBuilder::new(path)
     }
 
@@ -5014,7 +5040,8 @@ where
     ///
     /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
     ///
-    pub fn fid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, fid: I) -> Self {
+    #[anyinput]
+    pub fn fid(mut self, fid: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_fid(fid);
         self
@@ -5026,7 +5053,8 @@ where
     ///
     /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
     ///
-    pub fn iid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, iid: I) -> Self {
+    #[anyinput]
+    pub fn iid(mut self, iid: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_iid(iid);
         self
@@ -5038,7 +5066,8 @@ where
     ///
     /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
     ///
-    pub fn father<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, father: I) -> Self {
+    #[anyinput]
+    pub fn father(mut self, father: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_father(father);
         self
@@ -5050,7 +5079,8 @@ where
     ///
     /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
     ///
-    pub fn mother<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, mother: I) -> Self {
+    #[anyinput]
+    pub fn mother(mut self, mother: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_mother(mother);
         self
@@ -5059,7 +5089,8 @@ where
     /// Set the sex for each individual (sample).
     ///
     /// 0 is unknown (default), 1 is male, 2 is female
-    pub fn sex<I: IntoIterator<Item = i32>>(mut self, sex: I) -> Self {
+    #[anyinput]
+    pub fn sex(mut self, sex: AnyIter<i32>) -> Self {
         // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_sex(sex);
         self
@@ -5071,7 +5102,8 @@ where
     ///
     /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
     ///
-    pub fn pheno<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, pheno: I) -> Self {
+    #[anyinput]
+    pub fn pheno(mut self, pheno: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_pheno(pheno);
         self
@@ -5080,7 +5112,8 @@ where
     /// Set the chromosome for each SNP (variant).
     ///
     /// Defaults to zeros.
-    pub fn chromosome<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, chromosome: I) -> Self {
+    #[anyinput]
+    pub fn chromosome(mut self, chromosome: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_chromosome(chromosome);
         self
@@ -5092,7 +5125,8 @@ where
     ///
     /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
     ///
-    pub fn sid<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, sid: I) -> Self {
+    #[anyinput]
+    pub fn sid(mut self, sid: AnyIter<AnyString>) -> Self {
         self.metadata.as_mut().unwrap().set_sid(sid);
         self
     }
@@ -5100,7 +5134,8 @@ where
     /// Set the centimorgan position for each SNP (variant).
     ///
     /// Defaults to zeros.
-    pub fn cm_position<I: IntoIterator<Item = f32>>(mut self, cm_position: I) -> Self {
+    #[anyinput]
+    pub fn cm_position(mut self, cm_position: AnyIter<f32>) -> Self {
         // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_cm_position(cm_position);
         self
@@ -5112,7 +5147,8 @@ where
     ///
     /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
     ///
-    pub fn bp_position<I: IntoIterator<Item = i32>>(mut self, bp_position: I) -> Self {
+    #[anyinput]
+    pub fn bp_position(mut self, bp_position: AnyIter<i32>) -> Self {
         // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_bp_position(bp_position);
         self
@@ -5124,7 +5160,8 @@ where
     ///
     /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
     ///
-    pub fn allele_1<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, allele_1: I) -> Self {
+    #[anyinput]
+    pub fn allele_1(mut self, allele_1: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_allele_1(allele_1);
         self
@@ -5136,7 +5173,8 @@ where
     ///
     /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
     ///
-    pub fn allele_2<I: IntoIterator<Item = T>, T: AsRef<str>>(mut self, allele_2: I) -> Self {
+    #[anyinput]
+    pub fn allele_2(mut self, allele_2: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_allele_2(allele_2);
         self
@@ -5204,8 +5242,9 @@ where
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
-    pub fn fam_path<P: AsRef<Path>>(mut self, path: P) -> Self {
-        self.fam_path = Some(path.as_ref().to_owned());
+    #[anyinput]
+    pub fn fam_path(mut self, path: AnyPath) -> Self {
+        self.fam_path = Some(path.to_owned());
         self
     }
 
@@ -5230,8 +5269,9 @@ where
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
-    pub fn bim_path<P: AsRef<Path>>(mut self, path: P) -> Self {
-        self.bim_path = Some(path.as_ref().to_owned());
+    #[anyinput]
+    pub fn bim_path(mut self, path: AnyPath) -> Self {
+        self.bim_path = Some(path.to_owned());
         self
     }
 
@@ -5427,9 +5467,10 @@ where
         Ok(write_options)
     }
 
-    fn new<P: AsRef<Path>>(path: P) -> Self {
+    #[anyinput]
+    fn new(path: AnyPath) -> Self {
         Self {
-            path: Some(path.as_ref().to_owned()),
+            path: Some(path.to_owned()),
             fam_path: None,
             bim_path: None,
 
@@ -5584,6 +5625,7 @@ impl WriteOptionsBuilder<f64> {
         self
     }
 }
+
 fn check_counts(
     count_vec: Vec<Option<usize>>,
     option_xid_count: &mut Option<usize>,
@@ -5644,10 +5686,9 @@ impl MetadataBuilder {
     }
 
     /// Set the family id (fid) values.
-    pub fn fid<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, fid: I) -> &mut Self {
-        self.fid = Some(Some(Rc::new(
-            fid.into_iter().map(|s| s.as_ref().to_string()).collect(),
-        )));
+    #[anyinput]
+    pub fn fid(&mut self, fid: AnyIter<AnyString>) -> &mut Self {
+        self.fid = Some(Some(Rc::new(fid.map(|s| s.as_ref().to_string()).collect())));
         self
     }
 
@@ -5663,53 +5704,51 @@ impl MetadataBuilder {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
-    pub fn iid<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, iid: I) -> &mut Self {
-        self.iid = Some(Some(Rc::new(
-            iid.into_iter().map(|s| s.as_ref().to_owned()).collect(),
-        )));
+    #[anyinput]
+    pub fn iid(&mut self, iid: AnyIter<AnyString>) -> &mut Self {
+        self.iid = Some(Some(Rc::new(iid.map(|s| s.as_ref().to_owned()).collect())));
         self
     }
 
     /// Set the father values.
-    pub fn father<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, father: I) -> &mut Self {
+    #[anyinput]
+    pub fn father(&mut self, father: AnyIter<AnyString>) -> &mut Self {
         self.father = Some(Some(Rc::new(
-            father.into_iter().map(|s| s.as_ref().to_owned()).collect(),
+            father.map(|s| s.as_ref().to_owned()).collect(),
         )));
         self
     }
 
     /// Override the mother values.
-    pub fn mother<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, mother: I) -> &mut Self {
+    #[anyinput]
+    pub fn mother(&mut self, mother: AnyIter<AnyString>) -> &mut Self {
         self.mother = Some(Some(Rc::new(
-            mother.into_iter().map(|s| s.as_ref().to_owned()).collect(),
+            mother.map(|s| s.as_ref().to_owned()).collect(),
         )));
         self
     }
 
     /// Override the sex values.
-    pub fn sex<I: IntoIterator<Item = i32>>(&mut self, sex: I) -> &mut Self {
-        self.sex = Some(Some(Rc::new(sex.into_iter().collect())));
+    #[anyinput]
+    pub fn sex(&mut self, sex: AnyIter<i32>) -> &mut Self {
+        self.sex = Some(Some(Rc::new(sex.collect())));
         self
     }
 
     /// Override the phenotype values.
-    pub fn pheno<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, pheno: I) -> &mut Self {
+    #[anyinput]
+    pub fn pheno(&mut self, pheno: AnyIter<AnyString>) -> &mut Self {
         self.pheno = Some(Some(Rc::new(
-            pheno.into_iter().map(|s| s.as_ref().to_owned()).collect(),
+            pheno.map(|s| s.as_ref().to_owned()).collect(),
         )));
         self
     }
 
     /// Override the chromosome values.
-    pub fn chromosome<I: IntoIterator<Item = T>, T: AsRef<str>>(
-        &mut self,
-        chromosome: I,
-    ) -> &mut Self {
+    #[anyinput]
+    pub fn chromosome(&mut self, chromosome: AnyIter<AnyString>) -> &mut Self {
         self.chromosome = Some(Some(Rc::new(
-            chromosome
-                .into_iter()
-                .map(|s| s.as_ref().to_owned())
-                .collect(),
+            chromosome.map(|s| s.as_ref().to_owned()).collect(),
         )));
         self
     }
@@ -5726,7 +5765,8 @@ impl MetadataBuilder {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
-    pub fn sid<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, sid: I) -> &mut Self {
+    #[anyinput]
+    pub fn sid(&mut self, sid: AnyIter<AnyString>) -> &mut Self {
         self.sid = Some(Some(Rc::new(
             sid.into_iter().map(|s| s.as_ref().to_owned()).collect(),
         )));
@@ -5734,19 +5774,22 @@ impl MetadataBuilder {
     }
 
     /// Override the centimorgan position values.
-    pub fn cm_position<I: IntoIterator<Item = f32>>(&mut self, cm_position: I) -> &mut Self {
+    #[anyinput]
+    pub fn cm_position(&mut self, cm_position: AnyIter<f32>) -> &mut Self {
         self.cm_position = Some(Some(Rc::new(cm_position.into_iter().collect())));
         self
     }
 
     /// Override the base-pair position values.
-    pub fn bp_position<I: IntoIterator<Item = i32>>(&mut self, bp_position: I) -> &mut Self {
+    #[anyinput]
+    pub fn bp_position(&mut self, bp_position: AnyIter<i32>) -> &mut Self {
         self.bp_position = Some(Some(Rc::new(bp_position.into_iter().collect())));
         self
     }
 
     /// Override the allele 1 values.
-    pub fn allele_1<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, allele_1: I) -> &mut Self {
+    #[anyinput]
+    pub fn allele_1(&mut self, allele_1: AnyIter<AnyString>) -> &mut Self {
         self.allele_1 = Some(Some(Rc::new(
             allele_1
                 .into_iter()
@@ -5757,7 +5800,8 @@ impl MetadataBuilder {
     }
 
     /// Override the allele 2 values.
-    pub fn allele_2<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, allele_2: I) -> &mut Self {
+    #[anyinput]
+    pub fn allele_2(&mut self, allele_2: AnyIter<AnyString>) -> &mut Self {
         self.allele_2 = Some(Some(Rc::new(
             allele_2
                 .into_iter()
@@ -5998,9 +6042,10 @@ impl Metadata {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
-    pub fn read_fam<P: AsRef<Path>>(
+    #[anyinput]
+    pub fn read_fam(
         &self,
-        path: P,
+        path: AnyPath,
         skip_set: &HashSet<MetadataFields>,
     ) -> Result<(Metadata, usize), BedErrorPlus> {
         let mut field_vec: Vec<usize> = Vec::new();
@@ -6083,9 +6128,10 @@ impl Metadata {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
-    pub fn read_bim<P: AsRef<Path>>(
+    #[anyinput]
+    pub fn read_bim(
         &self,
-        path: P,
+        path: AnyPath,
         skip_set: &HashSet<MetadataFields>,
     ) -> Result<(Metadata, usize), BedErrorPlus> {
         let mut field_vec: Vec<usize> = Vec::new();
@@ -6148,11 +6194,12 @@ impl Metadata {
         Ok((clone, count))
     }
 
-    fn read_fam_or_bim<P: AsRef<Path>>(
+    #[anyinput]
+    fn read_fam_or_bim(
         &self,
         field_vec: &[usize],
         is_split_whitespace: bool,
-        path: P,
+        path: AnyPath,
     ) -> Result<(Vec<Vec<String>>, usize), BedErrorPlus> {
         let mut vec_of_vec = vec![vec![]; field_vec.len()];
 
@@ -6234,7 +6281,8 @@ impl Metadata {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
-    pub fn write_fam<P: AsRef<Path>>(&self, path: P) -> Result<(), BedErrorPlus> {
+    #[anyinput]
+    pub fn write_fam(&self, path: AnyPath) -> Result<(), BedErrorPlus> {
         let file = File::create(path)?;
         let mut writer = BufWriter::new(file);
         let mut result: Result<(), BedErrorPlus> = Ok(());
@@ -6295,7 +6343,8 @@ impl Metadata {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), BedErrorPlus>(())
     /// ```
-    pub fn write_bim<P: AsRef<Path>>(&self, path: P) -> Result<(), BedErrorPlus> {
+    #[anyinput]
+    pub fn write_bim(&self, path: AnyPath) -> Result<(), BedErrorPlus> {
         let file = File::create(path)?;
         let mut writer = BufWriter::new(file);
         let mut result: Result<(), BedErrorPlus> = Ok(());
@@ -6385,90 +6434,79 @@ impl Metadata {
         Ok(metadata)
     }
 
-    fn set_fid<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, fid: I) -> &Self {
+    #[anyinput]
+    fn set_fid(&mut self, fid: AnyIter<AnyString>) -> &Self {
         self.fid = Some(Rc::new(
             fid.into_iter().map(|s| s.as_ref().to_owned()).collect(),
         ));
         self
     }
 
-    fn set_iid<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, iid: I) -> &Self {
+    #[anyinput]
+    fn set_iid(&mut self, iid: AnyIter<AnyString>) -> &Self {
         self.iid = Some(Rc::new(
             iid.into_iter().map(|s| s.as_ref().to_owned()).collect(),
         ));
         self
     }
 
-    fn set_father<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, father: I) -> &Self {
-        self.father = Some(Rc::new(
-            father.into_iter().map(|s| s.as_ref().to_owned()).collect(),
-        ));
+    #[anyinput]
+    fn set_father(&mut self, father: AnyIter<AnyString>) -> &Self {
+        self.father = Some(Rc::new(father.map(|s| s.as_ref().to_owned()).collect()));
         self
     }
 
-    fn set_mother<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, mother: I) -> &Self {
-        self.mother = Some(Rc::new(
-            mother.into_iter().map(|s| s.as_ref().to_owned()).collect(),
-        ));
+    #[anyinput]
+    fn set_mother(&mut self, mother: AnyIter<AnyString>) -> &Self {
+        self.mother = Some(Rc::new(mother.map(|s| s.as_ref().to_owned()).collect()));
         self
     }
 
-    fn set_sex<I: IntoIterator<Item = i32>>(&mut self, sex: I) -> &Self {
-        self.sex = Some(Rc::new(sex.into_iter().collect()));
+    #[anyinput]
+    fn set_sex(&mut self, sex: AnyIter<i32>) -> &Self {
+        self.sex = Some(Rc::new(sex.collect()));
         self
     }
 
-    fn set_pheno<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, pheno: I) -> &Self {
-        self.pheno = Some(Rc::new(
-            pheno.into_iter().map(|s| s.as_ref().to_owned()).collect(),
-        ));
+    #[anyinput]
+    fn set_pheno(&mut self, pheno: AnyIter<AnyString>) -> &Self {
+        self.pheno = Some(Rc::new(pheno.map(|s| s.as_ref().to_owned()).collect()));
         self
     }
 
-    fn set_chromosome<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, chromosome: I) -> &Self {
-        self.chromosome = Some(Rc::new(
-            chromosome
-                .into_iter()
-                .map(|s| s.as_ref().to_owned())
-                .collect(),
-        ));
+    #[anyinput]
+    fn set_chromosome(&mut self, chromosome: AnyIter<AnyString>) -> &Self {
+        self.chromosome = Some(Rc::new(chromosome.map(|s| s.as_ref().to_owned()).collect()));
         self
     }
 
-    fn set_sid<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, sid: I) -> &Self {
-        self.sid = Some(Rc::new(
-            sid.into_iter().map(|s| s.as_ref().to_owned()).collect(),
-        ));
+    #[anyinput]
+    fn set_sid(&mut self, sid: AnyIter<AnyString>) -> &Self {
+        self.sid = Some(Rc::new(sid.map(|s| s.as_ref().to_owned()).collect()));
         self
     }
 
-    fn set_cm_position<I: IntoIterator<Item = f32>>(&mut self, cm_position: I) -> &Self {
+    #[anyinput]
+    fn set_cm_position(&mut self, cm_position: AnyIter<f32>) -> &Self {
         self.cm_position = Some(Rc::new(cm_position.into_iter().collect()));
         self
     }
 
-    fn set_bp_position<I: IntoIterator<Item = i32>>(&mut self, bp_position: I) -> &Self {
+    #[anyinput]
+    fn set_bp_position(&mut self, bp_position: AnyIter<i32>) -> &Self {
         self.bp_position = Some(Rc::new(bp_position.into_iter().collect()));
         self
     }
 
-    fn set_allele_1<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, allele_1: I) -> &Self {
-        self.allele_1 = Some(Rc::new(
-            allele_1
-                .into_iter()
-                .map(|s| s.as_ref().to_owned())
-                .collect(),
-        ));
+    #[anyinput]
+    fn set_allele_1(&mut self, allele_1: AnyIter<AnyString>) -> &Self {
+        self.allele_1 = Some(Rc::new(allele_1.map(|s| s.as_ref().to_owned()).collect()));
         self
     }
 
-    fn set_allele_2<I: IntoIterator<Item = T>, T: AsRef<str>>(&mut self, allele_2: I) -> &Self {
-        self.allele_2 = Some(Rc::new(
-            allele_2
-                .into_iter()
-                .map(|s| s.as_ref().to_owned())
-                .collect(),
-        ));
+    #[anyinput]
+    fn set_allele_2(&mut self, allele_2: AnyIter<AnyString>) -> &Self {
+        self.allele_2 = Some(Rc::new(allele_2.map(|s| s.as_ref().to_owned()).collect()));
         self
     }
 }
@@ -6551,10 +6589,11 @@ static STATIC_FETCH_DATA: FetchData = FetchData::new(
 /// SHA256 hashes are used to verify that the files are correct.
 /// The files will be in a directory determined by environment variable `BED_READER_DATA_DIR`.
 /// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
-pub fn sample_bed_file<P: AsRef<Path>>(bed_path: P) -> Result<PathBuf, BedErrorPlus> {
+#[anyinput]
+pub fn sample_bed_file(bed_path: AnyPath) -> Result<PathBuf, BedErrorPlus> {
     let mut path_list: Vec<PathBuf> = Vec::new();
     for ext in ["bed", "bim", "fam"].iter() {
-        let file_path = bed_path.as_ref().with_extension(ext);
+        let file_path = bed_path.with_extension(ext);
         path_list.push(file_path);
     }
 
@@ -6568,7 +6607,8 @@ pub fn sample_bed_file<P: AsRef<Path>>(bed_path: P) -> Result<PathBuf, BedErrorP
 /// A SHA256 hash is used to verify that the file is correct.
 /// The file will be in a directory determined by environment variable `BED_READER_DATA_DIR`.
 /// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
-pub fn sample_file<P: AsRef<Path>>(path: P) -> Result<PathBuf, BedErrorPlus> {
+#[anyinput]
+pub fn sample_file(path: AnyPath) -> Result<PathBuf, BedErrorPlus> {
     match STATIC_FETCH_DATA.fetch_file(path) {
         Ok(path) => Ok(path),
         Err(e) => Err(e.into()),
@@ -6580,10 +6620,9 @@ pub fn sample_file<P: AsRef<Path>>(path: P) -> Result<PathBuf, BedErrorPlus> {
 /// SHA256 hashes are used to verify that the files are correct.
 /// The files will be in a directory determined by environment variable `BED_READER_DATA_DIR`.
 /// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
-pub fn sample_files<I, P>(path_list: I) -> Result<Vec<PathBuf>, BedErrorPlus>
+#[anyinput]
+pub fn sample_files(path_list: AnyIter<AnyPath>) -> Result<Vec<PathBuf>, BedErrorPlus>
 where
-    I: IntoIterator<Item = P>,
-    P: AsRef<Path>,
 {
     match STATIC_FETCH_DATA.fetch_files(path_list) {
         Ok(path) => Ok(path),

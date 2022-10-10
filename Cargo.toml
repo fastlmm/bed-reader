@@ -1,7 +1,7 @@
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [package]
-version = "0.2.24"
+version = "0.2.26"
 name = "bed-reader"
 description = "Read and write the PLINK BED format, simply and efficiently."
 repository = "https://github.com/fastlmm/bed-reader"
@@ -17,21 +17,7 @@ homepage = "https://fastlmm.github.io/"
 
 [package.metadata.maturin]
 requires-python = ">=3.7"
-classifiers = [
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python",
-]
 requires-dist = ["numpy>=1.13.3", "pandas>=0.25.1", "pooch>=1.1.1"]
-
-[package.metadata.maturin.project-url]
-Homepage = "https://fastlmm.github.io"
-"Source Code" = "https://github.com/fastlmm/bed-reader"
-"Bug Tracker" = "https://github.com/fastlmm/bed-reader/issues"
-Documentation = "http://fastlmm.github.io/bed-reader"
 
 [lib]
 name = "bed_reader"
@@ -39,23 +25,26 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 # https://github.com/PyO3/pyo3/discussions/2271
-extension-module = ["pyo3"]
+# https://pyo3.rs/latest/faq.html#i-cant-run-cargo-test-or-i-cant-build-in-a-cargo-workspace-im-having-linker-issues-like-symbol-not-found-or-undefined-reference-to-_pyexc_systemerror
+extension-module = ["pyo3/extension-module"]
+default = ["extension-module"]
 
 [dependencies]
 thiserror = "1.0.30"
 num-traits = "0.2.14"
 ndarray-npy = { version = "0.8.1", default-features = false }
 rayon = "1.5.2"
-numpy = "0.16.2"
+numpy = "0.17.1"
 ndarray = { version = "0.15.4", features = ["approx", "rayon"] }
 approx = "0.5.1"
-statrs = "0.15.0"
+statrs = "0.16.0"
 byteorder = { version = "1.4.3", default-features = false }
-pyo3 = { version = "0.16.4", features = ["extension-module"], optional = true }
+pyo3 = { version = "0.17.1", features = ["extension-module"], optional = true }
 dpc-pariter = "0.4.0"                                                           # //  pariter = "0.5.1"
 derive_builder = "0.11.1"
 temp_testdir = "0.2.3"
 fetch-data = "0.1.4"
+anyinput = { version = "0.1.3", features = ["ndarray"] }
 
 [dev-dependencies]
 ndarray-rand = "0.14.0"

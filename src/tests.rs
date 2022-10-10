@@ -38,6 +38,8 @@ use crate::{impute_and_zero_mean_snps, matrix_subset_no_alloc};
 #[cfg(test)]
 use crate::{internal_read_no_alloc, read_no_alloc, BedError, BedErrorPlus};
 #[cfg(test)]
+use anyinput::anyinput;
+#[cfg(test)]
 use nd::s;
 #[cfg(test)]
 use ndarray as nd;
@@ -771,8 +773,9 @@ fn file_ata_small() {
 }
 
 #[cfg(test)]
-fn file_ata<P: AsRef<Path>>(
-    path: P,
+#[anyinput]
+fn file_ata(
+    path: AnyPath,
     offset: u64,
     iid_count: usize,
     sid_count: usize,
@@ -874,8 +877,9 @@ fn file_aat_small2() {
 }
 
 #[cfg(test)]
-fn file_aat<P: AsRef<Path>>(
-    path: P,
+#[anyinput]
+fn file_aat(
+    path: AnyPath,
     offset: u64,
     iid_count: usize,
     sid_count: usize,
@@ -1048,6 +1052,7 @@ fn demo_iter() -> Result<(), BedErrorPlus> {
 
 #[test]
 fn demo_index() -> Result<(), BedErrorPlus> {
+    #[allow(clippy::let_unit_value)]
     let index: () = ();
     let _ = ReadOptions::builder().iid_index(index).i8().build()?;
 
@@ -1146,6 +1151,7 @@ fn use_index() -> Result<(), BedErrorPlus> {
         Ok(len)
     }
 
+    #[allow(clippy::let_unit_value)]
     let index: () = ();
     let _ = len100(index)?;
 

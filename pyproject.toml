@@ -1,6 +1,20 @@
 [project]
 name = "bed-reader"
 readme = "README.md"
+classifiers = [
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python",
+]
+
+[project.urls]
+Homepage = "https://fastlmm.github.io"
+"Source Code" = "https://github.com/fastlmm/bed-reader"
+"Bug Tracker" = "https://github.com/fastlmm/bed-reader/issues"
+Documentation = "http://fastlmm.github.io/bed-reader"
 
 [build-system]
 requires = ["maturin==0.12.5"]
