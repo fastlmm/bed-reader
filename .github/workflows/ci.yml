@@ -68,7 +68,7 @@ jobs:
         maturin list-python
         docker run --rm -v $(pwd):/io ghcr.io/pyo3/maturin build --release --out target/wheels -i python${{matrix.python-version}}
         ls -las target/wheels
-        cp target/wheels/*manylinux1_*.whl .
+        cp target/wheels/*manylinux_*.whl .
       shell: bash
 
     - name: Build wheel with Maturin - Non-Linux
