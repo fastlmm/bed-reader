@@ -99,6 +99,8 @@ jobs:
         pip uninstall bed-reader --yes
         maturin develop
         pip install -r requirements-dev.txt
+        echo "numpy"
+        pip install numpy
         pytest bed_reader
     - name: Test Python - Windows
       if: runner.os == 'Windows'
