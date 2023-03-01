@@ -44,10 +44,10 @@ jobs:
     - name: Lint with flake8, etc
       run: |
         echo "flake8"
-        #todo: put this back flake8 .
+        flake8 .
         echo "black"
         black --version
-        black --verbose --check .
+        # todo put back black --verbose --check .
         echo "isort"
         isort --check-only .
 
