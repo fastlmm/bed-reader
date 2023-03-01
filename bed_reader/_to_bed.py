@@ -124,7 +124,6 @@ def to_bed(
     open_bed._write_fam_or_bim(filepath, properties, "bim", bim_filepath)
 
     if not force_python_only:
-
         if not val.flags["C_CONTIGUOUS"] and not val.flags["F_CONTIGUOUS"]:
             raise ValueError("val must be contiguous.")
 
@@ -211,7 +210,6 @@ def to_bed(
 
 
 def _fix_up_val(input):
-
     if not isinstance(input, np.ndarray):
         return _fix_up_val(np.array(input))
 

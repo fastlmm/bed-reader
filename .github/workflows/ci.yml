@@ -47,7 +47,7 @@ jobs:
         flake8 .
         echo "black"
         black --version
-        # todo put back black --verbose --check .
+        black --verbose --check .
         echo "isort"
         isort --check-only .
 

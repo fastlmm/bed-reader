@@ -434,7 +434,6 @@ class open_bed:
             nbyte = int(np.ceil(0.25 * self.iid_count))
             with open(self.filepath, "rb") as filepointer:
                 for SNPsIndex, bimIndex in enumerate(sid_index):
-
                     startbit = int(np.ceil(0.25 * self.iid_count) * bimIndex + 3)
                     filepointer.seek(startbit)
                     bytes = np.array(bytearray(filepointer.read(nbyte))).reshape(
@@ -989,7 +988,6 @@ class open_bed:
 
     @staticmethod
     def _array_properties_are_ok(val, order):
-
         if order == "F":
             return val.flags["F_CONTIGUOUS"]
         else:

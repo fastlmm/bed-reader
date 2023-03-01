@@ -663,7 +663,6 @@ def test_coverage3(shared_datadir, tmp_path):
 
 
 def test_nones(shared_datadir, tmp_path):
-
     properties = {
         "father": None,
         "mother": None,
@@ -763,7 +762,6 @@ def test_env(shared_datadir):
 
 
 def test_noncontig_indexes(shared_datadir):
-
     with open_bed(shared_datadir / "some_missing.bed") as bed:
         whole_iid_index = np.arange(bed.iid_count)
         assert whole_iid_index.flags["C_CONTIGUOUS"]

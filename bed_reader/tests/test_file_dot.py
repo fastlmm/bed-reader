@@ -143,7 +143,6 @@ def test_file_aat_medium(tmp_path):
 
 
 def test_file_ata_small(shared_datadir):
-
     filename = shared_datadir / "small_array.memmap"
 
     out_val = file_ata(filename, 0, 2, 3, 2)
@@ -155,7 +154,6 @@ def test_file_ata_small(shared_datadir):
 
 
 def test_file_aat_small(shared_datadir):
-
     filename = shared_datadir / "small_array.memmap"
 
     out_val = file_aat(filename, 0, iid_count=2, sid_count=3, iid_step=1)
@@ -167,7 +165,6 @@ def test_file_aat_small(shared_datadir):
 
 
 def mmultfile_b_less_aatb(a_snp_mem_map, b, log_frequency=0, force_python_only=False):
-
     # Without memory efficiency
     #   a=a_snp_mem_map.val
     #   aTb = np.dot(a.T,b)
