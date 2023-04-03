@@ -1,7 +1,7 @@
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [package]
-version = "0.2.30"
+version = "0.2.31"
 name = "bed-reader"
 description = "Read and write the PLINK BED format, simply and efficiently."
 repository = "https://github.com/fastlmm/bed-reader"
@@ -31,20 +31,20 @@ thiserror = "1.0.30"
 num-traits = "0.2.14"
 ndarray-npy = { version = "0.8.1", default-features = false }
 rayon = "1.5.2"
-numpy = "0.17.1"
+numpy = "0.18.0"
 ndarray = { version = "0.15.4", features = ["approx", "rayon"] }
 approx = "0.5.1"
 statrs = "0.16.0"
 byteorder = { version = "1.4.3", default-features = false }
-pyo3 = { version = "0.17.1", features = ["extension-module"], optional = true }
+pyo3 = { version = "0.18.2", features = ["extension-module"], optional = true }
 dpc-pariter = "0.4.0"                                                           # //  pariter = "0.5.1"
-derive_builder = "0.11.1"
+derive_builder = "0.12.0"
 temp_testdir = "0.2.3"
 ureq = { version = "2.4.0", features = [] }
-directories = "4.0.1"
+directories = "5.0.0"
 sha2 = "0.10.2"
-base16ct = { version = "0.1.1", features = ["alloc"] }
-ctor = "0.1.22"
+base16ct = { version = "0.2.0", features = ["alloc"] }
+ctor = "0.2.0"
 anyinput = { version = "0.1.6", features = ["ndarray"] }
 fetch-data = "0.1.6"
 
@@ -52,4 +52,4 @@ fetch-data = "0.1.6"
 ndarray-rand = "0.14.0"
 
 [build-dependencies]
-pyo3-build-config = "0.17.1"
+pyo3-build-config = "0.18.2"
