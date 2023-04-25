@@ -60,7 +60,7 @@ def test_write(tmp_path, shared_datadir):
                 properties=properties0,
                 force_python_only=force_python_only,
             )
-    val0[np.isnan(val0)] = 0 # set any nan to 0
+    val0[np.isnan(val0)] = 0  # set any nan to 0
     val_int8 = val0.astype("int8")
     val_int8[0, 0] = -1
     for force_python_only in [False, True]:
