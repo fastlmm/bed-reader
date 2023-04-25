@@ -17,7 +17,7 @@ Homepage = "https://fastlmm.github.io"
 Documentation = "http://fastlmm.github.io/bed-reader"
 
 [build-system]
-requires = ["maturin==0.12.5"]
+requires = ["maturin==0.14.17"]
 build-backend = "maturin"
 
 [tool.isort]

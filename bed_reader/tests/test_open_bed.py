@@ -60,6 +60,7 @@ def test_write(tmp_path, shared_datadir):
                 properties=properties0,
                 force_python_only=force_python_only,
             )
+    val0[np.isnan(val0)] = 0 # set any nan to 0
     val_int8 = val0.astype("int8")
     val_int8[0, 0] = -1
     for force_python_only in [False, True]:
@@ -380,9 +381,9 @@ def test_write1_x_x_cpp(tmp_path, shared_datadir):
 
 def test_respect_read_inputs(shared_datadir):
     ref_val_float = reference_val(shared_datadir)
-
-    ref_val_int8 = ref_val_float.astype("int8")
-    ref_val_int8[ref_val_float != ref_val_float] = -127
+    ref_val_float2 = ref_val_float.copy()
+    ref_val_float2[ref_val_float != ref_val_float] = -127
+    ref_val_int8 = ref_val_float2.astype("int8")
 
     with open_bed(shared_datadir / "some_missing.bed") as bed:
         for order in ["F", "C"]:
@@ -401,8 +402,9 @@ def test_respect_read_inputs(shared_datadir):
 
 def test_threads(shared_datadir):
     ref_val_float = reference_val(shared_datadir)
-    ref_val_int8 = ref_val_float.astype("int8")
-    ref_val_int8[ref_val_float != ref_val_float] = -127
+    ref_val_float2 = ref_val_float.copy()
+    ref_val_float2[ref_val_float != ref_val_float] = -127
+    ref_val_int8 = ref_val_float2.astype("int8")
 
     for num_threads in [1, 4]:
         with open_bed(
