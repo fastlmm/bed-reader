@@ -20,7 +20,7 @@ def find_version(filepath):
 
 
 project = "Bed Reader"
-copyright = "2020, Carl Kadie"
+copyright = "2023, Carl Kadie"
 author = "Carl Kadie"
 
 version = find_version(Path(__file__).parents[0] / Path("../../Cargo.toml"))
@@ -48,7 +48,7 @@ source_suffix = ".rst"
 
 master_doc = "index"
 man_pages = [(master_doc, project, "{} documentation".format(project), [author], 1)]
-language = None
+language = 'en'
 
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "conf.py"]
 
@@ -64,7 +64,7 @@ html_theme_options = {
 htmlhelp_basename = "{}doc".format(project)
 
 intersphinx_mapping = {
-    "https://docs.python.org/": None,
+    "python": ("https://docs.python.org/3", None),
     "numpy": ("https://docs.scipy.org/doc/numpy/", None),
     "pandas": ("https://pandas.pydata.org/pandas-docs/stable/", None),
 }
