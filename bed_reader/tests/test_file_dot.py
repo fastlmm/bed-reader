@@ -5,8 +5,12 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from bed_reader import (file_aat_piece_f64_orderf, file_ata_piece_f64_orderf,
-                        file_b_less_aatbx, file_dot_piece)
+from bed_reader import (
+    file_aat_piece_f64_orderf,
+    file_ata_piece_f64_orderf,
+    file_b_less_aatbx,
+    file_dot_piece,
+)
 from bed_reader._open_bed import get_num_threads, open_bed  # noqa
 
 
