@@ -6,3 +6,4 @@ pip install -r requirements.txt
 pip install -r requirements-dev.txt
 maturin develop
 pytest bed_reader
+maturin develop --target-dir c:\deldir\
