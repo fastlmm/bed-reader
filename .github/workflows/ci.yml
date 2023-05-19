@@ -20,8 +20,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macOS-latest]
-        python-version: [3.7, 3.8, 3.9, "3.10", "3.11"]
+        include:
+          - config: {"name": "Linux", "os": "ubuntu-latest", "target": "x86_64"}
+          - config: {"name": "macOS", "os": "macOS-latest", "target": "x86_64"}
+          - config: {"name": "macOS", "os": "macOS-latest", "target": "aarch64"}
+          - config: {"name": "Windows", "os": "windows-latest", "target": "x64"}        
+        python-version: [3.8, 3.9, "3.10", "3.11"]
+    name: Do work for for ${{ matrix.config.os }} ${{ matrix.config.arch }} ${{ python-version }}
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout
