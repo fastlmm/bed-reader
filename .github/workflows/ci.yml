@@ -1,6 +1,6 @@
 name: CI
 on:
-  push:
+  # cmk push:
   schedule:
     - cron: '0 0 1 * *'
 
