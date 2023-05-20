@@ -169,10 +169,10 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install wheels
         run: |
-          cd bed_reader
+          pwd
           ls -las
-          ls -las dist
-          pip install --no-index --find-links=dist bed-reader
+          pip install --no-index --find-links=/Users/runner/work/bed-reader/bed-reader/dist bed-reader
+          ls -las
           cd bed_reader
           pip install pytest
           pytest -v
