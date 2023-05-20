@@ -27,10 +27,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Checkout testdir
-        uses: actions/checkout@v2
-        with:
-          path: testdir
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
         with:
@@ -166,3 +162,12 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: wheels
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install wheels
+        run: |
+          cd bed_reader
+          python -m pip install --upgrade pip
+          pip install dist/*.whl
+          pip install pytest
+          pytest -v
