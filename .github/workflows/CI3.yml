@@ -3,10 +3,10 @@
 name: CI3
 
 on:
-  # push:
-  # schedule:
-  #   - cron: '0 0 1 * *'
-  # pull_request:
+  push:
+  schedule:
+    - cron: '0 0 1 * *'
+  pull_request:
   workflow_dispatch:
     
 env:
@@ -161,7 +161,7 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: wheels
-          path: dist/
+          path: dist
       - name: Checkout
         uses: actions/checkout@v2
       - uses: actions/setup-python@v4
@@ -169,7 +169,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install wheels
         run: |
-          pip install --no-index --find-links=dist/ bed-reader
+          ls -las
+          ls -las dist
+          pip install --no-index --find-links=dist bed-reader
           cd bed_reader
           pip install pytest
           pytest -v
