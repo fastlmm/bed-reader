@@ -158,20 +158,20 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/download-artifact@v3
-        with:
-          name: wheels
-          path: dist
       - name: Checkout
         uses: actions/checkout@v2
       - uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
+      - uses: actions/download-artifact@v3
+        with:
+            name: wheels
+            path: dist
       - name: Install wheels
         run: |
           pwd
           ls -las
-          pip install --no-index --find-links=/Users/runner/work/bed-reader/bed-reader/dist bed-reader
+          pip install --no-index --find-links=dist bed-reader
           ls -las
           cd bed_reader
           pip install pytest
