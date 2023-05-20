@@ -3,10 +3,10 @@
 name: CI3
 
 on:
-  push:
-  schedule:
-    - cron: '0 0 1 * *'
-  pull_request:
+  # push:
+  # schedule:
+  #   - cron: '0 0 1 * *'
+  # pull_request:
   workflow_dispatch:
     
 env:
