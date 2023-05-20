@@ -162,12 +162,13 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: wheels
+          path: dist/
       - name: Checkout
         uses: actions/checkout@v2
       - name: Install wheels
         run: |
-          cd bed_reader
           python -m pip install --upgrade pip
-          pip install dist/*.whl
+          pip install --no-index --find-links=dist/ bed-reader
+          cd bed_reader
           pip install pytest
           pytest -v
