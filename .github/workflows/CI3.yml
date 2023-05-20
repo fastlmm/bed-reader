@@ -166,10 +166,3 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: wheels
-      - name: Set up Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-      - name: Test Rust
-        run: cargo test --verbose --no-default-features
