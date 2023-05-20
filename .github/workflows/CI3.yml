@@ -169,10 +169,8 @@ jobs:
             path: dist
       - name: Install wheels
         run: |
-          pwd
-          ls -las
+          python -m pip install --upgrade pip
           pip install --no-index --find-links=dist bed-reader
-          ls -las
           cd bed_reader
           pip install pytest
           pytest -v
