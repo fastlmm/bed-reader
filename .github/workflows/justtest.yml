@@ -1,7 +1,7 @@
 name: just_test
 
 on:
-  push:
+  # push:
   workflow_dispatch:
     
 env:
