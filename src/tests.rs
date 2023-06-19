@@ -787,7 +787,7 @@ fn file_ata(
         let mut ata_piece =
             nd::Array2::<f64>::from_elem((sid_count - sid_start, sid_range_len), f64::NAN);
         file_ata_piece(
-            &path,
+            path,
             offset,
             iid_count,
             sid_count,
@@ -893,7 +893,7 @@ fn file_aat(
         let mut aat_piece =
             nd::Array2::<f64>::from_elem((iid_count - iid_start, iid_range_len), f64::NAN);
         file_aat_piece(
-            &path,
+            path,
             offset,
             iid_count,
             sid_count,
@@ -1005,21 +1005,21 @@ fn test_sample_file() -> Result<(), BedErrorPlus> {
 #[test]
 fn demo_path() -> Result<(), BedErrorPlus> {
     let path: &str = "bed_reader/tests/data/small.bed";
-    let _ = Bed::new(&path)?; // borrow a &str
+    let _ = Bed::new(path)?; // borrow a &str
     let _ = Bed::new(path)?; // move a &str
     let path: String = "bed_reader/tests/data/small.bed".to_string();
     let _ = Bed::new(&path)?; // borrow a String
     let path2: &String = &path;
-    let _ = Bed::new(&path2)?; // borrow a &String
+    let _ = Bed::new(path2)?; // borrow a &String
     let _ = Bed::new(path2)?; // move a &String
     let _ = Bed::new(path)?; // move a String
     let path: &Path = Path::new("bed_reader/tests/data/small.bed");
-    let _ = Bed::new(&path)?; // borrow a Path
+    let _ = Bed::new(path)?; // borrow a Path
     let _ = Bed::new(path)?; // move a Path
     let path: PathBuf = PathBuf::from("bed_reader/tests/data/small.bed");
     let _ = Bed::new(&path)?; // borrow a PathBuf
     let path2: &PathBuf = &path;
-    let _ = Bed::new(&path2)?; // borrow a &PathBuf
+    let _ = Bed::new(path2)?; // borrow a &PathBuf
     let _ = Bed::new(path2)?; // move a &PathBuf
     let _ = Bed::new(path)?; // move a PathBuf
     Ok(())
@@ -1029,7 +1029,7 @@ fn demo_path() -> Result<(), BedErrorPlus> {
 #[test]
 fn demo_iter() -> Result<(), BedErrorPlus> {
     let list: [&str; 3] = ["i1", "i2", "i3"];
-    let _ = Metadata::builder().iid(&list).build()?; // borrow fixed-size array
+    let _ = Metadata::builder().iid(list).build()?; // borrow fixed-size array
     let _ = Metadata::builder().iid(list).build()?; // move fixed-size array
     let list: [String; 3] = ["i1".to_string(), "i2".to_string(), "i3".to_string()];
     let _ = Metadata::builder().iid(&list).build()?; // borrow fixed-size array of String
@@ -1041,7 +1041,7 @@ fn demo_iter() -> Result<(), BedErrorPlus> {
     let _ = Metadata::builder().iid(list).build()?; // move Vec<&str>
     let list = nd::array!["i1", "i2", "i3"];
     let view = list.view();
-    let _ = Metadata::builder().iid(&view).build()?; // borrow nd view
+    let _ = Metadata::builder().iid(view).build()?; // borrow nd view
     let _ = Metadata::builder().iid(view).build()?; // move nd view
     let _ = Metadata::builder().iid(&list).build()?; // borrow ndarray
     let _ = Metadata::builder().iid(list).build()?; // move ndarray
@@ -1057,11 +1057,11 @@ fn demo_index() -> Result<(), BedErrorPlus> {
     let _ = ReadOptions::builder().iid_index(index).i8().build()?;
 
     let index: isize = 2;
-    let _ = ReadOptions::builder().iid_index(&index).i8().build()?;
+    let _ = ReadOptions::builder().iid_index(index).i8().build()?;
     let _ = ReadOptions::builder().iid_index(index).i8().build()?;
 
     let index = ..;
-    let _ = ReadOptions::builder().iid_index(&index).i8().build()?;
+    let _ = ReadOptions::builder().iid_index(index).i8().build()?;
     let _ = ReadOptions::builder().iid_index(index).i8().build()?;
 
     let index: RangeInclusive<usize> = 0..=3;
@@ -1069,11 +1069,11 @@ fn demo_index() -> Result<(), BedErrorPlus> {
     let _ = ReadOptions::builder().iid_index(index).i8().build()?;
 
     let index: SliceInfo1 = s![..;2];
-    let _ = ReadOptions::builder().iid_index(&index).i8().build()?;
+    let _ = ReadOptions::builder().iid_index(index).i8().build()?;
     let _ = ReadOptions::builder().iid_index(index).i8().build()?;
 
     let index: [isize; 2] = [2, 5];
-    let _ = ReadOptions::builder().iid_index(&index).i8().build()?;
+    let _ = ReadOptions::builder().iid_index(index).i8().build()?;
     let _ = ReadOptions::builder().iid_index(index).i8().build()?;
 
     let index: Vec<isize> = vec![2, 5];
@@ -1085,13 +1085,13 @@ fn demo_index() -> Result<(), BedErrorPlus> {
 
     let index: nd::Array1<isize> = nd::array![2, 5];
     let view = index.view();
-    let _ = ReadOptions::builder().iid_index(&view).i8().build()?;
+    let _ = ReadOptions::builder().iid_index(view).i8().build()?;
     let _ = ReadOptions::builder().iid_index(view).i8().build()?;
     let _ = ReadOptions::builder().iid_index(&index).i8().build()?;
     let _ = ReadOptions::builder().iid_index(index).i8().build()?;
 
     let index: [bool; 3] = [false, false, true];
-    let _ = ReadOptions::builder().iid_index(&index).i8().build()?;
+    let _ = ReadOptions::builder().iid_index(index).i8().build()?;
     let _ = ReadOptions::builder().iid_index(index).i8().build()?;
 
     let index: Vec<bool> = vec![false, false, true];
@@ -1103,7 +1103,7 @@ fn demo_index() -> Result<(), BedErrorPlus> {
 
     let index: nd::Array1<bool> = nd::array![false, false, true];
     let view = index.view();
-    let _ = ReadOptions::builder().iid_index(&view).i8().build()?;
+    let _ = ReadOptions::builder().iid_index(view).i8().build()?;
     let _ = ReadOptions::builder().iid_index(view).i8().build()?;
     let _ = ReadOptions::builder().iid_index(&index).i8().build()?;
     let _ = ReadOptions::builder().iid_index(index).i8().build()?;
@@ -1156,11 +1156,11 @@ fn use_index() -> Result<(), BedErrorPlus> {
     let _ = len100(index)?;
 
     let index = 2;
-    let _ = len100(&index)?;
+    let _ = len100(index)?;
     let _ = len100(index)?;
 
     let index = ..;
-    let _ = len100(&index)?;
+    let _ = len100(index)?;
     let _ = len100(index)?;
 
     let index = 0..=3;
@@ -1168,11 +1168,11 @@ fn use_index() -> Result<(), BedErrorPlus> {
     let _ = len100(index)?;
 
     let index = s![..;2];
-    let _ = len100(&index)?;
+    let _ = len100(index)?;
     let _ = len100(index)?;
 
     let index = [2, 5];
-    let _ = len100(&index)?;
+    let _ = len100(index)?;
     let _ = len100(index)?;
 
     let index = vec![2, 5];
@@ -1184,13 +1184,13 @@ fn use_index() -> Result<(), BedErrorPlus> {
 
     let index = nd::array![2, 5];
     let view = index.view();
-    let _ = len100(&view)?;
+    let _ = len100(view)?;
     let _ = len100(view)?;
     let _ = len100(&index)?;
     let _ = len100(index)?;
 
     let index = [false, false, true];
-    let _ = len100(&index)?;
+    let _ = len100(index)?;
     let _ = len100(index)?;
 
     let index = vec![false, false, true];
@@ -1202,7 +1202,7 @@ fn use_index() -> Result<(), BedErrorPlus> {
 
     let index = nd::array![false, false, true];
     let view = index.view();
-    let _ = len100(&view)?;
+    let _ = len100(view)?;
     let _ = len100(view)?;
     let _ = len100(&index)?;
     let _ = len100(index)?;

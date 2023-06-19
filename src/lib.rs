@@ -1,4 +1,5 @@
 #![warn(missing_docs)]
+#![allow(clippy::result_large_err)]
 // Inspired by C++ version by Chris Widmer and Carl Kadie
 
 // See: https://towardsdatascience.com/nine-rules-for-writing-python-extensions-in-rust-d35ea3a4ec29?sk=f8d808d5f414154fdb811e4137011437
@@ -343,7 +344,7 @@ fn read_no_alloc<TVal: BedVal>(
     val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
 ) -> Result<(), BedErrorPlus> {
     create_pool(num_threads)?.install(|| {
-        let (buf_reader, bytes_vector) = open_and_check(&path)?;
+        let (buf_reader, bytes_vector) = open_and_check(path)?;
 
         match bytes_vector[2] {
             0 => {
@@ -351,7 +352,7 @@ fn read_no_alloc<TVal: BedVal>(
                 let mut val_t = val.view_mut().reversed_axes();
                 internal_read_no_alloc(
                     buf_reader,
-                    &path,
+                    path,
                     sid_count,
                     iid_count,
                     is_a1_counted,
@@ -363,7 +364,7 @@ fn read_no_alloc<TVal: BedVal>(
             }
             1 => internal_read_no_alloc(
                 buf_reader,
-                &path,
+                path,
                 iid_count,
                 sid_count,
                 is_a1_counted,
@@ -372,7 +373,7 @@ fn read_no_alloc<TVal: BedVal>(
                 missing_value,
                 val,
             ),
-            _ => Err(BedError::BadMode(path_ref_to_string(&path)).into()),
+            _ => Err(BedError::BadMode(path_ref_to_string(path)).into()),
         }
     })?;
     Ok(())
@@ -385,11 +386,11 @@ fn path_ref_to_string(path: AnyPath) -> String {
 
 #[anyinput]
 fn open_and_check(path: AnyPath) -> Result<(BufReader<File>, Vec<u8>), BedErrorPlus> {
-    let mut buf_reader = BufReader::new(File::open(&path)?);
+    let mut buf_reader = BufReader::new(File::open(path)?);
     let mut bytes_vector: Vec<u8> = vec![0; CB_HEADER_USIZE];
     buf_reader.read_exact(&mut bytes_vector)?;
     if (BED_FILE_MAGIC1 != bytes_vector[0]) || (BED_FILE_MAGIC2 != bytes_vector[1]) {
-        return Err(BedError::IllFormed(path_ref_to_string(&path)).into());
+        return Err(BedError::IllFormed(path_ref_to_string(path)).into());
     }
     Ok((buf_reader, bytes_vector))
 }
@@ -564,7 +565,7 @@ fn check_and_precompute_iid_index(
             *in_iid_i_signed as usize
         } else if (lower_iid_count..=-1).contains(in_iid_i_signed) {
             *result = Ok(());
-            (in_iid_count - ((-in_iid_i_signed) as usize)) as usize
+            in_iid_count - ((-in_iid_i_signed) as usize)
         } else {
             *result = Err(BedError::IidIndexTooBig(
                 *in_iid_i_signed,
@@ -656,7 +657,7 @@ where
     S: nd::Data<Elem = TVal>,
     TVal: BedVal,
 {
-    let mut writer = BufWriter::new(File::create(&path)?);
+    let mut writer = BufWriter::new(File::create(path)?);
     writer.write_all(&[BED_FILE_MAGIC1, BED_FILE_MAGIC2, 0x01])?;
 
     #[allow(clippy::eq_op)]
@@ -686,7 +687,7 @@ where
                         } else if (use_nan && v0 != v0) || (!use_nan && v0 == missing) {
                             1
                         } else {
-                            return Err(BedError::BadValue(path_ref_to_string(&path)));
+                            return Err(BedError::BadValue(path_ref_to_string(path)));
                         };
                         // Possible optimization: We could pre-compute the conversion, the division, the mod, and the multiply*2
                         let i_div_4 = iid_i / 4;
@@ -2957,7 +2958,7 @@ impl Bed {
     fn fam(&mut self) -> Result<(), BedErrorPlus> {
         let fam_path = self.fam_path();
 
-        let (metadata, count) = self.metadata.read_fam(&fam_path, &self.skip_set)?;
+        let (metadata, count) = self.metadata.read_fam(fam_path, &self.skip_set)?;
         self.metadata = metadata;
 
         match self.iid_count {
@@ -2978,7 +2979,7 @@ impl Bed {
     fn bim(&mut self) -> Result<(), BedErrorPlus> {
         let bim_path = self.bim_path();
 
-        let (metadata, count) = self.metadata.read_bim(&bim_path, &self.skip_set)?;
+        let (metadata, count) = self.metadata.read_bim(bim_path, &self.skip_set)?;
         self.metadata = metadata;
 
         match self.sid_count {
@@ -6203,7 +6204,7 @@ impl Metadata {
     ) -> Result<(Vec<Vec<String>>, usize), BedErrorPlus> {
         let mut vec_of_vec = vec![vec![]; field_vec.len()];
 
-        let file = File::open(&path)?;
+        let file = File::open(path)?;
 
         let reader = BufReader::new(file);
         let mut count = 0;

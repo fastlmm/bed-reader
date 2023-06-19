@@ -1,3 +1,5 @@
+#![allow(clippy::result_large_err)]
+
 use bed_reader::allclose;
 use bed_reader::assert_eq_nan;
 use bed_reader::sample_bed_file;
@@ -115,7 +117,7 @@ fn bad_header() -> Result<(), BedErrorPlus> {
 #[test]
 fn doc_test_test() -> Result<(), BedErrorPlus> {
     let file_name = sample_bed_file("small.bed")?;
-    let mut bed = Bed::new(&file_name)?;
+    let mut bed = Bed::new(file_name)?;
     let val = bed.read::<f64>()?;
     assert_eq_nan(
         &val,
@@ -1245,7 +1247,7 @@ fn index_options() -> Result<(), BedErrorPlus> {
 
     let index: std::ops::RangeFull = ..;
     let val = ReadOptions::builder()
-        .iid_index(&index)
+        .iid_index(index)
         .sid_index(index)
         .f64()
         .read(&mut bed)?;
@@ -1257,7 +1259,7 @@ fn index_options() -> Result<(), BedErrorPlus> {
 
     let index: std::ops::RangeTo<usize> = ..3;
     let val = ReadOptions::builder()
-        .iid_index(&index)
+        .iid_index(index)
         .sid_index(index)
         .f64()
         .read(&mut bed)?;
@@ -1269,7 +1271,7 @@ fn index_options() -> Result<(), BedErrorPlus> {
 
     let index: std::ops::RangeToInclusive<usize> = ..=19;
     let val = ReadOptions::builder()
-        .iid_index(&index)
+        .iid_index(index)
         .sid_index(index)
         .f64()
         .read(&mut bed)?;
