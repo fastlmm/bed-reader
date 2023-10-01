@@ -2,15 +2,20 @@
 name = "bed-reader"
 readme = "README.md"
 classifiers = [
-    "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python",
 ]
-dependencies = ["numpy>=1.13.3", "pandas>=0.25.1", "pooch>=1.4.0", "chardet>=5.1.0"]
+dependencies = [
+    "numpy>=1.13.3",
+    "pandas>=0.25.1",
+    "pooch>=1.4.0",
+    "chardet>=5.1.0",
+]
 
 [project.urls]
 Homepage = "https://fastlmm.github.io"
