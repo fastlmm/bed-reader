@@ -13,7 +13,7 @@ keywords = ["bioinformatics", "plink", "genomics", "genotype", "snps"]
 categories = ["science"]
 edition = "2021"
 homepage = "https://fastlmm.github.io/"
-exclude = ["tests/*", "doc/*", "docs/*", "target/*", "**/target/debug/*"]
+exclude = ["**/tests/*", "doc/*", "docs/*", "target/*", "**/target/debug/*"]
 
 
 [lib]
