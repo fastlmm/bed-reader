@@ -39,7 +39,7 @@ def _sequence(key, length, missing, dtype):
         longest = len(f"{key}{length}")
         dtype = f"<U{longest}"
     return np.fromiter(
-        (f"{key}{i+1}" for i in range(length)), dtype=dtype, count=length
+        (f"{key}{i + 1}" for i in range(length)), dtype=dtype, count=length
     )
 
 

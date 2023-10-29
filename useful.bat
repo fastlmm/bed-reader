@@ -1,4 +1,4 @@
-# test Rust
+pip# test Rust
 cargo test
 
 # install packages, compile Rust for Python, and test Python
