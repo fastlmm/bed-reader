@@ -38,7 +38,7 @@ assert_eq_nan(
     ],
 );
 # use bed_reader::BedErrorPlus; // '#' needed for doctest
-# Ok::<(), BedErrorPlus>(())
+# Ok::<(), Box<BedErrorPlus>>(())
 ```
 
 Read every second individual (samples) and SNPs (variants) 20 to 30.
@@ -58,7 +58,7 @@ let val = ReadOptions::builder()
 
 assert!(val.dim() == (50, 10));
 # use bed_reader::BedErrorPlus; // '#' needed for doctest
-# Ok::<(), BedErrorPlus>(())
+# Ok::<(), Box<BedErrorPlus>>(())
 ```
 
 List the first 5 individual (sample) ids, the first 5 SNP (variant) ids,
@@ -82,7 +82,7 @@ let val = ReadOptions::builder()
 
 assert!(val.dim() == (100, 6));
 # use bed_reader::BedErrorPlus; // '#' needed for doctest
-# Ok::<(), BedErrorPlus>(())
+# Ok::<(), Box<BedErrorPlus>>(())
 ```
 
 Project Links
@@ -95,4 +95,3 @@ Project Links
 * [**Discussion**](https://github.com/fastlmm/bed-reader/discussions/)
 * [**Bug Reports**](https://github.com/fastlmm/bed-reader/issues)
 * [**Project Website**](https://fastlmm.github.io/)
-

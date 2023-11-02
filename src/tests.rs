@@ -68,6 +68,9 @@ use std::path::PathBuf;
 #[cfg(test)]
 use temp_testdir::TempDir;
 
+#[cfg(test)]
+use crate::assert_error_variant;
+
 #[test]
 fn best_int8() {
     let filename = sample_bed_file("some_missing.bed").unwrap();
@@ -115,14 +118,11 @@ fn read_test() {
 
     let mut bed2 = Bed::new(sample_bed_file("small_too_short.bed").unwrap()).unwrap();
     let result = bed2.read::<i8>();
-    match result {
-        Err(BedErrorPlus::BedError(BedError::IllFormed(_))) => (),
-        _ => panic!("test failure"),
-    };
+    assert_error_variant!(result, BedErrorPlus::BedError(BedError::IllFormed(_)));
 }
 
 #[test]
-fn rest_reader_bed() -> Result<(), BedErrorPlus> {
+fn rest_reader_bed() -> Result<(), Box<BedErrorPlus>> {
     let file = sample_bed_file("some_missing.bed")?;
     let is_a1_counted = false;
 
@@ -215,10 +215,7 @@ fn index() {
         .sid_index(2)
         .f32()
         .read(&mut bed);
-    match result {
-        Err(BedErrorPlus::BedError(BedError::IidIndexTooBig(_))) => (),
-        _ => panic!("test failure"),
-    };
+    assert_error_variant!(result, BedErrorPlus::BedError(BedError::IidIndexTooBig(_)));
 
     let bed_bim = sample_files(["small_no_fam.bed", "small_no_fam.bim"]).unwrap();
     let mut bed = Bed::new(&bed_bim[0]).unwrap();
@@ -227,10 +224,7 @@ fn index() {
         .sid_index(0)
         .f32()
         .read(&mut bed);
-    match result2 {
-        Err(BedErrorPlus::IOError(_)) => (),
-        _ => panic!("test failure"),
-    };
+    assert_error_variant!(result2, BedErrorPlus::IOError(_));
 
     let bed_fam = sample_files(["small_no_bim.bed", "small_no_bim.fam"]).unwrap();
     let mut bed = Bed::new(&bed_fam[0]).unwrap();
@@ -239,10 +233,7 @@ fn index() {
         .sid_index(0)
         .f32()
         .read(&mut bed);
-    match result3 {
-        Err(BedErrorPlus::IOError(_)) => (),
-        _ => panic!("test failure"),
-    };
+    assert_error_variant!(result3, BedErrorPlus::IOError(_));
 
     let mut bed = Bed::new(filename).unwrap();
     let result4 = ReadOptions::builder()
@@ -250,10 +241,7 @@ fn index() {
         .sid_index(isize::MAX)
         .f32()
         .read(&mut bed);
-    match result4 {
-        Err(BedErrorPlus::BedError(BedError::SidIndexTooBig(_))) => (),
-        _ => panic!("test failure"),
-    };
+    assert_error_variant!(result4, BedErrorPlus::BedError(BedError::SidIndexTooBig(_)));
 
     let mut ignore_val = nd::Array2::zeros((1, 1));
     let buf_reader = BufReader::new(std::fs::File::open(&bed_fam[0]).unwrap());
@@ -268,20 +256,17 @@ fn index() {
         f64::NAN,
         &mut ignore_val.view_mut(),
     );
-    match result5 {
-        Err(BedErrorPlus::BedError(BedError::IndexesTooBigForFiles(_, _))) => (),
-        _ => panic!("test failure"),
-    };
+    assert_error_variant!(
+        result5,
+        BedErrorPlus::BedError(BedError::IndexesTooBigForFiles(_, _))
+    );
 
     let result6 = Bed::new("no_such_file.nsf");
-    match result6 {
-        Err(BedErrorPlus::IOError(_)) => (),
-        _ => panic!("test failure"),
-    };
+    assert_error_variant!(result6, BedErrorPlus::IOError(_));
 }
 
 #[test]
-fn writer() -> Result<(), BedErrorPlus> {
+fn writer() -> Result<(), Box<BedErrorPlus>> {
     let path = sample_bed_file("some_missing.bed").unwrap();
 
     let mut bed = Bed::new(&path).unwrap();
@@ -324,11 +309,9 @@ fn writer() -> Result<(), BedErrorPlus> {
     val[(0, 0)] = 5.0;
     let path = output_folder.join("rust_bed_reader_writer_testf64_5.bed");
 
-    if let Err(BedErrorPlus::BedError(BedError::BadValue(_))) = Bed::write(&val, &path) {
-        assert!(!path.exists(), "file should not exist");
-    } else {
-        panic!("test failure")
-    };
+    let result = Bed::write(&val, &path);
+    assert_error_variant!(result, BedErrorPlus::BedError(BedError::BadValue(_)));
+    assert!(!path.exists(), "file should not exist");
 
     // let val = nd::Array2::zeros((0, 0));
     let val = nd::Array2::<f64>::zeros((0, 0));
@@ -392,10 +375,10 @@ fn subset1() {
     assert_eq!(out_val2, answer32);
 
     let result = matrix_subset_no_alloc(&in_val2.view(), &[0], &[], &mut out_val2.view_mut());
-    match result {
-        Err(BedErrorPlus::BedError(BedError::SubsetMismatch(_, _, _, _))) => (),
-        _ => panic!("test failure"),
-    }
+    assert_error_variant!(
+        result,
+        BedErrorPlus::BedError(BedError::SubsetMismatch(_, _, _, _))
+    )
 }
 
 #[test]
@@ -430,10 +413,7 @@ fn fill_in() {
             false,
             &mut stats.view_mut(),
         );
-        match result {
-            Err(BedErrorPlus::BedError(BedError::NoIndividuals)) => (),
-            _ => panic!("test failure"),
-        }
+        assert_error_variant!(result, BedErrorPlus::BedError(BedError::NoIndividuals));
 
         let mut bed = Bed::builder(&filename).build().unwrap();
         let mut val = ReadOptions::builder()
@@ -448,10 +428,10 @@ fn fill_in() {
             false,
             &mut stats.view_mut(),
         );
-        match result {
-            Err(BedErrorPlus::BedError(BedError::CannotCreateBetaDist(_, _))) => (),
-            _ => panic!("test failure"),
-        }
+        assert_error_variant!(
+            result,
+            BedErrorPlus::BedError(BedError::CannotCreateBetaDist(_, _))
+        );
 
         nd::Array2::fill(&mut val, 3.0);
         let result = impute_and_zero_mean_snps(
@@ -461,10 +441,7 @@ fn fill_in() {
             false,
             &mut stats.view_mut(),
         );
-        match result {
-            Err(BedErrorPlus::BedError(BedError::IllegalSnpMean)) => (),
-            _ => panic!("test failure"),
-        }
+        assert_error_variant!(result, BedErrorPlus::BedError(BedError::IllegalSnpMean));
 
         nd::Array2::fill(&mut val, 1.0);
         impute_and_zero_mean_snps(
@@ -524,34 +501,35 @@ fn div_4() {
         Err(_) => panic!("test failure"),
     };
 
-    match try_div_4(2000, 0, 0u8) {
-        Err(BedErrorPlus::BedError(BedError::IndexesTooBigForFiles(_, _))) => (),
-        _ => panic!("test failure"),
-    };
-    match try_div_4(0, 256, 0u8) {
-        Err(BedErrorPlus::BedError(BedError::IndexesTooBigForFiles(_, _))) => (),
-        _ => panic!("test failure"),
-    };
+    assert_error_variant!(
+        try_div_4(2000, 0, 0u8),
+        BedErrorPlus::BedError(BedError::IndexesTooBigForFiles(_, _))
+    );
+
+    assert_error_variant!(
+        try_div_4(0, 256, 0u8),
+        BedErrorPlus::BedError(BedError::IndexesTooBigForFiles(_, _))
+    );
 
     match try_div_4(25 * 4, 10, 5u8) {
         Ok(tup) => assert_eq!(tup, (25usize, 25u8)),
         Err(_) => panic!("test failure"),
     };
 
-    match try_div_4(25 * 4 + 1, 10, 5u8) {
-        Err(BedErrorPlus::BedError(BedError::IndexesTooBigForFiles(_, _))) => (),
-        _ => panic!("test failure"),
-    };
+    assert_error_variant!(
+        try_div_4(25 * 4 + 1, 10, 5u8),
+        BedErrorPlus::BedError(BedError::IndexesTooBigForFiles(_, _))
+    );
 
-    match try_div_4(25 * 4, 11, 5u8) {
-        Err(BedErrorPlus::BedError(BedError::IndexesTooBigForFiles(_, _))) => (),
-        _ => panic!("test failure"),
-    };
+    assert_error_variant!(
+        try_div_4(25 * 4, 11, 5u8),
+        BedErrorPlus::BedError(BedError::IndexesTooBigForFiles(_, _))
+    );
 
-    match try_div_4(25 * 4, 10, 6u8) {
-        Err(BedErrorPlus::BedError(BedError::IndexesTooBigForFiles(_, _))) => (),
-        _ => panic!("test failure"),
-    };
+    assert_error_variant!(
+        try_div_4(25 * 4, 10, 6u8),
+        BedErrorPlus::BedError(BedError::IndexesTooBigForFiles(_, _))
+    );
 }
 
 #[test]
@@ -588,7 +566,7 @@ fn read_errors() {
     let shape = ShapeBuilder::set_f((iid_index.len(), sid_index.len()), output_is_orderf);
     let mut val = nd::Array2::<f64>::default(shape);
 
-    match read_no_alloc(
+    let result0 = read_no_alloc(
         "no_such_file.nsf",
         iid_count,
         sid_count,
@@ -598,10 +576,8 @@ fn read_errors() {
         f64::NAN,
         1,
         &mut val.view_mut(),
-    ) {
-        Err(BedErrorPlus::IOError(_)) => (),
-        _ => panic!("test failure"),
-    };
+    );
+    assert_error_variant!(result0, BedErrorPlus::IOError(_));
 
     let result = read_no_alloc(
         sample_file("some_missing.fam").unwrap(),
@@ -614,10 +590,7 @@ fn read_errors() {
         1,
         &mut val.view_mut(),
     );
-    match result {
-        Err(BedErrorPlus::BedError(BedError::IllFormed(_))) => (),
-        _ => panic!("test failure"),
-    };
+    assert_error_variant!(result, BedErrorPlus::BedError(BedError::IllFormed(_)));
 
     let result = read_no_alloc(
         sample_file("empty.bed").unwrap(),
@@ -630,14 +603,11 @@ fn read_errors() {
         1,
         &mut val.view_mut(),
     );
-    match result {
-        Err(BedErrorPlus::IOError(_)) => (),
-        _ => panic!("test failure"),
-    };
+    assert_error_variant!(result, BedErrorPlus::IOError(_));
 }
 
 #[test]
-fn read_modes() -> Result<(), BedErrorPlus> {
+fn read_modes() -> Result<(), Box<BedErrorPlus>> {
     let filename = sample_bed_file("small.bed")?;
     let mut bed = Bed::new(filename)?;
     let iid_count_s1 = bed.iid_count()?;
@@ -652,10 +622,7 @@ fn read_modes() -> Result<(), BedErrorPlus> {
         .bim_path(&bed_fam_bim[2])
         .build()?;
     let result = bed_too_short.read_and_fill(&mut val_small_mode_1.view_mut());
-    match result {
-        Err(BedErrorPlus::BedError(BedError::IllFormed(_))) => (),
-        _ => panic!("test failure"),
-    };
+    assert_error_variant!(result, BedErrorPlus::BedError(BedError::IllFormed(_)));
 
     let mut val_small_mode_0 = nd::Array2::<i8>::default((sid_count_s1, iid_count_s1));
     let mut bed_mode0 = Bed::new(sample_bed_file("smallmode0.bed")?)?;
@@ -668,16 +635,13 @@ fn read_modes() -> Result<(), BedErrorPlus> {
         .bim_path(&bed_fam_bim[2])
         .build()?;
     let result = bed_small_mode_bad.read_and_fill(&mut val_small_mode_1.view_mut());
-    match result {
-        Err(BedErrorPlus::BedError(BedError::BadMode(_))) => (),
-        _ => panic!("test failure"),
-    };
+    assert_error_variant!(result, BedErrorPlus::BedError(BedError::BadMode(_)));
 
     Ok(())
 }
 
 #[test]
-fn zeros() -> Result<(), BedErrorPlus> {
+fn zeros() -> Result<(), Box<BedErrorPlus>> {
     let filename = sample_bed_file("some_missing.bed")?;
     let mut bed = Bed::new(&filename).unwrap();
     let iid_count = bed.iid_count().unwrap();
@@ -781,13 +745,13 @@ fn file_ata(
     sid_count: usize,
     sid_step: usize,
     val: &mut nd::ArrayViewMut2<'_, f64>,
-) -> Result<(), BedErrorPlus> {
+) -> Result<(), Box<BedErrorPlus>> {
     for sid_start in (0..sid_count).step_by(sid_step) {
         let sid_range_len = sid_step.min(sid_count - sid_start);
         let mut ata_piece =
             nd::Array2::<f64>::from_elem((sid_count - sid_start, sid_range_len), f64::NAN);
         file_ata_piece(
-            &path,
+            path,
             offset,
             iid_count,
             sid_count,
@@ -885,7 +849,7 @@ fn file_aat(
     sid_count: usize,
     iid_step: usize,
     val: &mut nd::ArrayViewMut2<'_, f64>,
-) -> Result<(), BedErrorPlus> {
+) -> Result<(), Box<BedErrorPlus>> {
     let (nrows, ncols) = val.dim();
     assert!(nrows == iid_count && ncols == iid_count); // real assert
     for iid_start in (0..iid_count).step_by(iid_step) {
@@ -893,7 +857,7 @@ fn file_aat(
         let mut aat_piece =
             nd::Array2::<f64>::from_elem((iid_count - iid_start, iid_range_len), f64::NAN);
         file_aat_piece(
-            &path,
+            path,
             offset,
             iid_count,
             sid_count,
@@ -919,7 +883,7 @@ fn file_aat(
 }
 
 #[test]
-fn test_allclose() -> Result<(), BedErrorPlus> {
+fn test_allclose() -> Result<(), Box<BedErrorPlus>> {
     let val1 = nd::arr2(&[[1.0, 2.000000000001], [3.0, NAN]]);
     let val2 = nd::arr2(&[[1.0, 2.0], [3.0, NAN]]);
     assert!(allclose(&val1.view(), &val2.view(), 1e-08, true));
@@ -940,7 +904,7 @@ fn test_allclose() -> Result<(), BedErrorPlus> {
 }
 
 #[cfg(test)]
-fn expected_len(index: Index, count: usize, len: usize) -> Result<(), BedErrorPlus> {
+fn expected_len(index: Index, count: usize, len: usize) -> Result<(), Box<BedErrorPlus>> {
     assert!(index.to_vec(count)?.len() == len);
     assert!(index.len(count)? == len);
     assert!(index.is_empty(count)? == (len == 0));
@@ -949,7 +913,7 @@ fn expected_len(index: Index, count: usize, len: usize) -> Result<(), BedErrorPl
 }
 
 #[test]
-fn index_len_is_empty() -> Result<(), BedErrorPlus> {
+fn index_len_is_empty() -> Result<(), Box<BedErrorPlus>> {
     expected_len(s![0..0;-2].into(), 0, 0)?;
     expected_len(s![0..;-2].into(), 4, 2)?;
 
@@ -985,7 +949,7 @@ fn index_len_is_empty() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn test_sample_file() -> Result<(), BedErrorPlus> {
+fn test_sample_file() -> Result<(), Box<BedErrorPlus>> {
     let filename = sample_bed_file("small.bed")?;
     let mut bed = Bed::new(filename)?;
     println!("{}", bed.iid_count()?);
@@ -1003,7 +967,8 @@ fn test_sample_file() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn demo_path() -> Result<(), BedErrorPlus> {
+#[allow(clippy::needless_borrow)]
+fn demo_path() -> Result<(), Box<BedErrorPlus>> {
     let path: &str = "bed_reader/tests/data/small.bed";
     let _ = Bed::new(&path)?; // borrow a &str
     let _ = Bed::new(path)?; // move a &str
@@ -1026,8 +991,9 @@ fn demo_path() -> Result<(), BedErrorPlus> {
 }
 
 #[allow(clippy::single_char_pattern)]
+#[allow(clippy::needless_borrow)]
 #[test]
-fn demo_iter() -> Result<(), BedErrorPlus> {
+fn demo_iter() -> Result<(), Box<BedErrorPlus>> {
     let list: [&str; 3] = ["i1", "i2", "i3"];
     let _ = Metadata::builder().iid(&list).build()?; // borrow fixed-size array
     let _ = Metadata::builder().iid(list).build()?; // move fixed-size array
@@ -1051,7 +1017,8 @@ fn demo_iter() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn demo_index() -> Result<(), BedErrorPlus> {
+#[allow(clippy::needless_borrow)]
+fn demo_index() -> Result<(), Box<BedErrorPlus>> {
     #[allow(clippy::let_unit_value)]
     let index: () = ();
     let _ = ReadOptions::builder().iid_index(index).i8().build()?;
@@ -1112,7 +1079,7 @@ fn demo_index() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn demo_index2() -> Result<(), BedErrorPlus> {
+fn demo_index2() -> Result<(), Box<BedErrorPlus>> {
     let _ = ReadOptions::builder().iid_index(()).i8().build()?;
     let _ = ReadOptions::builder().iid_index(2).i8().build()?;
     let _ = ReadOptions::builder().iid_index(..).i8().build()?;
@@ -1144,8 +1111,9 @@ fn demo_index2() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn use_index() -> Result<(), BedErrorPlus> {
-    fn len100(index: impl Into<Index>) -> Result<usize, BedErrorPlus> {
+#[allow(clippy::needless_borrow)]
+fn use_index() -> Result<(), Box<BedErrorPlus>> {
+    fn len100(index: impl Into<Index>) -> Result<usize, Box<BedErrorPlus>> {
         let index = index.into();
         let len = index.len(100)?;
         Ok(len)
@@ -1211,7 +1179,7 @@ fn use_index() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn another_bed_read_example() -> Result<(), BedErrorPlus> {
+fn another_bed_read_example() -> Result<(), Box<BedErrorPlus>> {
     let filename = sample_bed_file("small.bed")?;
     let mut bed = Bed::new(filename)?;
     let val = ReadOptions::builder()

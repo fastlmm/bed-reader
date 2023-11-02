@@ -319,12 +319,12 @@ pub enum BedError {
 pub trait BedVal: Copy + Default + From<i8> + Debug + Sync + Send + Missing + PartialEq {}
 impl<T> BedVal for T where T: Copy + Default + From<i8> + Debug + Sync + Send + Missing + PartialEq {}
 
-fn create_pool(num_threads: usize) -> Result<rayon::ThreadPool, BedErrorPlus> {
+fn create_pool(num_threads: usize) -> Result<rayon::ThreadPool, Box<BedErrorPlus>> {
     match rayon::ThreadPoolBuilder::new()
         .num_threads(num_threads)
         .build()
     {
-        Err(e) => Err(e.into()),
+        Err(e) => Err(Box::new(e.into())),
         Ok(pool) => Ok(pool),
     }
 }
@@ -341,9 +341,9 @@ fn read_no_alloc<TVal: BedVal>(
     missing_value: TVal,
     num_threads: usize,
     val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
-) -> Result<(), BedErrorPlus> {
+) -> Result<(), Box<BedErrorPlus>> {
     create_pool(num_threads)?.install(|| {
-        let (buf_reader, bytes_vector) = open_and_check(&path)?;
+        let (buf_reader, bytes_vector) = open_and_check(path)?;
 
         match bytes_vector[2] {
             0 => {
@@ -351,7 +351,7 @@ fn read_no_alloc<TVal: BedVal>(
                 let mut val_t = val.view_mut().reversed_axes();
                 internal_read_no_alloc(
                     buf_reader,
-                    &path,
+                    path,
                     sid_count,
                     iid_count,
                     is_a1_counted,
@@ -363,7 +363,7 @@ fn read_no_alloc<TVal: BedVal>(
             }
             1 => internal_read_no_alloc(
                 buf_reader,
-                &path,
+                path,
                 iid_count,
                 sid_count,
                 is_a1_counted,
@@ -372,7 +372,7 @@ fn read_no_alloc<TVal: BedVal>(
                 missing_value,
                 val,
             ),
-            _ => Err(BedError::BadMode(path_ref_to_string(&path)).into()),
+            _ => Err(Box::new(BedError::BadMode(path_ref_to_string(path)).into())),
         }
     })?;
     Ok(())
@@ -383,13 +383,53 @@ fn path_ref_to_string(path: AnyPath) -> String {
     PathBuf::from(path).display().to_string()
 }
 
+impl From<BedError> for Box<BedErrorPlus> {
+    fn from(err: BedError) -> Self {
+        Box::new(BedErrorPlus::BedError(err))
+    }
+}
+impl From<std::io::Error> for Box<BedErrorPlus> {
+    fn from(err: std::io::Error) -> Self {
+        Box::new(BedErrorPlus::IOError(err))
+    }
+}
+impl From<ThreadPoolBuildError> for Box<BedErrorPlus> {
+    fn from(err: ThreadPoolBuildError) -> Self {
+        Box::new(BedErrorPlus::ThreadPoolError(err))
+    }
+}
+impl From<ParseIntError> for Box<BedErrorPlus> {
+    fn from(err: ParseIntError) -> Self {
+        Box::new(BedErrorPlus::ParseIntError(err))
+    }
+}
+
+impl From<ParseFloatError> for Box<BedErrorPlus> {
+    fn from(err: ParseFloatError) -> Self {
+        Box::new(BedErrorPlus::ParseFloatError(err))
+    }
+}
+
+impl From<::derive_builder::UninitializedFieldError> for Box<BedErrorPlus> {
+    fn from(err: ::derive_builder::UninitializedFieldError) -> Self {
+        Box::new(BedErrorPlus::UninitializedFieldError(err))
+    }
+}
+impl From<FetchDataError> for Box<BedErrorPlus> {
+    fn from(err: FetchDataError) -> Self {
+        Box::new(BedErrorPlus::FetchData(err))
+    }
+}
+
 #[anyinput]
-fn open_and_check(path: AnyPath) -> Result<(BufReader<File>, Vec<u8>), BedErrorPlus> {
-    let mut buf_reader = BufReader::new(File::open(&path)?);
+fn open_and_check(path: AnyPath) -> Result<(BufReader<File>, Vec<u8>), Box<BedErrorPlus>> {
+    let mut buf_reader = BufReader::new(File::open(path)?);
     let mut bytes_vector: Vec<u8> = vec![0; CB_HEADER_USIZE];
     buf_reader.read_exact(&mut bytes_vector)?;
     if (BED_FILE_MAGIC1 != bytes_vector[0]) || (BED_FILE_MAGIC2 != bytes_vector[1]) {
-        return Err(BedError::IllFormed(path_ref_to_string(&path)).into());
+        return Err(Box::new(
+            BedError::IllFormed(path_ref_to_string(path)).into(),
+        ));
     }
     Ok((buf_reader, bytes_vector))
 }
@@ -439,7 +479,7 @@ fn try_div_4<T: Max + TryFrom<usize> + Sub<Output = T> + Div<Output = T> + Ord>(
     in_iid_count: usize,
     in_sid_count: usize,
     cb_header: T,
-) -> Result<(usize, T), BedErrorPlus> {
+) -> Result<(usize, T), Box<BedErrorPlus>> {
     // 4 genotypes per byte so round up without overflow
     let in_iid_count_div4 = if in_iid_count > 0 {
         (in_iid_count - 1) / 4 + 1
@@ -448,16 +488,26 @@ fn try_div_4<T: Max + TryFrom<usize> + Sub<Output = T> + Div<Output = T> + Ord>(
     };
     let in_iid_count_div4_t = match T::try_from(in_iid_count_div4) {
         Ok(v) => v,
-        Err(_) => return Err(BedError::IndexesTooBigForFiles(in_iid_count, in_sid_count).into()),
+        Err(_) => {
+            return Err(Box::new(
+                BedError::IndexesTooBigForFiles(in_iid_count, in_sid_count).into(),
+            ))
+        }
     };
     let in_sid_count_t = match T::try_from(in_sid_count) {
         Ok(v) => v,
-        Err(_) => return Err(BedError::IndexesTooBigForFiles(in_iid_count, in_sid_count).into()),
+        Err(_) => {
+            return Err(Box::new(
+                BedError::IndexesTooBigForFiles(in_iid_count, in_sid_count).into(),
+            ))
+        }
     };
 
     let m: T = Max::max(); // Don't know how to move this into the next line.
     if in_sid_count > 0 && (m - cb_header) / in_sid_count_t < in_iid_count_div4_t {
-        return Err(BedError::IndexesTooBigForFiles(in_iid_count, in_sid_count).into());
+        return Err(Box::new(
+            BedError::IndexesTooBigForFiles(in_iid_count, in_sid_count).into(),
+        ));
     }
 
     Ok((in_iid_count_div4, in_iid_count_div4_t))
@@ -475,7 +525,7 @@ fn internal_read_no_alloc<TVal: BedVal>(
     sid_index: &[isize],
     missing_value: TVal,
     out_val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
-) -> Result<(), BedErrorPlus> {
+) -> Result<(), Box<BedErrorPlus>> {
     // Check the file length
 
     let (in_iid_count_div4, in_iid_count_div4_u64) =
@@ -484,7 +534,9 @@ fn internal_read_no_alloc<TVal: BedVal>(
     let file_len = buf_reader.seek(SeekFrom::End(0))?;
     let file_len2 = in_iid_count_div4_u64 * (in_sid_count as u64) + CB_HEADER_U64;
     if file_len != file_len2 {
-        return Err(BedError::IllFormed(path_ref_to_string(path)).into());
+        return Err(Box::new(
+            BedError::IllFormed(path_ref_to_string(path)).into(),
+        ));
     }
 
     // Check and precompute for each iid_index
@@ -509,9 +561,9 @@ fn internal_read_no_alloc<TVal: BedVal>(
             } else if (lower_sid_count..=-1).contains(in_sid_i_signed) {
                 (in_sid_count - ((-in_sid_i_signed) as usize)) as u64
             } else {
-                return Err(BedErrorPlus::BedError(BedError::SidIndexTooBig(
+                return Err(Box::new(BedErrorPlus::BedError(BedError::SidIndexTooBig(
                     *in_sid_i_signed,
-                )));
+                ))));
             };
 
             // Read the iid info for one snp from the disk
@@ -547,7 +599,7 @@ type Array1U8 = nd::ArrayBase<nd::OwnedRepr<u8>, nd::Dim<[usize; 1]>>;
 fn check_and_precompute_iid_index(
     in_iid_count: usize,
     iid_index: &[isize],
-) -> Result<(Array1Usize, Array1U8), BedErrorPlus> {
+) -> Result<(Array1Usize, Array1U8), Box<BedErrorPlus>> {
     let lower_iid_count = -(in_iid_count as isize);
     let upper_iid_count: isize = (in_iid_count as isize) - 1;
     let mut i_div_4_array = nd::Array1::<usize>::zeros(iid_index.len());
@@ -564,7 +616,7 @@ fn check_and_precompute_iid_index(
             *in_iid_i_signed as usize
         } else if (lower_iid_count..=-1).contains(in_iid_i_signed) {
             *result = Ok(());
-            (in_iid_count - ((-in_iid_i_signed) as usize)) as usize
+            in_iid_count - ((-in_iid_i_signed) as usize)
         } else {
             *result = Err(BedError::IidIndexTooBig(
                 *in_iid_i_signed,
@@ -613,7 +665,7 @@ fn write_val<S, TVal>(
     is_a1_counted: bool,
     missing: TVal,
     num_threads: usize,
-) -> Result<(), BedErrorPlus>
+) -> Result<(), Box<BedErrorPlus>>
 where
     S: nd::Data<Elem = TVal>,
     TVal: BedVal,
@@ -651,12 +703,12 @@ fn write_internal<S, TVal>(
     is_a1_counted: bool,
     missing: TVal,
     num_threads: usize,
-) -> Result<(), BedErrorPlus>
+) -> Result<(), Box<BedErrorPlus>>
 where
     S: nd::Data<Elem = TVal>,
     TVal: BedVal,
 {
-    let mut writer = BufWriter::new(File::create(&path)?);
+    let mut writer = BufWriter::new(File::create(path)?);
     writer.write_all(&[BED_FILE_MAGIC1, BED_FILE_MAGIC2, 0x01])?;
 
     #[allow(clippy::eq_op)]
@@ -686,7 +738,7 @@ where
                         } else if (use_nan && v0 != v0) || (!use_nan && v0 == missing) {
                             1
                         } else {
-                            return Err(BedError::BadValue(path_ref_to_string(&path)));
+                            return Err(BedError::BadValue(path_ref_to_string(path)));
                         };
                         // Possible optimization: We could pre-compute the conversion, the division, the mod, and the multiply*2
                         let i_div_4 = iid_i / 4;
@@ -707,7 +759,7 @@ where
 }
 
 #[anyinput]
-fn count_lines(path: AnyPath) -> Result<usize, BedErrorPlus> {
+fn count_lines(path: AnyPath) -> Result<usize, Box<BedErrorPlus>> {
     let file = File::open(path)?;
     let reader = BufReader::new(file);
     let count = reader.lines().count();
@@ -729,7 +781,7 @@ fn impute_and_zero_mean_snps<
     apply_in_place: bool,
     use_stats: bool,
     stats: &mut nd::ArrayViewMut2<'_, T>,
-) -> Result<(), BedErrorPlus> {
+) -> Result<(), Box<BedErrorPlus>> {
     let two = T::one() + T::one();
 
     // If output is F-order (or in general if iid stride is no more than sid_stride)
@@ -875,7 +927,7 @@ fn _process_all_iids<
     stats: &mut nd::ArrayViewMut2<'_, T>,
     dist: Dist,
     two: T,
-) -> Result<(), BedErrorPlus> {
+) -> Result<(), Box<BedErrorPlus>> {
     let sid_count = val.dim().1;
 
     if !use_stats {
@@ -978,7 +1030,7 @@ fn file_b_less_aatbx(
     aatb: &mut nd::ArrayViewMut2<'_, f64>,
     atb: &mut nd::ArrayViewMut2<'_, f64>,
     log_frequency: usize,
-) -> Result<(), BedErrorPlus> {
+) -> Result<(), Box<BedErrorPlus>> {
     //speed idea from C++:
     //Are copies really needed?
     //is F, vc C order the best?
@@ -1105,13 +1157,15 @@ fn file_ata_piece<T: Float + Send + Sync + AddAssign>(
     ata_piece: &mut nd::ArrayViewMut2<'_, T>,
     log_frequency: usize,
     read_into: fn(&mut BufReader<File>, &mut [T]) -> std::io::Result<()>,
-) -> Result<(), BedErrorPlus> {
+) -> Result<(), Box<BedErrorPlus>> {
     let (nrows, ncols) = ata_piece.dim();
     if (col_start >= col_count)
         || (col_start + nrows != col_count)
         || (col_start + ncols > col_count)
     {
-        return Err(BedErrorPlus::BedError(BedError::CannotConvertBetaToFromF64));
+        return Err(Box::new(BedErrorPlus::BedError(
+            BedError::CannotConvertBetaToFromF64,
+        )));
     }
 
     _file_ata_piece_internal(
@@ -1135,7 +1189,7 @@ fn _file_ata_piece_internal<T: Float + Send + Sync + AddAssign>(
     ata_piece: &mut nd::ArrayViewMut2<'_, T>,
     log_frequency: usize,
     read_into: fn(&mut BufReader<File>, &mut [T]) -> std::io::Result<()>,
-) -> Result<(), BedErrorPlus> {
+) -> Result<(), Box<BedErrorPlus>> {
     let (nrows, ncols) = ata_piece.dim();
     if log_frequency > 0 {
         println!(
@@ -1219,7 +1273,7 @@ fn file_aat_piece<T: Float + Sync + Send + AddAssign>(
     aat_piece: &mut nd::ArrayViewMut2<'_, T>,
     log_frequency: usize,
     read_into: fn(&mut BufReader<File>, &mut [T]) -> std::io::Result<()>,
-) -> Result<(), BedErrorPlus> {
+) -> Result<(), Box<BedErrorPlus>> {
     let (nrows, ncols) = aat_piece.dim();
 
     if log_frequency > 0 {
@@ -1233,7 +1287,9 @@ fn file_aat_piece<T: Float + Sync + Send + AddAssign>(
         || (row_start + nrows != row_count)
         || (row_start + ncols > row_count)
     {
-        return Err(BedErrorPlus::BedError(BedError::CannotConvertBetaToFromF64));
+        return Err(Box::new(BedErrorPlus::BedError(
+            BedError::CannotConvertBetaToFromF64,
+        )));
     }
 
     aat_piece.fill(T::zero());
@@ -1303,7 +1359,7 @@ fn file_aat_piece<T: Float + Sync + Send + AddAssign>(
 ///     .missing_value(-1)
 ///     .write(&val)?;
 /// # use bed_reader::BedErrorPlus;
-/// # Ok::<(), BedErrorPlus>(())
+/// # Ok::<(), Box<BedErrorPlus>>(())
 /// ```
 #[derive(Clone, Debug, Builder, PartialEq)]
 #[builder(build_fn(private, name = "build_no_file_check", error = "BedErrorPlus"))]
@@ -1380,7 +1436,7 @@ fn lazy_or_skip_count<T>(array: &Option<Rc<nd::Array1<T>>>) -> Option<usize> {
 ///     ],
 /// );
 /// # use bed_reader::BedErrorPlus;
-/// # Ok::<(), BedErrorPlus>(())
+/// # Ok::<(), Box<BedErrorPlus>>(())
 /// ```
 #[derive(Clone, Debug, Builder)]
 #[builder(build_fn(private, name = "build_no_file_check", error = "BedErrorPlus"))]
@@ -1471,7 +1527,7 @@ impl BedBuilder {
     /// Create [`Bed`](struct.Bed.html) from the builder.
     ///
     /// > See [`Bed::builder`](struct.Bed.html#method.builder) for more details and examples.
-    pub fn build(&self) -> Result<Bed, BedErrorPlus> {
+    pub fn build(&self) -> Result<Bed, Box<BedErrorPlus>> {
         let mut bed = self.build_no_file_check()?;
 
         if bed.is_checked_early {
@@ -1514,7 +1570,7 @@ impl BedBuilder {
     ///    .build()?;
     /// println!("{:?}", bed.iid()?); // Outputs ndarray ["sample1", "sample2", "sample3"]
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     #[anyinput]
     pub fn iid(mut self, iid: AnyIter<AnyString>) -> Self {
@@ -1599,7 +1655,7 @@ impl BedBuilder {
     ///    .build()?;
     /// println!("{:?}", bed.sid()?); // Outputs ndarray ["SNP1", "SNP2", "SNP3", "SNP4"]
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     #[anyinput]
     pub fn sid(mut self, sid: AnyIter<AnyString>) -> Self {
@@ -1703,7 +1759,7 @@ impl BedBuilder {
     /// println!("{:?}", bed.iid()?); // Outputs ndarray ["iid1", "iid2", "iid3"]
     /// println!("{:?}", bed.sid()?); // Outputs ndarray ["sid1", "sid2", "sid3", "sid4"]
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     #[anyinput]
     pub fn fam_path(mut self, path: AnyPath) -> Self {
@@ -1728,7 +1784,7 @@ impl BedBuilder {
     /// println!("{:?}", bed.iid()?); // Outputs ndarray ["iid1", "iid2", "iid3"]
     /// println!("{:?}", bed.sid()?); // Outputs ndarray ["sid1", "sid2", "sid3", "sid4"]
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     #[anyinput]
     pub fn bim_path(mut self, path: AnyPath) -> Self {
@@ -1925,7 +1981,7 @@ impl BedBuilder {
     /// println!("{0:?}", bed.sid()?);  // Outputs ndarray ["s1", "s2", "s3", "s4"]
     /// println!("{0:?}", bed.chromosome()?);  // Outputs ndarray ["1", "1", "5", "Y"]
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn metadata(mut self, metadata: &Metadata) -> Self {
         self.metadata = Some(
@@ -1998,7 +2054,7 @@ impl Bed {
     ///     ],
     /// );
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     ///
     /// Replace [`iid`](struct.Bed.html#method.iid).
@@ -2011,7 +2067,7 @@ impl Bed {
     ///    .build()?;
     /// println!("{:?}", bed.iid()?); // Outputs ndarray ["sample1", "sample2", "sample3"]
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     /// Give the number of individuals (samples) and SNPs (variants) so that the .fam and
     /// .bim files need never be opened.
@@ -2031,7 +2087,7 @@ impl Bed {
     ///     ],
     /// );
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     /// Mark some properties as "don’t read or offer".
     /// ```
@@ -2049,7 +2105,7 @@ impl Bed {
     /// println!("{:?}", bed.iid()?); // Outputs ndarray ["iid1", "iid2", "iid3"]
     /// bed.allele_2().expect_err("Can't be read");
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     ///
     #[anyinput]
@@ -2093,7 +2149,7 @@ impl Bed {
     ///     ],
     /// );
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     ///
     /// Open the file and read data for one SNP (variant)
@@ -2108,10 +2164,10 @@ impl Bed {
     ///
     /// assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     #[anyinput]
-    pub fn new(path: AnyPath) -> Result<Self, BedErrorPlus> {
+    pub fn new(path: AnyPath) -> Result<Self, Box<BedErrorPlus>> {
         Bed::builder(path).build()
     }
 
@@ -2135,8 +2191,8 @@ impl Bed {
     ///
     /// assert!(iid_count == 3);
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
-    pub fn iid_count(&mut self) -> Result<usize, BedErrorPlus> {
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    pub fn iid_count(&mut self) -> Result<usize, Box<BedErrorPlus>> {
         if let Some(iid_count) = self.iid_count {
             Ok(iid_count)
         } else {
@@ -2167,8 +2223,8 @@ impl Bed {
     ///
     /// assert!(sid_count == 4);
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
-    pub fn sid_count(&mut self) -> Result<usize, BedErrorPlus> {
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    pub fn sid_count(&mut self) -> Result<usize, Box<BedErrorPlus>> {
         if let Some(sid_count) = self.sid_count {
             Ok(sid_count)
         } else {
@@ -2200,8 +2256,8 @@ impl Bed {
     ///
     /// assert!(dim == (3,4));
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
-    pub fn dim(&mut self) -> Result<(usize, usize), BedErrorPlus> {
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    pub fn dim(&mut self) -> Result<(usize, usize), Box<BedErrorPlus>> {
         Ok((self.iid_count()?, self.sid_count()?))
     }
 
@@ -2224,8 +2280,8 @@ impl Bed {
     /// let fid = bed.fid()?;
     /// println!("{fid:?}"); // Outputs ndarray ["fid1", "fid1", "fid2"]
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
-    pub fn fid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    pub fn fid(&mut self) -> Result<&nd::Array1<String>, Box<BedErrorPlus>> {
         self.unlazy_fam::<String>(self.metadata.fid.is_none(), MetadataFields::Fid, "fid")?;
         Ok(self.metadata.fid.as_ref().unwrap()) //unwrap always works because of lazy_fam
     }
@@ -2249,8 +2305,8 @@ impl Bed {
     /// let iid = bed.iid()?;    ///
     /// println!("{iid:?}"); // Outputs ndarray ["iid1", "iid2", "iid3"]
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
-    pub fn iid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    pub fn iid(&mut self) -> Result<&nd::Array1<String>, Box<BedErrorPlus>> {
         self.unlazy_fam::<String>(self.metadata.iid.is_none(), MetadataFields::Iid, "iid")?;
         Ok(self.metadata.iid.as_ref().unwrap()) //unwrap always works because of lazy_fam
     }
@@ -2274,8 +2330,8 @@ impl Bed {
     /// let father = bed.father()?;
     /// println!("{father:?}"); // Outputs ndarray ["iid23", "iid23", "iid22"]
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())    
-    pub fn father(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
+    /// # Ok::<(), Box<BedErrorPlus>>(())    
+    pub fn father(&mut self) -> Result<&nd::Array1<String>, Box<BedErrorPlus>> {
         self.unlazy_fam::<String>(
             self.metadata.father.is_none(),
             MetadataFields::Father,
@@ -2303,8 +2359,8 @@ impl Bed {
     /// let mother = bed.mother()?;
     /// println!("{mother:?}"); // Outputs ndarray ["iid34", "iid34", "iid33"]
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
-    pub fn mother(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    pub fn mother(&mut self) -> Result<&nd::Array1<String>, Box<BedErrorPlus>> {
         self.unlazy_fam::<String>(
             self.metadata.mother.is_none(),
             MetadataFields::Mother,
@@ -2334,8 +2390,8 @@ impl Bed {
     /// let sex = bed.sex()?;
     /// println!("{sex:?}"); // Outputs ndarray [1, 2, 0]
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
-    pub fn sex(&mut self) -> Result<&nd::Array1<i32>, BedErrorPlus> {
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    pub fn sex(&mut self) -> Result<&nd::Array1<i32>, Box<BedErrorPlus>> {
         self.unlazy_fam::<String>(self.metadata.sex.is_none(), MetadataFields::Sex, "sex")?;
         Ok(self.metadata.sex.as_ref().unwrap()) //unwrap always works because of lazy_fam
     }
@@ -2359,8 +2415,8 @@ impl Bed {
     /// let pheno = bed.pheno()?;
     /// println!("{pheno:?}"); // Outputs ndarray ["red", "red", "blue"]
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
-    pub fn pheno(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    pub fn pheno(&mut self) -> Result<&nd::Array1<String>, Box<BedErrorPlus>> {
         self.unlazy_fam::<String>(
             self.metadata.pheno.is_none(),
             MetadataFields::Pheno,
@@ -2388,8 +2444,8 @@ impl Bed {
     /// let chromosome = bed.chromosome()?;
     /// println!("{chromosome:?}"); // Outputs ndarray ["1", "1", "5", "Y"]
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
-    pub fn chromosome(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    pub fn chromosome(&mut self) -> Result<&nd::Array1<String>, Box<BedErrorPlus>> {
         self.unlazy_bim::<String>(
             self.metadata.chromosome.is_none(),
             MetadataFields::Chromosome,
@@ -2417,8 +2473,8 @@ impl Bed {
     /// let sid = bed.sid()?;
     /// println!("{sid:?}"); // Outputs ndarray "sid1", "sid2", "sid3", "sid4"]
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
-    pub fn sid(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    pub fn sid(&mut self) -> Result<&nd::Array1<String>, Box<BedErrorPlus>> {
         self.unlazy_bim::<String>(self.metadata.sid.is_none(), MetadataFields::Sid, "sid")?;
         Ok(self.metadata.sid.as_ref().unwrap()) //unwrap always works because of lazy_bim
     }
@@ -2442,8 +2498,8 @@ impl Bed {
     /// let cm_position = bed.cm_position()?;
     /// println!("{cm_position:?}"); // Outputs ndarray [100.4, 2000.5, 4000.7, 7000.9]
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
-    pub fn cm_position(&mut self) -> Result<&nd::Array1<f32>, BedErrorPlus> {
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    pub fn cm_position(&mut self) -> Result<&nd::Array1<f32>, Box<BedErrorPlus>> {
         self.unlazy_bim::<String>(
             self.metadata.cm_position.is_none(),
             MetadataFields::CmPosition,
@@ -2471,8 +2527,8 @@ impl Bed {
     /// let bp_position = bed.bp_position()?;
     /// println!("{bp_position:?}"); // Outputs ndarray [1, 100, 1000, 1004]
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
-    pub fn bp_position(&mut self) -> Result<&nd::Array1<i32>, BedErrorPlus> {
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    pub fn bp_position(&mut self) -> Result<&nd::Array1<i32>, Box<BedErrorPlus>> {
         self.unlazy_bim::<String>(
             self.metadata.bp_position.is_none(),
             MetadataFields::BpPosition,
@@ -2500,8 +2556,8 @@ impl Bed {
     /// let allele_1 = bed.allele_1()?;
     /// println!("{allele_1:?}"); // Outputs ndarray ["A", "T", "A", "T"]
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
-    pub fn allele_1(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    pub fn allele_1(&mut self) -> Result<&nd::Array1<String>, Box<BedErrorPlus>> {
         self.unlazy_bim::<String>(
             self.metadata.allele_1.is_none(),
             MetadataFields::Allele1,
@@ -2529,8 +2585,8 @@ impl Bed {
     /// let allele_2 = bed.allele_2()?;
     /// println!("{allele_2:?}"); // Outputs ndarray ["A", "C", "C", "G"]
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
-    pub fn allele_2(&mut self) -> Result<&nd::Array1<String>, BedErrorPlus> {
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    pub fn allele_2(&mut self) -> Result<&nd::Array1<String>, Box<BedErrorPlus>> {
         self.unlazy_bim::<String>(
             self.metadata.allele_2.is_none(),
             MetadataFields::Allele2,
@@ -2556,8 +2612,8 @@ impl Bed {
     /// println!("{0:?}", metadata.iid()); // Outputs Some(["iid1", "iid2", "iid3"] ...)
     /// println!("{0:?}", metadata.sid()); // Outputs Some(["sid1", "sid2", "sid3", "sid4"] ...)
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
-    pub fn metadata(&mut self) -> Result<Metadata, BedErrorPlus> {
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    pub fn metadata(&mut self) -> Result<Metadata, Box<BedErrorPlus>> {
         self.fam()?;
         self.bim()?;
         Ok(self.metadata.clone())
@@ -2632,9 +2688,9 @@ impl Bed {
     ///     ],
     /// );
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```    
-    pub fn read<TVal: BedVal>(&mut self) -> Result<nd::Array2<TVal>, BedErrorPlus> {
+    pub fn read<TVal: BedVal>(&mut self) -> Result<nd::Array2<TVal>, Box<BedErrorPlus>> {
         let read_options = ReadOptions::<TVal>::builder().build()?;
         self.read_with_options(&read_options)
     }
@@ -2667,13 +2723,13 @@ impl Bed {
     ///
     /// assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```  
     pub fn read_and_fill_with_options<TVal: BedVal>(
         &mut self,
         val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.,
         read_options: &ReadOptions<TVal>,
-    ) -> Result<(), BedErrorPlus> {
+    ) -> Result<(), Box<BedErrorPlus>> {
         let iid_count = self.iid_count()?;
         let sid_count = self.sid_count()?;
 
@@ -2687,9 +2743,9 @@ impl Bed {
 
         let dim = val.dim();
         if dim != (iid_index.len(), sid_index.len()) {
-            return Err(
+            return Err(Box::new(
                 BedError::InvalidShape(iid_index.len(), sid_index.len(), dim.0, dim.1).into(),
-            );
+            ));
         }
 
         read_no_alloc(
@@ -2736,12 +2792,12 @@ impl Bed {
     ///     ],
     /// );
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn read_and_fill<TVal: BedVal>(
         &mut self,
         val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.,
-    ) -> Result<(), BedErrorPlus> {
+    ) -> Result<(), Box<BedErrorPlus>> {
         let read_options = ReadOptions::<TVal>::builder().build()?;
         let num_threads = compute_num_threads(read_options.num_threads)?;
 
@@ -2792,12 +2848,12 @@ impl Bed {
     ///
     /// assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```  
     pub fn read_with_options<TVal: BedVal>(
         &mut self,
         read_options: &ReadOptions<TVal>,
-    ) -> Result<nd::Array2<TVal>, BedErrorPlus> {
+    ) -> Result<nd::Array2<TVal>, Box<BedErrorPlus>> {
         let iid_count_in = self.iid_count()?;
         let sid_count_in = self.sid_count()?;
         let iid_count_out = read_options.iid_index.len(iid_count_in)?;
@@ -2834,12 +2890,12 @@ impl Bed {
     /// let mut bed2 = Bed::new(&output_file)?;
     /// println!("{:?}", bed2.chromosome()?); // Outputs ndarray ["0", "0", "0", "0"]
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn write<S: nd::Data<Elem = TVal>, TVal: BedVal>(
         val: &nd::ArrayBase<S, nd::Ix2>,
         path: &Path,
-    ) -> Result<(), BedErrorPlus> {
+    ) -> Result<(), Box<BedErrorPlus>> {
         WriteOptions::builder(path).write(val)
     }
 
@@ -2868,12 +2924,12 @@ impl Bed {
     ///
     /// Bed::write_with_options(&val, &write_options)?;
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn write_with_options<S, TVal>(
         val: &nd::ArrayBase<S, nd::Ix2>,
         write_options: &WriteOptions<TVal>,
-    ) -> Result<(), BedErrorPlus>
+    ) -> Result<(), Box<BedErrorPlus>>
     where
         S: nd::Data<Elem = TVal>,
         TVal: BedVal,
@@ -2929,7 +2985,7 @@ impl Bed {
         is_none: bool,
         field_index: MetadataFields,
         name: &str,
-    ) -> Result<(), BedErrorPlus> {
+    ) -> Result<(), Box<BedErrorPlus>> {
         if self.skip_set.contains(&field_index) {
             return Err(BedError::CannotUseSkippedMetadata(name.to_string()).into());
         }
@@ -2944,7 +3000,7 @@ impl Bed {
         is_none: bool,
         field_index: MetadataFields,
         name: &str,
-    ) -> Result<(), BedErrorPlus> {
+    ) -> Result<(), Box<BedErrorPlus>> {
         if self.skip_set.contains(&field_index) {
             return Err(BedError::CannotUseSkippedMetadata(name.to_string()).into());
         }
@@ -2954,10 +3010,10 @@ impl Bed {
         Ok(())
     }
 
-    fn fam(&mut self) -> Result<(), BedErrorPlus> {
+    fn fam(&mut self) -> Result<(), Box<BedErrorPlus>> {
         let fam_path = self.fam_path();
 
-        let (metadata, count) = self.metadata.read_fam(&fam_path, &self.skip_set)?;
+        let (metadata, count) = self.metadata.read_fam(fam_path, &self.skip_set)?;
         self.metadata = metadata;
 
         match self.iid_count {
@@ -2975,10 +3031,10 @@ impl Bed {
         Ok(())
     }
 
-    fn bim(&mut self) -> Result<(), BedErrorPlus> {
+    fn bim(&mut self) -> Result<(), Box<BedErrorPlus>> {
         let bim_path = self.bim_path();
 
-        let (metadata, count) = self.metadata.read_bim(&bim_path, &self.skip_set)?;
+        let (metadata, count) = self.metadata.read_bim(bim_path, &self.skip_set)?;
         self.metadata = metadata;
 
         match self.sid_count {
@@ -3005,7 +3061,7 @@ enum Hold<'a> {
 }
 
 impl Hold<'_> {
-    fn new(index: &Index, count: usize) -> Result<Hold, BedErrorPlus> {
+    fn new(index: &Index, count: usize) -> Result<Hold, Box<BedErrorPlus>> {
         let hold = if let Index::Vec(vec) = index {
             Hold::Ref(vec)
         } else {
@@ -3022,7 +3078,7 @@ impl Hold<'_> {
     }
 }
 
-fn compute_num_threads(option_num_threads: Option<usize>) -> Result<usize, BedErrorPlus> {
+fn compute_num_threads(option_num_threads: Option<usize>) -> Result<usize, Box<BedErrorPlus>> {
     let num_threads = if let Some(num_threads) = option_num_threads {
         num_threads
     } else if let Ok(num_threads) = env::var("BED_READER_NUM_THREADS") {
@@ -3041,7 +3097,7 @@ impl Index {
     // Even better would be to support an iterator from Index (an enum with fields).
 
     /// Turns an [`Index`](enum.Index.html) into a vector of usize indexes. Negative means count from end.
-    pub fn to_vec(&self, count: usize) -> Result<Vec<isize>, BedErrorPlus> {
+    pub fn to_vec(&self, count: usize) -> Result<Vec<isize>, Box<BedErrorPlus>> {
         let count_signed = count as isize;
         match self {
             Index::All => Ok((0..count_signed).collect()),
@@ -3170,7 +3226,7 @@ pub type SliceInfo1 =
 ///     .read(&mut bed)?;
 /// assert!(val.dim() == (10, 34));
 /// # use bed_reader::BedErrorPlus;
-/// # Ok::<(), BedErrorPlus>(())
+/// # Ok::<(), Box<BedErrorPlus>>(())
 /// ```
 
 #[derive(Debug, Clone)]
@@ -3222,7 +3278,7 @@ impl RangeAny {
     }
 
     // https://stackoverflow.com/questions/55925523/array-cannot-be-indexed-by-rangefull
-    fn to_range(&self, count: usize) -> Result<Range<usize>, BedErrorPlus> {
+    fn to_range(&self, count: usize) -> Result<Range<usize>, Box<BedErrorPlus>> {
         let start = if let Some(start) = self.start {
             start
         } else {
@@ -3236,12 +3292,12 @@ impl RangeAny {
         }
     }
 
-    fn len(&self, count: usize) -> Result<usize, BedErrorPlus> {
+    fn len(&self, count: usize) -> Result<usize, Box<BedErrorPlus>> {
         let range = self.to_range(count)?;
         Ok(range.end - range.start)
     }
 
-    fn is_empty(&self, count: usize) -> Result<bool, BedErrorPlus> {
+    fn is_empty(&self, count: usize) -> Result<bool, Box<BedErrorPlus>> {
         Ok(self.len(count)? == 0)
     }
 }
@@ -3299,7 +3355,7 @@ impl RangeNdSlice {
         }
     }
 
-    fn new(nd_slice_info: &SliceInfo1, count: usize) -> Result<Self, BedErrorPlus> {
+    fn new(nd_slice_info: &SliceInfo1, count: usize) -> Result<Self, Box<BedErrorPlus>> {
         //  self.to_vec(count).len(),
         // https://docs.rs/ndarray/0.15.4/ndarray/struct.ArrayBase.html#method.slice_collapse
         // Error in the following cases
@@ -3395,7 +3451,7 @@ impl RangeNdSlice {
 impl Index {
     /// Returns the number of elements in an [`Index`](enum.Index.html).
     #[allow(clippy::len_without_is_empty)]
-    pub fn len(&self, count: usize) -> Result<usize, BedErrorPlus> {
+    pub fn len(&self, count: usize) -> Result<usize, Box<BedErrorPlus>> {
         match self {
             Index::All => Ok(count),
             Index::One(_) => Ok(1),
@@ -3409,7 +3465,7 @@ impl Index {
     }
 
     /// Returns true if the [`Index`](enum.Index.html) is empty.
-    pub fn is_empty(&self, count: usize) -> Result<bool, BedErrorPlus> {
+    pub fn is_empty(&self, count: usize) -> Result<bool, Box<BedErrorPlus>> {
         match self {
             Index::All => Ok(count == 0),
             Index::One(_) => Ok(false),
@@ -3670,7 +3726,7 @@ pub struct ReadOptions<TVal: BedVal> {
     ///     ],
     /// );
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     #[builder(default = "TVal::missing()")]
     missing_value: TVal,
@@ -3739,7 +3795,7 @@ pub struct ReadOptions<TVal: BedVal> {
     ///
     /// assert!(val.dim() == (50, 6));
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     #[builder(default = "Index::All")]
     #[builder(setter(into))]
@@ -3809,7 +3865,7 @@ pub struct ReadOptions<TVal: BedVal> {
     ///
     /// assert!(val.dim() == (50, 6));
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     #[builder(default = "Index::All")]
     #[builder(setter(into))]
@@ -3853,7 +3909,7 @@ pub struct ReadOptions<TVal: BedVal> {
     ///     ],
     /// );
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     #[builder(default, setter(strip_option))]
     num_threads: Option<usize>,
@@ -3972,7 +4028,7 @@ impl<TVal: BedVal> ReadOptions<TVal> {
     ///     ],
     /// );
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn builder() -> ReadOptionsBuilder<TVal> {
         ReadOptionsBuilder::default()
@@ -3995,7 +4051,7 @@ impl<TVal: BedVal> ReadOptions<TVal> {
 
     /// assert_eq_nan(&val, &nd::array![[-127, 0, 1], [-127, 2, 2], [2, 0, 0]]);
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn missing_value(&self) -> TVal {
         self.missing_value
@@ -4019,7 +4075,7 @@ impl<TVal: BedVal> ReadOptions<TVal> {
 
     /// assert_eq_nan(&val, &nd::array![[-127, 0, 1], [-127, 2, 2], [2, 0, 0]]);
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn iid_index(&self) -> &Index {
         &self.iid_index
@@ -4043,7 +4099,7 @@ impl<TVal: BedVal> ReadOptions<TVal> {
 
     /// assert_eq_nan(&val, &nd::array![[-127, 0, 1], [-127, 2, 2], [2, 0, 0]]);
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn sid_index(&self) -> &Index {
         &self.sid_index
@@ -4066,7 +4122,7 @@ impl<TVal: BedVal> ReadOptions<TVal> {
 
     /// assert_eq_nan(&val, &nd::array![[-127, 0, 1], [-127, 2, 2], [2, 0, 0]]);
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn is_f(&self) -> bool {
         self.is_f
@@ -4089,7 +4145,7 @@ impl<TVal: BedVal> ReadOptions<TVal> {
 
     /// assert_eq_nan(&val, &nd::array![[-127, 0, 1], [-127, 2, 2], [2, 0, 0]]);
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn is_a1_counted(&self) -> bool {
         self.is_a1_counted
@@ -4113,7 +4169,7 @@ impl<TVal: BedVal> ReadOptions<TVal> {
 
     /// assert_eq_nan(&val, &nd::array![[-127, 0, 1], [-127, 2, 2], [2, 0, 0]]);
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn num_threads(&self) -> Option<usize> {
         self.num_threads
@@ -4122,7 +4178,7 @@ impl<TVal: BedVal> ReadOptions<TVal> {
 
 impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     /// > See [`ReadOptions::builder`](struct.ReadOptions.html#method.builder) for details and examples.
-    pub fn read(&self, bed: &mut Bed) -> Result<nd::Array2<TVal>, BedErrorPlus> {
+    pub fn read(&self, bed: &mut Bed) -> Result<nd::Array2<TVal>, Box<BedErrorPlus>> {
         let read_options = self.build()?;
         bed.read_with_options(&read_options)
     }
@@ -4157,13 +4213,13 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     ///
     /// assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn read_and_fill(
         &self,
         bed: &mut Bed,
         val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
-    ) -> Result<(), BedErrorPlus> {
+    ) -> Result<(), Box<BedErrorPlus>> {
         let read_options = self.build()?;
         bed.read_and_fill_with_options(val, &read_options)
     }
@@ -4211,7 +4267,7 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     ///     ],
     /// );
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn count_a1(&mut self) -> &mut Self {
         self.is_a1_counted = Some(true);
@@ -4241,7 +4297,7 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     ///     ],
     /// );
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn count_a2(&mut self) -> &mut Self {
         self.is_a1_counted = Some(false);
@@ -4271,7 +4327,7 @@ impl ReadOptionsBuilder<i8> {
     ///     ],
     /// );
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn i8(&mut self) -> &mut Self {
         self
@@ -4300,7 +4356,7 @@ impl ReadOptionsBuilder<f32> {
     ///     ],
     /// );
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```    
     pub fn f32(&mut self) -> &mut Self {
         self
@@ -4329,7 +4385,7 @@ impl ReadOptionsBuilder<f64> {
     ///     ],
     /// );
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```    
     pub fn f64(&mut self) -> &mut Self {
         self
@@ -4417,7 +4473,7 @@ where
     ///     .allele_2(["A", "C", "C", "G"])
     ///     .write(&val)?;
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     /// Here, no metadata is given, so default values are assigned.
     /// If we then read the new file and list the chromosome property,
@@ -4434,7 +4490,7 @@ where
     /// let mut bed2 = Bed::new(&output_file2)?;
     /// println!("{:?}", bed2.chromosome()?); // Outputs ndarray ["0", "0", "0", "0"]
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     #[anyinput]
     pub fn builder(path: AnyPath) -> WriteOptionsBuilder<TVal> {
@@ -4457,7 +4513,7 @@ where
     ///
     /// println!("{0:?}", write_options.fid()); // Outputs ndarray ["0", "0", "0"]
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn fid(&self) -> &nd::Array1<String> {
         // unwrap always works because the WriteOptions constructor fills all metadata.
@@ -4487,7 +4543,7 @@ where
     /// ];
     /// Bed::write_with_options(&val, &write_options)?;
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn iid(&self) -> &nd::Array1<String> {
         // unwrap always works because the WriteOptions constructor fills all metadata.
@@ -4510,7 +4566,7 @@ where
     ///
     /// println!("{0:?}", write_options.father()); // Outputs ndarray ["0", "0", "0"]
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn father(&self) -> &nd::Array1<String> {
         // unwrap always works because the WriteOptions constructor fills all metadata.
@@ -4533,7 +4589,7 @@ where
     ///
     /// println!("{0:?}", write_options.mother()); // Outputs ndarray ["0", "0", "0"]
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn mother(&self) -> &nd::Array1<String> {
         // unwrap always works because the WriteOptions constructor fills all metadata.
@@ -4558,7 +4614,7 @@ where
     ///
     /// println!("{0:?}", write_options.sex()); // Outputs ndarray [0, 0, 0]
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn sex(&self) -> &nd::Array1<i32> {
         // unwrap always works because the WriteOptions constructor fills all metadata.
@@ -4581,7 +4637,7 @@ where
     ///
     /// println!("{0:?}", write_options.pheno()); // Outputs ndarray ["0", "0", "0"]
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn pheno(&self) -> &nd::Array1<String> {
         // unwrap always works because the WriteOptions constructor fills all metadata.
@@ -4604,7 +4660,7 @@ where
     ///
     /// println!("{0:?}", write_options.chromosome()); // Outputs ndarray ["0", "0", "0", "0"]
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn chromosome(&self) -> &nd::Array1<String> {
         // unwrap always works because the WriteOptions constructor fills all metadata.
@@ -4634,7 +4690,7 @@ where
     /// ];
     /// Bed::write_with_options(&val, &write_options)?;
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn sid(&self) -> &nd::Array1<String> {
         // unwrap always works because the WriteOptions constructor fills all metadata.
@@ -4657,7 +4713,7 @@ where
     ///
     /// println!("{0:?}", write_options.cm_position()); // Outputs ndarray [0.0, 0.0, 0.0, 0.0]
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn cm_position(&self) -> &nd::Array1<f32> {
         // unwrap always works because the WriteOptions constructor fills all metadata.
@@ -4680,7 +4736,7 @@ where
     ///
     /// println!("{0:?}", write_options.bp_position()); // Outputs ndarray [0, 0, 0, 0]
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn bp_position(&self) -> &nd::Array1<i32> {
         // unwrap always works because the WriteOptions constructor fills all metadata.
@@ -4704,7 +4760,7 @@ where
     /// println!("{0:?}", write_options.allele_1()); // Outputs ndarray ["A1", "A1", "A1", "A1"]
     /// println!("{0:?}", write_options.allele_2()); // Outputs ndarray ["A2", "A2", "A2", "A2"]
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn allele_1(&self) -> &nd::Array1<String> {
         // unwrap always works because the WriteOptions constructor fills all metadata.
@@ -4728,7 +4784,7 @@ where
     /// println!("{0:?}", write_options.allele_1()); // Outputs ndarray ["A1", "A1", "A1", "A1"]
     /// println!("{0:?}", write_options.allele_2()); // Outputs ndarray ["A2", "A2", "A2", "A2"]
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn allele_2(&self) -> &nd::Array1<String> {
         // unwrap always works because the WriteOptions constructor fills all metadata.
@@ -4758,7 +4814,7 @@ where
     /// let metadata = write_options.metadata();
     /// println!("{0:?}", metadata.iid()); // Outputs optional ndarray Some(["i1", "i2", "i3"])
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn metadata(&self) -> Metadata {
         self.metadata.clone()
@@ -4781,7 +4837,7 @@ where
     /// assert_eq!(write_options.iid_count(), 3);
     /// assert_eq!(write_options.sid_count(), 4);
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn iid_count(&self) -> usize {
         self.iid().len()
@@ -4804,7 +4860,7 @@ where
     /// assert_eq!(write_options.iid_count(), 3);
     /// assert_eq!(write_options.sid_count(), 4);
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn sid_count(&self) -> usize {
         self.sid().len()
@@ -4826,7 +4882,7 @@ where
     ///
     /// assert_eq!(write_options.dim(), (3, 4));
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn dim(&self) -> (usize, usize) {
         (self.iid_count(), self.sid_count())
@@ -4850,7 +4906,7 @@ where
     /// println!("{0:?}", write_options.fam_path()); // Outputs "...small.fam"
     /// println!("{0:?}", write_options.bim_path()); // Outputs "...small.bim"
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn path(&self) -> &PathBuf {
         &self.path
@@ -4874,7 +4930,7 @@ where
     /// println!("{0:?}", write_options.fam_path()); // Outputs "...small.fam"
     /// println!("{0:?}", write_options.bim_path()); // Outputs "...small.bim"
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn fam_path(&self) -> &PathBuf {
         &self.fam_path
@@ -4898,7 +4954,7 @@ where
     /// println!("{0:?}", write_options.fam_path()); // Outputs "...small.fam"
     /// println!("{0:?}", write_options.bim_path()); // Outputs "...small.bim"
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn bim_path(&self) -> &PathBuf {
         &self.bim_path
@@ -4920,7 +4976,7 @@ where
     ///
     /// assert!(write_options.is_a1_counted());
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn is_a1_counted(&self) -> bool {
         self.is_a1_counted
@@ -4943,7 +4999,7 @@ where
     ///
     /// assert!(write_options.num_threads().is_none());
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn num_threads(&self) -> Option<usize> {
         self.num_threads
@@ -4965,7 +5021,7 @@ where
     ///
     /// assert!(write_options.missing_value() == -127);
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn missing_value(&self) -> TVal {
         self.missing_value
@@ -4987,7 +5043,7 @@ where
     /// assert!(write_options.skip_fam());
     /// assert!(write_options.skip_bim());
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn skip_fam(&self) -> bool {
         self.skip_fam
@@ -5009,7 +5065,7 @@ where
     /// assert!(write_options.skip_fam());
     /// assert!(write_options.skip_bim());
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn skip_bim(&self) -> bool {
         self.skip_bim
@@ -5026,7 +5082,7 @@ where
     pub fn write<S: nd::Data<Elem = TVal>>(
         &mut self,
         val: &nd::ArrayBase<S, nd::Ix2>,
-    ) -> Result<(), BedErrorPlus> {
+    ) -> Result<(), Box<BedErrorPlus>> {
         let (iid_count, sid_count) = val.dim();
         let write_options = self.build(iid_count, sid_count)?;
         Bed::write_with_options(val, &write_options)?;
@@ -5208,7 +5264,7 @@ where
     ///     .missing_value(-1)
     ///     .write(&val)?;
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn metadata(mut self, metadata: &Metadata) -> Self {
         self.metadata = Some(
@@ -5240,7 +5296,7 @@ where
     ///     .bim_path(output_folder.join("small.mib"))
     ///     .write(&val)?;
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     #[anyinput]
     pub fn fam_path(mut self, path: AnyPath) -> Self {
@@ -5267,7 +5323,7 @@ where
     ///     .bim_path(output_folder.join("small.mib"))
     ///     .write(&val)?;
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     #[anyinput]
     pub fn bim_path(mut self, path: AnyPath) -> Self {
@@ -5302,7 +5358,7 @@ where
     ///     .missing_value(-1)
     ///     .write(&val)?;
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn missing_value(&mut self, missing_value: TVal) -> &mut Self {
         self.missing_value = Some(missing_value);
@@ -5353,7 +5409,7 @@ where
     ///     .num_threads(1)
     ///     .write(&val)?;
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn num_threads(&mut self, num_threads: usize) -> &mut Self {
         self.num_threads = Some(Some(num_threads));
@@ -5376,7 +5432,7 @@ where
     /// assert!(write_options.skip_fam());
     /// assert!(write_options.skip_bim());
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn skip_fam(&mut self) -> &mut Self {
         self.skip_fam = Some(true);
@@ -5399,7 +5455,7 @@ where
     /// assert!(write_options.skip_fam());
     /// assert!(write_options.skip_bim());
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn skip_bim(&mut self) -> &mut Self {
         self.skip_bim = Some(true);
@@ -5435,13 +5491,13 @@ where
     /// ];
     /// Bed::write_with_options(&val, &write_options)?;
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn build(
         &self,
         iid_count: usize,
         sid_count: usize,
-    ) -> Result<WriteOptions<TVal>, BedErrorPlus> {
+    ) -> Result<WriteOptions<TVal>, Box<BedErrorPlus>> {
         let path = if let Some(path) = self.path.as_ref() {
             path
         } else {
@@ -5488,7 +5544,7 @@ where
 trait FromStringArray<T> {
     fn from_string_array(
         string_array: nd::Array1<String>,
-    ) -> Result<nd::Array1<Self>, BedErrorPlus>
+    ) -> Result<nd::Array1<Self>, Box<BedErrorPlus>>
     where
         Self: Sized;
 }
@@ -5496,7 +5552,7 @@ trait FromStringArray<T> {
 impl FromStringArray<String> for String {
     fn from_string_array(
         string_array: nd::Array1<String>,
-    ) -> Result<nd::Array1<String>, BedErrorPlus> {
+    ) -> Result<nd::Array1<String>, Box<BedErrorPlus>> {
         Ok(string_array)
     }
 }
@@ -5504,28 +5560,28 @@ impl FromStringArray<String> for String {
 impl FromStringArray<f32> for f32 {
     fn from_string_array(
         string_array: nd::Array1<String>,
-    ) -> Result<nd::Array1<f32>, BedErrorPlus> {
+    ) -> Result<nd::Array1<f32>, Box<BedErrorPlus>> {
         let result = string_array
             .iter()
             .map(|s| s.parse::<f32>())
             .collect::<Result<nd::Array1<f32>, _>>();
         match result {
             Ok(array) => Ok(array),
-            Err(e) => Err(BedErrorPlus::ParseFloatError(e)),
+            Err(e) => Err(Box::new(BedErrorPlus::ParseFloatError(e))),
         }
     }
 }
 impl FromStringArray<i32> for i32 {
     fn from_string_array(
         string_array: nd::Array1<String>,
-    ) -> Result<nd::Array1<i32>, BedErrorPlus> {
+    ) -> Result<nd::Array1<i32>, Box<BedErrorPlus>> {
         let result = string_array
             .iter()
             .map(|s| s.parse::<i32>())
             .collect::<Result<nd::Array1<i32>, _>>();
         match result {
             Ok(array) => Ok(array),
-            Err(e) => Err(BedErrorPlus::ParseIntError(e)),
+            Err(e) => Err(Box::new(BedErrorPlus::ParseIntError(e))),
         }
     }
 }
@@ -5541,7 +5597,7 @@ impl FromStringArray<i32> for i32 {
 /// let val2 = nd::arr2(&[[1.0, 2.0], [3.0, NAN]]);
 /// assert_eq_nan(&val1, &val2);
 /// # use bed_reader::BedErrorPlus;
-/// # Ok::<(), BedErrorPlus>(())
+/// # Ok::<(), Box<BedErrorPlus>>(())
 /// ```
 pub fn assert_eq_nan<T: 'static + Copy + PartialEq + PartialOrd + Signed + From<i8>>(
     val: &nd::ArrayBase<nd::OwnedRepr<T>, nd::Dim<[usize; 2]>>,
@@ -5555,6 +5611,20 @@ pub fn assert_eq_nan<T: 'static + Copy + PartialEq + PartialOrd + Signed + From<
     ));
 }
 
+/// Asserts that a result is an error and that the error is of a given variant.
+#[macro_export]
+macro_rules! assert_error_variant {
+    ($result:expr, $pattern:pat) => {
+        match $result {
+            Err(ref boxed_error) => match **boxed_error {
+                $pattern => (),
+                _ => panic!("test failure"),
+            },
+            _ => panic!("test failure"),
+        }
+    };
+}
+
 /// True if and only if two 2-D arrays are equal, within a given tolerance and possibly treating NaNs as values.
 ///
 /// # Example
@@ -5566,7 +5636,7 @@ pub fn assert_eq_nan<T: 'static + Copy + PartialEq + PartialOrd + Signed + From<
 /// let val2 = nd::arr2(&[[1.0, 2.0], [3.0, NAN]]);
 /// assert!(allclose(&val1.view(), &val2.view(), 1e-08, true));
 /// # use bed_reader::BedErrorPlus;
-/// # Ok::<(), BedErrorPlus>(())
+/// # Ok::<(), Box<BedErrorPlus>>(())
 /// ```
 pub fn allclose<
     T1: 'static + Copy + PartialEq + PartialOrd + Signed,
@@ -5630,7 +5700,7 @@ fn check_counts(
     count_vec: Vec<Option<usize>>,
     option_xid_count: &mut Option<usize>,
     prefix: &str,
-) -> Result<(), BedErrorPlus> {
+) -> Result<(), Box<BedErrorPlus>> {
     for count in count_vec.into_iter().flatten() {
         if let Some(xid_count) = option_xid_count {
             if *xid_count != count {
@@ -5655,7 +5725,7 @@ fn compute_field<T: Clone, F: Fn(usize) -> T>(
     field: &mut Option<Rc<nd::Array1<T>>>,
     count: usize,
     lambda: F,
-) -> Result<(), BedErrorPlus> {
+) -> Result<(), Box<BedErrorPlus>> {
     // let lambda = |_| "0".to_string();
     // let count = iid_count;
     // let field = &mut metadata.fid;
@@ -5677,7 +5747,7 @@ impl MetadataBuilder {
     /// Create [`Metadata`](struct.Metadata.html) from the builder.
     ///
     /// > See [`Metadata::builder()`](struct.Metadata.html#method.builder)
-    pub fn build(&self) -> Result<Metadata, BedErrorPlus> {
+    pub fn build(&self) -> Result<Metadata, Box<BedErrorPlus>> {
         let metadata = self.build_no_file_check()?;
 
         metadata.check_counts(None, None)?;
@@ -5702,7 +5772,7 @@ impl MetadataBuilder {
     ///    .build()?;
     /// println!("{:?}", metadata.iid()); // Outputs ndarray Some(["sample1", "sample2", "sample3"])
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     #[anyinput]
     pub fn iid(&mut self, iid: AnyIter<AnyString>) -> &mut Self {
@@ -5763,7 +5833,7 @@ impl MetadataBuilder {
     ///    .build()?;
     /// println!("{:?}", metadata.sid()); // Outputs ndarray Some(["SNP1", "SNP2", "SNP3", "SNP4"])
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     #[anyinput]
     pub fn sid(&mut self, sid: AnyIter<AnyString>) -> &mut Self {
@@ -5840,7 +5910,7 @@ impl MetadataBuilder {
     /// println!("{0:?}", metadata2.sid()); // Outputs optional ndarray Some(["s1", "s2", "s3", "s4"]...)
     /// println!("{0:?}", metadata2.chromosome()); // Outputs None
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn metadata(&mut self, metadata: &Metadata) -> &mut Self {
         set_field(&metadata.fid, &mut self.fid);
@@ -5871,7 +5941,7 @@ impl Metadata {
         &self,
         mut iid_count: Option<usize>,
         mut sid_count: Option<usize>,
-    ) -> Result<(Option<usize>, Option<usize>), BedErrorPlus> {
+    ) -> Result<(Option<usize>, Option<usize>), Box<BedErrorPlus>> {
         check_counts(
             vec![
                 lazy_or_skip_count(&self.fid),
@@ -5923,7 +5993,7 @@ impl Metadata {
     ///     .missing_value(-1)
     ///     .write(&val)?;
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn builder() -> MetadataBuilder {
         MetadataBuilder::default()
@@ -5952,7 +6022,7 @@ impl Metadata {
     /// println!("{0:?}", metadata.iid()); // Outputs optional ndarray Some(["i1", "i2", "i3"]...)
     /// println!("{0:?}", metadata.sid()); // Outputs None
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())    
+    /// # Ok::<(), Box<BedErrorPlus>>(())    
     pub fn iid(&self) -> Option<&nd::Array1<String>> {
         option_rc_as_ref(&self.iid)
     }
@@ -5992,7 +6062,7 @@ impl Metadata {
     /// println!("{0:?}", metadata.iid()); // Outputs optional ndarray Some(["i1", "i2", "i3"]...)
     /// println!("{0:?}", metadata.sid()); // Outputs None
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())    
+    /// # Ok::<(), Box<BedErrorPlus>>(())    
     pub fn sid(&self) -> Option<&nd::Array1<String>> {
         option_rc_as_ref(&self.sid)
     }
@@ -6040,14 +6110,14 @@ impl Metadata {
     /// println!("{0:?}", metadata_bim.sid()); // Outputs optional ndarray Some(["sid1", "sid2", "sid3", "sid4"]...)
     /// println!("{0:?}", metadata_bim.chromosome()); // Outputs optional ndarray Some(["1", "1", "5", "Y"]...)
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     #[anyinput]
     pub fn read_fam(
         &self,
         path: AnyPath,
         skip_set: &HashSet<MetadataFields>,
-    ) -> Result<(Metadata, usize), BedErrorPlus> {
+    ) -> Result<(Metadata, usize), Box<BedErrorPlus>> {
         let mut field_vec: Vec<usize> = Vec::new();
 
         if self.fid.is_none() && !skip_set.contains(&MetadataFields::Fid) {
@@ -6126,14 +6196,14 @@ impl Metadata {
     /// println!("{0:?}", metadata_bim.sid()); // Outputs optional ndarray Some(["sid1", "sid2", "sid3", "sid4"]...)
     /// println!("{0:?}", metadata_bim.chromosome()); // Outputs optional ndarray Some(["1", "1", "5", "Y"]...)
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     #[anyinput]
     pub fn read_bim(
         &self,
         path: AnyPath,
         skip_set: &HashSet<MetadataFields>,
-    ) -> Result<(Metadata, usize), BedErrorPlus> {
+    ) -> Result<(Metadata, usize), Box<BedErrorPlus>> {
         let mut field_vec: Vec<usize> = Vec::new();
         if self.chromosome.is_none() && !skip_set.contains(&MetadataFields::Chromosome) {
             field_vec.push(0);
@@ -6200,10 +6270,10 @@ impl Metadata {
         field_vec: &[usize],
         is_split_whitespace: bool,
         path: AnyPath,
-    ) -> Result<(Vec<Vec<String>>, usize), BedErrorPlus> {
+    ) -> Result<(Vec<Vec<String>>, usize), Box<BedErrorPlus>> {
         let mut vec_of_vec = vec![vec![]; field_vec.len()];
 
-        let file = File::open(&path)?;
+        let file = File::open(path)?;
 
         let reader = BufReader::new(file);
         let mut count = 0;
@@ -6279,13 +6349,13 @@ impl Metadata {
     /// let output_file = temp_out.join("no_bed.fam");
     /// metadata_filled.write_fam(output_file)?;
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     #[anyinput]
-    pub fn write_fam(&self, path: AnyPath) -> Result<(), BedErrorPlus> {
+    pub fn write_fam(&self, path: AnyPath) -> Result<(), Box<BedErrorPlus>> {
         let file = File::create(path)?;
         let mut writer = BufWriter::new(file);
-        let mut result: Result<(), BedErrorPlus> = Ok(());
+        let mut result: Result<(), Box<BedErrorPlus>> = Ok(());
 
         if !self.is_some_fam() {
             return Err(BedError::MetadataMissingForWrite("fam".to_string()).into());
@@ -6309,7 +6379,7 @@ impl Metadata {
                 *fid, *iid, *father, *mother, *sex, *pheno
             )
             {
-            result = Err(BedErrorPlus::IOError(e));
+            result = Err(Box::new(BedErrorPlus::IOError(e)));
             }
         }});
         result?;
@@ -6341,13 +6411,13 @@ impl Metadata {
     /// let output_file = temp_out.join("no_bed.bim");
     /// metadata_filled.write_bim(output_file)?;
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     #[anyinput]
-    pub fn write_bim(&self, path: AnyPath) -> Result<(), BedErrorPlus> {
+    pub fn write_bim(&self, path: AnyPath) -> Result<(), Box<BedErrorPlus>> {
         let file = File::create(path)?;
         let mut writer = BufWriter::new(file);
-        let mut result: Result<(), BedErrorPlus> = Ok(());
+        let mut result: Result<(), Box<BedErrorPlus>> = Ok(());
 
         if !self.is_some_bim() {
             return Err(BedError::MetadataMissingForWrite("bim".to_string()).into());
@@ -6372,7 +6442,7 @@ impl Metadata {
                 *chromosome, *sid, *cm_position, *bp_position, *allele_1, *allele_2
                 )
                 {
-                result = Err(BedErrorPlus::IOError(e));
+                result = Err(Box::new(BedErrorPlus::IOError(e)));
                 }
             }
         });
@@ -6399,9 +6469,9 @@ impl Metadata {
     /// println!("{0:?}", metadata_filled.sid()); // Outputs optional ndarray Some(["s1", "s2", "s3", "s4"]...)
     /// println!("{0:?}", metadata_filled.chromosome()); // Outputs optional ndarray Some(["0", "0", "0", "0"]...)
     /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), BedErrorPlus>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
-    pub fn fill(&self, iid_count: usize, sid_count: usize) -> Result<Metadata, BedErrorPlus> {
+    pub fn fill(&self, iid_count: usize, sid_count: usize) -> Result<Metadata, Box<BedErrorPlus>> {
         let mut metadata = self.clone();
 
         compute_field("fid", &mut metadata.fid, iid_count, |_| "0".to_string())?;
@@ -6536,7 +6606,7 @@ fn matrix_subset_no_alloc<
     iid_index: &[usize],
     sid_index: &[usize],
     out_val: &mut nd::ArrayViewMut3<'_, TOut>,
-) -> Result<(), BedErrorPlus> {
+) -> Result<(), Box<BedErrorPlus>> {
     let out_iid_count = iid_index.len();
     let out_sid_count = sid_index.len();
     let did_count = in_val.dim().2;
@@ -6590,7 +6660,7 @@ static STATIC_FETCH_DATA: FetchData = FetchData::new(
 /// The files will be in a directory determined by environment variable `BED_READER_DATA_DIR`.
 /// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
 #[anyinput]
-pub fn sample_bed_file(bed_path: AnyPath) -> Result<PathBuf, BedErrorPlus> {
+pub fn sample_bed_file(bed_path: AnyPath) -> Result<PathBuf, Box<BedErrorPlus>> {
     let mut path_list: Vec<PathBuf> = Vec::new();
     for ext in ["bed", "bim", "fam"].iter() {
         let file_path = bed_path.with_extension(ext);
@@ -6608,7 +6678,7 @@ pub fn sample_bed_file(bed_path: AnyPath) -> Result<PathBuf, BedErrorPlus> {
 /// The file will be in a directory determined by environment variable `BED_READER_DATA_DIR`.
 /// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
 #[anyinput]
-pub fn sample_file(path: AnyPath) -> Result<PathBuf, BedErrorPlus> {
+pub fn sample_file(path: AnyPath) -> Result<PathBuf, Box<BedErrorPlus>> {
     match STATIC_FETCH_DATA.fetch_file(path) {
         Ok(path) => Ok(path),
         Err(e) => Err(e.into()),
@@ -6621,7 +6691,7 @@ pub fn sample_file(path: AnyPath) -> Result<PathBuf, BedErrorPlus> {
 /// The files will be in a directory determined by environment variable `BED_READER_DATA_DIR`.
 /// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
 #[anyinput]
-pub fn sample_files(path_list: AnyIter<AnyPath>) -> Result<Vec<PathBuf>, BedErrorPlus>
+pub fn sample_files(path_list: AnyIter<AnyPath>) -> Result<Vec<PathBuf>, Box<BedErrorPlus>>
 where
 {
     match STATIC_FETCH_DATA.fetch_files(path_list) {
