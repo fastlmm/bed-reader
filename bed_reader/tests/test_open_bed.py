@@ -644,10 +644,11 @@ def test_coverage2(shared_datadir, tmp_path):
 
 
 def test_coverage3(shared_datadir, tmp_path):
-    with open_bed(
-        shared_datadir / "small.bed", properties={"sex": [1.0, np.nan, 1.0, 2.0]}
-    ) as bed:
-        assert np.array_equal(bed.sex, np.array([1, 0, 1, 2]))
+    with pytest.warns(RuntimeWarning, match="invalid value encountered in cast"):
+        with open_bed(
+            shared_datadir / "small.bed", properties={"sex": [1.0, np.nan, 1.0, 2.0]}
+        ) as bed:
+            assert np.array_equal(bed.sex, np.array([1, 0, 1, 2]))
 
     with open_bed(
         shared_datadir / "small.bed",

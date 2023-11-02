@@ -1082,6 +1082,9 @@ class open_bed:
             raise ValueError(f"{key} should be one dimensional")
 
         if not np.issubdtype(input.dtype, dtype):
+            # This will convert, for example, numerical sids to string sids or
+            # floats that happen to be integers into ints,
+            # but there will be a warning generated.
             output = np.array(input, dtype=dtype)
         else:
             output = input
