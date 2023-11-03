@@ -2,6 +2,7 @@ import tempfile
 from pathlib import Path
 from typing import Union
 
+# cmk need to do something about this when it is not installed
 import pooch
 
 """

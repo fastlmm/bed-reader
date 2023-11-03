@@ -1185,6 +1185,210 @@ class open_bed:
                     output = np.array(output, dtype=mm.dtype)
             self.properties_dict[key] = output
 
+    def read_csc_inputs(
+        self,
+        index: Optional[Any] = None,
+        dtype: Optional[Union[type, str]] = "float32",
+        batch_size: Optional[int] = None,
+        num_threads=None,
+    ) -> np.ndarray:
+        """
+        Read genotype information for use by `scipy.sparse.csc_matrix`.
+
+        Parameters
+        ----------
+        index:
+            An optional expression specifying the individuals (samples) and SNPs
+            (variants) to read. (See examples, below).
+            Defaults to ``None``, meaning read all.
+
+            (If index is a tuple, the first component indexes the individuals and the
+            second indexes
+            the SNPs. If it is not a tuple and not None, it indexes SNPs.)
+
+        dtype: {'float32' (default), 'float64', 'int8'}, optional
+            The desired data-type for the returned array.
+        order : {'F','C'}, optional
+            The desired memory layout for the returned array.
+            Defaults to ``F`` (Fortran order, which is SNP-major).
+        batch_size: Used internally. Number of dense SNPs (variants) to read at a time.
+            Defaults to round(sqrt(total-number-of-SNPs-to-read)).
+            Larger values will be faster. Smaller values will use less memory.
+        num_threads: None or int, optional
+            The number of threads with which to read data. Defaults to all available
+            processors.
+            Can also be set with :class:`open_bed` or these
+            environment variables (listed in priority order):
+            'PST_NUM_THREADS', 'NUM_THREADS', 'MKL_NUM_THREADS'.
+
+        Returns
+        -------
+        three numpy.ndarray arrays (data, indices, indptr) and a shape.
+            These can be used to create
+            a sparse matrix with
+            ``scipy.sparse.csc_matrix(data, indices, indptr, shape)``.
+
+        Rows represent individuals (samples). Columns represent SNPs (variants).
+
+        For ``dtype`` 'float32' and 'float64', NaN indicates missing values.
+        For 'int8', -127 indicates missing values.
+
+        Examples
+        --------
+
+        To read all data in a .bed file, set ``index`` to ``None``. This is the default.
+
+        .. doctest::
+
+            >>> from bed_reader import open_bed, sample_file
+            >>>
+            >>> file_name = sample_file("small.bed")
+            >>> with open_bed(file_name) as bed:
+            ...     print(bed.read())
+            [[ 1.  0. nan  0.]
+             [ 2.  0. nan  2.]
+             [ 0.  1.  2.  0.]]
+
+        To read selected individuals (samples) and/or SNPs (variants), set each part of
+        a :class:`numpy.s_` to an `int`, a list of `int`, a slice expression, or
+        a list of `bool`.
+        Negative integers count from the end of the list.
+
+
+        .. doctest::
+
+            >>> import numpy as np
+            >>> bed = open_bed(file_name)
+            >>> print(bed.read(np.s_[:,2]))  # read the SNPs indexed by 2.
+            [[nan]
+             [nan]
+             [ 2.]]
+            >>> print(bed.read(np.s_[:,[2,3,0]]))  # read the SNPs indexed by 2, 3, and 0
+            [[nan  0.  1.]
+             [nan  2.  2.]
+             [ 2.  0.  0.]]
+            >>> # read SNPs from 1 (inclusive) to 4 (exclusive)
+            >>> print(bed.read(np.s_[:,1:4]))
+            [[ 0. nan  0.]
+             [ 0. nan  2.]
+             [ 1.  2.  0.]]
+            >>> print(np.unique(bed.chromosome)) # print unique chrom values
+            ['1' '5' 'Y']
+            >>> print(bed.read(np.s_[:,bed.chromosome=='5'])) # read all SNPs in chrom 5
+            [[nan]
+             [nan]
+             [ 2.]]
+            >>> print(bed.read(np.s_[0,:])) # Read 1st individual (across all SNPs)
+            [[ 1.  0. nan  0.]]
+            >>> print(bed.read(np.s_[::2,:])) # Read every 2nd individual
+            [[ 1.  0. nan  0.]
+             [ 0.  1.  2.  0.]]
+            >>> #read last and 2nd-to-last individuals and the last SNPs
+            >>> print(bed.read(np.s_[[-1,-2],-1]))
+            [[0.]
+             [2.]]
+
+
+        You can give a dtype for the output.
+
+        .. doctest::
+
+            >>> print(bed.read(dtype='int8'))
+            [[   1    0 -127    0]
+             [   2    0 -127    2]
+             [   0    1    2    0]]
+            >>> del bed  # optional: delete bed object
+
+        """
+        iid_index_or_slice_etc, sid_index_or_slice_etc = self._split_index(index)
+
+        dtype = np.dtype(dtype)
+        order = "F"
+
+        # Similar code in read().
+        # Later happy with _iid_range and _sid_range or could it be done with
+        # allocation them?
+        if self._iid_range is None:
+            self._iid_range = np.arange(self.iid_count, dtype="intp")
+        if self._sid_range is None:
+            self._sid_range = np.arange(self.sid_count, dtype="intp")
+
+        iid_index = np.ascontiguousarray(
+            self._iid_range[iid_index_or_slice_etc],
+            dtype="intp",
+        )
+        sid_index = np.ascontiguousarray(
+            self._sid_range[sid_index_or_slice_etc], dtype="intp"
+        )
+
+        if len(sid_index) > np.iinfo(np.int32).max:
+            raise ValueError(
+                "Too many SNPs (variants) requested. Maximum is {np.iinfo(np.int32).max}."
+            )
+
+        if batch_size is None:
+            batch_size = round(np.sqrt(len(sid_index)))
+
+        num_threads = get_num_threads(
+            self._num_threads if num_threads is None else num_threads
+        )
+
+        data = []
+        indices = []
+        indptr = [np.array([0])]
+
+        if self.iid_count > 0 and self.sid_count > 0:
+            val = np.zeros((len(iid_index), batch_size), order=order, dtype=dtype)
+
+            if dtype == np.int8:
+                reader = read_i8
+            elif dtype == np.float64:
+                reader = read_f64
+            elif dtype == np.float32:
+                reader = read_f32
+            else:
+                raise ValueError(
+                    f"dtype '{val.dtype}' not known, only "
+                    + "'int8', 'float32', and 'float64' are allowed."
+                )
+
+            for batch_start in range(0, len(sid_index), batch_size):
+                batch_end = batch_start + batch_size
+                if batch_end > len(sid_index):
+                    batch_end = len(sid_index)
+                    del val
+                    val = np.zeros(
+                        (len(iid_index), batch_end - batch_start),
+                        order=order,
+                        dtype=dtype,
+                    )
+                batch_index = sid_index[batch_start:batch_end]
+
+                reader(
+                    str(self.filepath),
+                    iid_count=self.iid_count,
+                    sid_count=self.sid_count,
+                    is_a1_counted=self.count_A1,
+                    iid_index=iid_index,
+                    sid_index=batch_index,
+                    val=val,
+                    num_threads=num_threads,
+                )
+
+                flatten = np.ravel(val, order=order)
+                nz_indices = np.flatnonzero(flatten).astype(np.int32)
+                column_indexes = nz_indices // len(iid_index)
+                counts = np.bincount(column_indexes, minlength=batch_end - batch_start)
+                counts_with_initial = np.concatenate((indptr[-1][-1:], counts))
+
+                data.append(flatten[nz_indices])
+                indices.append(np.mod(nz_indices, len(iid_index)))
+                indptr.append(np.cumsum(counts_with_initial)[1:])
+        data = np.concatenate(data)
+        indices = np.concatenate(indices)
+        indptr = np.concatenate(indptr)
+        return ((data, indices, indptr), (len(iid_index), len(sid_index)))
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

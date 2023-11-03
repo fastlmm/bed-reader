@@ -1,3 +1,4 @@
+<!-- markdownlint-disable MD046 -->
 <!-- markdownlint-disable MD041 -->
 [![PyPI version](https://badge.fury.io/py/bed-reader.svg)](https://badge.fury.io/py/bed-reader)
 [![PyPI version](https://badge.fury.io/py/bed-reader.svg)](https://badge.fury.io/py/bed-reader)
@@ -19,7 +20,7 @@ Features:
 Install
 ====================
 
-    pip install bed-reader
+    pip install bed-reader[samples]
 
 Usage
 ========
