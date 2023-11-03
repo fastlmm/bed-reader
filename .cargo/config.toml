@@ -1,4 +1,0 @@
-# [build]
-# # https://nnethercote.github.io/perf-book/compile-times.html
-# rustflags = ["-C", "link-arg=-fuse-ld=lld"]
-# cmk make personal
