@@ -3,28 +3,32 @@ from pathlib import Path
 from typing import Union
 
 # cmk need to do something about this when it is not installed
-import pooch
 
-"""
-Load sample data.
-"""
+try:
+    import pooch
 
-POOCH = pooch.create(
-    # Use the default cache folder for the OS
-    path=pooch.os_cache("bed_reader"),
-    # The remote data is on Github
-    base_url="https://raw.githubusercontent.com/"
-    + "fastlmm/bed-reader/rustybed/bed_reader/tests/data/",
-    # If this is a development version, get the data from the master branch
-    version_dev="master",
-    # The registry specifies the files that can be fetched
-    env="BED_READER_DATA_DIR",
-)
+    """
+    Load sample data.
+    """
 
-# Get registry file from package_data
-registry_file = Path(__file__).parent / "tests/registry.txt"
-# Load this registry file
-POOCH.load_registry(registry_file)
+    POOCH = pooch.create(
+        # Use the default cache folder for the OS
+        path=pooch.os_cache("bed_reader"),
+        # The remote data is on Github
+        base_url="https://raw.githubusercontent.com/"
+        + "fastlmm/bed-reader/rustybed/bed_reader/tests/data/",
+        # If this is a development version, get the data from the master branch
+        version_dev="master",
+        # The registry specifies the files that can be fetched
+        env="BED_READER_DATA_DIR",
+    )
+
+    # Get registry file from package_data
+    registry_file = Path(__file__).parent / "tests/registry.txt"
+    # Load this registry file
+    POOCH.load_registry(registry_file)
+except ImportError:
+    pooch = None
 
 
 def sample_file(filepath: Union[str, Path]) -> str:
@@ -57,6 +61,13 @@ def sample_file(filepath: Union[str, Path]) -> str:
         >>> print(f"The local file name is '{file_name}'")
         The local file name is '...small.bed'
     """
+    if pooch is None:
+        print(
+            "The function 'sample_file' requires the 'pooch' package, which is not installed."
+        )
+        print("You can do: pip install --upgrade bed-reader[samples]")
+        return None
+
     filepath = Path(filepath)
     file_string = str(filepath)
     if file_string.lower().endswith(".bed"):
