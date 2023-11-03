@@ -14,6 +14,7 @@ dependencies = ["numpy>=1.13.3", "pandas>=0.25.1"]
 
 [project.optional-dependencies]
 samples = ["pooch>=1.5.0"]
+# cmk make csc feature
 
 [project.urls]
 Homepage = "https://fastlmm.github.io"
