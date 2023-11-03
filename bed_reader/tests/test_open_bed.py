@@ -5,9 +5,10 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-import scipy as sp
 
 from bed_reader import open_bed, subset_f64_f64, to_bed
+
+# cmk somehow add test that get nice message for no pooch or scipy.
 
 
 def test_read1(shared_datadir):
@@ -23,8 +24,8 @@ def test_read1(shared_datadir):
         val = bed.read(dtype="int8")
         # really shouldn't do mean on data where -127 represents missing
         assert val.mean() == -13.142
-        val = sp.sparse.csc_matrix(*bed.read_csc_inputs(dtype="int8"))
-        assert math.isclose(val.mean(), -13.142, rel_tol=1e-9)
+        val_sparse = bed.read_sparse(dtype="int8")
+        assert math.isclose(val_sparse.mean(), -13.142, rel_tol=1e-9)
         assert bed.chromosome[-1] == "1"
         assert bed.bp_position[-1] == 100
 
@@ -45,7 +46,7 @@ def test_write(tmp_path, shared_datadir):
         to_bed(out_file, val0, properties=properties0)
         with open_bed(out_file) as bed1:
             assert np.allclose(val0, bed1.read(), equal_nan=True)
-            val_sparse = sp.sparse.csc_matrix(*bed1.read_csc_inputs())
+            val_sparse = bed1.read_sparse()
             assert np.allclose(val0, val_sparse.toarray(), equal_nan=True)
             assert np.array_equal(bed.fid, properties0["fid"])
             assert np.array_equal(bed.iid, properties0["iid"])
@@ -181,7 +182,7 @@ def test_bad_dtype_or_order(shared_datadir):
     with pytest.raises(ValueError):
         open_bed(shared_datadir / "some_missing.bed").read(order="X")
     with pytest.raises(ValueError):
-        open_bed(shared_datadir / "some_missing.bed").read_csc_inputs(dtype=np.int32)
+        open_bed(shared_datadir / "some_missing.bed").read_sparse(dtype=np.int32)
 
 
 def setting_generator(seq_dict, seed=9392):
@@ -270,7 +271,7 @@ def test_properties(shared_datadir):
                 len(iid_list),
                 len(sid_list),
             )
-            val_sparse = sp.sparse.csc_matrix(*bed.read_csc_inputs())
+            val_sparse = bed.read_sparse()
             assert np.allclose(val, val_sparse.toarray(), equal_nan=True)
             if settings["iid_after_read"]:
                 if _not_set_to_none(settings, "iid"):
@@ -300,7 +301,7 @@ def test_c_reader_bed(shared_datadir):
         ref_val = ref_val * -1 + 2
         assert np.allclose(ref_val, val, rtol=1e-05, atol=1e-05, equal_nan=True)
 
-        val_sparse = sp.sparse.csc_matrix(*bed.read_csc_inputs())
+        val_sparse = bed.read_sparse()
         assert val_sparse.dtype == np.float32
         assert np.allclose(
             ref_val, val_sparse.toarray(), rtol=1e-05, atol=1e-05, equal_nan=True
@@ -320,7 +321,7 @@ def test_c_reader_bed(shared_datadir):
             )
             ref_val = reference_val(shared_datadir)
             assert np.allclose(ref_val, val, rtol=1e-05, atol=1e-05, equal_nan=True)
-            val_sparse = sp.sparse.csc_matrix(*bed.read_csc_inputs(dtype="float64"))
+            val_sparse = bed.read_sparse(dtype="float64")
             assert np.allclose(
                 ref_val, val_sparse.toarray(), rtol=1e-05, atol=1e-05, equal_nan=True
             )
@@ -361,18 +362,14 @@ def test_bed_int8(tmp_path, shared_datadir):
                             ),
                             ref_val,
                         )
-                        val_sparse = sp.sparse.csc_matrix(
-                            *bed2.read_csc_inputs(dtype="int8")
-                        )
+                        val_sparse = bed2.read_sparse(dtype="int8")
                         assert np.allclose(val_sparse.toarray(), ref_val)
 
 
 def test_write1_bed_f64cpp(tmp_path, shared_datadir):
     with open_bed(shared_datadir / "some_missing.bed") as bed:
         for iid_index in [0, 1, 5]:
-            val_sparse = sp.sparse.csc_matrix(
-                *bed.read_csc_inputs(np.s_[0:iid_index, :], dtype=np.float64)
-            )
+            val_sparse = bed.read_sparse(np.s_[0:iid_index, :], dtype=np.float64)
             assert val_sparse.shape == (iid_index, 100)
             for force_python_only in [False, True]:
                 val = bed.read(
@@ -834,9 +831,8 @@ def test_sparse():
 
     file_name = sample_file("small.bed")
     with open_bed(file_name, count_A1=False) as bed:
-        csc_inputs = bed.read_csc_inputs(index=np.s_[:, :3], dtype="int8")
-        val = sp.sparse.csc_matrix(*csc_inputs)
-        print(val.shape)
+        val_sparse = bed.read_sparse(index=np.s_[:, :3], dtype="int8")
+        print(val_sparse.shape)
 
 
 if __name__ == "__main__":

@@ -62,11 +62,10 @@ def sample_file(filepath: Union[str, Path]) -> str:
         The local file name is '...small.bed'
     """
     if pooch is None:
-        print(
-            "The function 'sample_file' requires the 'pooch' package, which is not installed."
+        raise ImportError(
+            "The function sample_file() requires pooch. "
+            + "Install it with 'pip install --upgrade bed-reader[sample]'."
         )
-        print("You can do: pip install --upgrade bed-reader[samples]")
-        return None
 
     filepath = Path(filepath)
     file_string = str(filepath)

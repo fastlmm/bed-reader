@@ -8,6 +8,11 @@ from typing import Any, List, Mapping, Optional, Union
 
 import numpy as np
 
+try:
+    from scipy import sparse
+except ImportError:
+    sparse = None
+
 # cmk remove pandas
 import pandas as pd
 
@@ -1187,15 +1192,17 @@ class open_bed:
                     output = np.array(output, dtype=mm.dtype)
             self.properties_dict[key] = output
 
-    def read_csc_inputs(
+    def read_sparse(
         self,
         index: Optional[Any] = None,
         dtype: Optional[Union[type, str]] = "float32",
         batch_size: Optional[int] = None,
+        format: Optional[str] = "csc",
+        force_python_only: Optional[bool] = False,
         num_threads=None,
-    ) -> np.ndarray:
+    ) -> (sparse.csc_matrix | sparse.csr_matrix) if sparse is not None else None:
         """
-        Read genotype information for use by `scipy.sparse.csc_matrix`.
+        Read genotype information into a `scipy` sparse matrix.
 
         Parameters
         ----------
@@ -1210,12 +1217,17 @@ class open_bed:
 
         dtype: {'float32' (default), 'float64', 'int8'}, optional
             The desired data-type for the returned array.
-        order : {'F','C'}, optional
-            The desired memory layout for the returned array.
-            Defaults to ``F`` (Fortran order, which is SNP-major).
-        batch_size: Used internally. Number of dense SNPs (variants) to read at a time.
-            Defaults to round(sqrt(total-number-of-SNPs-to-read)).
+        batch_size: Used internally. Number of dense columns (or rows) to read at a time.
+            Defaults to round(sqrt(total-number-of-columns-or-rows-to-read)).
             Larger values will be faster. Smaller values will use less memory.
+            Format 'csc' reads dense columns of SNPs (variants).
+            Format 'csr' reads dense rows of individuals (samples).
+        format : {'csc','csr'}, optional
+            The desired format of the sparse matrix.
+            Defaults to ``csc`` (Compressed Sparse Column, which is SNP-major).
+        force_python_only: bool, optional
+            If False (default), uses the faster Rust code; otherwise it uses the slower
+            pure Python code.
         num_threads: None or int, optional
             The number of threads with which to read data. Defaults to all available
             processors.
@@ -1225,10 +1237,7 @@ class open_bed:
 
         Returns
         -------
-        three numpy.ndarray arrays (data, indices, indptr) and a shape.
-            These can be used to create
-            a sparse matrix with
-            ``scipy.sparse.csc_matrix(data, indices, indptr, shape)``.
+        a `sciypy.sparse.csc_matrix` or `scipy.sparse.csr_matrix`
 
         Rows represent individuals (samples). Columns represent SNPs (variants).
 
@@ -1302,10 +1311,21 @@ class open_bed:
             >>> del bed  # optional: delete bed object
 
         """
+        if sparse is None:
+            raise ImportError(
+                "The function read_sparse() requires scipy. "
+                + "Install it with 'pip install --upgrade bed-reader[sparse]'."
+            )
         iid_index_or_slice_etc, sid_index_or_slice_etc = self._split_index(index)
 
         dtype = np.dtype(dtype)
-        order = "F"
+
+        if format == "csc":
+            order = "F"
+        elif format == "csr":
+            order = "C"
+        else:
+            raise ValueError(f"format '{format}' not known. Expected 'csc' or 'csr'.")
 
         # Similar code in read().
         # Later happy with _iid_range and _sid_range or could it be done with
@@ -1389,7 +1409,15 @@ class open_bed:
         data = np.concatenate(data)
         indices = np.concatenate(indices)
         indptr = np.concatenate(indptr)
-        return ((data, indices, indptr), (len(iid_index), len(sid_index)))
+
+        if format == "csc":
+            return sparse.csc_matrix(
+                (data, indices, indptr), (len(iid_index), len(sid_index))
+            )
+        else:  # cmk not likely to be correct
+            return sparse.csr_matrix(
+                (data, indices, indptr), (len(iid_index), len(sid_index))
+            )
 
 
 if __name__ == "__main__":
