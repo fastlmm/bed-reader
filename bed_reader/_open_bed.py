@@ -1318,13 +1318,6 @@ class open_bed:
 
         dtype = np.dtype(dtype)
 
-        if format == "csc":
-            order = "F"
-        elif format == "csr":
-            order = "C"
-        else:
-            raise ValueError(f"format '{format}' not known. Expected 'csc' or 'csr'.")
-
         # Similar code in read().
         # Later happy with _iid_range and _sid_range or could it be done with
         # allocation them?
@@ -1341,9 +1334,12 @@ class open_bed:
             self._sid_range[sid_index_or_slice_etc], dtype="intp"
         )
 
-        if len(sid_index) > np.iinfo(np.int32).max:
+        if (
+            len(iid_index) > np.iinfo(np.int32).max
+            or len(sid_index) > np.iinfo(np.int32).max
+        ):
             raise ValueError(
-                "Too many SNPs (variants) requested. Maximum is {np.iinfo(np.int32).max}."
+                "Too many Individuals or SNPs (variants) requested. Maximum is {np.iinfo(np.int32).max}."
             )
 
         if batch_size is None:
@@ -1353,10 +1349,18 @@ class open_bed:
             self._num_threads if num_threads is None else num_threads
         )
 
+        if format == "csc":
+            order = "F"
+            indptr = np.zeros(len(sid_index) + 1, dtype=np.int32)
+        elif format == "csr":
+            order = "C"
+            indptr = np.zeros(len(iid_index) + 1, dtype=np.int32)
+        else:
+            raise ValueError(f"format '{format}' not known. Expected 'csc' or 'csr'.")
+
         # We init data and indices with zero element arrays to set their dtype.
         data = [np.empty(0, dtype=dtype)]
         indices = [np.empty(0, dtype=np.int32)]
-        indptr = [np.array([0])]
 
         if self.iid_count > 0 and self.sid_count > 0:
             if dtype == np.int8:
@@ -1383,7 +1387,8 @@ class open_bed:
                             order=order,
                             dtype=dtype,
                         )
-                    batch_index = sid_index[batch_start:batch_end]
+                    batch_slice = np.s_[batch_start:batch_end]
+                    batch_index = sid_index[batch_slice]
 
                     reader(
                         str(self.filepath),
@@ -1397,7 +1402,7 @@ class open_bed:
                     )
 
                     self.sparsify(
-                        val, order, iid_index, val.shape[1], data, indices, indptr
+                        val, order, iid_index, batch_slice, data, indices, indptr
                     )
             else:
                 assert format == "csr"  # real assert
@@ -1412,7 +1417,9 @@ class open_bed:
                             order=order,
                             dtype=dtype,
                         )
-                    batch_index = iid_index[batch_start:batch_end]
+
+                    batch_slice = np.s_[batch_start:batch_end]
+                    batch_index = iid_index[batch_slice]
 
                     reader(
                         str(self.filepath),
@@ -1426,135 +1433,40 @@ class open_bed:
                     )
 
                     self.sparsify(
-                        val, order, sid_index, val.shape[0], data, indices, indptr
+                        val, order, sid_index, batch_slice, data, indices, indptr
                     )
 
         data = np.concatenate(data)
         indices = np.concatenate(indices)
-        indptr = np.concatenate(indptr)
 
         if format == "csc":
             return sparse.csc_matrix(
                 (data, indices, indptr), (len(iid_index), len(sid_index))
             )
-        else:  # cmk not likely to be correct
+        else:
+            assert format == "csr"  # real assert
             return sparse.csr_matrix(
                 (data, indices, indptr), (len(iid_index), len(sid_index))
             )
 
-    def sparsify(self, val, order, minor_index, minlength, data, indices, indptr):
+    def sparsify(self, val, order, minor_index, batch_slice, data, indices, indptr):
         flatten = np.ravel(val, order=order)
         nz_indices = np.flatnonzero(flatten).astype(np.int32)
         column_indexes = nz_indices // len(minor_index)
-        counts = np.bincount(column_indexes, minlength=minlength)
-        counts_with_initial = np.concatenate((indptr[-1][-1:], counts))
+        counts = np.bincount(
+            column_indexes, minlength=batch_slice.stop - batch_slice.start
+        ).astype(np.int32)
+        counts_with_initial = np.r_[
+            indptr[batch_slice.start : batch_slice.start + 1], counts
+        ]
 
         data.append(flatten[nz_indices])
         indices.append(np.mod(nz_indices, len(minor_index)))
-        indptr.append(np.cumsum(counts_with_initial)[1:])
+        indptr[1:][batch_slice] = np.cumsum(counts_with_initial)[1:]
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-
-    # if True:
-    #     from bed_reader import sample_file
-
-    #     file_name = sample_file("small.bed")
-    #     with open_bed(file_name) as bed:
-    #         print(bed.iid)
-    #         print(bed.sid)
-    #         print(bed.read())
-
-    # if False:
-    #     import numpy as np
-    #     from bed_reader._open_bed import open_bed
-
-    #     # Can get file from
-    #  https://www.dropbox.com/sh/xluk9opjiaobteg/AABgEggLk0ZoO0KQq0I4CaTJa?dl=0
-    #     bigfile = r"M:\deldir\genbgen\2\merged_487400x220000.1.bed"
-    #     # bigfile = '/mnt/m/deldir/genbgen/2/merged_487400x220000.1.bed'
-    #     with open_bed(bigfile, num_threads=20) as bed:
-    #         sid_batch = 22 * 1000
-    #         for sid_start in range(0, 10 * sid_batch, sid_batch):
-    #             slicer = np.s_[:10000, sid_start : sid_start + sid_batch]
-    #             print(slicer)
-    #             val = bed.read(slicer)
-    #         print(val.shape)
-
-    # if False:
-    #     file = r"D:\OneDrive\programs\sgkit-plink\bed_reader\tests\data
-    #          /plink_sim_10s_100v_10pmiss.bed"
-    #     with open_bed(file) as bed:
-    #         print(bed.iid)
-    #         print(bed.shape)
-    #         val = bed.read()
-    #         print(val)
-
-    # if False:
-
-    #     # bed_file = example_file('doc/ipynb/all.*','*.bed')
-    #     bed_file = r"F:\backup\carlk4d\data\carlk\cachebio\genetics\onemil\
-    #          id1000000.sid_1000000.seed0.byiid\iid990000to1000000.bed"
-    #     bed = Bed(bed_file, count_A1=False)
-    #     snpdata1 = bed[:, :1000].read()
-    #     snpdata2 = bed[:, :1000].read(dtype="int8", _require_float32_64=False)
-    #     print(snpdata2)
-    #     snpdata3 = bed[:, :1000].read(
-    #         dtype="int8", order="C", _require_float32_64=False
-    #     )
-    #     print(snpdata3)
-    #     snpdata3.val = snpdata3.val.astype("float32")
-    #     snpdata3.val.dtype
-
-    # if False:
-    #     from bed_reader import Bed, SnpGen
-
-    #     iid_count = 487409
-    #     sid_count = 5000
-    #     sid_count_max = 5765294
-    #     sid_batch_size = 50
-
-    #     sid_batch_count = -(sid_count // -sid_batch_size)
-    #     sid_batch_count_max = -(sid_count_max // -sid_batch_size)
-    #     snpgen = SnpGen(seed=234, iid_count=iid_count, sid_count=sid_count_max)
-
-    #     for batch_index in range(sid_batch_count):
-    #         sid_index_start = batch_index * sid_batch_size
-    #         sid_index_end = (batch_index + 1) * sid_batch_size  # what about rounding
-    #         filename = r"d:\deldir\rand\fakeukC{0}x{1}-{2}.bed".format(
-    #             iid_count, sid_index_start, sid_index_end
-    #         )
-    #         if not os.path.exists(filename):
-    #             Bed.write(
-    #                 filename + ".temp", snpgen[:, sid_index_start:sid_index_end].read()
-    #             )
-    #             os.rename(filename + ".temp", filename)
-
-    # if False:
-    #     from bed_reader import Pheno, Bed
-
-    #     filename = r"m:\deldir\New folder (4)\all_chr.maf0.001.N300.bed"
-    #     iid_count = 300
-    #     iid = [["0", "iid_{0}".format(iid_index)] for iid_index in range(iid_count)]
-    #     bed = Bed(filename, iid=iid, count_A1=False)
-    #     print(bed.iid_count)
-
-    # if False:
-    #     from pysnptools.util import example_file
-
-    #     pheno_fn = example_file("pysnptools/examples/toydata.phe")
-
-    # if False:
-    #     from bed_reader import Pheno, Bed
-
-    #     print(os.getcwd())
-    #     # Read data from Pheno format
-    #     snpdata = Pheno("../examples/toydata.phe").read()
-    #     # pstutil.create_directory_if_necessary("tempdir/toydata.5chrom.bed")
-    #     Bed.write(
-    #         "tempdir/toydata.5chrom.bed", snpdata, count_A1=False
-    #     )  # Write data in Bed format
 
     import pytest
 

@@ -4,6 +4,7 @@ import platform
 from pathlib import Path
 
 import numpy as np
+import scipy.sparse as sparse
 import pytest
 
 from bed_reader import open_bed, subset_f64_f64, to_bed
@@ -388,13 +389,10 @@ def test_write1_bed_f64cpp(tmp_path, shared_datadir):
             assert np.allclose(val_sparse.toarray(), val2, equal_nan=True)
 
 
-# cmk continue from here testing read_csc_inputs
-
-
 def test_write1_x_x_cpp(tmp_path, shared_datadir):
     for count_A1 in [False, True]:
         with open_bed(shared_datadir / "some_missing.bed", count_A1=count_A1) as bed:
-            for order in ["C", "F"]:
+            for order, format in [("F", "csc"), ("C", "csr")]:
                 for dtype in [np.float32, np.float64]:
                     val = bed.read(order=order, dtype=dtype)
                     properties = bed.properties
@@ -408,6 +406,10 @@ def test_write1_x_x_cpp(tmp_path, shared_datadir):
                     to_bed(output, val, properties=properties, count_A1=count_A1)
                     val2 = open_bed(output, count_A1=count_A1).read(dtype=dtype)
                     assert np.allclose(val, val2, equal_nan=True)
+                    val_sparse = open_bed(output, count_A1=count_A1).read_sparse(
+                        dtype=dtype, format=format
+                    )
+                    assert np.allclose(val, val_sparse.toarray(), equal_nan=True)
 
 
 def test_respect_read_inputs(shared_datadir):
@@ -417,7 +419,7 @@ def test_respect_read_inputs(shared_datadir):
     ref_val_int8 = ref_val_float2.astype("int8")
 
     with open_bed(shared_datadir / "some_missing.bed") as bed:
-        for order in ["F", "C"]:
+        for order, format in [("F", "csc"), ("C", "csr")]:
             for dtype in [np.int8, np.float32, np.float64]:
                 for force_python_only in [True, False]:
                     val = bed.read(
@@ -429,6 +431,13 @@ def test_respect_read_inputs(shared_datadir):
                     assert val.dtype == dtype and has_right_order
                     ref_val = ref_val_int8 if dtype == np.int8 else ref_val_float
                     assert np.allclose(ref_val, val, equal_nan=True)
+
+                val_sparse = bed.read_sparse(dtype=dtype, format=format)
+                has_right_format = (
+                    format == "csc" and isinstance(val_sparse, sparse.csc_matrix)
+                ) or (format == "csr" and isinstance(val_sparse, sparse.csr_matrix))
+                assert val_sparse.dtype == dtype and has_right_format
+                assert np.allclose(ref_val, val_sparse.toarray(), equal_nan=True)
 
 
 def test_threads(shared_datadir):
@@ -443,6 +452,8 @@ def test_threads(shared_datadir):
         ) as bed:
             val = bed.read(dtype="int8")
             assert np.allclose(ref_val_int8, val, equal_nan=True)
+            val_sparse = bed.read_sparse(dtype="int8")
+            assert np.allclose(ref_val_int8, val_sparse.toarray(), equal_nan=True)
 
 
 def test_write12(tmp_path):
@@ -538,45 +549,84 @@ def test_index(shared_datadir):
     with open_bed(shared_datadir / "some_missing.bed") as bed:
         val = bed.read()
         assert np.allclose(ref_val_float, val, equal_nan=True)
+        val_sparse = bed.read_sparse()
+        assert np.allclose(ref_val_float, val_sparse.toarray(), equal_nan=True)
 
         val = bed.read(2)
         assert np.allclose(ref_val_float[:, [2]], val, equal_nan=True)
+        val_sparse = bed.read_sparse(2)
+        assert np.allclose(ref_val_float[:, [2]], val_sparse.toarray(), equal_nan=True)
 
         val = bed.read((2))
         assert np.allclose(ref_val_float[:, [2]], val, equal_nan=True)
+        val_sparse = bed.read_sparse((2))
+        assert np.allclose(ref_val_float[:, [2]], val_sparse.toarray(), equal_nan=True)
 
         val = bed.read((None, 2))
         assert np.allclose(ref_val_float[:, [2]], val, equal_nan=True)
+        val_sparse = bed.read_sparse((None, 2))
+        assert np.allclose(ref_val_float[:, [2]], val_sparse.toarray(), equal_nan=True)
 
         val = bed.read((1, 2))
         assert np.allclose(ref_val_float[[1], [2]], val, equal_nan=True)
+        val_sparse = bed.read_sparse((1, 2))
+        assert np.allclose(
+            ref_val_float[[1], [2]], val_sparse.toarray(), equal_nan=True
+        )
 
         val = bed.read([2, -2])
         assert np.allclose(ref_val_float[:, [2, -2]], val, equal_nan=True)
+        val_sparse = bed.read_sparse([2, -2])
+        assert np.allclose(
+            ref_val_float[:, [2, -2]], val_sparse.toarray(), equal_nan=True
+        )
 
         val = bed.read(([1, -1], [2, -2]))
         assert np.allclose(ref_val_float[[1, -1], :][:, [2, -2]], val, equal_nan=True)
+        val_sparse = bed.read_sparse(([1, -1], [2, -2]))
+        assert np.allclose(
+            ref_val_float[[1, -1], :][:, [2, -2]], val_sparse.toarray(), equal_nan=True
+        )
 
         iid_bool = ([False, False, True] * bed.iid_count)[: bed.iid_count]
         sid_bool = ([True, False, True] * bed.sid_count)[: bed.sid_count]
         val = bed.read(sid_bool)
         assert np.allclose(ref_val_float[:, sid_bool], val, equal_nan=True)
+        val_sparse = bed.read_sparse(sid_bool)
+        assert np.allclose(
+            ref_val_float[:, sid_bool], val_sparse.toarray(), equal_nan=True
+        )
 
         val = bed.read((iid_bool, sid_bool))
         assert np.allclose(ref_val_float[iid_bool, :][:, sid_bool], val, equal_nan=True)
+        val_sparse = bed.read_sparse((iid_bool, sid_bool))
 
         val = bed.read((1, sid_bool))
         assert np.allclose(ref_val_float[[1], :][:, sid_bool], val, equal_nan=True)
+        val_sparse = bed.read_sparse((1, sid_bool))
+        assert np.allclose(
+            ref_val_float[[1], :][:, sid_bool], val_sparse.toarray(), equal_nan=True
+        )
 
         slicer = np.s_[::2, ::3]
         val = bed.read(slicer[1])
         assert np.allclose(ref_val_float[:, slicer[1]], val, equal_nan=True)
+        val_sparse = bed.read_sparse(slicer[1])
+        assert np.allclose(
+            ref_val_float[:, slicer[1]], val_sparse.toarray(), equal_nan=True
+        )
 
         val = bed.read(slicer)
         assert np.allclose(ref_val_float[slicer], val, equal_nan=True)
+        val_sparse = bed.read_sparse(slicer)
+        assert np.allclose(ref_val_float[slicer], val_sparse.toarray(), equal_nan=True)
 
         val = bed.read((1, slicer[1]))
         assert np.allclose(ref_val_float[[1], slicer[1]], val, equal_nan=True)
+        val_sparse = bed.read_sparse((1, slicer[1]))
+        assert np.allclose(
+            ref_val_float[[1], slicer[1]], val_sparse.toarray(), equal_nan=True
+        )
 
 
 def test_shape(shared_datadir):
@@ -585,7 +635,7 @@ def test_shape(shared_datadir):
 
 
 def test_zero_files(tmp_path):
-    for force_python_only in [False, True]:
+    for force_python_only, format in [(False, "csc"), (True, "csr")]:
         for iid_count in [3, 0]:
             for sid_count in [0, 5]:
                 for dtype in [np.int8, np.float32, np.float64]:
@@ -602,6 +652,8 @@ def test_zero_files(tmp_path):
                     with open_bed(filename) as bed2:
                         val2 = bed2.read(dtype=dtype)
                         assert np.allclose(val, val2, equal_nan=True)
+                        val_sparse = bed2.read_sparse(dtype=dtype, format=format)
+                        assert np.allclose(val, val_sparse.toarray(), equal_nan=True)
                         properties2 = bed2.properties
                         for prop in properties2.values():
                             assert len(prop) in {iid_count, sid_count}
@@ -622,6 +674,8 @@ def test_zero_files(tmp_path):
                     with open_bed(filename) as bed3:
                         val3 = bed3.read(dtype=dtype)
                         assert np.allclose(val, val3, equal_nan=True)
+                        val_sparse = bed3.read_sparse(dtype=dtype, format=format)
+                        assert np.allclose(val, val_sparse.toarray(), equal_nan=True)
                         properties3 = bed3.properties
                         for key2, value_list2 in properties2.items():
                             value_list3 = properties3[key2]
