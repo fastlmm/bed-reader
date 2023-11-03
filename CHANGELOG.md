@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- (Python) Install now with `pip install bed-reader[samples]`. If you want a version that depends only `numpy` # cmk add to this
+- (Python) Install now with `pip install bed-reader[samples,sparse]`.
+  If you want a version that depends only `numpy` # cmk add to this
 - (Rust) Rust methods that returned `Result` used to return
   `Result<_, BedErrorPlus>`. To save memory, they now
   return `Result<_,Box<BedErrorPlus>>`.

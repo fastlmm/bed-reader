@@ -1,2 +1,4 @@
 numpy>=1.13.3
 pandas>=0.25.1
+sympy>=1.14
+pooch>=1.5.0

@@ -7,6 +7,8 @@ from pathlib import Path
 from typing import Any, List, Mapping, Optional, Union
 
 import numpy as np
+
+# cmk remove pandas
 import pandas as pd
 
 from .bed_reader import read_f32, read_f64, read_i8  # type: ignore

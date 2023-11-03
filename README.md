@@ -20,7 +20,13 @@ Features:
 Install
 ====================
 
-    pip install bed-reader[samples]
+*Full Version*:
+
+    pip install bed-reader[samples,sparse]
+
+*Minimal Version*: Depends only on `numpy`.
+
+    pip install bed-reader
 
 Usage
 ========
