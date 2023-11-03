@@ -1198,7 +1198,6 @@ class open_bed:
         dtype: Optional[Union[type, str]] = "float32",
         batch_size: Optional[int] = None,
         format: Optional[str] = "csc",
-        force_python_only: Optional[bool] = False,
         num_threads=None,
     ) -> (sparse.csc_matrix | sparse.csr_matrix) if sparse is not None else None:
         """
@@ -1217,17 +1216,16 @@ class open_bed:
 
         dtype: {'float32' (default), 'float64', 'int8'}, optional
             The desired data-type for the returned array.
-        batch_size: Used internally. Number of dense columns (or rows) to read at a time.
+        batch_size: Used internally. Number of dense columns or rows to read at a time.
             Defaults to round(sqrt(total-number-of-columns-or-rows-to-read)).
+            For example, when reading 1000 individuals x 50,000 SNPs
+            into csc format, it will default to reading 1000 individuals x 224 SNPs in each batch.
             Larger values will be faster. Smaller values will use less memory.
             Format 'csc' reads dense columns of SNPs (variants).
             Format 'csr' reads dense rows of individuals (samples).
         format : {'csc','csr'}, optional
             The desired format of the sparse matrix.
             Defaults to ``csc`` (Compressed Sparse Column, which is SNP-major).
-        force_python_only: bool, optional
-            If False (default), uses the faster Rust code; otherwise it uses the slower
-            pure Python code.
         num_threads: None or int, optional
             The number of threads with which to read data. Defaults to all available
             processors.
@@ -1355,13 +1353,12 @@ class open_bed:
             self._num_threads if num_threads is None else num_threads
         )
 
-        data = []
-        indices = []
+        # We init data and indices with zero element arrays to set their dtype.
+        data = [np.empty(0, dtype=dtype)]
+        indices = [np.empty(0, dtype=np.int32)]
         indptr = [np.array([0])]
 
         if self.iid_count > 0 and self.sid_count > 0:
-            val = np.zeros((len(iid_index), batch_size), order=order, dtype=dtype)
-
             if dtype == np.int8:
                 reader = read_i8
             elif dtype == np.float64:
@@ -1370,42 +1367,68 @@ class open_bed:
                 reader = read_f32
             else:
                 raise ValueError(
-                    f"dtype '{val.dtype}' not known, only "
+                    f"dtype '{dtype}' not known, only "
                     + "'int8', 'float32', and 'float64' are allowed."
                 )
 
-            for batch_start in range(0, len(sid_index), batch_size):
-                batch_end = batch_start + batch_size
-                if batch_end > len(sid_index):
-                    batch_end = len(sid_index)
-                    del val
-                    val = np.zeros(
-                        (len(iid_index), batch_end - batch_start),
-                        order=order,
-                        dtype=dtype,
+            if format == "csc":
+                val = np.zeros((len(iid_index), batch_size), order=order, dtype=dtype)
+                for batch_start in range(0, len(sid_index), batch_size):
+                    batch_end = batch_start + batch_size
+                    if batch_end > len(sid_index):
+                        batch_end = len(sid_index)
+                        del val
+                        val = np.zeros(
+                            (len(iid_index), batch_end - batch_start),
+                            order=order,
+                            dtype=dtype,
+                        )
+                    batch_index = sid_index[batch_start:batch_end]
+
+                    reader(
+                        str(self.filepath),
+                        iid_count=self.iid_count,
+                        sid_count=self.sid_count,
+                        is_a1_counted=self.count_A1,
+                        iid_index=iid_index,
+                        sid_index=batch_index,
+                        val=val,
+                        num_threads=num_threads,
                     )
-                batch_index = sid_index[batch_start:batch_end]
 
-                reader(
-                    str(self.filepath),
-                    iid_count=self.iid_count,
-                    sid_count=self.sid_count,
-                    is_a1_counted=self.count_A1,
-                    iid_index=iid_index,
-                    sid_index=batch_index,
-                    val=val,
-                    num_threads=num_threads,
-                )
+                    self.sparsify(
+                        val, order, iid_index, val.shape[1], data, indices, indptr
+                    )
+            else:
+                assert format == "csr"  # real assert
+                val = np.zeros((batch_size, len(sid_index)), order=order, dtype=dtype)
+                for batch_start in range(0, len(iid_index), batch_size):
+                    batch_end = batch_start + batch_size
+                    if batch_end > len(iid_index):
+                        batch_end = len(iid_index)
+                        del val
+                        val = np.zeros(
+                            (batch_end - batch_start, len(sid_index)),
+                            order=order,
+                            dtype=dtype,
+                        )
+                    batch_index = iid_index[batch_start:batch_end]
 
-                flatten = np.ravel(val, order=order)
-                nz_indices = np.flatnonzero(flatten).astype(np.int32)
-                column_indexes = nz_indices // len(iid_index)
-                counts = np.bincount(column_indexes, minlength=batch_end - batch_start)
-                counts_with_initial = np.concatenate((indptr[-1][-1:], counts))
+                    reader(
+                        str(self.filepath),
+                        iid_count=self.iid_count,
+                        sid_count=self.sid_count,
+                        is_a1_counted=self.count_A1,
+                        iid_index=batch_index,
+                        sid_index=sid_index,
+                        val=val,
+                        num_threads=num_threads,
+                    )
 
-                data.append(flatten[nz_indices])
-                indices.append(np.mod(nz_indices, len(iid_index)))
-                indptr.append(np.cumsum(counts_with_initial)[1:])
+                    self.sparsify(
+                        val, order, sid_index, val.shape[0], data, indices, indptr
+                    )
+
         data = np.concatenate(data)
         indices = np.concatenate(indices)
         indptr = np.concatenate(indptr)
@@ -1418,6 +1441,17 @@ class open_bed:
             return sparse.csr_matrix(
                 (data, indices, indptr), (len(iid_index), len(sid_index))
             )
+
+    def sparsify(self, val, order, minor_index, minlength, data, indices, indptr):
+        flatten = np.ravel(val, order=order)
+        nz_indices = np.flatnonzero(flatten).astype(np.int32)
+        column_indexes = nz_indices // len(minor_index)
+        counts = np.bincount(column_indexes, minlength=minlength)
+        counts_with_initial = np.concatenate((indptr[-1][-1:], counts))
+
+        data.append(flatten[nz_indices])
+        indices.append(np.mod(nz_indices, len(minor_index)))
+        indptr.append(np.cumsum(counts_with_initial)[1:])
 
 
 if __name__ == "__main__":

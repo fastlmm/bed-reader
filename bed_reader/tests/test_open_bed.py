@@ -292,7 +292,7 @@ def test_properties(shared_datadir):
 
 
 def test_c_reader_bed(shared_datadir):
-    for force_python_only in [False, True]:
+    for force_python_only, format in [(False, "csc"), (True, "csr")]:
         bed = open_bed(shared_datadir / "some_missing.bed", count_A1=False)
 
         val = bed.read(order="F", force_python_only=force_python_only)
@@ -301,7 +301,7 @@ def test_c_reader_bed(shared_datadir):
         ref_val = ref_val * -1 + 2
         assert np.allclose(ref_val, val, rtol=1e-05, atol=1e-05, equal_nan=True)
 
-        val_sparse = bed.read_sparse()
+        val_sparse = bed.read_sparse(format=format)
         assert val_sparse.dtype == np.float32
         assert np.allclose(
             ref_val, val_sparse.toarray(), rtol=1e-05, atol=1e-05, equal_nan=True
@@ -335,7 +335,7 @@ def reference_val(shared_datadir):
 def test_bed_int8(tmp_path, shared_datadir):
     with open_bed(shared_datadir / "some_missing.bed") as bed:
         for force_python_only in [False, True]:
-            for order in ["F", "C"]:
+            for order, format in [("F", "csc"), ("C", "csr")]:
                 val = bed.read(
                     dtype="int8", force_python_only=force_python_only, order=order
                 )
@@ -362,16 +362,18 @@ def test_bed_int8(tmp_path, shared_datadir):
                             ),
                             ref_val,
                         )
-                        val_sparse = bed2.read_sparse(dtype="int8")
+                        val_sparse = bed2.read_sparse(dtype="int8", format=format)
                         assert np.allclose(val_sparse.toarray(), ref_val)
 
 
 def test_write1_bed_f64cpp(tmp_path, shared_datadir):
     with open_bed(shared_datadir / "some_missing.bed") as bed:
         for iid_index in [0, 1, 5]:
-            val_sparse = bed.read_sparse(np.s_[0:iid_index, :], dtype=np.float64)
-            assert val_sparse.shape == (iid_index, 100)
-            for force_python_only in [False, True]:
+            for force_python_only, format in [(False, "csc"), (True, "csr")]:
+                val_sparse = bed.read_sparse(
+                    np.s_[0:iid_index, :], dtype=np.float64, format=format
+                )
+                assert val_sparse.shape == (iid_index, 100)
                 val = bed.read(
                     np.s_[0:iid_index, :],
                     order="F",
@@ -825,7 +827,6 @@ def test_bed_reading_example():
 
 def test_sparse():
     import numpy as np
-    import scipy as sp
 
     from bed_reader import open_bed, sample_file
 
