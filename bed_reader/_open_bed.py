@@ -1245,19 +1245,29 @@ class open_bed:
         Examples
         --------
 
-        To read all data in a .bed file, set ``index`` to ``None``. This is the default.
-        cmk continue updating the docs here.
+        Read all data in a .bed file into a `scipy.sparse.csc_matrix`.
+        The file has 10 individuals (samples) by 20 SNPs (variants).
+        All but eight values are 0.
 
         .. doctest::
 
+            >>> # pip install bed-reader[samples,sparse]  # if needed
             >>> from bed_reader import open_bed, sample_file
             >>>
-            >>> file_name = sample_file("small.bed")
+            >>> file_name = sample_file("sparse.bed")
             >>> with open_bed(file_name) as bed:
-            ...     print(bed.read())
-            [[ 1.  0. nan  0.]
-             [ 2.  0. nan  2.]
-             [ 0.  1.  2.  0.]]
+            ...     print(bed.shape())
+            ...     val_sparse = bed.read_sparse(dtype="int8")
+            ...     print(val_sparse)
+            (10, 20)
+                (8, 4)	1
+                (8, 5)	2
+                (0, 8)	2
+                (4, 9)	1
+                (7, 9)	1
+                (5, 11)	1
+                (2, 12)	1
+                (3, 12)	1
 
         To read selected individuals (samples) and/or SNPs (variants), set each part of
         a :class:`numpy.s_` to an `int`, a list of `int`, a slice expression, or

@@ -14,7 +14,7 @@ try:
         path=pooch.os_cache("bed_reader"),
         # The remote data is on Github
         base_url="https://raw.githubusercontent.com/"
-        + "fastlmm/bed-reader/rustybed/bed_reader/tests/data/",
+        + "fastlmm/bed-reader/Oct2023/bed_reader/tests/data/",
         # If this is a development version, get the data from the master branch
         version_dev="master",
         # The registry specifies the files that can be fetched
