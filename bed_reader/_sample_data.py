@@ -53,6 +53,7 @@ def sample_file(filepath: Union[str, Path]) -> str:
 
     .. doctest::
 
+        >>> # pip install bed-reader[samples]  # if needed
         >>> from bed_reader import sample_file
         >>>
         >>> file_name = sample_file("small.bed")

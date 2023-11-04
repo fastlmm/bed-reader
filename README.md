@@ -1,3 +1,5 @@
+<!-- This must be keep in sync with doc/source/index.rst manually -->
+
 <!-- markdownlint-disable MD046 -->
 <!-- markdownlint-disable MD041 -->
 [![PyPI version](https://badge.fury.io/py/bed-reader.svg)](https://badge.fury.io/py/bed-reader)
@@ -20,11 +22,11 @@ Features:
 Install
 ====================
 
-*Full Version*:
+**Full version**: With all optional dependencies:
 
     pip install bed-reader[samples,sparse]
 
-*Minimal Version*: Depends only on `numpy`.
+**Minimal version**: Depends only on `numpy`:
 
     pip install bed-reader
 

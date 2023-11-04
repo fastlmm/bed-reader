@@ -1201,7 +1201,8 @@ class open_bed:
         num_threads=None,
     ) -> (Union[sparse.csc_matrix, sparse.csr_matrix]) if sparse is not None else None:
         """
-        Read genotype information into a :mod:`scipy.sparse` matrix.
+        Read genotype information into a :mod:`scipy.sparse` matrix. Sparse matrices
+        may be useful when the data is mostly 0.
 
         Parameters
         ----------
@@ -1216,7 +1217,8 @@ class open_bed:
 
         dtype: {'float32' (default), 'float64', 'int8'}, optional
             The desired data-type for the returned array.
-        batch_size: Used internally. Number of dense columns or rows to read at a time.
+        batch_size: None or int, optional
+            Number of dense columns or rows to read at a time, internally.
             Defaults to round(sqrt(total-number-of-columns-or-rows-to-read)).
         format : {'csc','csr'}, optional
             The desired format of the sparse matrix.
@@ -1250,13 +1252,14 @@ class open_bed:
         Internally, the function reads the data via small dense matrices.
         For this example, by default, the function will read 1000 individuals x 224 SNPs
         (because 224 * 224 is about 50,000).
-        The memory used, here, is 1000 x 244 x 1 byte (for int8) = 0.224 MB.
+        The memory used by the small dense matrix is 1000 x 244 x 1 byte (for int8) = 0.224 MB.
 
         You can set `batch_size`. Larger values will be faster.
         Smaller values will use less memory.
 
         For this example, we might want to set the `batch_size` to 5000. Then,
-        the memory used would be 1000 x 5000 x 1 byte (for int8) = 5 MB,
+        the memory used by the small dense matrix
+        would be 1000 x 5000 x 1 byte (for int8) = 5 MB,
         similar to the 7.5 MB needed for the final sparse matrix.
 
         Examples
