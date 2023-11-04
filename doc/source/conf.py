@@ -48,7 +48,7 @@ source_suffix = ".rst"
 
 master_doc = "index"
 man_pages = [(master_doc, project, "{} documentation".format(project), [author], 1)]
-language = 'en'
+language = "en"
 
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "conf.py"]
 
@@ -67,4 +67,5 @@ intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "numpy": ("https://docs.scipy.org/doc/numpy/", None),
     "pandas": ("https://pandas.pydata.org/pandas-docs/stable/", None),
+    "scipy": ("https://docs.scipy.org/doc/scipy/reference/", None),
 }

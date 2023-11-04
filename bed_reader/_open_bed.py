@@ -113,7 +113,7 @@ class open_bed:
           meaning do not read or offer this property. See examples, below.
 
           The list or array will be converted to a :class:`numpy.ndarray`
-          of the appropriate dtype, if necessary. Any :class:`numpy.nan` values
+          of the appropriate dtype, if necessary. Any :data:`numpy.nan` values
           will converted to the appropriate missing value. The PLINK `.fam specification
           <https://www.cog-genomics.org/plink2/formats#fam>`_
           and `.bim specification <https://www.cog-genomics.org/plink2/formats#bim>`_
@@ -312,7 +312,7 @@ class open_bed:
              [ 0.  1.  2.  0.]]
 
         To read selected individuals (samples) and/or SNPs (variants), set each part of
-        a :class:`numpy.s_` to an `int`, a list of `int`, a slice expression, or
+        a :data:`numpy.s_` to an `int`, a list of `int`, a slice expression, or
         a list of `bool`.
         Negative integers count from the end of the list.
 
@@ -1199,9 +1199,9 @@ class open_bed:
         batch_size: Optional[int] = None,
         format: Optional[str] = "csc",
         num_threads=None,
-    ) -> (sparse.csc_matrix | sparse.csr_matrix) if sparse is not None else None:
+    ) -> (Union[sparse.csc_matrix, sparse.csr_matrix]) if sparse is not None else None:
         """
-        Read genotype information into a `scipy` sparse matrix.
+        Read genotype information into a :mod:`scipy.sparse` matrix.
 
         Parameters
         ----------
@@ -1218,11 +1218,6 @@ class open_bed:
             The desired data-type for the returned array.
         batch_size: Used internally. Number of dense columns or rows to read at a time.
             Defaults to round(sqrt(total-number-of-columns-or-rows-to-read)).
-            For example, when reading 1000 individuals x 50,000 SNPs
-            into csc format, it will default to reading 1000 individuals x 224 SNPs in each batch.
-            Larger values will be faster. Smaller values will use less memory.
-            Format 'csc' reads dense columns of SNPs (variants).
-            Format 'csr' reads dense rows of individuals (samples).
         format : {'csc','csr'}, optional
             The desired format of the sparse matrix.
             Defaults to ``csc`` (Compressed Sparse Column, which is SNP-major).
@@ -1235,17 +1230,39 @@ class open_bed:
 
         Returns
         -------
-        a `scipy.sparse.csc_matrix` or `scipy.sparse.csr_matrix`
+        a :class:`scipy.sparse.csc_matrix` (default) or :class:`scipy.sparse.csr_matrix`
 
         Rows represent individuals (samples). Columns represent SNPs (variants).
 
         For ``dtype`` 'float32' and 'float64', NaN indicates missing values.
         For 'int8', -127 indicates missing values.
 
+
+        The memory used by the final sparse matrix is approximately:
+
+           # of non-zero values * (4 bytes + 1 byte (for int8))
+
+        For example, consider reading 1000 individuals (samples) x 50,000 SNPs (variants)
+        into csc format where the data is 97% sparse.
+        The memory used will be about 7.5 MB (1000 x 50,000 x 3% x 5 bytes).
+        This is 15% of the 50 MB needed by a dense matrix.
+
+        Internally, the function reads the data via small dense matrices.
+        For this example, by default, the function will read 1000 individuals x 224 SNPs
+        (because 224 * 224 is about 50,000).
+        The memory used, here, is 1000 x 244 x 1 byte (for int8) = 0.224 MB.
+
+        You can set `batch_size`. Larger values will be faster.
+        Smaller values will use less memory.
+
+        For this example, we might want to set the `batch_size` to 5000. Then,
+        the memory used would be 1000 x 5000 x 1 byte (for int8) = 5 MB,
+        similar to the 7.5 MB needed for the final sparse matrix.
+
         Examples
         --------
 
-        Read all data in a .bed file into a `scipy.sparse.csc_matrix`.
+        Read all data in a .bed file into a :class:`scipy.sparse.csc_matrix`.
         The file has 10 individuals (samples) by 20 SNPs (variants).
         All but eight values are 0.
 
@@ -1256,11 +1273,11 @@ class open_bed:
             >>>
             >>> file_name = sample_file("sparse.bed")
             >>> with open_bed(file_name) as bed:
-            ...     print(bed.shape())
+            ...     print(bed.shape)
             ...     val_sparse = bed.read_sparse(dtype="int8")
-            ...     print(val_sparse)
+            ...     print(val_sparse) # doctest:+NORMALIZE_WHITESPACE
             (10, 20)
-                (8, 4)	1
+                (8, 4)  1
                 (8, 5)	2
                 (0, 8)	2
                 (4, 9)	1
@@ -1270,54 +1287,51 @@ class open_bed:
                 (3, 12)	1
 
         To read selected individuals (samples) and/or SNPs (variants), set each part of
-        a :class:`numpy.s_` to an `int`, a list of `int`, a slice expression, or
+        a :data:`numpy.s_` to an `int`, a list of `int`, a slice expression, or
         a list of `bool`.
         Negative integers count from the end of the list.
-
 
         .. doctest::
 
             >>> import numpy as np
             >>> bed = open_bed(file_name)
-            >>> print(bed.read(np.s_[:,2]))  # read the SNPs indexed by 2.
-            [[nan]
-             [nan]
-             [ 2.]]
-            >>> print(bed.read(np.s_[:,[2,3,0]]))  # read the SNPs indexed by 2, 3, and 0
-            [[nan  0.  1.]
-             [nan  2.  2.]
-             [ 2.  0.  0.]]
-            >>> # read SNPs from 1 (inclusive) to 4 (exclusive)
-            >>> print(bed.read(np.s_[:,1:4]))
-            [[ 0. nan  0.]
-             [ 0. nan  2.]
-             [ 1.  2.  0.]]
+            >>> print(bed.read_sparse(np.s_[:,5], dtype="int8"))  # read the SNPs indexed by 5. # doctest:+NORMALIZE_WHITESPACE
+            (8, 0)    2
+            >>> # read the SNPs indexed by 5, 4, and 0
+            >>> print(bed.read_sparse(np.s_[:,[5,4,0]], dtype="int8")) # doctest:+NORMALIZE_WHITESPACE
+            (8, 0)	2
+            (8, 1)	1
+            >>> # read SNPs from 1 (inclusive) to 11 (exclusive)
+            >>> print(bed.read_sparse(np.s_[:,1:11], dtype="int8")) # doctest:+NORMALIZE_WHITESPACE
+            (8, 3)	1
+            (8, 4)	2
+            (0, 7)	2
+            (4, 8)	1
+            (7, 8)	1
             >>> print(np.unique(bed.chromosome)) # print unique chrom values
             ['1' '5' 'Y']
-            >>> print(bed.read(np.s_[:,bed.chromosome=='5'])) # read all SNPs in chrom 5
-            [[nan]
-             [nan]
-             [ 2.]]
-            >>> print(bed.read(np.s_[0,:])) # Read 1st individual (across all SNPs)
-            [[ 1.  0. nan  0.]]
-            >>> print(bed.read(np.s_[::2,:])) # Read every 2nd individual
-            [[ 1.  0. nan  0.]
-             [ 0.  1.  2.  0.]]
-            >>> #read last and 2nd-to-last individuals and the last SNPs
-            >>> print(bed.read(np.s_[[-1,-2],-1]))
-            [[0.]
-             [2.]]
-
-
-        You can give a dtype for the output.
-
-        .. doctest::
-
-            >>> print(bed.read(dtype='int8'))
-            [[   1    0 -127    0]
-             [   2    0 -127    2]
-             [   0    1    2    0]]
-            >>> del bed  # optional: delete bed object
+            >>> # read all SNPs in chrom 5
+            >>> print(bed.read_sparse(np.s_[:,bed.chromosome=='5'], dtype="int8")) # doctest:+NORMALIZE_WHITESPACE
+            (8, 0)	1
+            (8, 1)	2
+            (0, 4)	2
+            (4, 5)	1
+            (7, 5)	1
+            (5, 7)	1
+            (2, 8)	1
+            (3, 8)	1
+            >>> # Read 1st individual (across all SNPs)
+            >>> print(bed.read_sparse(np.s_[0,:], dtype="int8")) # doctest:+NORMALIZE_WHITESPACE
+            (0, 8)	2
+            >>> print(bed.read_sparse(np.s_[::2,:], dtype="int8")) # Read every 2nd individual # doctest:+NORMALIZE_WHITESPACE
+            (4, 4)    1
+            (4, 5)    2
+            (0, 8)    2
+            (2, 9)    1
+            (1, 12)   1
+            >>> # read last and 2nd-to-last individuals and the 15th-from-the-last SNP
+            >>> print(bed.read_sparse(np.s_[[-1,-2],-15], dtype="int8")) # doctest:+NORMALIZE_WHITESPACE
+            (1, 0)	2
 
         """
         if sparse is None:
