@@ -4,8 +4,8 @@ import platform
 from pathlib import Path
 
 import numpy as np
-import scipy.sparse as sparse
 import pytest
+import scipy.sparse as sparse
 
 from bed_reader import open_bed, subset_f64_f64, to_bed
 
@@ -707,6 +707,7 @@ def test_sample_file():
         print(bed.iid)
         print(bed.sid)
         print(bed.read())
+        print(bed.read_sparse())
 
 
 def test_coverage2(shared_datadir, tmp_path):
@@ -748,6 +749,7 @@ def test_coverage3(shared_datadir, tmp_path):
     to_bed(output_file, np.array([list], dtype=np.float16))
     with open_bed(output_file) as bed:
         assert np.allclose(bed.read(), [list], equal_nan=True)
+        assert np.allclose(bed.read_sparse().toarray(), [list], equal_nan=True)
 
 
 def test_nones(shared_datadir, tmp_path):
@@ -787,8 +789,10 @@ def test_fam_bim_filepath(shared_datadir, tmp_path):
 
     with open_bed(output_file, fam_filepath=fam_file, bim_filepath=bim_file) as deb:
         val2 = deb.read()
-        properties2 = deb.properties
         assert np.allclose(val, val2, equal_nan=True)
+        val_sparse = deb.read_sparse()
+        assert np.allclose(val, val_sparse.toarray(), equal_nan=True)
+        properties2 = deb.properties
         for key in properties:
             np.array_equal(properties[key], properties2[key])
 
@@ -834,13 +838,18 @@ def test_env(shared_datadir):
         os.environ[key] = "1"
         with open_bed(shared_datadir / "some_missing.bed") as bed:
             _ = bed.read(np.s_[:100, :100])
+            _ = bed.read_sparse(np.s_[:100, :100])
         os.environ[key] = "10"
         with open_bed(shared_datadir / "some_missing.bed") as bed:
             _ = bed.read(np.s_[:100, :100])
+            _ = bed.read_sparse(np.s_[:100, :100])
         os.environ[key] = "BADVALUE"
         with pytest.raises(ValueError):
             with open_bed(shared_datadir / "some_missing.bed") as bed:
                 _ = bed.read(np.s_[:100, :100])
+        with pytest.raises(ValueError):
+            with open_bed(shared_datadir / "some_missing.bed") as bed:
+                _ = bed.read_sparse(np.s_[:100, :100])
     finally:
         if original_val is None:
             if key in os.environ:

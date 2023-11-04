@@ -1235,7 +1235,7 @@ class open_bed:
 
         Returns
         -------
-        a `sciypy.sparse.csc_matrix` or `scipy.sparse.csr_matrix`
+        a `scipy.sparse.csc_matrix` or `scipy.sparse.csr_matrix`
 
         Rows represent individuals (samples). Columns represent SNPs (variants).
 
@@ -1246,6 +1246,7 @@ class open_bed:
         --------
 
         To read all data in a .bed file, set ``index`` to ``None``. This is the default.
+        cmk continue updating the docs here.
 
         .. doctest::
 
