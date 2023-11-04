@@ -1,3 +1,5 @@
+.. Comment: This must be kept in sync with the README.md file manually.
+
 .. image:: https://badge.fury.io/py/bed-reader.svg
     :target: https://badge.fury.io/py/bed-reader
 .. image:: https://github.com/fastlmm/bed-reader/actions/workflows/ci.yml/badge.svg?branch=master
@@ -25,8 +27,17 @@ Features:
 Install
 ====================
 
-    pip install bed-reader
+**Full version**: With all optional dependencies:
 
+.. code-block:: bash
+
+    pip install bed-reader[samples,sparse]
+
+**Minimal version**: Depends only on `numpy`:
+
+.. code-block:: bash
+
+    pip install bed-reader
 
 Usage
 ========
@@ -86,6 +97,7 @@ Project Links
 - `Bug reports <https://github.com/fastlmm/bed-reader/issues>`_
 - `Mailing list <https://mail.python.org/mailman3/lists/fastlmm-user.python.org>`_
 - `Project Website <https://fastlmm.github.io/>`_
+- `Change Log <https://github.com/fastlmm/bed-reader/blob/master/CHANGELOG.md>`_
 
 
 Summary
@@ -98,6 +110,7 @@ Open, Read, and Write
 
     open_bed
     open_bed.read
+    open_bed.read_sparse
     to_bed
 
 Properties of Individuals (samples) and SNPs (variants)

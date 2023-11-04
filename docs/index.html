@@ -4,18 +4,16 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>bed_reader Documentation &mdash; Bed Reader 0.2.37 documentation</title>
+  <title>bed_reader Documentation &mdash; Bed Reader 1.0.0-beta.1 documentation</title>
       <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-        <script src="_static/jquery.js?v=5d32c60e"></script>
-        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-        <script src="_static/documentation_options.js?v=8fa6aa5b"></script>
-        <script src="_static/doctools.js?v=888ff710"></script>
-        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/sphinx_highlight.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" /> 
@@ -33,7 +31,7 @@
             Bed Reader
           </a>
               <div class="version">
-                0.2.37
+                1.0.0-beta.1
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -72,6 +70,7 @@
 <li><a class="reference internal" href="#bed_reader.open_bed.properties"><code class="docutils literal notranslate"><span class="pre">open_bed.properties</span></code></a></li>
 <li><a class="reference internal" href="#bed_reader.open_bed.property_item"><code class="docutils literal notranslate"><span class="pre">open_bed.property_item()</span></code></a></li>
 <li><a class="reference internal" href="#bed_reader.open_bed.read"><code class="docutils literal notranslate"><span class="pre">open_bed.read()</span></code></a></li>
+<li><a class="reference internal" href="#bed_reader.open_bed.read_sparse"><code class="docutils literal notranslate"><span class="pre">open_bed.read_sparse()</span></code></a></li>
 <li><a class="reference internal" href="#bed_reader.open_bed.sex"><code class="docutils literal notranslate"><span class="pre">open_bed.sex</span></code></a></li>
 <li><a class="reference internal" href="#bed_reader.open_bed.shape"><code class="docutils literal notranslate"><span class="pre">open_bed.shape</span></code></a></li>
 <li><a class="reference internal" href="#bed_reader.open_bed.sid"><code class="docutils literal notranslate"><span class="pre">open_bed.sid</span></code></a></li>
@@ -128,7 +127,7 @@
 <a class="reference external image-reference" href="https://github.com/fastlmm/bed-reader/actions/workflows/ci.yml"><img alt="https://github.com/fastlmm/bed-reader/actions/workflows/ci.yml/badge.svg?branch=master" src="https://github.com/fastlmm/bed-reader/actions/workflows/ci.yml/badge.svg?branch=master" /></a>
 <img alt="https://img.shields.io/pypi/pyversions/bed-reader" src="https://img.shields.io/pypi/pyversions/bed-reader" />
 <section id="bed-reader-documentation">
-<h1><code class="xref py py-mod docutils literal notranslate"><span class="pre">bed_reader</span></code> Documentation<a class="headerlink" href="#bed-reader-documentation" title="Link to this heading"></a></h1>
+<h1><code class="xref py py-mod docutils literal notranslate"><span class="pre">bed_reader</span></code> Documentation<a class="headerlink" href="#bed-reader-documentation" title="Permalink to this heading"></a></h1>
 <div class="toctree-wrapper compound">
 </div>
 <p>Read and write the PLINK BED format, simply and efficiently.</p>
@@ -140,13 +139,18 @@
 <li><p>Supports <a class="reference external" href="https://www.cog-genomics.org/plink2/formats">PLINK 1.9</a>.</p></li>
 </ul>
 <section id="install">
-<h2>Install<a class="headerlink" href="#install" title="Link to this heading"></a></h2>
-<blockquote>
-<div><p>pip install bed-reader</p>
-</div></blockquote>
+<h2>Install<a class="headerlink" href="#install" title="Permalink to this heading"></a></h2>
+<p><strong>Full version</strong>: With all optional dependencies:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>bed-reader<span class="o">[</span>samples,sparse<span class="o">]</span>
+</pre></div>
+</div>
+<p><strong>Minimal version</strong>: Depends only on <cite>numpy</cite>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>bed-reader
+</pre></div>
+</div>
 </section>
 <section id="usage">
-<h2>Usage<a class="headerlink" href="#usage" title="Link to this heading"></a></h2>
+<h2>Usage<a class="headerlink" href="#usage" title="Permalink to this heading"></a></h2>
 <p>Read genotype data from a .bed file.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="kn">import</span> <span class="n">open_bed</span><span class="p">,</span> <span class="n">sample_file</span>
@@ -188,7 +192,7 @@ chromosome. Then, read every value in chromosome 5.</p>
 </div>
 </section>
 <section id="project-links">
-<h2>Project Links<a class="headerlink" href="#project-links" title="Link to this heading"></a></h2>
+<h2>Project Links<a class="headerlink" href="#project-links" title="Permalink to this heading"></a></h2>
 <ul class="simple">
 <li><p><a class="reference external" href="http://fastlmm.github.io/bed-reader">Documentation</a></p></li>
 <li><p>Questions to <a class="reference external" href="mailto:fastlmm-dev&#37;&#52;&#48;python&#46;org">fastlmm-dev<span>&#64;</span>python<span>&#46;</span>org</a></p></li>
@@ -197,12 +201,13 @@ chromosome. Then, read every value in chromosome 5.</p>
 <li><p><a class="reference external" href="https://github.com/fastlmm/bed-reader/issues">Bug reports</a></p></li>
 <li><p><a class="reference external" href="https://mail.python.org/mailman3/lists/fastlmm-user.python.org">Mailing list</a></p></li>
 <li><p><a class="reference external" href="https://fastlmm.github.io/">Project Website</a></p></li>
+<li><p><a class="reference external" href="https://github.com/fastlmm/bed-reader/blob/master/CHANGELOG.md">Change Log</a></p></li>
 </ul>
 </section>
 <section id="summary">
-<h2>Summary<a class="headerlink" href="#summary" title="Link to this heading"></a></h2>
+<h2>Summary<a class="headerlink" href="#summary" title="Permalink to this heading"></a></h2>
 <section id="open-read-and-write">
-<h3>Open, Read, and Write<a class="headerlink" href="#open-read-and-write" title="Link to this heading"></a></h3>
+<h3>Open, Read, and Write<a class="headerlink" href="#open-read-and-write" title="Permalink to this heading"></a></h3>
 <table class="autosummary longtable docutils align-default">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="#bed_reader.open_bed" title="bed_reader.open_bed"><code class="xref py py-obj docutils literal notranslate"><span class="pre">open_bed</span></code></a>(filepath[, iid_count, sid_count, ...])</p></td>
@@ -211,14 +216,17 @@ chromosome. Then, read every value in chromosome 5.</p>
 <tr class="row-even"><td><p><a class="reference internal" href="#bed_reader.open_bed.read" title="bed_reader.open_bed.read"><code class="xref py py-obj docutils literal notranslate"><span class="pre">open_bed.read</span></code></a>([index, dtype, order, ...])</p></td>
 <td><p>Read genotype information.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#bed_reader.to_bed" title="bed_reader.to_bed"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_bed</span></code></a>(filepath, val[, properties, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#bed_reader.open_bed.read_sparse" title="bed_reader.open_bed.read_sparse"><code class="xref py py-obj docutils literal notranslate"><span class="pre">open_bed.read_sparse</span></code></a>([index, dtype, ...])</p></td>
+<td><p>Read genotype information into a <a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/sparse.html#module-scipy.sparse" title="(in SciPy v1.11.3)"><code class="xref py py-mod docutils literal notranslate"><span class="pre">scipy.sparse</span></code></a> matrix.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#bed_reader.to_bed" title="bed_reader.to_bed"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_bed</span></code></a>(filepath, val[, properties, ...])</p></td>
 <td><p>Write values to a file in PLINK .bed format.</p></td>
 </tr>
 </tbody>
 </table>
 </section>
 <section id="properties-of-individuals-samples-and-snps-variants">
-<h3>Properties of Individuals (samples) and SNPs (variants)<a class="headerlink" href="#properties-of-individuals-samples-and-snps-variants" title="Link to this heading"></a></h3>
+<h3>Properties of Individuals (samples) and SNPs (variants)<a class="headerlink" href="#properties-of-individuals-samples-and-snps-variants" title="Permalink to this heading"></a></h3>
 <table class="autosummary longtable docutils align-default">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="#bed_reader.open_bed.iid_count" title="bed_reader.open_bed.iid_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">open_bed.iid_count</span></code></a></p></td>
@@ -276,7 +284,7 @@ chromosome. Then, read every value in chromosome 5.</p>
 </table>
 </section>
 <section id="utilities">
-<h3>Utilities<a class="headerlink" href="#utilities" title="Link to this heading"></a></h3>
+<h3>Utilities<a class="headerlink" href="#utilities" title="Permalink to this heading"></a></h3>
 <table class="autosummary longtable docutils align-default">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="#bed_reader.sample_file" title="bed_reader.sample_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample_file</span></code></a>(filepath)</p></td>
@@ -290,12 +298,12 @@ chromosome. Then, read every value in chromosome 5.</p>
 </section>
 </section>
 <section id="details">
-<h2>Details<a class="headerlink" href="#details" title="Link to this heading"></a></h2>
+<h2>Details<a class="headerlink" href="#details" title="Permalink to this heading"></a></h2>
 <section id="open-bed">
-<h3>open_bed<a class="headerlink" href="#open-bed" title="Link to this heading"></a></h3>
+<h3>open_bed<a class="headerlink" href="#open-bed" title="Permalink to this heading"></a></h3>
 <dl class="py class">
 <dt class="sig sig-object py" id="bed_reader.open_bed">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">bed_reader.</span></span><span class="sig-name descname"><span class="pre">open_bed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.12)"><span class="pre">Path</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">iid_count</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sid_count</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Mapping" title="(in Python v3.12)"><span class="pre">Mapping</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.12)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">count_A1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_threads</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip_format_check</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fam_filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.12)"><span class="pre">Path</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bim_filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.12)"><span class="pre">Path</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bed_reader/_open_bed.html#open_bed"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bed_reader.open_bed" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">bed_reader.</span></span><span class="sig-name descname"><span class="pre">open_bed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.12)"><span class="pre">Path</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">iid_count</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sid_count</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Mapping" title="(in Python v3.12)"><span class="pre">Mapping</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.12)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">count_A1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_threads</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip_format_check</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fam_filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.12)"><span class="pre">Path</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bim_filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.12)"><span class="pre">Path</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bed_reader/_open_bed.html#open_bed"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bed_reader.open_bed" title="Permalink to this definition"></a></dt>
 <dd><p>Open a PLINK .bed file for reading.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -320,7 +328,7 @@ The possible keys are:</p>
 <p>The values are replacement lists or arrays. A value can also be <cite>None</cite>,
 meaning do not read or offer this property. See examples, below.</p>
 <p>The list or array will be converted to a <a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.26)"><code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></a>
-of the appropriate dtype, if necessary. Any <code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.nan</span></code> values
+of the appropriate dtype, if necessary. Any <a class="reference external" href="https://numpy.org/doc/stable/reference/constants.html#numpy.nan" title="(in NumPy v1.26)"><code class="xref py py-data docutils literal notranslate"><span class="pre">numpy.nan</span></code></a> values
 will converted to the appropriate missing value. The PLINK <a class="reference external" href="https://www.cog-genomics.org/plink2/formats#fam">.fam specification</a>
 and <a class="reference external" href="https://www.cog-genomics.org/plink2/formats#bim">.bim specification</a>
 lists the dtypes and missing values for each property.</p>
@@ -405,7 +413,7 @@ at index position 2.</p>
 <p>See the <a class="reference internal" href="#bed_reader.open_bed.read" title="bed_reader.open_bed.read"><code class="xref py py-meth docutils literal notranslate"><span class="pre">read()</span></code></a> for details of reading batches via slicing and fancy indexing.</p>
 <dl class="py property">
 <dt class="sig sig-object py" id="bed_reader.open_bed.allele_1">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">allele_1</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.26)"><span class="pre">ndarray</span></a></em><a class="headerlink" href="#bed_reader.open_bed.allele_1" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">allele_1</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.26)"><span class="pre">ndarray</span></a></em><a class="headerlink" href="#bed_reader.open_bed.allele_1" title="Permalink to this definition"></a></dt>
 <dd><p>First allele of each SNP (variant).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -429,7 +437,7 @@ at index position 2.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="bed_reader.open_bed.allele_2">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">allele_2</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.26)"><span class="pre">ndarray</span></a></em><a class="headerlink" href="#bed_reader.open_bed.allele_2" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">allele_2</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.26)"><span class="pre">ndarray</span></a></em><a class="headerlink" href="#bed_reader.open_bed.allele_2" title="Permalink to this definition"></a></dt>
 <dd><p>Second allele of each SNP (variant),</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -453,7 +461,7 @@ at index position 2.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="bed_reader.open_bed.bp_position">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">bp_position</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.26)"><span class="pre">ndarray</span></a></em><a class="headerlink" href="#bed_reader.open_bed.bp_position" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">bp_position</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.26)"><span class="pre">ndarray</span></a></em><a class="headerlink" href="#bed_reader.open_bed.bp_position" title="Permalink to this definition"></a></dt>
 <dd><p>Base-pair position of each SNP (variant).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -478,7 +486,7 @@ at index position 2.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="bed_reader.open_bed.chromosome">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">chromosome</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.26)"><span class="pre">ndarray</span></a></em><a class="headerlink" href="#bed_reader.open_bed.chromosome" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">chromosome</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.26)"><span class="pre">ndarray</span></a></em><a class="headerlink" href="#bed_reader.open_bed.chromosome" title="Permalink to this definition"></a></dt>
 <dd><p>Chromosome of each SNP (variant)</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -503,7 +511,7 @@ at index position 2.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="bed_reader.open_bed.cm_position">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cm_position</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.26)"><span class="pre">ndarray</span></a></em><a class="headerlink" href="#bed_reader.open_bed.cm_position" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cm_position</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.26)"><span class="pre">ndarray</span></a></em><a class="headerlink" href="#bed_reader.open_bed.cm_position" title="Permalink to this definition"></a></dt>
 <dd><p>Centimorgan position of each SNP (variant).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -528,7 +536,7 @@ at index position 2.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="bed_reader.open_bed.father">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">father</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.26)"><span class="pre">ndarray</span></a></em><a class="headerlink" href="#bed_reader.open_bed.father" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">father</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.26)"><span class="pre">ndarray</span></a></em><a class="headerlink" href="#bed_reader.open_bed.father" title="Permalink to this definition"></a></dt>
 <dd><p>Father id of each individual (sample).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -553,7 +561,7 @@ at index position 2.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="bed_reader.open_bed.fid">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">fid</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.26)"><span class="pre">ndarray</span></a></em><a class="headerlink" href="#bed_reader.open_bed.fid" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">fid</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.26)"><span class="pre">ndarray</span></a></em><a class="headerlink" href="#bed_reader.open_bed.fid" title="Permalink to this definition"></a></dt>
 <dd><p>Family id of each individual (sample).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -578,7 +586,7 @@ at index position 2.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="bed_reader.open_bed.iid">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">iid</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.26)"><span class="pre">ndarray</span></a></em><a class="headerlink" href="#bed_reader.open_bed.iid" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">iid</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.26)"><span class="pre">ndarray</span></a></em><a class="headerlink" href="#bed_reader.open_bed.iid" title="Permalink to this definition"></a></dt>
 <dd><p>Individual id of each individual (sample).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -602,7 +610,7 @@ at index position 2.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="bed_reader.open_bed.iid_count">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">iid_count</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.26)"><span class="pre">ndarray</span></a></em><a class="headerlink" href="#bed_reader.open_bed.iid_count" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">iid_count</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.26)"><span class="pre">ndarray</span></a></em><a class="headerlink" href="#bed_reader.open_bed.iid_count" title="Permalink to this definition"></a></dt>
 <dd><p>Number of individuals (samples).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -626,7 +634,7 @@ at index position 2.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="bed_reader.open_bed.mother">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">mother</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.26)"><span class="pre">ndarray</span></a></em><a class="headerlink" href="#bed_reader.open_bed.mother" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">mother</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.26)"><span class="pre">ndarray</span></a></em><a class="headerlink" href="#bed_reader.open_bed.mother" title="Permalink to this definition"></a></dt>
 <dd><p>Mother id of each individual (sample).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -651,7 +659,7 @@ at index position 2.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="bed_reader.open_bed.pheno">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">pheno</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.26)"><span class="pre">ndarray</span></a></em><a class="headerlink" href="#bed_reader.open_bed.pheno" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">pheno</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.26)"><span class="pre">ndarray</span></a></em><a class="headerlink" href="#bed_reader.open_bed.pheno" title="Permalink to this definition"></a></dt>
 <dd><p>A phenotype for each individual (sample)
 (seldom used).</p>
 <dl class="field-list simple">
@@ -677,7 +685,7 @@ at index position 2.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="bed_reader.open_bed.properties">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">properties</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Mapping" title="(in Python v3.12)"><span class="pre">Mapping</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">array</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#bed_reader.open_bed.properties" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">properties</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Mapping" title="(in Python v3.12)"><span class="pre">Mapping</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">array</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#bed_reader.open_bed.properties" title="Permalink to this definition"></a></dt>
 <dd><p>All the properties returned as a dictionary.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -709,7 +717,7 @@ at index position 2.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="bed_reader.open_bed.property_item">
-<span class="sig-name descname"><span class="pre">property_item</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.26)"><span class="pre">ndarray</span></a></span></span><a class="reference internal" href="_modules/bed_reader/_open_bed.html#open_bed.property_item"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bed_reader.open_bed.property_item" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">property_item</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.26)"><span class="pre">ndarray</span></a></span></span><a class="reference internal" href="_modules/bed_reader/_open_bed.html#open_bed.property_item"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bed_reader.open_bed.property_item" title="Permalink to this definition"></a></dt>
 <dd><p>Retrieve one property by name.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -740,7 +748,7 @@ at index position 2.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="bed_reader.open_bed.read">
-<span class="sig-name descname"><span class="pre">read</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.12)"><span class="pre">Any</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.12)"><span class="pre">type</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'float32'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">order</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'F'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force_python_only</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_threads</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.26)"><span class="pre">ndarray</span></a></span></span><a class="reference internal" href="_modules/bed_reader/_open_bed.html#open_bed.read"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bed_reader.open_bed.read" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">read</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.12)"><span class="pre">Any</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.12)"><span class="pre">type</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'float32'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">order</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'F'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force_python_only</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_threads</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.26)"><span class="pre">ndarray</span></a></span></span><a class="reference internal" href="_modules/bed_reader/_open_bed.html#open_bed.read"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bed_reader.open_bed.read" title="Permalink to this definition"></a></dt>
 <dd><p>Read genotype information.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -787,7 +795,7 @@ For ‘int8’, -127 indicates missing values.</p>
 </pre></div>
 </div>
 <p>To read selected individuals (samples) and/or SNPs (variants), set each part of
-a <code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.s_</span></code> to an <cite>int</cite>, a list of <cite>int</cite>, a slice expression, or
+a <a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.s_.html#numpy.s_" title="(in NumPy v1.26)"><code class="xref py py-data docutils literal notranslate"><span class="pre">numpy.s_</span></code></a> to an <cite>int</cite>, a list of <cite>int</cite>, a slice expression, or
 a list of <cite>bool</cite>.
 Negative integers count from the end of the list.</p>
 <div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
@@ -832,9 +840,134 @@ Negative integers count from the end of the list.</p>
 </div>
 </dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="bed_reader.open_bed.read_sparse">
+<span class="sig-name descname"><span class="pre">read_sparse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.12)"><span class="pre">Any</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.12)"><span class="pre">type</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'float32'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">format</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'csc'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_threads</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csc_matrix.html#scipy.sparse.csc_matrix" title="(in SciPy v1.11.3)"><span class="pre">csc_matrix</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csr_matrix.html#scipy.sparse.csr_matrix" title="(in SciPy v1.11.3)"><span class="pre">csr_matrix</span></a></span></span><a class="reference internal" href="_modules/bed_reader/_open_bed.html#open_bed.read_sparse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bed_reader.open_bed.read_sparse" title="Permalink to this definition"></a></dt>
+<dd><p>Read genotype information into a <a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/sparse.html#module-scipy.sparse" title="(in SciPy v1.11.3)"><code class="xref py py-mod docutils literal notranslate"><span class="pre">scipy.sparse</span></code></a> matrix. Sparse matrices
+may be useful when the data is mostly 0.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>index</strong> – <p>An optional expression specifying the individuals (samples) and SNPs
+(variants) to read. (See examples, below).
+Defaults to <code class="docutils literal notranslate"><span class="pre">None</span></code>, meaning read all.</p>
+<p>(If index is a tuple, the first component indexes the individuals and the
+second indexes
+the SNPs. If it is not a tuple and not None, it indexes SNPs.)</p>
+</p></li>
+<li><p><strong>dtype</strong> (<em>{'float32'</em><em> (</em><em>default</em><em>)</em><em>, </em><em>'float64'</em><em>, </em><em>'int8'}</em><em>, </em><em>optional</em>) – The desired data-type for the returned array.</p></li>
+<li><p><strong>batch_size</strong> (<em>None</em><em> or </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><em>int</em></a><em>, </em><em>optional</em>) – Number of dense columns or rows to read at a time, internally.
+Defaults to round(sqrt(total-number-of-columns-or-rows-to-read)).</p></li>
+<li><p><strong>format</strong> (<em>{'csc'</em><em>,</em><em>'csr'}</em><em>, </em><em>optional</em>) – The desired format of the sparse matrix.
+Defaults to <code class="docutils literal notranslate"><span class="pre">csc</span></code> (Compressed Sparse Column, which is SNP-major).</p></li>
+<li><p><strong>num_threads</strong> (<em>None</em><em> or </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><em>int</em></a><em>, </em><em>optional</em>) – The number of threads with which to read data. Defaults to all available
+processors.
+Can also be set with <a class="reference internal" href="#bed_reader.open_bed" title="bed_reader.open_bed"><code class="xref py py-class docutils literal notranslate"><span class="pre">open_bed</span></code></a> or these
+environment variables (listed in priority order):
+‘PST_NUM_THREADS’, ‘NUM_THREADS’, ‘MKL_NUM_THREADS’.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p>a <a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csc_matrix.html#scipy.sparse.csc_matrix" title="(in SciPy v1.11.3)"><code class="xref py py-class docutils literal notranslate"><span class="pre">scipy.sparse.csc_matrix</span></code></a> (default) or <a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csr_matrix.html#scipy.sparse.csr_matrix" title="(in SciPy v1.11.3)"><code class="xref py py-class docutils literal notranslate"><span class="pre">scipy.sparse.csr_matrix</span></code></a></p></li>
+<li><p><em>Rows represent individuals (samples). Columns represent SNPs (variants).</em></p></li>
+<li><p>For <code class="docutils literal notranslate"><span class="pre">dtype</span></code> ‘float32’ and ‘float64’, NaN indicates missing values.</p></li>
+<li><p><em>For ‘int8’, -127 indicates missing values.</em></p></li>
+</ul>
+</p>
+</dd>
+</dl>
+<p>The memory used by the final sparse matrix is approximately:</p>
+<blockquote>
+<div><p># of non-zero values * (4 bytes + 1 byte (for int8))</p>
+</div></blockquote>
+<p>For example, consider reading 1000 individuals (samples) x 50,000 SNPs (variants)
+into csc format where the data is 97% sparse.
+The memory used will be about 7.5 MB (1000 x 50,000 x 3% x 5 bytes).
+This is 15% of the 50 MB needed by a dense matrix.</p>
+<p>Internally, the function reads the data via small dense matrices.
+For this example, by default, the function will read 1000 individuals x 224 SNPs
+(because 224 * 224 is about 50,000).
+The memory used by the small dense matrix is 1000 x 244 x 1 byte (for int8) = 0.224 MB.</p>
+<p>You can set <cite>batch_size</cite>. Larger values will be faster.
+Smaller values will use less memory.</p>
+<p>For this example, we might want to set the <cite>batch_size</cite> to 5000. Then,
+the memory used by the small dense matrix
+would be 1000 x 5000 x 1 byte (for int8) = 5 MB,
+similar to the 7.5 MB needed for the final sparse matrix.</p>
+<p class="rubric">Examples</p>
+<p>Read all data in a .bed file into a <a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csc_matrix.html#scipy.sparse.csc_matrix" title="(in SciPy v1.11.3)"><code class="xref py py-class docutils literal notranslate"><span class="pre">scipy.sparse.csc_matrix</span></code></a>.
+The file has 10 individuals (samples) by 20 SNPs (variants).
+All but eight values are 0.</p>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># pip install bed-reader[samples,sparse]  # if needed</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="kn">import</span> <span class="n">open_bed</span><span class="p">,</span> <span class="n">sample_file</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">file_name</span> <span class="o">=</span> <span class="n">sample_file</span><span class="p">(</span><span class="s2">&quot;sparse.bed&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">open_bed</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span> <span class="k">as</span> <span class="n">bed</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="n">val_sparse</span> <span class="o">=</span> <span class="n">bed</span><span class="o">.</span><span class="n">read_sparse</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;int8&quot;</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">val_sparse</span><span class="p">)</span> 
+<span class="go">(10, 20)</span>
+<span class="go">    (8, 4)  1</span>
+<span class="go">    (8, 5)  2</span>
+<span class="go">    (0, 8)  2</span>
+<span class="go">    (4, 9)  1</span>
+<span class="go">    (7, 9)  1</span>
+<span class="go">    (5, 11) 1</span>
+<span class="go">    (2, 12) 1</span>
+<span class="go">    (3, 12) 1</span>
+</pre></div>
+</div>
+<p>To read selected individuals (samples) and/or SNPs (variants), set each part of
+a <a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.s_.html#numpy.s_" title="(in NumPy v1.26)"><code class="xref py py-data docutils literal notranslate"><span class="pre">numpy.s_</span></code></a> to an <cite>int</cite>, a list of <cite>int</cite>, a slice expression, or
+a list of <cite>bool</cite>.
+Negative integers count from the end of the list.</p>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">bed</span> <span class="o">=</span> <span class="n">open_bed</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">read_sparse</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">s_</span><span class="p">[:,</span><span class="mi">5</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;int8&quot;</span><span class="p">))</span>  <span class="c1"># read the SNPs indexed by 5. </span>
+<span class="go">(8, 0)    2</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># read the SNPs indexed by 5, 4, and 0</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">read_sparse</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">s_</span><span class="p">[:,[</span><span class="mi">5</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">0</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;int8&quot;</span><span class="p">))</span> 
+<span class="go">(8, 0)      2</span>
+<span class="go">(8, 1)      1</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># read SNPs from 1 (inclusive) to 11 (exclusive)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">read_sparse</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">s_</span><span class="p">[:,</span><span class="mi">1</span><span class="p">:</span><span class="mi">11</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;int8&quot;</span><span class="p">))</span> 
+<span class="go">(8, 3)      1</span>
+<span class="go">(8, 4)      2</span>
+<span class="go">(0, 7)      2</span>
+<span class="go">(4, 8)      1</span>
+<span class="go">(7, 8)      1</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">chromosome</span><span class="p">))</span> <span class="c1"># print unique chrom values</span>
+<span class="go">[&#39;1&#39; &#39;5&#39; &#39;Y&#39;]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># read all SNPs in chrom 5</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">read_sparse</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">s_</span><span class="p">[:,</span><span class="n">bed</span><span class="o">.</span><span class="n">chromosome</span><span class="o">==</span><span class="s1">&#39;5&#39;</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;int8&quot;</span><span class="p">))</span> 
+<span class="go">(8, 0)      1</span>
+<span class="go">(8, 1)      2</span>
+<span class="go">(0, 4)      2</span>
+<span class="go">(4, 5)      1</span>
+<span class="go">(7, 5)      1</span>
+<span class="go">(5, 7)      1</span>
+<span class="go">(2, 8)      1</span>
+<span class="go">(3, 8)      1</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Read 1st individual (across all SNPs)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">read_sparse</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">s_</span><span class="p">[</span><span class="mi">0</span><span class="p">,:],</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;int8&quot;</span><span class="p">))</span> 
+<span class="go">(0, 8)      2</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">read_sparse</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">s_</span><span class="p">[::</span><span class="mi">2</span><span class="p">,:],</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;int8&quot;</span><span class="p">))</span> <span class="c1"># Read every 2nd individual </span>
+<span class="go">(4, 4)    1</span>
+<span class="go">(4, 5)    2</span>
+<span class="go">(0, 8)    2</span>
+<span class="go">(2, 9)    1</span>
+<span class="go">(1, 12)   1</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># read last and 2nd-to-last individuals and the 15th-from-the-last SNP</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">bed</span><span class="o">.</span><span class="n">read_sparse</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">s_</span><span class="p">[[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="o">-</span><span class="mi">2</span><span class="p">],</span><span class="o">-</span><span class="mi">15</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;int8&quot;</span><span class="p">))</span> 
+<span class="go">(1, 0)      2</span>
+</pre></div>
+</div>
+</dd></dl>
+
 <dl class="py property">
 <dt class="sig sig-object py" id="bed_reader.open_bed.sex">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">sex</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.26)"><span class="pre">ndarray</span></a></em><a class="headerlink" href="#bed_reader.open_bed.sex" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">sex</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.26)"><span class="pre">ndarray</span></a></em><a class="headerlink" href="#bed_reader.open_bed.sex" title="Permalink to this definition"></a></dt>
 <dd><p>Sex of each individual (sample).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -859,7 +992,7 @@ Negative integers count from the end of the list.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="bed_reader.open_bed.shape">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">shape</span></span><a class="headerlink" href="#bed_reader.open_bed.shape" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">shape</span></span><a class="headerlink" href="#bed_reader.open_bed.shape" title="Permalink to this definition"></a></dt>
 <dd><p>Number of individuals (samples) and SNPs (variants).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -883,7 +1016,7 @@ Negative integers count from the end of the list.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="bed_reader.open_bed.sid">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">sid</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.26)"><span class="pre">ndarray</span></a></em><a class="headerlink" href="#bed_reader.open_bed.sid" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">sid</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.26)"><span class="pre">ndarray</span></a></em><a class="headerlink" href="#bed_reader.open_bed.sid" title="Permalink to this definition"></a></dt>
 <dd><p>SNP id of each SNP (variant).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -907,7 +1040,7 @@ Negative integers count from the end of the list.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="bed_reader.open_bed.sid_count">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">sid_count</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.26)"><span class="pre">ndarray</span></a></em><a class="headerlink" href="#bed_reader.open_bed.sid_count" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">sid_count</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.26)"><span class="pre">ndarray</span></a></em><a class="headerlink" href="#bed_reader.open_bed.sid_count" title="Permalink to this definition"></a></dt>
 <dd><p>Number of SNPs (variants).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -933,10 +1066,10 @@ Negative integers count from the end of the list.</p>
 
 </section>
 <section id="to-bed">
-<h3>to_bed<a class="headerlink" href="#to-bed" title="Link to this heading"></a></h3>
+<h3>to_bed<a class="headerlink" href="#to-bed" title="Permalink to this heading"></a></h3>
 <dl class="py function">
 <dt class="sig sig-object py" id="bed_reader.to_bed">
-<span class="sig-prename descclassname"><span class="pre">bed_reader.</span></span><span class="sig-name descname"><span class="pre">to_bed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.12)"><span class="pre">Path</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">val</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.26)"><span class="pre">ndarray</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Mapping" title="(in Python v3.12)"><span class="pre">Mapping</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.12)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">count_A1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fam_filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.12)"><span class="pre">Path</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bim_filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.12)"><span class="pre">Path</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force_python_only</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_threads</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bed_reader/_to_bed.html#to_bed"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bed_reader.to_bed" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">bed_reader.</span></span><span class="sig-name descname"><span class="pre">to_bed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.12)"><span class="pre">Path</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">val</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v1.26)"><span class="pre">ndarray</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Mapping" title="(in Python v3.12)"><span class="pre">Mapping</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.12)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.12)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">count_A1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fam_filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.12)"><span class="pre">Path</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bim_filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.12)"><span class="pre">Path</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force_python_only</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_threads</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/bed_reader/_to_bed.html#to_bed"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bed_reader.to_bed" title="Permalink to this definition"></a></dt>
 <dd><p>Write values to a file in PLINK .bed format.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1017,10 +1150,10 @@ it is an array of ‘0’s, the default chromosome value.</p>
 
 </section>
 <section id="sample-file">
-<h3>sample_file<a class="headerlink" href="#sample-file" title="Link to this heading"></a></h3>
+<h3>sample_file<a class="headerlink" href="#sample-file" title="Permalink to this heading"></a></h3>
 <dl class="py function">
 <dt class="sig sig-object py" id="bed_reader.sample_file">
-<span class="sig-prename descclassname"><span class="pre">bed_reader.</span></span><span class="sig-name descname"><span class="pre">sample_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.12)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></span><a class="reference internal" href="_modules/bed_reader/_sample_data.html#sample_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bed_reader.sample_file" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">bed_reader.</span></span><span class="sig-name descname"><span class="pre">sample_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.12)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></span><a class="reference internal" href="_modules/bed_reader/_sample_data.html#sample_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bed_reader.sample_file" title="Permalink to this definition"></a></dt>
 <dd><p>Retrieve a sample .bed file. (Also retrieves associated .fam and .bim files).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1037,7 +1170,8 @@ it is an array of ‘0’s, the default chromosome value.</p>
 Override this by setting
 the <cite>BED_READER_DATA_DIR</cite> environment variable.</p>
 <p class="rubric">Example</p>
-<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="kn">import</span> <span class="n">sample_file</span>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="c1"># pip install bed-reader[samples]  # if needed</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="kn">import</span> <span class="n">sample_file</span>
 <span class="gp">&gt;&gt;&gt;</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">file_name</span> <span class="o">=</span> <span class="n">sample_file</span><span class="p">(</span><span class="s2">&quot;small.bed&quot;</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;The local file name is &#39;</span><span class="si">{</span><span class="n">file_name</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
@@ -1048,10 +1182,10 @@ the <cite>BED_READER_DATA_DIR</cite> environment variable.</p>
 
 </section>
 <section id="tmp-path">
-<h3>tmp_path<a class="headerlink" href="#tmp-path" title="Link to this heading"></a></h3>
+<h3>tmp_path<a class="headerlink" href="#tmp-path" title="Permalink to this heading"></a></h3>
 <dl class="py function">
 <dt class="sig sig-object py" id="bed_reader.tmp_path">
-<span class="sig-prename descclassname"><span class="pre">bed_reader.</span></span><span class="sig-name descname"><span class="pre">tmp_path</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.12)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="_modules/bed_reader/_sample_data.html#tmp_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bed_reader.tmp_path" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">bed_reader.</span></span><span class="sig-name descname"><span class="pre">tmp_path</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.12)"><span class="pre">Path</span></a></span></span><a class="reference internal" href="_modules/bed_reader/_sample_data.html#tmp_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bed_reader.tmp_path" title="Permalink to this definition"></a></dt>
 <dd><p>Return a <a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">pathlib.Path</span></code></a> to a temporary directory.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -1074,7 +1208,7 @@ the <cite>BED_READER_DATA_DIR</cite> environment variable.</p>
 </section>
 </section>
 <section id="environment-variables">
-<h2>Environment Variables<a class="headerlink" href="#environment-variables" title="Link to this heading"></a></h2>
+<h2>Environment Variables<a class="headerlink" href="#environment-variables" title="Permalink to this heading"></a></h2>
 <p>By default <a class="reference internal" href="#bed_reader.sample_file" title="bed_reader.sample_file"><code class="xref py py-meth docutils literal notranslate"><span class="pre">sample_file()</span></code></a> puts files under the user’s cache directory. Override this by setting
 the <code class="docutils literal notranslate"><span class="pre">BED_READER_DATA_DIR</span></code> environment variable.</p>
 <p>By default, <a class="reference internal" href="#bed_reader.open_bed" title="bed_reader.open_bed"><code class="xref py py-class docutils literal notranslate"><span class="pre">open_bed</span></code></a> uses all available processors. Override this with the <code class="docutils literal notranslate"><span class="pre">num_threads</span></code>
@@ -1082,7 +1216,7 @@ parameter or by setting environment variable (listed in priority order):
 ‘PST_NUM_THREADS’, ‘NUM_THREADS’, ‘MKL_NUM_THREADS’.</p>
 </section>
 <section id="indices-and-tables">
-<h2>Indices and Tables<a class="headerlink" href="#indices-and-tables" title="Link to this heading"></a></h2>
+<h2>Indices and Tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this heading"></a></h2>
 <blockquote>
 <div><ul class="simple">
 <li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>

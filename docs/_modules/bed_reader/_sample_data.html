@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>bed_reader._sample_data &mdash; Bed Reader 0.2.24 documentation</title>
+  <title>bed_reader._sample_data &mdash; Bed Reader 1.0.0 documentation</title>
       <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
@@ -11,10 +11,8 @@
   <![endif]-->
   
         <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
-        <script src="../../_static/jquery.js"></script>
-        <script src="../../_static/underscore.js"></script>
-        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
         <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/sphinx_highlight.js"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" /> 
@@ -25,14 +23,18 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-            <a href="../../index.html" class="icon icon-home"> Bed Reader
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Bed Reader
           </a>
               <div class="version">
-                0.2.24
+                1.0.0
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" />
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
   </form>
@@ -53,9 +55,9 @@
         <div class="rst-content style-external-links">
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
-          <li><a href="../index.html">Module code</a> &raquo;</li>
-      <li>bed_reader._sample_data</li>
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">bed_reader._sample_data</li>
       <li class="wy-breadcrumbs-aside">
       </li>
   </ul>
@@ -69,32 +71,35 @@
 <span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Union</span>
 
-<span class="kn">import</span> <span class="nn">pooch</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">pooch</span>
 
-<span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">Load sample data.</span>
-<span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Load sample data.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
-<span class="n">POOCH</span> <span class="o">=</span> <span class="n">pooch</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
-    <span class="c1"># Use the default cache folder for the OS</span>
-    <span class="n">path</span><span class="o">=</span><span class="n">pooch</span><span class="o">.</span><span class="n">os_cache</span><span class="p">(</span><span class="s2">&quot;bed_reader&quot;</span><span class="p">),</span>
-    <span class="c1"># The remote data is on Github</span>
-    <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://raw.githubusercontent.com/&quot;</span>
-    <span class="o">+</span> <span class="s2">&quot;fastlmm/bed-reader/rustybed/bed_reader/tests/data/&quot;</span><span class="p">,</span>
-    <span class="c1"># If this is a development version, get the data from the master branch</span>
-    <span class="n">version_dev</span><span class="o">=</span><span class="s2">&quot;master&quot;</span><span class="p">,</span>
-    <span class="c1"># The registry specifies the files that can be fetched</span>
-    <span class="n">env</span><span class="o">=</span><span class="s2">&quot;BED_READER_DATA_DIR&quot;</span><span class="p">,</span>
-<span class="p">)</span>
+    <span class="n">POOCH</span> <span class="o">=</span> <span class="n">pooch</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+        <span class="c1"># Use the default cache folder for the OS</span>
+        <span class="n">path</span><span class="o">=</span><span class="n">pooch</span><span class="o">.</span><span class="n">os_cache</span><span class="p">(</span><span class="s2">&quot;bed_reader&quot;</span><span class="p">),</span>
+        <span class="c1"># The remote data is on Github</span>
+        <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://raw.githubusercontent.com/&quot;</span>
+        <span class="o">+</span> <span class="s2">&quot;fastlmm/bed-reader/Oct2023/bed_reader/tests/data/&quot;</span><span class="p">,</span>
+        <span class="c1"># If this is a development version, get the data from the master branch</span>
+        <span class="n">version_dev</span><span class="o">=</span><span class="s2">&quot;master&quot;</span><span class="p">,</span>
+        <span class="c1"># The registry specifies the files that can be fetched</span>
+        <span class="n">env</span><span class="o">=</span><span class="s2">&quot;BED_READER_DATA_DIR&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
 
-<span class="c1"># Get registry file from package_data</span>
-<span class="n">registry_file</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">&quot;tests/registry.txt&quot;</span>
-<span class="c1"># Load this registry file</span>
-<span class="n">POOCH</span><span class="o">.</span><span class="n">load_registry</span><span class="p">(</span><span class="n">registry_file</span><span class="p">)</span>
+    <span class="c1"># Get registry file from package_data</span>
+    <span class="n">registry_file</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">&quot;tests/registry.txt&quot;</span>
+    <span class="c1"># Load this registry file</span>
+    <span class="n">POOCH</span><span class="o">.</span><span class="n">load_registry</span><span class="p">(</span><span class="n">registry_file</span><span class="p">)</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">pooch</span> <span class="o">=</span> <span class="kc">None</span>
 
 
 <div class="viewcode-block" id="sample_file"><a class="viewcode-back" href="../../index.html#bed_reader.sample_file">[docs]</a><span class="k">def</span> <span class="nf">sample_file</span><span class="p">(</span><span class="n">filepath</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-    <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Retrieve a sample .bed file. (Also retrieves associated .fam and .bim files).</span>
 
 <span class="sd">    Parameters</span>
@@ -117,12 +122,19 @@
 
 <span class="sd">    .. doctest::</span>
 
+<span class="sd">        &gt;&gt;&gt; # pip install bed-reader[samples]  # if needed</span>
 <span class="sd">        &gt;&gt;&gt; from bed_reader import sample_file</span>
 <span class="sd">        &gt;&gt;&gt;</span>
 <span class="sd">        &gt;&gt;&gt; file_name = sample_file(&quot;small.bed&quot;)</span>
 <span class="sd">        &gt;&gt;&gt; print(f&quot;The local file name is &#39;{file_name}&#39;&quot;)</span>
 <span class="sd">        The local file name is &#39;...small.bed&#39;</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">pooch</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
+            <span class="s2">&quot;The function sample_file() requires pooch. &quot;</span>
+            <span class="o">+</span> <span class="s2">&quot;Install it with &#39;pip install --upgrade bed-reader[sample]&#39;.&quot;</span>
+        <span class="p">)</span>
+
     <span class="n">filepath</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
     <span class="n">file_string</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">file_string</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.bed&quot;</span><span class="p">):</span>
@@ -132,7 +144,7 @@
 
 
 <div class="viewcode-block" id="tmp_path"><a class="viewcode-back" href="../../index.html#bed_reader.tmp_path">[docs]</a><span class="k">def</span> <span class="nf">tmp_path</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-    <span class="sd">&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Return a :class:`pathlib.Path` to a temporary directory.</span>
 
 <span class="sd">    Returns</span>
@@ -173,7 +185,7 @@
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2020, Carl Kadie.</p>
+    <p>&#169; Copyright 2023, Carl Kadie.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
