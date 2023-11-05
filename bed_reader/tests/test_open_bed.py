@@ -9,9 +9,6 @@ import scipy.sparse as sparse
 
 from bed_reader import open_bed, subset_f64_f64, to_bed
 
-# cmk somehow add test that get nice message for no pooch or scipy.
-
-
 def test_read1(shared_datadir):
     import math
 
@@ -910,3 +907,4 @@ if __name__ == "__main__":
     # test_c_reader_bed(shared_datadir)
     # test_read1(shared_datadir)
     pytest.main([__file__])
+# cmk test running pytest with scipy missing

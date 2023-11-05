@@ -1,8 +1,9 @@
-<!-- This must be keep in sync with doc/source/index.rst manually -->
+<!-- This README.md must be keep in sync with doc/source/index.rst manually -->
 
 <!-- markdownlint-disable MD046 -->
+<!-- MD046 is about 'code block style' -->
 <!-- markdownlint-disable MD041 -->
-[![PyPI version](https://badge.fury.io/py/bed-reader.svg)](https://badge.fury.io/py/bed-reader)
+<!-- MD041 is about 'first line in a file should be a top-level heading'. -->
 [![PyPI version](https://badge.fury.io/py/bed-reader.svg)](https://badge.fury.io/py/bed-reader)
 [![Build Status](https://github.com/fastlmm/bed-reader/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/fastlmm/bed-reader/actions/workflows/ci.yml)
 ![PyPI](https://img.shields.io/pypi/v/bed-reader)

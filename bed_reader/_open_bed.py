@@ -13,9 +13,6 @@ try:
 except ImportError:
     sparse = None
 
-# cmk remove pandas
-import pandas as pd
-
 from .bed_reader import read_f32, read_f64, read_i8  # type: ignore
 
 
@@ -1160,34 +1157,31 @@ class open_bed:
         assert len(usecolsdict) > 0  # real assert
 
         if os.path.getsize(property_filepath) == 0:
-            fields = []
+            columns, row_count = [], 0
         else:
-            fields = pd.read_csv(
+            columns, row_count = _read_csv(
                 property_filepath,
                 delimiter=delimiter,
                 delim_whitespace=delim_whitespace,
-                header=None,
-                index_col=False,
-                comment=None,
                 dtype=dtype_dict,
                 usecols=usecolsdict.values(),
             )
 
         if count is None:
-            self._counts[suffix] = len(fields)
+            self._counts[suffix] = row_count
         else:
-            if count != len(fields):
+            if count != row_count:
                 raise ValueError(
-                    f"The number of lines in the *.{suffix} file, {len(fields)}, "
+                    f"The number of lines in the *.{suffix} file, {row_count}, "
                     + "should not be different from the current "
                     + "f{_count_name[suffix]}, {count}"
                 )
-        for key in usecolsdict.keys():
+        for i, key in enumerate(usecolsdict.keys()):
             mm = _meta_meta[key]
-            if len(fields) == 0:
+            if row_count == 0:
                 output = np.array([], dtype=mm.dtype)
             else:
-                output = fields[mm.column].values
+                output = columns[i]
                 if not np.issubdtype(output.dtype, mm.dtype):
                     output = np.array(output, dtype=mm.dtype)
             self.properties_dict[key] = output
@@ -1367,7 +1361,7 @@ class open_bed:
             or len(sid_index) > np.iinfo(np.int32).max
         ):
             raise ValueError(
-                "Too many Individuals or SNPs (variants) requested. Maximum is {np.iinfo(np.int32).max}."
+                "Too (many Individuals or SNPs (variants) requested. Maximum is {np.iinfo(np.int32).max}."
             )
 
         if batch_size is None:
@@ -1491,6 +1485,41 @@ class open_bed:
         data.append(flatten[nz_indices])
         indices.append(np.mod(nz_indices, len(minor_index)))
         indptr[1:][batch_slice] = np.cumsum(counts_with_initial)[1:]
+
+
+def _read_csv(
+    filepath, delimiter=None, delim_whitespace=False, dtype=None, usecols=None
+):
+    # Prepare the usecols by ensuring it is a list of indices
+    usecols_indices = list(usecols)
+    # Initialize columns with empty lists for the selected columns
+    columns = [[] for _ in usecols_indices]
+
+    row_count = 0
+    with open(filepath, "r") as file:
+        for line in file:
+            row_count += 1
+            # Handle delimiter or whitespace splitting
+            if delim_whitespace or delimiter is None:
+                split_line = line.split()
+            else:
+                split_line = line.strip().split(delimiter)
+
+            for output_index, input_index in enumerate(usecols_indices):
+                # Extract the value from the split line
+                value = split_line[input_index]
+                # Append the value to the correct column
+                columns[output_index].append(value)
+
+    # Convert column lists to numpy arrays with the specified dtype
+    for output_index, input_index in enumerate(usecols_indices):
+        col = columns[output_index]
+        # Find the dtype for this column
+        col_dtype = dtype.get(input_index, np.str_)
+        # Convert the column list to a numpy array with the specified dtype
+        columns[output_index] = np.array(col, dtype=col_dtype)
+
+    return columns, row_count
 
 
 if __name__ == "__main__":
