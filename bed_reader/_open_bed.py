@@ -1143,9 +1143,6 @@ class open_bed:
         delimiter = _delimiters[suffix]
         if delimiter in {r"\s+"}:
             delimiter = None
-            delim_whitespace = True
-        else:
-            delim_whitespace = False
 
         usecolsdict = {}
         dtype_dict = {}
@@ -1162,7 +1159,6 @@ class open_bed:
             columns, row_count = _read_csv(
                 property_filepath,
                 delimiter=delimiter,
-                delim_whitespace=delim_whitespace,
                 dtype=dtype_dict,
                 usecols=usecolsdict.values(),
             )
@@ -1488,36 +1484,23 @@ class open_bed:
 
 
 def _read_csv(
-    filepath, delimiter=None, delim_whitespace=False, dtype=None, usecols=None
+    filepath, delimiter=None, dtype=None, usecols=None
 ):
     # Prepare the usecols by ensuring it is a list of indices
     usecols_indices = list(usecols)
-    # Initialize columns with empty lists for the selected columns
-    columns = [[] for _ in usecols_indices]
-
-    row_count = 0
-    with open(filepath, "r") as file:
-        for line in file:
-            row_count += 1
-            # Handle delimiter or whitespace splitting
-            if delim_whitespace or delimiter is None:
-                split_line = line.split()
-            else:
-                split_line = line.strip().split(delimiter)
-
-            for output_index, input_index in enumerate(usecols_indices):
-                # Extract the value from the split line
-                value = split_line[input_index]
-                # Append the value to the correct column
-                columns[output_index].append(value)
+    transposed = np.loadtxt(filepath, dtype=np.str_, delimiter=delimiter, usecols=usecols_indices, unpack=True)
+    if transposed.ndim == 1:
+        transposed = transposed.reshape(-1, 1)
+    row_count = transposed.shape[1]  # because unpack=True
 
     # Convert column lists to numpy arrays with the specified dtype
+    columns = []
     for output_index, input_index in enumerate(usecols_indices):
-        col = columns[output_index]
+        col = transposed[output_index]
         # Find the dtype for this column
         col_dtype = dtype.get(input_index, np.str_)
         # Convert the column list to a numpy array with the specified dtype
-        columns[output_index] = np.array(col, dtype=col_dtype)
+        columns.append(np.array(col, dtype=col_dtype))
 
     return columns, row_count
 

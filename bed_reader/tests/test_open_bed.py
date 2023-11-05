@@ -9,6 +9,7 @@ import scipy.sparse as sparse
 
 from bed_reader import open_bed, subset_f64_f64, to_bed
 
+
 def test_read1(shared_datadir):
     import math
 
