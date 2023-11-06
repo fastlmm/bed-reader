@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - (Python) Added new `read_sparse()` method for creating
   `sympy.sparse.csc_matrix` and `sympy.sparse.csr_matrix`. This
-  method can save memory when a *.bed file contains mostly 0's.
+  method can save memory when a *.bed file contains mostly zeros.
 
 - (Rust) Rust methods that returned `Result` now return
   `Result<_,Box<BedErrorPlus>>`. Before, they returned

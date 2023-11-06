@@ -44,6 +44,14 @@ def sample_file(filepath: Union[str, Path]) -> str:
         Local name of sample .bed file.
 
 
+    .. note::
+        This function requires the :mod:`pooch` package. Install `pooch` with:
+
+        .. code-block:: bash
+
+            pip install --upgrade bed-reader[samples]
+
+
     By default this function puts files under the user's cache directory.
     Override this by setting
     the `BED_READER_DATA_DIR` environment variable.

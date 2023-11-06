@@ -12,3 +12,6 @@ pytest --doctest-modules bed_reader\_open_bed.py
 
 # generate doc
 \doc>make html & build\html\index.html
+
+# create a local *.whl
+maturin build --release

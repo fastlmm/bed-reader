@@ -1192,7 +1192,14 @@ class open_bed:
     ) -> (Union[sparse.csc_matrix, sparse.csr_matrix]) if sparse is not None else None:
         """
         Read genotype information into a :mod:`scipy.sparse` matrix. Sparse matrices
-        may be useful when the data is mostly 0.
+        may be useful when the data is mostly zeros.
+
+        .. note::
+            This method requires :mod:`scipy`. Install `scipy` with:
+
+            .. code-block:: bash
+
+                pip install --upgrade bed-reader[sparse]
 
         Parameters
         ----------
@@ -1510,8 +1517,8 @@ def _read_csv(filepath, delimiter=None, dtype=None, usecols=None):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-
     import pytest
+
+    logging.basicConfig(level=logging.INFO)
 
     pytest.main(["--doctest-modules", __file__])
