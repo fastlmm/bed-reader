@@ -170,7 +170,7 @@ jobs:
         virtualenv vEnv; source vEnv/bin/activate
         python -m pip install --upgrade pip maturin
         maturin develop
-        pip install numpy pytest pytest-datadir
+        pip install -r requirements-min-dev.txt
         pytest bed_reader/tests/test_opt_dep.py
         echo "requirements"
         pip install -r requirements.txt
@@ -185,7 +185,7 @@ jobs:
         echo "pwd"
         pwd
         python -m pip install --upgrade pip maturin
-        pip install numpy pytest pytest-datadir
+        pip install -r requirements-min-dev.txt
         pytest bed_reader/tests/test_opt_dep.py
         echo "requirements"
         pip install -r requirements.txt

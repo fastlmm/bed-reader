@@ -1,0 +1,3 @@
+numpy>=1.13.3
+pytest
+pytest-datadir

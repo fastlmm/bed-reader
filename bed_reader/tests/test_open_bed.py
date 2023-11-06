@@ -909,4 +909,3 @@ if __name__ == "__main__":
     # test_c_reader_bed(shared_datadir)
     # test_read1(shared_datadir)
     pytest.main([__file__])
-# cmk test running pytest with scipy missing
