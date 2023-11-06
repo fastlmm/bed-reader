@@ -171,7 +171,7 @@ jobs:
         python -m pip install --upgrade pip maturin
         maturin develop
         pip install numpy pytest
-        test bed_reader -k test_optional_dependencies
+        pytest bed_reader -k test_optional_dependencies
         echo "requirements"
         pip install -r requirements.txt
         echo "requirements-dev"
@@ -186,7 +186,7 @@ jobs:
         pwd
         python -m pip install --upgrade pip maturin
         pip install numpy pytest
-        test bed_reader -k test_optional_dependencies
+        pytest bed_reader -k test_optional_dependencies
         echo "requirements"
         pip install -r requirements.txt
         echo "requirements-dev"
