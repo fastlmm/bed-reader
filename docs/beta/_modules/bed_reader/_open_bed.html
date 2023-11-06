@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>bed_reader._open_bed &mdash; Bed Reader 1.0.0-beta.1 documentation</title>
+  <title>bed_reader._open_bed &mdash; Bed Reader 1.0.0-beta.2 documentation</title>
       <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
@@ -30,7 +30,7 @@
             Bed Reader
           </a>
               <div class="version">
-                1.0.0-beta.1
+                1.0.0-beta.2
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
@@ -1261,7 +1261,14 @@
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="n">Union</span><span class="p">[</span><span class="n">sparse</span><span class="o">.</span><span class="n">csc_matrix</span><span class="p">,</span> <span class="n">sparse</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">])</span> <span class="k">if</span> <span class="n">sparse</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Read genotype information into a :mod:`scipy.sparse` matrix. Sparse matrices</span>
-<span class="sd">        may be useful when the data is mostly 0.</span>
+<span class="sd">        may be useful when the data is mostly zeros.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            This method requires :mod:`scipy`. Install `scipy` with:</span>
+
+<span class="sd">            .. code-block:: bash</span>
+
+<span class="sd">                pip install --upgrade bed-reader[sparse]</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -1579,9 +1586,9 @@
 
 
 <span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
-    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
-
     <span class="kn">import</span> <span class="nn">pytest</span>
+
+    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
 
     <span class="n">pytest</span><span class="o">.</span><span class="n">main</span><span class="p">([</span><span class="s2">&quot;--doctest-modules&quot;</span><span class="p">,</span> <span class="vm">__file__</span><span class="p">])</span>
 </pre></div>
