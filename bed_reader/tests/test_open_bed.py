@@ -5,7 +5,6 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-import scipy.sparse as sparse
 
 from bed_reader import open_bed, subset_f64_f64, to_bed
 
@@ -411,6 +410,8 @@ def test_write1_x_x_cpp(tmp_path, shared_datadir):
 
 
 def test_respect_read_inputs(shared_datadir):
+    import scipy.sparse as sparse
+
     ref_val_float = reference_val(shared_datadir)
     ref_val_float2 = ref_val_float.copy()
     ref_val_float2[ref_val_float != ref_val_float] = -127

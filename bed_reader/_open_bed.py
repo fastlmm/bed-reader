@@ -1483,12 +1483,16 @@ class open_bed:
         indptr[1:][batch_slice] = np.cumsum(counts_with_initial)[1:]
 
 
-def _read_csv(
-    filepath, delimiter=None, dtype=None, usecols=None
-):
+def _read_csv(filepath, delimiter=None, dtype=None, usecols=None):
     # Prepare the usecols by ensuring it is a list of indices
     usecols_indices = list(usecols)
-    transposed = np.loadtxt(filepath, dtype=np.str_, delimiter=delimiter, usecols=usecols_indices, unpack=True)
+    transposed = np.loadtxt(
+        filepath,
+        dtype=np.str_,
+        delimiter=delimiter,
+        usecols=usecols_indices,
+        unpack=True,
+    )
     if transposed.ndim == 1:
         transposed = transposed.reshape(-1, 1)
     row_count = transposed.shape[1]  # because unpack=True
