@@ -1511,9 +1511,34 @@ def _read_csv(filepath, delimiter=None, dtype=None, usecols=None):
         # Find the dtype for this column
         col_dtype = dtype.get(input_index, np.str_)
         # Convert the column list to a numpy array with the specified dtype
-        columns.append(np.array(col, dtype=col_dtype))
+        columns.append(_convert_to_dtype(col, col_dtype))
 
     return columns, row_count
+
+
+def _convert_to_dtype(str_arr, dtype):
+    assert dtype in [np.str_, np.float32, np.int32]  # real assert
+
+    if dtype == np.str_:
+        return str_arr
+
+    try:
+        new_arr = str_arr.astype(dtype)
+    except ValueError as e:
+        if dtype == np.float32:
+            raise e
+        # for backwards compatibility, see if intermediate float helps int conversion
+        try:
+            assert dtype == np.int32  # real assert
+            float_arr = str_arr.astype(np.float32)
+        except ValueError:
+            raise e
+        new_arr = float_arr.astype(np.int32)
+        if not np.array_equal(new_arr, float_arr):
+            raise ValueError(
+                f"invalid literal for int: '{str_arr[np.where(new_arr != float_arr)][:1]}')"
+            )
+    return new_arr
 
 
 if __name__ == "__main__":

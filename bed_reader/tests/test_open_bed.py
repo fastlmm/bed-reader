@@ -898,6 +898,39 @@ def test_sparse():
         print(val_sparse.shape)
 
 
+def test_convert_to_dtype():
+    from bed_reader._open_bed import _convert_to_dtype
+
+    input = [
+        [["a", "b", "c"], ["a", "b", "c"], None, None],
+        [["1.0", "2.0", "3.0"], ["1.0", "2.0", "3.0"], [1, 2, 3], [1.0, 2.0, 3.0]],
+        [["1.0", "2.0", "3.5"], ["1.0", "2.0", "3.5"], None, [1.0, 2.0, 3.5]],
+        [["1", "2", "3"], ["1", "2", "3"], [1, 2, 3], [1.0, 2.0, 3.0]],
+        [["1", "A", "3"], ["1", "A", "3"], None, None],
+    ]
+    # convert all to np.array
+    input = [
+        [np.array(inner) if inner is not None else None for inner in outer]
+        for outer in input
+    ]
+
+    for ori, exp_str, exp_int, exp_float in input:
+        for dtype, exp in (
+            [np.str_, exp_str],
+            [np.int32, exp_int],
+            [
+                np.float32,
+                exp_float,
+            ],
+        ):
+            try:
+                actual = _convert_to_dtype(ori, dtype)
+                assert np.array_equal(actual, exp)
+            except ValueError as e:
+                print(e)
+                assert exp is None
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 

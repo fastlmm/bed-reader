@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>bed_reader._open_bed &mdash; Bed Reader 1.0.0-beta.2 documentation</title>
+  <title>bed_reader._open_bed &mdash; Bed Reader 1.0.0-beta.3 documentation</title>
       <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
@@ -30,7 +30,7 @@
             Bed Reader
           </a>
               <div class="version">
-                1.0.0-beta.2
+                1.0.0-beta.3
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
@@ -1580,9 +1580,34 @@
         <span class="c1"># Find the dtype for this column</span>
         <span class="n">col_dtype</span> <span class="o">=</span> <span class="n">dtype</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">input_index</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">str_</span><span class="p">)</span>
         <span class="c1"># Convert the column list to a numpy array with the specified dtype</span>
-        <span class="n">columns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">col</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">col_dtype</span><span class="p">))</span>
+        <span class="n">columns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_convert_to_dtype</span><span class="p">(</span><span class="n">col</span><span class="p">,</span> <span class="n">col_dtype</span><span class="p">))</span>
 
     <span class="k">return</span> <span class="n">columns</span><span class="p">,</span> <span class="n">row_count</span>
+
+
+<span class="k">def</span> <span class="nf">_convert_to_dtype</span><span class="p">(</span><span class="n">str_arr</span><span class="p">,</span> <span class="n">dtype</span><span class="p">):</span>
+    <span class="k">assert</span> <span class="n">dtype</span> <span class="ow">in</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">str_</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">]</span>  <span class="c1"># real assert</span>
+
+    <span class="k">if</span> <span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">str_</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">str_arr</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">new_arr</span> <span class="o">=</span> <span class="n">str_arr</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">dtype</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">e</span>
+        <span class="c1"># for backwards compatibility, see if intermediate float helps int conversion</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">int32</span>  <span class="c1"># real assert</span>
+            <span class="n">float_arr</span> <span class="o">=</span> <span class="n">str_arr</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">e</span>
+        <span class="n">new_arr</span> <span class="o">=</span> <span class="n">float_arr</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="n">new_arr</span><span class="p">,</span> <span class="n">float_arr</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;invalid literal for int: &#39;</span><span class="si">{</span><span class="n">str_arr</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">new_arr</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">float_arr</span><span class="p">)][:</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">&#39;)&quot;</span>
+            <span class="p">)</span>
+    <span class="k">return</span> <span class="n">new_arr</span>
 
 
 <span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
