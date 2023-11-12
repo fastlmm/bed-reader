@@ -3,18 +3,16 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>bed_reader._open_bed &mdash; Bed Reader 0.2.37 documentation</title>
+  <title>bed_reader._open_bed &mdash; Bed Reader 1.0.0-beta.3 documentation</title>
       <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-        <script src="../../_static/jquery.js?v=5d32c60e"></script>
-        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-        <script src="../../_static/documentation_options.js?v=8fa6aa5b"></script>
-        <script src="../../_static/doctools.js?v=888ff710"></script>
-        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/sphinx_highlight.js"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" /> 
@@ -32,7 +30,7 @@
             Bed Reader
           </a>
               <div class="version">
-                0.2.37
+                1.0.0-beta.3
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
@@ -78,7 +76,11 @@
 <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
 
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">sparse</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">sparse</span> <span class="o">=</span> <span class="kc">None</span>
 
 <span class="kn">from</span> <span class="nn">.bed_reader</span> <span class="kn">import</span> <span class="n">read_f32</span><span class="p">,</span> <span class="n">read_f64</span><span class="p">,</span> <span class="n">read_i8</span>  <span class="c1"># type: ignore</span>
 
@@ -147,9 +149,7 @@
     <span class="k">return</span> <span class="n">multiprocessing</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">()</span>
 
 
-<div class="viewcode-block" id="open_bed">
-<a class="viewcode-back" href="../../index.html#bed_reader.open_bed">[docs]</a>
-<span class="k">class</span> <span class="nc">open_bed</span><span class="p">:</span>
+<div class="viewcode-block" id="open_bed"><a class="viewcode-back" href="../../index.html#bed_reader.open_bed">[docs]</a><span class="k">class</span> <span class="nc">open_bed</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Open a PLINK .bed file for reading.</span>
 
@@ -179,7 +179,7 @@
 <span class="sd">          meaning do not read or offer this property. See examples, below.</span>
 
 <span class="sd">          The list or array will be converted to a :class:`numpy.ndarray`</span>
-<span class="sd">          of the appropriate dtype, if necessary. Any :class:`numpy.nan` values</span>
+<span class="sd">          of the appropriate dtype, if necessary. Any :data:`numpy.nan` values</span>
 <span class="sd">          will converted to the appropriate missing value. The PLINK `.fam specification</span>
 <span class="sd">          &lt;https://www.cog-genomics.org/plink2/formats#fam&gt;`_</span>
 <span class="sd">          and `.bim specification &lt;https://www.cog-genomics.org/plink2/formats#bim&gt;`_</span>
@@ -311,9 +311,7 @@
             <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">filepointer</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_check_file</span><span class="p">(</span><span class="n">filepointer</span><span class="p">)</span>
 
-<div class="viewcode-block" id="open_bed.read">
-<a class="viewcode-back" href="../../index.html#bed_reader.open_bed.read">[docs]</a>
-    <span class="k">def</span> <span class="nf">read</span><span class="p">(</span>
+<div class="viewcode-block" id="open_bed.read"><a class="viewcode-back" href="../../index.html#bed_reader.open_bed.read">[docs]</a>    <span class="k">def</span> <span class="nf">read</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">index</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">dtype</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">type</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="s2">&quot;float32&quot;</span><span class="p">,</span>
@@ -380,7 +378,7 @@
 <span class="sd">             [ 0.  1.  2.  0.]]</span>
 
 <span class="sd">        To read selected individuals (samples) and/or SNPs (variants), set each part of</span>
-<span class="sd">        a :class:`numpy.s_` to an `int`, a list of `int`, a slice expression, or</span>
+<span class="sd">        a :data:`numpy.s_` to an `int`, a list of `int`, a slice expression, or</span>
 <span class="sd">        a list of `bool`.</span>
 <span class="sd">        Negative integers count from the end of the list.</span>
 
@@ -540,7 +538,6 @@
                     <span class="n">val</span> <span class="o">=</span> <span class="n">val</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">order</span><span class="o">=</span><span class="n">order</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">val</span></div>
-
 
     <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">(&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="si">}</span><span class="s2">&#39;,...)&quot;</span>
@@ -763,9 +760,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">property_item</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties_dict</span>
 
-<div class="viewcode-block" id="open_bed.property_item">
-<a class="viewcode-back" href="../../index.html#bed_reader.open_bed.property_item">[docs]</a>
-    <span class="k">def</span> <span class="nf">property_item</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<div class="viewcode-block" id="open_bed.property_item"><a class="viewcode-back" href="../../index.html#bed_reader.open_bed.property_item">[docs]</a>    <span class="k">def</span> <span class="nf">property_item</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Retrieve one property by name.</span>
 
@@ -801,7 +796,6 @@
             <span class="n">mm</span> <span class="o">=</span> <span class="n">_meta_meta</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_read_fam_or_bim</span><span class="p">(</span><span class="n">suffix</span><span class="o">=</span><span class="n">mm</span><span class="o">.</span><span class="n">suffix</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span></div>
-
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">chromosome</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
@@ -1161,6 +1155,9 @@
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2"> should be one dimensional&quot;</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="nb">input</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">dtype</span><span class="p">):</span>
+            <span class="c1"># This will convert, for example, numerical sids to string sids or</span>
+            <span class="c1"># floats that happen to be integers into ints,</span>
+            <span class="c1"># but there will be a warning generated.</span>
             <span class="n">output</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">output</span> <span class="o">=</span> <span class="nb">input</span>
@@ -1215,9 +1212,6 @@
         <span class="n">delimiter</span> <span class="o">=</span> <span class="n">_delimiters</span><span class="p">[</span><span class="n">suffix</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">delimiter</span> <span class="ow">in</span> <span class="p">{</span><span class="sa">r</span><span class="s2">&quot;\s+&quot;</span><span class="p">}:</span>
             <span class="n">delimiter</span> <span class="o">=</span> <span class="kc">None</span>
-            <span class="n">delim_whitespace</span> <span class="o">=</span> <span class="kc">True</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">delim_whitespace</span> <span class="o">=</span> <span class="kc">False</span>
 
         <span class="n">usecolsdict</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="n">dtype_dict</span> <span class="o">=</span> <span class="p">{}</span>
@@ -1229,143 +1223,397 @@
         <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">usecolsdict</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>  <span class="c1"># real assert</span>
 
         <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">getsize</span><span class="p">(</span><span class="n">property_filepath</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="n">fields</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">columns</span><span class="p">,</span> <span class="n">row_count</span> <span class="o">=</span> <span class="p">[],</span> <span class="mi">0</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">fields</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span>
+            <span class="n">columns</span><span class="p">,</span> <span class="n">row_count</span> <span class="o">=</span> <span class="n">_read_csv</span><span class="p">(</span>
                 <span class="n">property_filepath</span><span class="p">,</span>
                 <span class="n">delimiter</span><span class="o">=</span><span class="n">delimiter</span><span class="p">,</span>
-                <span class="n">delim_whitespace</span><span class="o">=</span><span class="n">delim_whitespace</span><span class="p">,</span>
-                <span class="n">header</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                <span class="n">index_col</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                <span class="n">comment</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                 <span class="n">dtype</span><span class="o">=</span><span class="n">dtype_dict</span><span class="p">,</span>
                 <span class="n">usecols</span><span class="o">=</span><span class="n">usecolsdict</span><span class="o">.</span><span class="n">values</span><span class="p">(),</span>
             <span class="p">)</span>
 
         <span class="k">if</span> <span class="n">count</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_counts</span><span class="p">[</span><span class="n">suffix</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">fields</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_counts</span><span class="p">[</span><span class="n">suffix</span><span class="p">]</span> <span class="o">=</span> <span class="n">row_count</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">count</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">fields</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">count</span> <span class="o">!=</span> <span class="n">row_count</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;The number of lines in the *.</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2"> file, </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">fields</span><span class="p">)</span><span class="si">}</span><span class="s2">, &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;The number of lines in the *.</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2"> file, </span><span class="si">{</span><span class="n">row_count</span><span class="si">}</span><span class="s2">, &quot;</span>
                     <span class="o">+</span> <span class="s2">&quot;should not be different from the current &quot;</span>
                     <span class="o">+</span> <span class="s2">&quot;f</span><span class="si">{_count_name[suffix]}</span><span class="s2">, </span><span class="si">{count}</span><span class="s2">&quot;</span>
                 <span class="p">)</span>
-        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">usecolsdict</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">usecolsdict</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
             <span class="n">mm</span> <span class="o">=</span> <span class="n">_meta_meta</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
-            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">fields</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">row_count</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="n">output</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">mm</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">output</span> <span class="o">=</span> <span class="n">fields</span><span class="p">[</span><span class="n">mm</span><span class="o">.</span><span class="n">column</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+                <span class="n">output</span> <span class="o">=</span> <span class="n">columns</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
                 <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">output</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">mm</span><span class="o">.</span><span class="n">dtype</span><span class="p">):</span>
                     <span class="n">output</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">mm</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">properties_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">output</span></div>
+            <span class="bp">self</span><span class="o">.</span><span class="n">properties_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">output</span>
 
+<div class="viewcode-block" id="open_bed.read_sparse"><a class="viewcode-back" href="../../index.html#bed_reader.open_bed.read_sparse">[docs]</a>    <span class="k">def</span> <span class="nf">read_sparse</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">index</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">dtype</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">type</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="s2">&quot;float32&quot;</span><span class="p">,</span>
+        <span class="n">batch_size</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="nb">format</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;csc&quot;</span><span class="p">,</span>
+        <span class="n">num_threads</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="n">Union</span><span class="p">[</span><span class="n">sparse</span><span class="o">.</span><span class="n">csc_matrix</span><span class="p">,</span> <span class="n">sparse</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">])</span> <span class="k">if</span> <span class="n">sparse</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Read genotype information into a :mod:`scipy.sparse` matrix. Sparse matrices</span>
+<span class="sd">        may be useful when the data is mostly zeros.</span>
+
+<span class="sd">        .. note::</span>
+<span class="sd">            This method requires :mod:`scipy`. Install `scipy` with:</span>
+
+<span class="sd">            .. code-block:: bash</span>
+
+<span class="sd">                pip install --upgrade bed-reader[sparse]</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        index:</span>
+<span class="sd">            An optional expression specifying the individuals (samples) and SNPs</span>
+<span class="sd">            (variants) to read. (See examples, below).</span>
+<span class="sd">            Defaults to ``None``, meaning read all.</span>
+
+<span class="sd">            (If index is a tuple, the first component indexes the individuals and the</span>
+<span class="sd">            second indexes</span>
+<span class="sd">            the SNPs. If it is not a tuple and not None, it indexes SNPs.)</span>
+
+<span class="sd">        dtype: {&#39;float32&#39; (default), &#39;float64&#39;, &#39;int8&#39;}, optional</span>
+<span class="sd">            The desired data-type for the returned array.</span>
+<span class="sd">        batch_size: None or int, optional</span>
+<span class="sd">            Number of dense columns or rows to read at a time, internally.</span>
+<span class="sd">            Defaults to round(sqrt(total-number-of-columns-or-rows-to-read)).</span>
+<span class="sd">        format : {&#39;csc&#39;,&#39;csr&#39;}, optional</span>
+<span class="sd">            The desired format of the sparse matrix.</span>
+<span class="sd">            Defaults to ``csc`` (Compressed Sparse Column, which is SNP-major).</span>
+<span class="sd">        num_threads: None or int, optional</span>
+<span class="sd">            The number of threads with which to read data. Defaults to all available</span>
+<span class="sd">            processors.</span>
+<span class="sd">            Can also be set with :class:`open_bed` or these</span>
+<span class="sd">            environment variables (listed in priority order):</span>
+<span class="sd">            &#39;PST_NUM_THREADS&#39;, &#39;NUM_THREADS&#39;, &#39;MKL_NUM_THREADS&#39;.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        a :class:`scipy.sparse.csc_matrix` (default) or :class:`scipy.sparse.csr_matrix`</span>
+
+<span class="sd">        Rows represent individuals (samples). Columns represent SNPs (variants).</span>
+
+<span class="sd">        For ``dtype`` &#39;float32&#39; and &#39;float64&#39;, NaN indicates missing values.</span>
+<span class="sd">        For &#39;int8&#39;, -127 indicates missing values.</span>
+
+
+<span class="sd">        The memory used by the final sparse matrix is approximately:</span>
+
+<span class="sd">           # of non-zero values * (4 bytes + 1 byte (for int8))</span>
+
+<span class="sd">        For example, consider reading 1000 individuals (samples) x 50,000 SNPs (variants)</span>
+<span class="sd">        into csc format where the data is 97% sparse.</span>
+<span class="sd">        The memory used will be about 7.5 MB (1000 x 50,000 x 3% x 5 bytes).</span>
+<span class="sd">        This is 15% of the 50 MB needed by a dense matrix.</span>
+
+<span class="sd">        Internally, the function reads the data via small dense matrices.</span>
+<span class="sd">        For this example, by default, the function will read 1000 individuals x 224 SNPs</span>
+<span class="sd">        (because 224 * 224 is about 50,000).</span>
+<span class="sd">        The memory used by the small dense matrix is 1000 x 244 x 1 byte (for int8) = 0.224 MB.</span>
+
+<span class="sd">        You can set `batch_size`. Larger values will be faster.</span>
+<span class="sd">        Smaller values will use less memory.</span>
+
+<span class="sd">        For this example, we might want to set the `batch_size` to 5000. Then,</span>
+<span class="sd">        the memory used by the small dense matrix</span>
+<span class="sd">        would be 1000 x 5000 x 1 byte (for int8) = 5 MB,</span>
+<span class="sd">        similar to the 7.5 MB needed for the final sparse matrix.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+
+<span class="sd">        Read all data in a .bed file into a :class:`scipy.sparse.csc_matrix`.</span>
+<span class="sd">        The file has 10 individuals (samples) by 20 SNPs (variants).</span>
+<span class="sd">        All but eight values are 0.</span>
+
+<span class="sd">        .. doctest::</span>
+
+<span class="sd">            &gt;&gt;&gt; # pip install bed-reader[samples,sparse]  # if needed</span>
+<span class="sd">            &gt;&gt;&gt; from bed_reader import open_bed, sample_file</span>
+<span class="sd">            &gt;&gt;&gt;</span>
+<span class="sd">            &gt;&gt;&gt; file_name = sample_file(&quot;sparse.bed&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; with open_bed(file_name) as bed:</span>
+<span class="sd">            ...     print(bed.shape)</span>
+<span class="sd">            ...     val_sparse = bed.read_sparse(dtype=&quot;int8&quot;)</span>
+<span class="sd">            ...     print(val_sparse) # doctest:+NORMALIZE_WHITESPACE</span>
+<span class="sd">            (10, 20)</span>
+<span class="sd">                (8, 4)  1</span>
+<span class="sd">                (8, 5)	2</span>
+<span class="sd">                (0, 8)	2</span>
+<span class="sd">                (4, 9)	1</span>
+<span class="sd">                (7, 9)	1</span>
+<span class="sd">                (5, 11)	1</span>
+<span class="sd">                (2, 12)	1</span>
+<span class="sd">                (3, 12)	1</span>
+
+<span class="sd">        To read selected individuals (samples) and/or SNPs (variants), set each part of</span>
+<span class="sd">        a :data:`numpy.s_` to an `int`, a list of `int`, a slice expression, or</span>
+<span class="sd">        a list of `bool`.</span>
+<span class="sd">        Negative integers count from the end of the list.</span>
+
+<span class="sd">        .. doctest::</span>
+
+<span class="sd">            &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">            &gt;&gt;&gt; bed = open_bed(file_name)</span>
+<span class="sd">            &gt;&gt;&gt; print(bed.read_sparse(np.s_[:,5], dtype=&quot;int8&quot;))  # read the SNPs indexed by 5. # doctest:+NORMALIZE_WHITESPACE</span>
+<span class="sd">            (8, 0)    2</span>
+<span class="sd">            &gt;&gt;&gt; # read the SNPs indexed by 5, 4, and 0</span>
+<span class="sd">            &gt;&gt;&gt; print(bed.read_sparse(np.s_[:,[5,4,0]], dtype=&quot;int8&quot;)) # doctest:+NORMALIZE_WHITESPACE</span>
+<span class="sd">            (8, 0)	2</span>
+<span class="sd">            (8, 1)	1</span>
+<span class="sd">            &gt;&gt;&gt; # read SNPs from 1 (inclusive) to 11 (exclusive)</span>
+<span class="sd">            &gt;&gt;&gt; print(bed.read_sparse(np.s_[:,1:11], dtype=&quot;int8&quot;)) # doctest:+NORMALIZE_WHITESPACE</span>
+<span class="sd">            (8, 3)	1</span>
+<span class="sd">            (8, 4)	2</span>
+<span class="sd">            (0, 7)	2</span>
+<span class="sd">            (4, 8)	1</span>
+<span class="sd">            (7, 8)	1</span>
+<span class="sd">            &gt;&gt;&gt; print(np.unique(bed.chromosome)) # print unique chrom values</span>
+<span class="sd">            [&#39;1&#39; &#39;5&#39; &#39;Y&#39;]</span>
+<span class="sd">            &gt;&gt;&gt; # read all SNPs in chrom 5</span>
+<span class="sd">            &gt;&gt;&gt; print(bed.read_sparse(np.s_[:,bed.chromosome==&#39;5&#39;], dtype=&quot;int8&quot;)) # doctest:+NORMALIZE_WHITESPACE</span>
+<span class="sd">            (8, 0)	1</span>
+<span class="sd">            (8, 1)	2</span>
+<span class="sd">            (0, 4)	2</span>
+<span class="sd">            (4, 5)	1</span>
+<span class="sd">            (7, 5)	1</span>
+<span class="sd">            (5, 7)	1</span>
+<span class="sd">            (2, 8)	1</span>
+<span class="sd">            (3, 8)	1</span>
+<span class="sd">            &gt;&gt;&gt; # Read 1st individual (across all SNPs)</span>
+<span class="sd">            &gt;&gt;&gt; print(bed.read_sparse(np.s_[0,:], dtype=&quot;int8&quot;)) # doctest:+NORMALIZE_WHITESPACE</span>
+<span class="sd">            (0, 8)	2</span>
+<span class="sd">            &gt;&gt;&gt; print(bed.read_sparse(np.s_[::2,:], dtype=&quot;int8&quot;)) # Read every 2nd individual # doctest:+NORMALIZE_WHITESPACE</span>
+<span class="sd">            (4, 4)    1</span>
+<span class="sd">            (4, 5)    2</span>
+<span class="sd">            (0, 8)    2</span>
+<span class="sd">            (2, 9)    1</span>
+<span class="sd">            (1, 12)   1</span>
+<span class="sd">            &gt;&gt;&gt; # read last and 2nd-to-last individuals and the 15th-from-the-last SNP</span>
+<span class="sd">            &gt;&gt;&gt; print(bed.read_sparse(np.s_[[-1,-2],-15], dtype=&quot;int8&quot;)) # doctest:+NORMALIZE_WHITESPACE</span>
+<span class="sd">            (1, 0)	2</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">sparse</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
+                <span class="s2">&quot;The function read_sparse() requires scipy. &quot;</span>
+                <span class="o">+</span> <span class="s2">&quot;Install it with &#39;pip install --upgrade bed-reader[sparse]&#39;.&quot;</span>
+            <span class="p">)</span>
+        <span class="n">iid_index_or_slice_etc</span><span class="p">,</span> <span class="n">sid_index_or_slice_etc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_split_index</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
+
+        <span class="n">dtype</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="n">dtype</span><span class="p">)</span>
+
+        <span class="c1"># Similar code in read().</span>
+        <span class="c1"># Later happy with _iid_range and _sid_range or could it be done with</span>
+        <span class="c1"># allocation them?</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_iid_range</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_iid_range</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">iid_count</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;intp&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sid_range</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_sid_range</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sid_count</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;intp&quot;</span><span class="p">)</span>
+
+        <span class="n">iid_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_iid_range</span><span class="p">[</span><span class="n">iid_index_or_slice_etc</span><span class="p">],</span>
+            <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;intp&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">sid_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_sid_range</span><span class="p">[</span><span class="n">sid_index_or_slice_etc</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;intp&quot;</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="nb">len</span><span class="p">(</span><span class="n">iid_index</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">iinfo</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span><span class="o">.</span><span class="n">max</span>
+            <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">sid_index</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">iinfo</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span><span class="o">.</span><span class="n">max</span>
+        <span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;Too (many Individuals or SNPs (variants) requested. Maximum is {np.iinfo(np.int32).max}.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">batch_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">batch_size</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">sid_index</span><span class="p">)))</span>
+
+        <span class="n">num_threads</span> <span class="o">=</span> <span class="n">get_num_threads</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_num_threads</span> <span class="k">if</span> <span class="n">num_threads</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">num_threads</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">format</span> <span class="o">==</span> <span class="s2">&quot;csc&quot;</span><span class="p">:</span>
+            <span class="n">order</span> <span class="o">=</span> <span class="s2">&quot;F&quot;</span>
+            <span class="n">indptr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">sid_index</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">format</span> <span class="o">==</span> <span class="s2">&quot;csr&quot;</span><span class="p">:</span>
+            <span class="n">order</span> <span class="o">=</span> <span class="s2">&quot;C&quot;</span>
+            <span class="n">indptr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">iid_index</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;format &#39;</span><span class="si">{</span><span class="nb">format</span><span class="si">}</span><span class="s2">&#39; not known. Expected &#39;csc&#39; or &#39;csr&#39;.&quot;</span><span class="p">)</span>
+
+        <span class="c1"># We init data and indices with zero element arrays to set their dtype.</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)]</span>
+        <span class="n">indices</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)]</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">iid_count</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">sid_count</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">:</span>
+                <span class="n">reader</span> <span class="o">=</span> <span class="n">read_i8</span>
+            <span class="k">elif</span> <span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">:</span>
+                <span class="n">reader</span> <span class="o">=</span> <span class="n">read_f64</span>
+            <span class="k">elif</span> <span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">:</span>
+                <span class="n">reader</span> <span class="o">=</span> <span class="n">read_f32</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;dtype &#39;</span><span class="si">{</span><span class="n">dtype</span><span class="si">}</span><span class="s2">&#39; not known, only &quot;</span>
+                    <span class="o">+</span> <span class="s2">&quot;&#39;int8&#39;, &#39;float32&#39;, and &#39;float64&#39; are allowed.&quot;</span>
+                <span class="p">)</span>
+
+            <span class="k">if</span> <span class="nb">format</span> <span class="o">==</span> <span class="s2">&quot;csc&quot;</span><span class="p">:</span>
+                <span class="n">val</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">iid_index</span><span class="p">),</span> <span class="n">batch_size</span><span class="p">),</span> <span class="n">order</span><span class="o">=</span><span class="n">order</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">batch_start</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">sid_index</span><span class="p">),</span> <span class="n">batch_size</span><span class="p">):</span>
+                    <span class="n">batch_end</span> <span class="o">=</span> <span class="n">batch_start</span> <span class="o">+</span> <span class="n">batch_size</span>
+                    <span class="k">if</span> <span class="n">batch_end</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">sid_index</span><span class="p">):</span>
+                        <span class="n">batch_end</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">sid_index</span><span class="p">)</span>
+                        <span class="k">del</span> <span class="n">val</span>
+                        <span class="n">val</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
+                            <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">iid_index</span><span class="p">),</span> <span class="n">batch_end</span> <span class="o">-</span> <span class="n">batch_start</span><span class="p">),</span>
+                            <span class="n">order</span><span class="o">=</span><span class="n">order</span><span class="p">,</span>
+                            <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span>
+                        <span class="p">)</span>
+                    <span class="n">batch_slice</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">s_</span><span class="p">[</span><span class="n">batch_start</span><span class="p">:</span><span class="n">batch_end</span><span class="p">]</span>
+                    <span class="n">batch_index</span> <span class="o">=</span> <span class="n">sid_index</span><span class="p">[</span><span class="n">batch_slice</span><span class="p">]</span>
+
+                    <span class="n">reader</span><span class="p">(</span>
+                        <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">),</span>
+                        <span class="n">iid_count</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">iid_count</span><span class="p">,</span>
+                        <span class="n">sid_count</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sid_count</span><span class="p">,</span>
+                        <span class="n">is_a1_counted</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">count_A1</span><span class="p">,</span>
+                        <span class="n">iid_index</span><span class="o">=</span><span class="n">iid_index</span><span class="p">,</span>
+                        <span class="n">sid_index</span><span class="o">=</span><span class="n">batch_index</span><span class="p">,</span>
+                        <span class="n">val</span><span class="o">=</span><span class="n">val</span><span class="p">,</span>
+                        <span class="n">num_threads</span><span class="o">=</span><span class="n">num_threads</span><span class="p">,</span>
+                    <span class="p">)</span>
+
+                    <span class="bp">self</span><span class="o">.</span><span class="n">sparsify</span><span class="p">(</span>
+                        <span class="n">val</span><span class="p">,</span> <span class="n">order</span><span class="p">,</span> <span class="n">iid_index</span><span class="p">,</span> <span class="n">batch_slice</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">indptr</span>
+                    <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="nb">format</span> <span class="o">==</span> <span class="s2">&quot;csr&quot;</span>  <span class="c1"># real assert</span>
+                <span class="n">val</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">batch_size</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">sid_index</span><span class="p">)),</span> <span class="n">order</span><span class="o">=</span><span class="n">order</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">batch_start</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">iid_index</span><span class="p">),</span> <span class="n">batch_size</span><span class="p">):</span>
+                    <span class="n">batch_end</span> <span class="o">=</span> <span class="n">batch_start</span> <span class="o">+</span> <span class="n">batch_size</span>
+                    <span class="k">if</span> <span class="n">batch_end</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">iid_index</span><span class="p">):</span>
+                        <span class="n">batch_end</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">iid_index</span><span class="p">)</span>
+                        <span class="k">del</span> <span class="n">val</span>
+                        <span class="n">val</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
+                            <span class="p">(</span><span class="n">batch_end</span> <span class="o">-</span> <span class="n">batch_start</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">sid_index</span><span class="p">)),</span>
+                            <span class="n">order</span><span class="o">=</span><span class="n">order</span><span class="p">,</span>
+                            <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span>
+                        <span class="p">)</span>
+
+                    <span class="n">batch_slice</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">s_</span><span class="p">[</span><span class="n">batch_start</span><span class="p">:</span><span class="n">batch_end</span><span class="p">]</span>
+                    <span class="n">batch_index</span> <span class="o">=</span> <span class="n">iid_index</span><span class="p">[</span><span class="n">batch_slice</span><span class="p">]</span>
+
+                    <span class="n">reader</span><span class="p">(</span>
+                        <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">),</span>
+                        <span class="n">iid_count</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">iid_count</span><span class="p">,</span>
+                        <span class="n">sid_count</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sid_count</span><span class="p">,</span>
+                        <span class="n">is_a1_counted</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">count_A1</span><span class="p">,</span>
+                        <span class="n">iid_index</span><span class="o">=</span><span class="n">batch_index</span><span class="p">,</span>
+                        <span class="n">sid_index</span><span class="o">=</span><span class="n">sid_index</span><span class="p">,</span>
+                        <span class="n">val</span><span class="o">=</span><span class="n">val</span><span class="p">,</span>
+                        <span class="n">num_threads</span><span class="o">=</span><span class="n">num_threads</span><span class="p">,</span>
+                    <span class="p">)</span>
+
+                    <span class="bp">self</span><span class="o">.</span><span class="n">sparsify</span><span class="p">(</span>
+                        <span class="n">val</span><span class="p">,</span> <span class="n">order</span><span class="p">,</span> <span class="n">sid_index</span><span class="p">,</span> <span class="n">batch_slice</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">indptr</span>
+                    <span class="p">)</span>
+
+        <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="n">indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">indices</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">format</span> <span class="o">==</span> <span class="s2">&quot;csc&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">sparse</span><span class="o">.</span><span class="n">csc_matrix</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">indptr</span><span class="p">),</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">iid_index</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">sid_index</span><span class="p">))</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">format</span> <span class="o">==</span> <span class="s2">&quot;csr&quot;</span>  <span class="c1"># real assert</span>
+            <span class="k">return</span> <span class="n">sparse</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">indptr</span><span class="p">),</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">iid_index</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">sid_index</span><span class="p">))</span>
+            <span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">sparsify</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">order</span><span class="p">,</span> <span class="n">minor_index</span><span class="p">,</span> <span class="n">batch_slice</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">indptr</span><span class="p">):</span>
+        <span class="n">flatten</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="n">order</span><span class="p">)</span>
+        <span class="n">nz_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">flatten</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+        <span class="n">column_indexes</span> <span class="o">=</span> <span class="n">nz_indices</span> <span class="o">//</span> <span class="nb">len</span><span class="p">(</span><span class="n">minor_index</span><span class="p">)</span>
+        <span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span>
+            <span class="n">column_indexes</span><span class="p">,</span> <span class="n">minlength</span><span class="o">=</span><span class="n">batch_slice</span><span class="o">.</span><span class="n">stop</span> <span class="o">-</span> <span class="n">batch_slice</span><span class="o">.</span><span class="n">start</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+        <span class="n">counts_with_initial</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">r_</span><span class="p">[</span>
+            <span class="n">indptr</span><span class="p">[</span><span class="n">batch_slice</span><span class="o">.</span><span class="n">start</span> <span class="p">:</span> <span class="n">batch_slice</span><span class="o">.</span><span class="n">start</span> <span class="o">+</span> <span class="mi">1</span><span class="p">],</span> <span class="n">counts</span>
+        <span class="p">]</span>
+
+        <span class="n">data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">flatten</span><span class="p">[</span><span class="n">nz_indices</span><span class="p">])</span>
+        <span class="n">indices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mod</span><span class="p">(</span><span class="n">nz_indices</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">minor_index</span><span class="p">)))</span>
+        <span class="n">indptr</span><span class="p">[</span><span class="mi">1</span><span class="p">:][</span><span class="n">batch_slice</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">counts_with_initial</span><span class="p">)[</span><span class="mi">1</span><span class="p">:]</span></div>
+
+
+<span class="k">def</span> <span class="nf">_read_csv</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">usecols</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="c1"># Prepare the usecols by ensuring it is a list of indices</span>
+    <span class="n">usecols_indices</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">usecols</span><span class="p">)</span>
+    <span class="n">transposed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span>
+        <span class="n">filepath</span><span class="p">,</span>
+        <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">str_</span><span class="p">,</span>
+        <span class="n">delimiter</span><span class="o">=</span><span class="n">delimiter</span><span class="p">,</span>
+        <span class="n">usecols</span><span class="o">=</span><span class="n">usecols_indices</span><span class="p">,</span>
+        <span class="n">unpack</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">transposed</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">transposed</span> <span class="o">=</span> <span class="n">transposed</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">row_count</span> <span class="o">=</span> <span class="n">transposed</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># because unpack=True</span>
+
+    <span class="c1"># Convert column lists to numpy arrays with the specified dtype</span>
+    <span class="n">columns</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">output_index</span><span class="p">,</span> <span class="n">input_index</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">usecols_indices</span><span class="p">):</span>
+        <span class="n">col</span> <span class="o">=</span> <span class="n">transposed</span><span class="p">[</span><span class="n">output_index</span><span class="p">]</span>
+        <span class="c1"># Find the dtype for this column</span>
+        <span class="n">col_dtype</span> <span class="o">=</span> <span class="n">dtype</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">input_index</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">str_</span><span class="p">)</span>
+        <span class="c1"># Convert the column list to a numpy array with the specified dtype</span>
+        <span class="n">columns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_convert_to_dtype</span><span class="p">(</span><span class="n">col</span><span class="p">,</span> <span class="n">col_dtype</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">columns</span><span class="p">,</span> <span class="n">row_count</span>
+
+
+<span class="k">def</span> <span class="nf">_convert_to_dtype</span><span class="p">(</span><span class="n">str_arr</span><span class="p">,</span> <span class="n">dtype</span><span class="p">):</span>
+    <span class="k">assert</span> <span class="n">dtype</span> <span class="ow">in</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">str_</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">]</span>  <span class="c1"># real assert</span>
+
+    <span class="k">if</span> <span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">str_</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">str_arr</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">new_arr</span> <span class="o">=</span> <span class="n">str_arr</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">dtype</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">e</span>
+        <span class="c1"># for backwards compatibility, see if intermediate float helps int conversion</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">int32</span>  <span class="c1"># real assert</span>
+            <span class="n">float_arr</span> <span class="o">=</span> <span class="n">str_arr</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">e</span>
+        <span class="n">new_arr</span> <span class="o">=</span> <span class="n">float_arr</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="n">new_arr</span><span class="p">,</span> <span class="n">float_arr</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;invalid literal for int: &#39;</span><span class="si">{</span><span class="n">str_arr</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">new_arr</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">float_arr</span><span class="p">)][:</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">&#39;)&quot;</span>
+            <span class="p">)</span>
+    <span class="k">return</span> <span class="n">new_arr</span>
 
 
 <span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
-    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
-
-    <span class="c1"># if True:</span>
-    <span class="c1">#     from bed_reader import sample_file</span>
-
-    <span class="c1">#     file_name = sample_file(&quot;small.bed&quot;)</span>
-    <span class="c1">#     with open_bed(file_name) as bed:</span>
-    <span class="c1">#         print(bed.iid)</span>
-    <span class="c1">#         print(bed.sid)</span>
-    <span class="c1">#         print(bed.read())</span>
-
-    <span class="c1"># if False:</span>
-    <span class="c1">#     import numpy as np</span>
-    <span class="c1">#     from bed_reader._open_bed import open_bed</span>
-
-    <span class="c1">#     # Can get file from</span>
-    <span class="c1">#  https://www.dropbox.com/sh/xluk9opjiaobteg/AABgEggLk0ZoO0KQq0I4CaTJa?dl=0</span>
-    <span class="c1">#     bigfile = r&quot;M:\deldir\genbgen\2\merged_487400x220000.1.bed&quot;</span>
-    <span class="c1">#     # bigfile = &#39;/mnt/m/deldir/genbgen/2/merged_487400x220000.1.bed&#39;</span>
-    <span class="c1">#     with open_bed(bigfile, num_threads=20) as bed:</span>
-    <span class="c1">#         sid_batch = 22 * 1000</span>
-    <span class="c1">#         for sid_start in range(0, 10 * sid_batch, sid_batch):</span>
-    <span class="c1">#             slicer = np.s_[:10000, sid_start : sid_start + sid_batch]</span>
-    <span class="c1">#             print(slicer)</span>
-    <span class="c1">#             val = bed.read(slicer)</span>
-    <span class="c1">#         print(val.shape)</span>
-
-    <span class="c1"># if False:</span>
-    <span class="c1">#     file = r&quot;D:\OneDrive\programs\sgkit-plink\bed_reader\tests\data</span>
-    <span class="c1">#          /plink_sim_10s_100v_10pmiss.bed&quot;</span>
-    <span class="c1">#     with open_bed(file) as bed:</span>
-    <span class="c1">#         print(bed.iid)</span>
-    <span class="c1">#         print(bed.shape)</span>
-    <span class="c1">#         val = bed.read()</span>
-    <span class="c1">#         print(val)</span>
-
-    <span class="c1"># if False:</span>
-
-    <span class="c1">#     # bed_file = example_file(&#39;doc/ipynb/all.*&#39;,&#39;*.bed&#39;)</span>
-    <span class="c1">#     bed_file = r&quot;F:\backup\carlk4d\data\carlk\cachebio\genetics\onemil\</span>
-    <span class="c1">#          id1000000.sid_1000000.seed0.byiid\iid990000to1000000.bed&quot;</span>
-    <span class="c1">#     bed = Bed(bed_file, count_A1=False)</span>
-    <span class="c1">#     snpdata1 = bed[:, :1000].read()</span>
-    <span class="c1">#     snpdata2 = bed[:, :1000].read(dtype=&quot;int8&quot;, _require_float32_64=False)</span>
-    <span class="c1">#     print(snpdata2)</span>
-    <span class="c1">#     snpdata3 = bed[:, :1000].read(</span>
-    <span class="c1">#         dtype=&quot;int8&quot;, order=&quot;C&quot;, _require_float32_64=False</span>
-    <span class="c1">#     )</span>
-    <span class="c1">#     print(snpdata3)</span>
-    <span class="c1">#     snpdata3.val = snpdata3.val.astype(&quot;float32&quot;)</span>
-    <span class="c1">#     snpdata3.val.dtype</span>
-
-    <span class="c1"># if False:</span>
-    <span class="c1">#     from bed_reader import Bed, SnpGen</span>
-
-    <span class="c1">#     iid_count = 487409</span>
-    <span class="c1">#     sid_count = 5000</span>
-    <span class="c1">#     sid_count_max = 5765294</span>
-    <span class="c1">#     sid_batch_size = 50</span>
-
-    <span class="c1">#     sid_batch_count = -(sid_count // -sid_batch_size)</span>
-    <span class="c1">#     sid_batch_count_max = -(sid_count_max // -sid_batch_size)</span>
-    <span class="c1">#     snpgen = SnpGen(seed=234, iid_count=iid_count, sid_count=sid_count_max)</span>
-
-    <span class="c1">#     for batch_index in range(sid_batch_count):</span>
-    <span class="c1">#         sid_index_start = batch_index * sid_batch_size</span>
-    <span class="c1">#         sid_index_end = (batch_index + 1) * sid_batch_size  # what about rounding</span>
-    <span class="c1">#         filename = r&quot;d:\deldir\rand\fakeukC{0}x{1}-{2}.bed&quot;.format(</span>
-    <span class="c1">#             iid_count, sid_index_start, sid_index_end</span>
-    <span class="c1">#         )</span>
-    <span class="c1">#         if not os.path.exists(filename):</span>
-    <span class="c1">#             Bed.write(</span>
-    <span class="c1">#                 filename + &quot;.temp&quot;, snpgen[:, sid_index_start:sid_index_end].read()</span>
-    <span class="c1">#             )</span>
-    <span class="c1">#             os.rename(filename + &quot;.temp&quot;, filename)</span>
-
-    <span class="c1"># if False:</span>
-    <span class="c1">#     from bed_reader import Pheno, Bed</span>
-
-    <span class="c1">#     filename = r&quot;m:\deldir\New folder (4)\all_chr.maf0.001.N300.bed&quot;</span>
-    <span class="c1">#     iid_count = 300</span>
-    <span class="c1">#     iid = [[&quot;0&quot;, &quot;iid_{0}&quot;.format(iid_index)] for iid_index in range(iid_count)]</span>
-    <span class="c1">#     bed = Bed(filename, iid=iid, count_A1=False)</span>
-    <span class="c1">#     print(bed.iid_count)</span>
-
-    <span class="c1"># if False:</span>
-    <span class="c1">#     from pysnptools.util import example_file</span>
-
-    <span class="c1">#     pheno_fn = example_file(&quot;pysnptools/examples/toydata.phe&quot;)</span>
-
-    <span class="c1"># if False:</span>
-    <span class="c1">#     from bed_reader import Pheno, Bed</span>
-
-    <span class="c1">#     print(os.getcwd())</span>
-    <span class="c1">#     # Read data from Pheno format</span>
-    <span class="c1">#     snpdata = Pheno(&quot;../examples/toydata.phe&quot;).read()</span>
-    <span class="c1">#     # pstutil.create_directory_if_necessary(&quot;tempdir/toydata.5chrom.bed&quot;)</span>
-    <span class="c1">#     Bed.write(</span>
-    <span class="c1">#         &quot;tempdir/toydata.5chrom.bed&quot;, snpdata, count_A1=False</span>
-    <span class="c1">#     )  # Write data in Bed format</span>
-
     <span class="kn">import</span> <span class="nn">pytest</span>
+
+    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
 
     <span class="n">pytest</span><span class="o">.</span><span class="n">main</span><span class="p">([</span><span class="s2">&quot;--doctest-modules&quot;</span><span class="p">,</span> <span class="vm">__file__</span><span class="p">])</span>
 </pre></div>

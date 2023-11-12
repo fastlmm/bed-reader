@@ -1,8 +1,13 @@
-[![PyPI version](https://badge.fury.io/py/bed-reader.svg)](https://badge.fury.io/py/bed-reader)
+<!-- This README.md must be keep in sync with doc/source/index.rst manually -->
+
+<!-- markdownlint-disable MD046 -->
+<!-- MD046 is about 'code block style' -->
+<!-- markdownlint-disable MD041 -->
+<!-- MD041 is about 'first line in a file should be a top-level heading'. -->
 [![PyPI version](https://badge.fury.io/py/bed-reader.svg)](https://badge.fury.io/py/bed-reader)
 [![Build Status](https://github.com/fastlmm/bed-reader/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/fastlmm/bed-reader/actions/workflows/ci.yml)
 ![PyPI](https://img.shields.io/pypi/v/bed-reader)
-
+<!-- markdownlint-enable MD041 -->
 
 Read and write the PLINK BED format, simply and efficiently.
 
@@ -17,6 +22,12 @@ Features:
 
 Install
 ====================
+
+**Full version**: With all optional dependencies:
+
+    pip install bed-reader[samples,sparse]
+
+**Minimal version**: Depends only on `numpy`:
 
     pip install bed-reader
 
@@ -74,10 +85,11 @@ chromosome. Then, read every genomic value in chromosome 5.
 Project Links
 ==============
 
-- [**Documentation**](http://fastlmm.github.io/bed-reader)
-- **Questions to**: [fastlmm-dev@python.org](mailto:fastlmm-dev@python.org)
-- [**Source code**](https://github.com/fastlmm/bed-reader)
-- [**PyPI**](https://pypi.org/project/bed-reader)
-- [**Bug reports**](https://github.com/fastlmm/bed-reader/issues)
-- [**Mailing list**](https://mail.python.org/mailman3/lists/fastlmm-user.python.org)
-- [**Project Website**](https://fastlmm.github.io/)
+* [**Documentation**](http://fastlmm.github.io/bed-reader)
+* **Questions to**: [fastlmm-dev@python.org](mailto:fastlmm-dev@python.org)
+* [**Source code**](https://github.com/fastlmm/bed-reader)
+* [**PyPI**](https://pypi.org/project/bed-reader)
+* [**Bug reports**](https://github.com/fastlmm/bed-reader/issues)
+* [**Mailing list**](https://mail.python.org/mailman3/lists/fastlmm-user.python.org)
+* [**Project Website**](https://fastlmm.github.io/)
+* [**Change Log**](https://github.com/fastlmm/bed-reader/blob/master/CHANGELOG.md)

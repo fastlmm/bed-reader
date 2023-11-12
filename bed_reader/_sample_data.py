@@ -2,28 +2,31 @@ import tempfile
 from pathlib import Path
 from typing import Union
 
-import pooch
+try:
+    import pooch
 
-"""
-Load sample data.
-"""
+    """
+    Load sample data.
+    """
 
-POOCH = pooch.create(
-    # Use the default cache folder for the OS
-    path=pooch.os_cache("bed_reader"),
-    # The remote data is on Github
-    base_url="https://raw.githubusercontent.com/"
-    + "fastlmm/bed-reader/rustybed/bed_reader/tests/data/",
-    # If this is a development version, get the data from the master branch
-    version_dev="master",
-    # The registry specifies the files that can be fetched
-    env="BED_READER_DATA_DIR",
-)
+    POOCH = pooch.create(
+        # Use the default cache folder for the OS
+        path=pooch.os_cache("bed_reader"),
+        # The remote data is on Github
+        base_url="https://raw.githubusercontent.com/"
+        + "fastlmm/bed-reader/Oct2023/bed_reader/tests/data/",
+        # If this is a development version, get the data from the master branch
+        version_dev="master",
+        # The registry specifies the files that can be fetched
+        env="BED_READER_DATA_DIR",
+    )
 
-# Get registry file from package_data
-registry_file = Path(__file__).parent / "tests/registry.txt"
-# Load this registry file
-POOCH.load_registry(registry_file)
+    # Get registry file from package_data
+    registry_file = Path(__file__).parent / "tests/registry.txt"
+    # Load this registry file
+    POOCH.load_registry(registry_file)
+except ImportError:
+    pooch = None
 
 
 def sample_file(filepath: Union[str, Path]) -> str:
@@ -41,6 +44,14 @@ def sample_file(filepath: Union[str, Path]) -> str:
         Local name of sample .bed file.
 
 
+    .. note::
+        This function requires the :mod:`pooch` package. Install `pooch` with:
+
+        .. code-block:: bash
+
+            pip install --upgrade bed-reader[samples]
+
+
     By default this function puts files under the user's cache directory.
     Override this by setting
     the `BED_READER_DATA_DIR` environment variable.
@@ -50,12 +61,19 @@ def sample_file(filepath: Union[str, Path]) -> str:
 
     .. doctest::
 
+        >>> # pip install bed-reader[samples]  # if needed
         >>> from bed_reader import sample_file
         >>>
         >>> file_name = sample_file("small.bed")
         >>> print(f"The local file name is '{file_name}'")
         The local file name is '...small.bed'
     """
+    if pooch is None:
+        raise ImportError(
+            "The function sample_file() requires pooch. "
+            + "Install it with 'pip install --upgrade bed-reader[sample]'."
+        )
+
     filepath = Path(filepath)
     file_string = str(filepath)
     if file_string.lower().endswith(".bed"):

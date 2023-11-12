@@ -1,5 +1,6 @@
 use bed_reader::allclose;
 use bed_reader::assert_eq_nan;
+use bed_reader::assert_error_variant;
 use bed_reader::sample_bed_file;
 use bed_reader::sample_file;
 use bed_reader::sample_files;
@@ -17,7 +18,7 @@ use ndarray_rand::{rand::prelude::StdRng, rand::SeedableRng, rand_distr::Uniform
 use temp_testdir::TempDir;
 
 #[test]
-fn rusty_bed1() -> Result<(), BedErrorPlus> {
+fn rusty_bed1() -> Result<(), Box<BedErrorPlus>> {
     let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
     let mut bed = Bed::new(&file)?;
     let val = bed.read::<i8>()?;
@@ -32,7 +33,7 @@ fn rusty_bed1() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn rusty_bed2() -> Result<(), BedErrorPlus> {
+fn rusty_bed2() -> Result<(), Box<BedErrorPlus>> {
     let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
     let mut bed = Bed::new(file)?;
 
@@ -53,7 +54,7 @@ use std::collections::HashSet;
 use std::panic::catch_unwind;
 
 #[test]
-fn rusty_bed3() -> Result<(), BedErrorPlus> {
+fn rusty_bed3() -> Result<(), Box<BedErrorPlus>> {
     let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
     let mut bed = Bed::new(file)?;
     let iid_bool: nd::Array1<bool> = (0..bed.iid_count()?).map(|elem| (elem % 2) != 0).collect();
@@ -71,7 +72,7 @@ fn rusty_bed3() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn rusty_bed_allele() -> Result<(), BedErrorPlus> {
+fn rusty_bed_allele() -> Result<(), Box<BedErrorPlus>> {
     let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
     let mut bed = Bed::new(file)?;
     let val = ReadOptions::builder().count_a2().i8().read(&mut bed)?;
@@ -84,7 +85,7 @@ fn rusty_bed_allele() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn rusty_bed_order() -> Result<(), BedErrorPlus> {
+fn rusty_bed_order() -> Result<(), Box<BedErrorPlus>> {
     let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
     let mut bed = Bed::new(file)?;
     let val = ReadOptions::builder().c().i8().read(&mut bed)?;
@@ -97,25 +98,21 @@ fn rusty_bed_order() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn bad_header() -> Result<(), BedErrorPlus> {
+fn bad_header() -> Result<(), Box<BedErrorPlus>> {
     let filename = sample_file("badfile.bed")?;
     let bed = Bed::builder(&filename).skip_early_check().build()?;
     println!("{:?}", bed.path());
 
     let result = Bed::new(&filename);
-
-    match result {
-        Err(BedErrorPlus::BedError(BedError::IllFormed(_))) => (),
-        _ => panic!("test failure"),
-    };
+    assert_error_variant!(result, BedErrorPlus::BedError(BedError::IllFormed(_)));
 
     Ok(())
 }
 
 #[test]
-fn doc_test_test() -> Result<(), BedErrorPlus> {
+fn doc_test_test() -> Result<(), Box<BedErrorPlus>> {
     let file_name = sample_bed_file("small.bed")?;
-    let mut bed = Bed::new(&file_name)?;
+    let mut bed = Bed::new(file_name)?;
     let val = bed.read::<f64>()?;
     assert_eq_nan(
         &val,
@@ -149,7 +146,7 @@ fn doc_test_test() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn open_examples() -> Result<(), BedErrorPlus> {
+fn open_examples() -> Result<(), Box<BedErrorPlus>> {
     //     >>> from bed_reader import open_bed, sample_bed_file
     //     >>>
     //     >>> file_name = sample_bed_file("small.bed")
@@ -263,16 +260,16 @@ fn open_examples() -> Result<(), BedErrorPlus> {
     println!("{:?}", bed.iid()?);
 
     let result = bed.allele_2();
-    match result {
-        Err(BedErrorPlus::BedError(BedError::CannotUseSkippedMetadata(_))) => (),
-        _ => panic!("test failure"),
-    };
+    assert_error_variant!(
+        result,
+        BedErrorPlus::BedError(BedError::CannotUseSkippedMetadata(_))
+    );
 
     Ok(())
 }
 
 #[test]
-fn metadata_etc() -> Result<(), BedErrorPlus> {
+fn metadata_etc() -> Result<(), Box<BedErrorPlus>> {
     // >>> file_name = sample_bed_file("small.bed")
     // >>> with open_bed(file_name) as bed:
     // ...     print(bed.sex)
@@ -302,7 +299,7 @@ fn metadata_etc() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn hello_father() -> Result<(), BedErrorPlus> {
+fn hello_father() -> Result<(), Box<BedErrorPlus>> {
     let mut bed = Bed::builder(sample_bed_file("small.bed")?)
         .father(["f1", "f2", "f3"])
         .skip_mother()
@@ -315,7 +312,7 @@ fn hello_father() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn num_threads() -> Result<(), BedErrorPlus> {
+fn num_threads() -> Result<(), Box<BedErrorPlus>> {
     let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
     let mut bed = Bed::new(file)?;
 
@@ -328,7 +325,7 @@ fn num_threads() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn fam_and_bim() -> Result<(), BedErrorPlus> {
+fn fam_and_bim() -> Result<(), Box<BedErrorPlus>> {
     let deb_maf_mib = sample_files(["small.deb", "small.maf", "small.mib"])?;
     let mut bed = Bed::builder(&deb_maf_mib[0])
         .fam_path(&deb_maf_mib[1])
@@ -346,7 +343,7 @@ fn fam_and_bim() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn readme_examples() -> Result<(), BedErrorPlus> {
+fn readme_examples() -> Result<(), Box<BedErrorPlus>> {
     // Read genomic data from a .bed file.
 
     // >>> import numpy as np
@@ -424,7 +421,7 @@ fn readme_examples() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn write_docs() -> Result<(), BedErrorPlus> {
+fn write_docs() -> Result<(), Box<BedErrorPlus>> {
     // In this example, all properties are given.
 
     //     >>> from bed_reader import to_bed, tmp_path
@@ -495,7 +492,7 @@ fn write_docs() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn read_write() -> Result<(), BedErrorPlus> {
+fn read_write() -> Result<(), Box<BedErrorPlus>> {
     // with open_bed(shared_datadir / "small.bed") as bed:
     // val = bed.read()
     // properties = bed.properties
@@ -558,7 +555,7 @@ fn read_write() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn range() -> Result<(), BedErrorPlus> {
+fn range() -> Result<(), Box<BedErrorPlus>> {
     let file_name = sample_bed_file("small.bed")?;
     let mut bed = Bed::new(file_name)?;
     ReadOptions::builder().iid_index(0..2).i8().read(&mut bed)?;
@@ -575,7 +572,7 @@ fn range() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn nd_slice() -> Result<(), BedErrorPlus> {
+fn nd_slice() -> Result<(), Box<BedErrorPlus>> {
     let ndarray = nd::array![0, 1, 2, 3];
     println!("{:?}", ndarray.slice(nd::s![1..3])); // [1, 2]
     println!("{:?}", ndarray.slice(nd::s![1..3;-1])); // [2, 1]
@@ -610,7 +607,7 @@ fn nd_slice() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn skip_coverage() -> Result<(), BedErrorPlus> {
+fn skip_coverage() -> Result<(), Box<BedErrorPlus>> {
     let mut bed = Bed::builder(sample_bed_file("small.bed")?)
         .skip_fid()
         .skip_iid()
@@ -631,7 +628,7 @@ fn skip_coverage() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn into_iter() -> Result<(), BedErrorPlus> {
+fn into_iter() -> Result<(), Box<BedErrorPlus>> {
     let file_name = sample_bed_file("small.bed")?;
     let mut bed = Bed::builder(file_name)
         .fid(["sample1", "sample2", "sample3"])
@@ -653,7 +650,7 @@ fn into_iter() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn range_same() -> Result<(), BedErrorPlus> {
+fn range_same() -> Result<(), Box<BedErrorPlus>> {
     #[allow(clippy::reversed_empty_ranges)]
     assert_same_result(rt1(3..0), rt23((3..0).into()));
     assert_same_result(rt1(1000..), rt23((1000..).into()));
@@ -669,7 +666,7 @@ fn range_same() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn nd_slice_same() -> Result<(), BedErrorPlus> {
+fn nd_slice_same() -> Result<(), Box<BedErrorPlus>> {
     assert_same_result(nds1(s![1000..]), rt23(s![1000..].into()));
     assert_same_result(nds1(s![..1000]), rt23(s![..1000].into()));
     assert_same_result(nds1(s![999..1000]), rt23(s![999..1000].into()));
@@ -704,7 +701,7 @@ fn nd_slice_same() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn counts_and_files() -> Result<(), BedErrorPlus> {
+fn counts_and_files() -> Result<(), Box<BedErrorPlus>> {
     let file_name = sample_bed_file("small.bed")?;
 
     // We give the wrong number for iid_count and then expect an error
@@ -714,35 +711,35 @@ fn counts_and_files() -> Result<(), BedErrorPlus> {
     let iid_count = bed.iid_count()?;
     assert_eq!(iid_count, 4);
     let fid_result = bed.fid();
-    match fid_result {
-        Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => {}
-        _ => panic!("should be an error"),
-    }
+    assert_error_variant!(
+        fid_result,
+        BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))
+    );
 
-    match Bed::builder(&file_name)
-        .fid(["f1", "f1", "f1"])
-        .iid(["i1", "i2", "i3", "i4"])
-        .build()
-    {
-        Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => {}
-        _ => panic!("should be an error"),
-    }
+    assert_error_variant!(
+        Bed::builder(&file_name)
+            .fid(["f1", "f1", "f1"])
+            .iid(["i1", "i2", "i3", "i4"])
+            .build(),
+        BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))
+    );
 
     let mut bed = Bed::builder(&file_name)
         .bim_path(sample_file("small.bad_bim")?)
         .build()?;
-    match bed.sid() {
-        Err(BedErrorPlus::BedError(BedError::MetadataFieldCount(_, _, _))) => {}
-        _ => panic!("should be an error"),
-    }
+
+    assert_error_variant!(
+        bed.sid(),
+        BedErrorPlus::BedError(BedError::MetadataFieldCount(_, _, _))
+    );
 
     // We give the wrong number for iid_count and then expect an error
     let mut bed = Bed::builder(&file_name).iid_count(4).build()?;
     assert_eq!(bed.iid_count()?, 4);
-    match bed.iid() {
-        Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => {}
-        _ => panic!("should be an error"),
-    }
+    assert_error_variant!(
+        bed.iid(),
+        BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))
+    );
 
     let mut bed = Bed::builder(&file_name)
         .bim_path(sample_file("small.bim")?)
@@ -761,7 +758,7 @@ fn counts_and_files() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn bool_read() -> Result<(), BedErrorPlus> {
+fn bool_read() -> Result<(), Box<BedErrorPlus>> {
     let file_name = sample_bed_file("small.bed")?;
     let mut bed = Bed::new(file_name)?;
     let result = ReadOptions::builder()
@@ -769,10 +766,10 @@ fn bool_read() -> Result<(), BedErrorPlus> {
         .i8()
         .read(&mut bed);
     println!("{result:?}");
-    match result {
-        Err(BedErrorPlus::BedError(BedError::BoolArrayVectorWrongLength(_, _))) => {}
-        _ => panic!("should be an error"),
-    }
+    assert_error_variant!(
+        result,
+        BedErrorPlus::BedError(BedError::BoolArrayVectorWrongLength(_, _))
+    );
 
     let _val = ReadOptions::builder()
         .iid_index([false, false, true])
@@ -783,7 +780,7 @@ fn bool_read() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn i8_etc() -> Result<(), BedErrorPlus> {
+fn i8_etc() -> Result<(), Box<BedErrorPlus>> {
     let file_name = sample_bed_file("small.bed")?;
     let mut bed = Bed::new(file_name)?;
     let _val = ReadOptions::builder()
@@ -796,7 +793,7 @@ fn i8_etc() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn fill() -> Result<(), BedErrorPlus> {
+fn fill() -> Result<(), Box<BedErrorPlus>> {
     let file_name = sample_bed_file("small.bed")?;
     let mut bed = Bed::new(file_name)?;
     let read_options = ReadOptions::builder()
@@ -807,10 +804,10 @@ fn fill() -> Result<(), BedErrorPlus> {
 
     let mut val = nd::Array2::<i8>::default((3, 4));
     let result = bed.read_and_fill_with_options(&mut val.view_mut(), &read_options);
-    match result {
-        Err(BedErrorPlus::BedError(BedError::InvalidShape(_, _, _, _))) => {}
-        _ => panic!("should be an error"),
-    }
+    assert_error_variant!(
+        result,
+        BedErrorPlus::BedError(BedError::InvalidShape(_, _, _, _))
+    );
 
     let mut val = nd::Array2::<i8>::default((1, 4));
     bed.read_and_fill_with_options(&mut val.view_mut(), &read_options)?;
@@ -821,7 +818,7 @@ fn fill() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn read_options_builder() -> Result<(), BedErrorPlus> {
+fn read_options_builder() -> Result<(), Box<BedErrorPlus>> {
     let file_name = sample_bed_file("small.bed")?;
 
     let mut bed = Bed::new(file_name)?;
@@ -894,7 +891,7 @@ fn read_options_builder() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn bed_builder() -> Result<(), BedErrorPlus> {
+fn bed_builder() -> Result<(), Box<BedErrorPlus>> {
     let file_name = sample_bed_file("small.bed")?;
     let mut bed = Bed::builder(&file_name).build()?;
     println!("{:?}", bed.iid()?);
@@ -943,11 +940,11 @@ fn bed_builder() -> Result<(), BedErrorPlus> {
     println!("{:?}", bed.iid()?);
     bed.allele_2().expect_err("Can't be read");
 
-    Ok::<(), BedErrorPlus>(())
+    Ok::<(), Box<BedErrorPlus>>(())
 }
 
 #[test]
-fn negative_indexing() -> Result<(), BedErrorPlus> {
+fn negative_indexing() -> Result<(), Box<BedErrorPlus>> {
     let file_name = sample_bed_file("small.bed")?;
     let mut bed = Bed::new(&file_name)?;
     // println!("{:?}", bed.read::<f64>()?);
@@ -958,11 +955,14 @@ fn negative_indexing() -> Result<(), BedErrorPlus> {
     //  sid range is -5ERROR -4 ... 3 4ERROR
     for index in [-4, 3] {
         match ReadOptions::builder().iid_index(index).i8().read(&mut bed) {
-            Err(BedErrorPlus::BedError(BedError::IidIndexTooBig(x))) => {
-                assert_eq!(x, index);
-            }
-            _ => panic!("Expected specific error"),
-        };
+            Err(ref boxed_error) => match **boxed_error {
+                BedErrorPlus::BedError(BedError::IidIndexTooBig(x)) => {
+                    assert_eq!(x, index);
+                }
+                _ => panic!("test failure"),
+            },
+            _ => panic!("test failure"),
+        }
     }
     for index in [-3, 0] {
         let val = ReadOptions::builder()
@@ -983,11 +983,14 @@ fn negative_indexing() -> Result<(), BedErrorPlus> {
 
     for index in [-5, 4] {
         match ReadOptions::builder().sid_index(index).i8().read(&mut bed) {
-            Err(BedErrorPlus::BedError(BedError::SidIndexTooBig(x))) => {
-                assert_eq!(x, index);
-            }
-            _ => panic!("Expected specific error"),
-        };
+            Err(ref boxed_error) => match **boxed_error {
+                BedErrorPlus::BedError(BedError::SidIndexTooBig(x)) => {
+                    assert_eq!(x, index);
+                }
+                _ => panic!("test failure"),
+            },
+            _ => panic!("test failure"),
+        }
     }
     for index in [-4, 0] {
         let val = ReadOptions::builder()
@@ -1010,7 +1013,7 @@ fn negative_indexing() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn index_doc() -> Result<(), BedErrorPlus> {
+fn index_doc() -> Result<(), Box<BedErrorPlus>> {
     let file_name = sample_bed_file("some_missing.bed")?;
     let mut bed = Bed::new(file_name)?;
     println!("{:?}", bed.dim()?); // prints (100, 100)
@@ -1076,7 +1079,7 @@ fn index_doc() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn index_options() -> Result<(), BedErrorPlus> {
+fn index_options() -> Result<(), Box<BedErrorPlus>> {
     let mut bed = Bed::new(sample_bed_file("some_missing.bed")?)?;
     #[allow(clippy::let_unit_value)]
     let index: () = ();
@@ -1245,7 +1248,7 @@ fn index_options() -> Result<(), BedErrorPlus> {
 
     let index: std::ops::RangeFull = ..;
     let val = ReadOptions::builder()
-        .iid_index(&index)
+        .iid_index(index)
         .sid_index(index)
         .f64()
         .read(&mut bed)?;
@@ -1257,7 +1260,7 @@ fn index_options() -> Result<(), BedErrorPlus> {
 
     let index: std::ops::RangeTo<usize> = ..3;
     let val = ReadOptions::builder()
-        .iid_index(&index)
+        .iid_index(index)
         .sid_index(index)
         .f64()
         .read(&mut bed)?;
@@ -1269,7 +1272,7 @@ fn index_options() -> Result<(), BedErrorPlus> {
 
     let index: std::ops::RangeToInclusive<usize> = ..=19;
     let val = ReadOptions::builder()
-        .iid_index(&index)
+        .iid_index(index)
         .sid_index(index)
         .f64()
         .read(&mut bed)?;
@@ -1307,7 +1310,7 @@ fn index_options() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn set_metadata() -> Result<(), BedErrorPlus> {
+fn set_metadata() -> Result<(), Box<BedErrorPlus>> {
     let file_name = sample_bed_file("small.bed")?;
     let metadata = Metadata::builder()
         .iid(["iid1", "iid2", "iid3"])
@@ -1329,7 +1332,7 @@ fn set_metadata() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn metadata_print() -> Result<(), BedErrorPlus> {
+fn metadata_print() -> Result<(), Box<BedErrorPlus>> {
     let file_name = sample_bed_file("small.bed")?;
     let mut bed = Bed::new(file_name)?;
 
@@ -1362,7 +1365,7 @@ fn metadata_print() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn iid_index() -> Result<(), BedErrorPlus> {
+fn iid_index() -> Result<(), Box<BedErrorPlus>> {
     let file_name = sample_bed_file("some_missing.bed")?;
     let mut bed = Bed::new(file_name)?;
 
@@ -1415,7 +1418,7 @@ fn iid_index() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn write_options_metadata() -> Result<(), BedErrorPlus> {
+fn write_options_metadata() -> Result<(), Box<BedErrorPlus>> {
     // This test check interesting combinations of these options:
     // A: setting metadata (twice?)
     // B: giving val (early, late)
@@ -1443,10 +1446,10 @@ fn write_options_metadata() -> Result<(), BedErrorPlus> {
         .sid(["sid1", "sid2", "sid3", "sid4"])
         .build(3, 4);
     println!("{write_options_result:?}"); // Outputs field of iid
-    match write_options_result {
-        Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => (),
-        _ => panic!("test failure"),
-    };
+    assert_error_variant!(
+        write_options_result,
+        BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))
+    );
 
     // B early
     let val = nd::array![
@@ -1469,10 +1472,10 @@ fn write_options_metadata() -> Result<(), BedErrorPlus> {
     let write_options = WriteOptions::<f64>::builder(&output_file).build(3, 4)?;
     Bed::write_with_options(&val, &write_options)?;
     let result = Bed::write_with_options(&val2, &write_options);
-    match result {
-        Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => (),
-        _ => panic!("test failure"),
-    };
+    assert_error_variant!(
+        result,
+        BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))
+    );
 
     // C
     let write_options_result = WriteOptions::<f32>::builder(&output_file).build(3, 4);
@@ -1484,37 +1487,37 @@ fn write_options_metadata() -> Result<(), BedErrorPlus> {
     let write_options_result = WriteOptions::<f32>::builder(&output_file)
         .iid(["iid1", "iid2", "iid3"])
         .build(4, 4);
-    match write_options_result {
-        Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => (),
-        _ => panic!("test failure"),
-    };
+    assert_error_variant!(
+        write_options_result,
+        BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))
+    );
 
     // AB early inconsistent
     let result = WriteOptions::builder(&output_file)
         .iid(["iid1", "iid2", "iid3", "iid4"])
         .write(&val);
-    match result {
-        Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => (),
-        _ => panic!("test failure"),
-    };
+    assert_error_variant!(
+        result,
+        BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))
+    );
 
     // AB late inconsistent
     let write_options = WriteOptions::builder(&output_file)
         .iid(["iid1", "iid2", "iid3", "iid4"])
         .build(4, 4)?;
     let result = Bed::write_with_options(&val, &write_options);
-    match result {
-        Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => (),
-        _ => panic!("test failure"),
-    };
+    assert_error_variant!(
+        result,
+        BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))
+    );
 
     // BC late inconsistent
     let write_options = WriteOptions::builder(&output_file).build(4, 4)?;
     let result = Bed::write_with_options(&val, &write_options);
-    match result {
-        Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => (),
-        _ => panic!("test failure"),
-    };
+    assert_error_variant!(
+        result,
+        BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))
+    );
 
     // ABC early consistent
     WriteOptions::builder(&output_file)
@@ -1549,7 +1552,7 @@ fn write_options_metadata() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn metadata_use() -> Result<(), BedErrorPlus> {
+fn metadata_use() -> Result<(), Box<BedErrorPlus>> {
     // Extract metadata from a file.
     // Create a random file with the same metadata.
 
@@ -1571,7 +1574,7 @@ fn metadata_use() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn metadata_same() -> Result<(), BedErrorPlus> {
+fn metadata_same() -> Result<(), Box<BedErrorPlus>> {
     let iid_count = 1_000;
     let sid_count = 5_000;
     let file_count = 10;
@@ -1606,7 +1609,7 @@ fn metadata_same() -> Result<(), BedErrorPlus> {
 // structs: Metadata, Bed, ReadOptions, WriteOptions
 
 #[test]
-fn struct_play() -> Result<(), BedErrorPlus> {
+fn struct_play() -> Result<(), Box<BedErrorPlus>> {
     // Bed
     // can't construct Bed directly because some fields are private
     // can't change pub properties because there are none
@@ -1622,7 +1625,7 @@ fn struct_play() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn metadata_bed() -> Result<(), BedErrorPlus> {
+fn metadata_bed() -> Result<(), Box<BedErrorPlus>> {
     let file_name = sample_bed_file("small.bed")?;
     let mut bed = Bed::new(file_name)?;
     let metadata = bed.metadata()?;
@@ -1631,7 +1634,7 @@ fn metadata_bed() -> Result<(), BedErrorPlus> {
     Ok(())
 }
 
-fn rt1<R>(range_thing: R) -> Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>
+fn rt1<R>(range_thing: R) -> Result<Result<nd::Array2<i8>, Box<BedErrorPlus>>, Box<BedErrorPlus>>
 where
     R: std::ops::RangeBounds<usize>
         + std::fmt::Debug
@@ -1663,7 +1666,7 @@ where
 
 fn rt2(
     range_thing: bed_reader::Index,
-) -> Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus> {
+) -> Result<Result<nd::Array2<i8>, Box<BedErrorPlus>>, Box<BedErrorPlus>> {
     println!("Running {:?}", &range_thing);
     let file_name = sample_bed_file("toydata.5chrom.bed")?;
 
@@ -1687,7 +1690,9 @@ fn rt23(range_thing: bed_reader::Index) -> (RrArray2, RrUsize) {
     (rt2(range_thing.clone()), rt3(range_thing))
 }
 
-fn rt3(range_thing: bed_reader::Index) -> Result<Result<usize, BedErrorPlus>, BedErrorPlus> {
+fn rt3(
+    range_thing: bed_reader::Index,
+) -> Result<Result<usize, Box<BedErrorPlus>>, Box<BedErrorPlus>> {
     println!("Running {:?}", &range_thing);
     let file_name = sample_bed_file("toydata.5chrom.bed").unwrap();
 
@@ -1704,7 +1709,9 @@ fn rt3(range_thing: bed_reader::Index) -> Result<Result<usize, BedErrorPlus>, Be
     }
 }
 
-fn nds1(range_thing: SliceInfo1) -> Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus> {
+fn nds1(
+    range_thing: SliceInfo1,
+) -> Result<Result<nd::Array2<i8>, Box<BedErrorPlus>>, Box<BedErrorPlus>> {
     println!("Running {:?}", &range_thing);
     let file_name = sample_bed_file("toydata.5chrom.bed")?;
 
@@ -1727,8 +1734,8 @@ fn nds1(range_thing: SliceInfo1) -> Result<Result<nd::Array2<i8>, BedErrorPlus>,
     }
 }
 
-type RrArray2 = Result<Result<nd::Array2<i8>, BedErrorPlus>, BedErrorPlus>;
-type RrUsize = Result<Result<usize, BedErrorPlus>, BedErrorPlus>;
+type RrArray2 = Result<Result<nd::Array2<i8>, Box<BedErrorPlus>>, Box<BedErrorPlus>>;
+type RrUsize = Result<Result<usize, Box<BedErrorPlus>>, Box<BedErrorPlus>>;
 
 fn assert_same_result(result1: RrArray2, result23: (RrArray2, RrUsize)) {
     let result2 = result23.0;
@@ -1760,12 +1767,12 @@ fn assert_same_result(result1: RrArray2, result23: (RrArray2, RrUsize)) {
     assert!(result1.dim().0 == result3, "not same length");
 }
 
-fn is_err2<T>(result_result: &Result<Result<T, BedErrorPlus>, BedErrorPlus>) -> bool {
+fn is_err2<T>(result_result: &Result<Result<T, Box<BedErrorPlus>>, Box<BedErrorPlus>>) -> bool {
     !matches!(result_result, Ok(Ok(_)))
 }
 
 #[test]
-fn read_and_fill_with_options() -> Result<(), BedErrorPlus> {
+fn read_and_fill_with_options() -> Result<(), Box<BedErrorPlus>> {
     use bed_reader::assert_eq_nan;
     use bed_reader::{Bed, ReadOptions};
     use ndarray as nd;
@@ -1791,7 +1798,7 @@ fn read_and_fill_with_options() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn bed_builder_metadata() -> Result<(), BedErrorPlus> {
+fn bed_builder_metadata() -> Result<(), Box<BedErrorPlus>> {
     let file_name = sample_bed_file("small.bed")?;
 
     // show that can fine errors
@@ -1803,10 +1810,10 @@ fn bed_builder_metadata() -> Result<(), BedErrorPlus> {
         .fid(["f1", "f2", "f3", "f4"])
         .metadata(&metadata)
         .build();
-    match result {
-        Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => {}
-        _ => panic!("should have failed"),
-    }
+    assert_error_variant!(
+        result,
+        BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))
+    );
 
     let metadata = Metadata::builder()
         .iid(["i1", "i2", "i3"])
@@ -1837,7 +1844,7 @@ fn bed_builder_metadata() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn write_options_builder_metadata() -> Result<(), BedErrorPlus> {
+fn write_options_builder_metadata() -> Result<(), Box<BedErrorPlus>> {
     let output_folder = TempDir::default();
 
     let output_file = output_folder.join("small_m.bed");
@@ -1859,7 +1866,7 @@ fn write_options_builder_metadata() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn metadata_builder_metadata() -> Result<(), BedErrorPlus> {
+fn metadata_builder_metadata() -> Result<(), Box<BedErrorPlus>> {
     let metadata1 = Metadata::builder()
         .iid(["i1", "i2", "i3"])
         .sid(["s1", "s2", "s3", "s4"])
@@ -1877,7 +1884,7 @@ fn metadata_builder_metadata() -> Result<(), BedErrorPlus> {
     Ok(())
 }
 #[test]
-fn metadata_builder() -> Result<(), BedErrorPlus> {
+fn metadata_builder() -> Result<(), Box<BedErrorPlus>> {
     let metadata = Metadata::builder()
         .iid(["i1", "i2", "i3"])
         .sid(["s1", "s2", "s3", "s4"])
@@ -1896,7 +1903,7 @@ fn metadata_builder() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn metadata_read_fam_bim() -> Result<(), BedErrorPlus> {
+fn metadata_read_fam_bim() -> Result<(), Box<BedErrorPlus>> {
     let skip_set = HashSet::<MetadataFields>::new();
     let metadata_empty = Metadata::new();
     let (metadata_fam, iid_count) =
@@ -1912,7 +1919,7 @@ fn metadata_read_fam_bim() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn metadata_fill() -> Result<(), BedErrorPlus> {
+fn metadata_fill() -> Result<(), Box<BedErrorPlus>> {
     let metadata0 = Metadata::builder()
         .iid(["i1", "i2", "i3"])
         .sid(["s1", "s2", "s3", "s4"])
@@ -1926,7 +1933,7 @@ fn metadata_fill() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn metadata_fam_bim_write() -> Result<(), BedErrorPlus> {
+fn metadata_fam_bim_write() -> Result<(), Box<BedErrorPlus>> {
     let metadata0 = Metadata::builder()
         .iid(["i1", "i2", "i3"])
         .sid(["s1", "s2", "s3", "s4"])
@@ -1945,7 +1952,7 @@ fn metadata_fam_bim_write() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn metadata_iid_sid() -> Result<(), BedErrorPlus> {
+fn metadata_iid_sid() -> Result<(), Box<BedErrorPlus>> {
     let metadata = Metadata::builder().iid(["i1", "i2", "i3"]).build()?;
     println!("{0:?}", metadata.iid()); // Outputs optional ndarray Some(["i1", "i2", "i3"]...)
     println!("{0:?}", metadata.sid()); // Outputs None
@@ -1953,7 +1960,7 @@ fn metadata_iid_sid() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn read_options_properties() -> Result<(), BedErrorPlus> {
+fn read_options_properties() -> Result<(), Box<BedErrorPlus>> {
     let read_options = ReadOptions::builder().sid_index([2, 3, 0]).i8().build()?;
     assert_eq!(read_options.missing_value(), -127);
     println!("{0:?}", read_options.iid_index()); // Outputs 'All'
@@ -1972,7 +1979,7 @@ fn read_options_properties() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn write_options_properties() -> Result<(), BedErrorPlus> {
+fn write_options_properties() -> Result<(), Box<BedErrorPlus>> {
     let output_folder = TempDir::default();
     let output_file = output_folder.join("small.bed");
     let write_options = WriteOptions::builder(output_file)
@@ -2018,7 +2025,7 @@ fn write_options_properties() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn write_options_builder() -> Result<(), BedErrorPlus> {
+fn write_options_builder() -> Result<(), Box<BedErrorPlus>> {
     let output_folder = TempDir::default();
     let output_file = output_folder.join("small.bed");
     let val = nd::array![[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]];
@@ -2040,17 +2047,17 @@ fn write_options_builder() -> Result<(), BedErrorPlus> {
 
 // Bed, file set iid and fid and metadata and iid_count, and check if error is caught
 #[test]
-fn bed_inconsistent_count() -> Result<(), BedErrorPlus> {
+fn bed_inconsistent_count() -> Result<(), Box<BedErrorPlus>> {
     // Bed: fid vs metadata
     let metadata = Metadata::builder().iid(["f1", "f2", "f3", "f4"]).build()?;
     let result = Bed::builder(sample_bed_file("small.bed")?)
         .fid(["f1", "f2", "f3"])
         .metadata(&metadata)
         .build();
-    match result {
-        Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => {}
-        _ => panic!("should be an error"),
-    }
+    assert_error_variant!(
+        result,
+        BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))
+    );
 
     // Bed: file vs file:
     let mut bed = Bed::builder(sample_bed_file("small.bed")?)
@@ -2062,37 +2069,37 @@ fn bed_inconsistent_count() -> Result<(), BedErrorPlus> {
         .skip_pheno()
         .build()?;
     let result = bed.fid();
-    match result {
-        Err(BedErrorPlus::BedError(BedError::MetadataFieldCount(_, _, _))) => {}
-        _ => panic!("should be an error"),
-    }
+    assert_error_variant!(
+        result,
+        BedErrorPlus::BedError(BedError::MetadataFieldCount(_, _, _))
+    );
 
     // Bed: fid vs iid
     let result = Bed::builder(sample_bed_file("small.bed")?)
         .fid(["f1", "f2", "f3"])
         .iid(["i1", "i2", "i3", "i4"])
         .build();
-    match result {
-        Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => {}
-        _ => panic!("should be an error"),
-    }
+    assert_error_variant!(
+        result,
+        BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))
+    );
 
     // Bed: iid vs file
     let mut bed = Bed::builder(sample_bed_file("small.bed")?)
         .iid(["i1", "i2", "i3", "i4"])
         .build()?;
     let result = bed.fid();
-    match result {
-        Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => {}
-        _ => panic!("should be an error"),
-    }
+    assert_error_variant!(
+        result,
+        BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))
+    );
 
     Ok(())
 }
 
 // WriteOptions, file set iid and fid and metadata and iid_count, and check if error is caught
 #[test]
-fn write_options_inconsistent_count() -> Result<(), BedErrorPlus> {
+fn write_options_inconsistent_count() -> Result<(), Box<BedErrorPlus>> {
     let temp_out = TempDir::default();
     let output_file = temp_out.join("small.bed");
 
@@ -2103,10 +2110,10 @@ fn write_options_inconsistent_count() -> Result<(), BedErrorPlus> {
         .fid(["f1", "f2", "f3", "f4"])
         .metadata(&metadata)
         .build(3, 4);
-    match result {
-        Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => {}
-        _ => panic!("should be an error"),
-    }
+    assert_error_variant!(
+        result,
+        BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))
+    );
 
     // WriteOptions: metadata vs build
     let metadata = Metadata::builder().iid(["f1", "f2", "f3", "f4"]).build()?;
@@ -2114,26 +2121,26 @@ fn write_options_inconsistent_count() -> Result<(), BedErrorPlus> {
         .i8()
         .metadata(&metadata)
         .build(3, 4);
-    match result {
-        Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => {}
-        _ => panic!("should be an error"),
-    }
+    assert_error_variant!(
+        result,
+        BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))
+    );
 
     Ok(())
 }
 
 // MetadataBuilders
 #[test]
-fn metadata_inconsistent_count() -> Result<(), BedErrorPlus> {
+fn metadata_inconsistent_count() -> Result<(), Box<BedErrorPlus>> {
     let skip_set = HashSet::<MetadataFields>::new();
 
     // Metadata: iid vs file
     let metadata = Metadata::builder().iid(["i1", "i2", "i3", "i4"]).build()?;
     let result = metadata.read_fam(sample_file("small.fam")?, &skip_set);
-    match result {
-        Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => {}
-        _ => panic!("should be an error"),
-    }
+    assert_error_variant!(
+        result,
+        BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))
+    );
 
     // Metadata: fid vs metadata
     let metadata = Metadata::builder().iid(["f1", "f2", "f3", "f4"]).build()?;
@@ -2141,42 +2148,42 @@ fn metadata_inconsistent_count() -> Result<(), BedErrorPlus> {
         .fid(["f1", "f2", "f3"])
         .metadata(&metadata)
         .build();
-    match result {
-        Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => {}
-        _ => panic!("should be an error"),
-    }
+    assert_error_variant!(
+        result,
+        BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))
+    );
 
     // Metadata: file vs file:
     let metadata = Metadata::builder().build()?;
     let result = metadata.read_fam(sample_file("small.fam_bad")?, &skip_set);
-    match result {
-        Err(BedErrorPlus::BedError(BedError::MetadataFieldCount(_, _, _))) => {}
-        _ => panic!("should be an error"),
-    }
+    assert_error_variant!(
+        result,
+        BedErrorPlus::BedError(BedError::MetadataFieldCount(_, _, _))
+    );
 
     // Metadata: fid vs iid
     let result = Metadata::builder()
         .fid(["f1", "f2", "f3"])
         .iid(["i1", "i2", "i3", "i4"])
         .build();
-    match result {
-        Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => {}
-        _ => panic!("should be an error"),
-    }
+    assert_error_variant!(
+        result,
+        BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))
+    );
 
     // Metadata: iid vs fill
     let metadata = Metadata::builder().iid(["i1", "i2", "i3", "i4"]).build()?;
     let result = metadata.fill(3, 4);
-    match result {
-        Err(BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))) => {}
-        _ => panic!("should be an error"),
-    }
+    assert_error_variant!(
+        result,
+        BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))
+    );
 
     Ok(())
 }
 
 #[test]
-fn write_options_examples() -> Result<(), BedErrorPlus> {
+fn write_options_examples() -> Result<(), Box<BedErrorPlus>> {
     let output_folder = TempDir::default();
     let output_file = output_folder.join("small.bed");
     let write_options = WriteOptions::builder(output_file)
@@ -2192,21 +2199,18 @@ fn write_options_examples() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn parsing_metadata() -> Result<(), BedErrorPlus> {
+fn parsing_metadata() -> Result<(), Box<BedErrorPlus>> {
     let bed_fam_bim = sample_files(["small.bed", "small.fam", "small.bim_bad_positions.bim"])?;
     let mut bed = Bed::builder(&bed_fam_bim[0])
         .bim_path(&bed_fam_bim[2])
         .build()?;
     let result = bed.cm_position();
-    match result {
-        Err(BedErrorPlus::ParseIntError(_)) => {}
-        _ => panic!("should be an error"),
-    }
+    assert_error_variant!(result, BedErrorPlus::ParseIntError(_));
     Ok(())
 }
 
 #[test]
-fn read_fam() -> Result<(), BedErrorPlus> {
+fn read_fam() -> Result<(), Box<BedErrorPlus>> {
     let skip_set = HashSet::<MetadataFields>::new();
     let metadata_empty = Metadata::new();
     let (metadata_fam, _) = metadata_empty.read_fam(sample_file("small.fam")?, &skip_set)?;
@@ -2216,7 +2220,7 @@ fn read_fam() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn lib_intro() -> Result<(), BedErrorPlus> {
+fn lib_intro() -> Result<(), Box<BedErrorPlus>> {
     let file_name = sample_bed_file("some_missing.bed")?;
 
     let mut bed = Bed::new(file_name)?;
@@ -2233,7 +2237,7 @@ fn lib_intro() -> Result<(), BedErrorPlus> {
 }
 
 #[test]
-fn metadata_iid_sid2() -> Result<(), BedErrorPlus> {
+fn metadata_iid_sid2() -> Result<(), Box<BedErrorPlus>> {
     let metadata = Metadata::builder()
         .iid(["sample1", "sample2", "sample3"])
         .build()?;

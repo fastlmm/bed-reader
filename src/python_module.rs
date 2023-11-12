@@ -25,9 +25,9 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         pyo3::import_exception!(io, UnsupportedOperation);
     }
 
-    impl std::convert::From<BedErrorPlus> for PyErr {
-        fn from(err: BedErrorPlus) -> PyErr {
-            match err {
+    impl std::convert::From<Box<BedErrorPlus>> for PyErr {
+        fn from(err: Box<BedErrorPlus>) -> PyErr {
+            match *err {
                 BedErrorPlus::BedError(BedError::IidIndexTooBig(_))
                 | BedErrorPlus::BedError(BedError::SidIndexTooBig(_))
                 | BedErrorPlus::BedError(BedError::IndexMismatch(_, _, _, _))

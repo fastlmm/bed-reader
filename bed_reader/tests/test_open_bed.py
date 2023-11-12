@@ -10,6 +10,8 @@ from bed_reader import open_bed, subset_f64_f64, to_bed
 
 
 def test_read1(shared_datadir):
+    import math
+
     file = shared_datadir / "plink_sim_10s_100v_10pmiss.bed"
     with open_bed(file) as bed:
         assert bed.iid_count == 10
@@ -18,9 +20,10 @@ def test_read1(shared_datadir):
         assert bed.shape == (10, 100)
 
         val = bed.read(dtype="int8")
-        assert (
-            val.mean() == -13.142
-        )  # really shouldn't do mean on data where -127 represents missing
+        # really shouldn't do mean on data where -127 represents missing
+        assert val.mean() == -13.142
+        val_sparse = bed.read_sparse(dtype="int8")
+        assert math.isclose(val_sparse.mean(), -13.142, rel_tol=1e-9)
         assert bed.chromosome[-1] == "1"
         assert bed.bp_position[-1] == 100
 
@@ -41,6 +44,8 @@ def test_write(tmp_path, shared_datadir):
         to_bed(out_file, val0, properties=properties0)
         with open_bed(out_file) as bed1:
             assert np.allclose(val0, bed1.read(), equal_nan=True)
+            val_sparse = bed1.read_sparse()
+            assert np.allclose(val0, val_sparse.toarray(), equal_nan=True)
             assert np.array_equal(bed.fid, properties0["fid"])
             assert np.array_equal(bed.iid, properties0["iid"])
             assert np.array_equal(bed.sid, properties0["sid"])
@@ -174,6 +179,8 @@ def test_bad_dtype_or_order(shared_datadir):
         open_bed(shared_datadir / "some_missing.bed").read(dtype=np.int32)
     with pytest.raises(ValueError):
         open_bed(shared_datadir / "some_missing.bed").read(order="X")
+    with pytest.raises(ValueError):
+        open_bed(shared_datadir / "some_missing.bed").read_sparse(dtype=np.int32)
 
 
 def setting_generator(seq_dict, seed=9392):
@@ -262,6 +269,8 @@ def test_properties(shared_datadir):
                 len(iid_list),
                 len(sid_list),
             )
+            val_sparse = bed.read_sparse()
+            assert np.allclose(val, val_sparse.toarray(), equal_nan=True)
             if settings["iid_after_read"]:
                 if _not_set_to_none(settings, "iid"):
                     assert np.array_equal(bed.iid, iid_list)
@@ -281,7 +290,7 @@ def test_properties(shared_datadir):
 
 
 def test_c_reader_bed(shared_datadir):
-    for force_python_only in [False, True]:
+    for force_python_only, format in [(False, "csc"), (True, "csr")]:
         bed = open_bed(shared_datadir / "some_missing.bed", count_A1=False)
 
         val = bed.read(order="F", force_python_only=force_python_only)
@@ -289,6 +298,12 @@ def test_c_reader_bed(shared_datadir):
         ref_val = reference_val(shared_datadir)
         ref_val = ref_val * -1 + 2
         assert np.allclose(ref_val, val, rtol=1e-05, atol=1e-05, equal_nan=True)
+
+        val_sparse = bed.read_sparse(format=format)
+        assert val_sparse.dtype == np.float32
+        assert np.allclose(
+            ref_val, val_sparse.toarray(), rtol=1e-05, atol=1e-05, equal_nan=True
+        )
 
         val = bed.read(order="F", dtype="int8", force_python_only=False)
         assert val.dtype == np.int8
@@ -304,6 +319,10 @@ def test_c_reader_bed(shared_datadir):
             )
             ref_val = reference_val(shared_datadir)
             assert np.allclose(ref_val, val, rtol=1e-05, atol=1e-05, equal_nan=True)
+            val_sparse = bed.read_sparse(dtype="float64")
+            assert np.allclose(
+                ref_val, val_sparse.toarray(), rtol=1e-05, atol=1e-05, equal_nan=True
+            )
 
 
 def reference_val(shared_datadir):
@@ -314,7 +333,7 @@ def reference_val(shared_datadir):
 def test_bed_int8(tmp_path, shared_datadir):
     with open_bed(shared_datadir / "some_missing.bed") as bed:
         for force_python_only in [False, True]:
-            for order in ["F", "C"]:
+            for order, format in [("F", "csc"), ("C", "csr")]:
                 val = bed.read(
                     dtype="int8", force_python_only=force_python_only, order=order
                 )
@@ -341,12 +360,18 @@ def test_bed_int8(tmp_path, shared_datadir):
                             ),
                             ref_val,
                         )
+                        val_sparse = bed2.read_sparse(dtype="int8", format=format)
+                        assert np.allclose(val_sparse.toarray(), ref_val)
 
 
 def test_write1_bed_f64cpp(tmp_path, shared_datadir):
     with open_bed(shared_datadir / "some_missing.bed") as bed:
         for iid_index in [0, 1, 5]:
-            for force_python_only in [False, True]:
+            for force_python_only, format in [(False, "csc"), (True, "csr")]:
+                val_sparse = bed.read_sparse(
+                    np.s_[0:iid_index, :], dtype=np.float64, format=format
+                )
+                assert val_sparse.shape == (iid_index, 100)
                 val = bed.read(
                     np.s_[0:iid_index, :],
                     order="F",
@@ -358,12 +383,13 @@ def test_write1_bed_f64cpp(tmp_path, shared_datadir):
                 to_bed(output, val, count_A1=False)
                 val2 = open_bed(output, count_A1=False).read(dtype="float64")
                 assert np.allclose(val, val2, equal_nan=True)
+            assert np.allclose(val_sparse.toarray(), val2, equal_nan=True)
 
 
 def test_write1_x_x_cpp(tmp_path, shared_datadir):
     for count_A1 in [False, True]:
         with open_bed(shared_datadir / "some_missing.bed", count_A1=count_A1) as bed:
-            for order in ["C", "F"]:
+            for order, format in [("F", "csc"), ("C", "csr")]:
                 for dtype in [np.float32, np.float64]:
                     val = bed.read(order=order, dtype=dtype)
                     properties = bed.properties
@@ -377,16 +403,22 @@ def test_write1_x_x_cpp(tmp_path, shared_datadir):
                     to_bed(output, val, properties=properties, count_A1=count_A1)
                     val2 = open_bed(output, count_A1=count_A1).read(dtype=dtype)
                     assert np.allclose(val, val2, equal_nan=True)
+                    val_sparse = open_bed(output, count_A1=count_A1).read_sparse(
+                        dtype=dtype, format=format
+                    )
+                    assert np.allclose(val, val_sparse.toarray(), equal_nan=True)
 
 
 def test_respect_read_inputs(shared_datadir):
+    import scipy.sparse as sparse
+
     ref_val_float = reference_val(shared_datadir)
     ref_val_float2 = ref_val_float.copy()
     ref_val_float2[ref_val_float != ref_val_float] = -127
     ref_val_int8 = ref_val_float2.astype("int8")
 
     with open_bed(shared_datadir / "some_missing.bed") as bed:
-        for order in ["F", "C"]:
+        for order, format in [("F", "csc"), ("C", "csr")]:
             for dtype in [np.int8, np.float32, np.float64]:
                 for force_python_only in [True, False]:
                     val = bed.read(
@@ -398,6 +430,13 @@ def test_respect_read_inputs(shared_datadir):
                     assert val.dtype == dtype and has_right_order
                     ref_val = ref_val_int8 if dtype == np.int8 else ref_val_float
                     assert np.allclose(ref_val, val, equal_nan=True)
+
+                val_sparse = bed.read_sparse(dtype=dtype, format=format)
+                has_right_format = (
+                    format == "csc" and isinstance(val_sparse, sparse.csc_matrix)
+                ) or (format == "csr" and isinstance(val_sparse, sparse.csr_matrix))
+                assert val_sparse.dtype == dtype and has_right_format
+                assert np.allclose(ref_val, val_sparse.toarray(), equal_nan=True)
 
 
 def test_threads(shared_datadir):
@@ -412,6 +451,8 @@ def test_threads(shared_datadir):
         ) as bed:
             val = bed.read(dtype="int8")
             assert np.allclose(ref_val_int8, val, equal_nan=True)
+            val_sparse = bed.read_sparse(dtype="int8")
+            assert np.allclose(ref_val_int8, val_sparse.toarray(), equal_nan=True)
 
 
 def test_write12(tmp_path):
@@ -507,45 +548,84 @@ def test_index(shared_datadir):
     with open_bed(shared_datadir / "some_missing.bed") as bed:
         val = bed.read()
         assert np.allclose(ref_val_float, val, equal_nan=True)
+        val_sparse = bed.read_sparse()
+        assert np.allclose(ref_val_float, val_sparse.toarray(), equal_nan=True)
 
         val = bed.read(2)
         assert np.allclose(ref_val_float[:, [2]], val, equal_nan=True)
+        val_sparse = bed.read_sparse(2)
+        assert np.allclose(ref_val_float[:, [2]], val_sparse.toarray(), equal_nan=True)
 
         val = bed.read((2))
         assert np.allclose(ref_val_float[:, [2]], val, equal_nan=True)
+        val_sparse = bed.read_sparse((2))
+        assert np.allclose(ref_val_float[:, [2]], val_sparse.toarray(), equal_nan=True)
 
         val = bed.read((None, 2))
         assert np.allclose(ref_val_float[:, [2]], val, equal_nan=True)
+        val_sparse = bed.read_sparse((None, 2))
+        assert np.allclose(ref_val_float[:, [2]], val_sparse.toarray(), equal_nan=True)
 
         val = bed.read((1, 2))
         assert np.allclose(ref_val_float[[1], [2]], val, equal_nan=True)
+        val_sparse = bed.read_sparse((1, 2))
+        assert np.allclose(
+            ref_val_float[[1], [2]], val_sparse.toarray(), equal_nan=True
+        )
 
         val = bed.read([2, -2])
         assert np.allclose(ref_val_float[:, [2, -2]], val, equal_nan=True)
+        val_sparse = bed.read_sparse([2, -2])
+        assert np.allclose(
+            ref_val_float[:, [2, -2]], val_sparse.toarray(), equal_nan=True
+        )
 
         val = bed.read(([1, -1], [2, -2]))
         assert np.allclose(ref_val_float[[1, -1], :][:, [2, -2]], val, equal_nan=True)
+        val_sparse = bed.read_sparse(([1, -1], [2, -2]))
+        assert np.allclose(
+            ref_val_float[[1, -1], :][:, [2, -2]], val_sparse.toarray(), equal_nan=True
+        )
 
         iid_bool = ([False, False, True] * bed.iid_count)[: bed.iid_count]
         sid_bool = ([True, False, True] * bed.sid_count)[: bed.sid_count]
         val = bed.read(sid_bool)
         assert np.allclose(ref_val_float[:, sid_bool], val, equal_nan=True)
+        val_sparse = bed.read_sparse(sid_bool)
+        assert np.allclose(
+            ref_val_float[:, sid_bool], val_sparse.toarray(), equal_nan=True
+        )
 
         val = bed.read((iid_bool, sid_bool))
         assert np.allclose(ref_val_float[iid_bool, :][:, sid_bool], val, equal_nan=True)
+        val_sparse = bed.read_sparse((iid_bool, sid_bool))
 
         val = bed.read((1, sid_bool))
         assert np.allclose(ref_val_float[[1], :][:, sid_bool], val, equal_nan=True)
+        val_sparse = bed.read_sparse((1, sid_bool))
+        assert np.allclose(
+            ref_val_float[[1], :][:, sid_bool], val_sparse.toarray(), equal_nan=True
+        )
 
         slicer = np.s_[::2, ::3]
         val = bed.read(slicer[1])
         assert np.allclose(ref_val_float[:, slicer[1]], val, equal_nan=True)
+        val_sparse = bed.read_sparse(slicer[1])
+        assert np.allclose(
+            ref_val_float[:, slicer[1]], val_sparse.toarray(), equal_nan=True
+        )
 
         val = bed.read(slicer)
         assert np.allclose(ref_val_float[slicer], val, equal_nan=True)
+        val_sparse = bed.read_sparse(slicer)
+        assert np.allclose(ref_val_float[slicer], val_sparse.toarray(), equal_nan=True)
 
         val = bed.read((1, slicer[1]))
         assert np.allclose(ref_val_float[[1], slicer[1]], val, equal_nan=True)
+        val_sparse = bed.read_sparse((1, slicer[1]))
+        assert np.allclose(
+            ref_val_float[[1], slicer[1]], val_sparse.toarray(), equal_nan=True
+        )
 
 
 def test_shape(shared_datadir):
@@ -554,7 +634,7 @@ def test_shape(shared_datadir):
 
 
 def test_zero_files(tmp_path):
-    for force_python_only in [False, True]:
+    for force_python_only, format in [(False, "csc"), (True, "csr")]:
         for iid_count in [3, 0]:
             for sid_count in [0, 5]:
                 for dtype in [np.int8, np.float32, np.float64]:
@@ -571,6 +651,8 @@ def test_zero_files(tmp_path):
                     with open_bed(filename) as bed2:
                         val2 = bed2.read(dtype=dtype)
                         assert np.allclose(val, val2, equal_nan=True)
+                        val_sparse = bed2.read_sparse(dtype=dtype, format=format)
+                        assert np.allclose(val, val_sparse.toarray(), equal_nan=True)
                         properties2 = bed2.properties
                         for prop in properties2.values():
                             assert len(prop) in {iid_count, sid_count}
@@ -591,6 +673,8 @@ def test_zero_files(tmp_path):
                     with open_bed(filename) as bed3:
                         val3 = bed3.read(dtype=dtype)
                         assert np.allclose(val, val3, equal_nan=True)
+                        val_sparse = bed3.read_sparse(dtype=dtype, format=format)
+                        assert np.allclose(val, val_sparse.toarray(), equal_nan=True)
                         properties3 = bed3.properties
                         for key2, value_list2 in properties2.items():
                             value_list3 = properties3[key2]
@@ -622,6 +706,7 @@ def test_sample_file():
         print(bed.iid)
         print(bed.sid)
         print(bed.read())
+        print(bed.read_sparse())
 
 
 def test_coverage2(shared_datadir, tmp_path):
@@ -644,10 +729,11 @@ def test_coverage2(shared_datadir, tmp_path):
 
 
 def test_coverage3(shared_datadir, tmp_path):
-    with open_bed(
-        shared_datadir / "small.bed", properties={"sex": [1.0, np.nan, 1.0, 2.0]}
-    ) as bed:
-        assert np.array_equal(bed.sex, np.array([1, 0, 1, 2]))
+    with pytest.warns(RuntimeWarning, match="invalid value encountered in cast"):
+        with open_bed(
+            shared_datadir / "small.bed", properties={"sex": [1.0, np.nan, 1.0, 2.0]}
+        ) as bed:
+            assert np.array_equal(bed.sex, np.array([1, 0, 1, 2]))
 
     with open_bed(
         shared_datadir / "small.bed",
@@ -662,6 +748,7 @@ def test_coverage3(shared_datadir, tmp_path):
     to_bed(output_file, np.array([list], dtype=np.float16))
     with open_bed(output_file) as bed:
         assert np.allclose(bed.read(), [list], equal_nan=True)
+        assert np.allclose(bed.read_sparse().toarray(), [list], equal_nan=True)
 
 
 def test_nones(shared_datadir, tmp_path):
@@ -701,8 +788,10 @@ def test_fam_bim_filepath(shared_datadir, tmp_path):
 
     with open_bed(output_file, fam_filepath=fam_file, bim_filepath=bim_file) as deb:
         val2 = deb.read()
-        properties2 = deb.properties
         assert np.allclose(val, val2, equal_nan=True)
+        val_sparse = deb.read_sparse()
+        assert np.allclose(val, val_sparse.toarray(), equal_nan=True)
+        properties2 = deb.properties
         for key in properties:
             np.array_equal(properties[key], properties2[key])
 
@@ -748,13 +837,18 @@ def test_env(shared_datadir):
         os.environ[key] = "1"
         with open_bed(shared_datadir / "some_missing.bed") as bed:
             _ = bed.read(np.s_[:100, :100])
+            _ = bed.read_sparse(np.s_[:100, :100])
         os.environ[key] = "10"
         with open_bed(shared_datadir / "some_missing.bed") as bed:
             _ = bed.read(np.s_[:100, :100])
+            _ = bed.read_sparse(np.s_[:100, :100])
         os.environ[key] = "BADVALUE"
         with pytest.raises(ValueError):
             with open_bed(shared_datadir / "some_missing.bed") as bed:
                 _ = bed.read(np.s_[:100, :100])
+        with pytest.raises(ValueError):
+            with open_bed(shared_datadir / "some_missing.bed") as bed:
+                _ = bed.read_sparse(np.s_[:100, :100])
     finally:
         if original_val is None:
             if key in os.environ:
@@ -791,6 +885,50 @@ def test_bed_reading_example():
     with open_bed(file_name, count_A1=False) as bed:
         val = bed.read(index=np.s_[:, :3], dtype="int8", order="C", num_threads=1)
         print(val.shape)
+
+
+def test_sparse():
+    import numpy as np
+
+    from bed_reader import open_bed, sample_file
+
+    file_name = sample_file("small.bed")
+    with open_bed(file_name, count_A1=False) as bed:
+        val_sparse = bed.read_sparse(index=np.s_[:, :3], dtype="int8")
+        print(val_sparse.shape)
+
+
+def test_convert_to_dtype():
+    from bed_reader._open_bed import _convert_to_dtype
+
+    input = [
+        [["a", "b", "c"], ["a", "b", "c"], None, None],
+        [["1.0", "2.0", "3.0"], ["1.0", "2.0", "3.0"], [1, 2, 3], [1.0, 2.0, 3.0]],
+        [["1.0", "2.0", "3.5"], ["1.0", "2.0", "3.5"], None, [1.0, 2.0, 3.5]],
+        [["1", "2", "3"], ["1", "2", "3"], [1, 2, 3], [1.0, 2.0, 3.0]],
+        [["1", "A", "3"], ["1", "A", "3"], None, None],
+    ]
+    # convert all to np.array
+    input = [
+        [np.array(inner) if inner is not None else None for inner in outer]
+        for outer in input
+    ]
+
+    for ori, exp_str, exp_int, exp_float in input:
+        for dtype, exp in (
+            [np.str_, exp_str],
+            [np.int32, exp_int],
+            [
+                np.float32,
+                exp_float,
+            ],
+        ):
+            try:
+                actual = _convert_to_dtype(ori, dtype)
+                assert np.array_equal(actual, exp)
+            except ValueError as e:
+                print(e)
+                assert exp is None
 
 
 if __name__ == "__main__":
