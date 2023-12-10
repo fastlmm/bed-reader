@@ -148,12 +148,14 @@ dependencies = [
  "anyinput",
  "approx 0.5.1",
  "base16ct 0.2.0",
+ "bytecount",
  "byteorder",
  "ctor 0.2.0",
  "derive_builder",
  "directories 5.0.1",
  "dpc-pariter",
  "fetch-data",
+ "futures-util",
  "ndarray",
  "ndarray-npy",
  "ndarray-rand",
@@ -191,6 +193,12 @@ name = "bumpalo"
 version = "3.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c1ad822118d20d2c234f427000d5acc36eabe1e29a348c89b63dd60b13f28e5d"
+
+[[package]]
+name = "bytecount"
+version = "0.6.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e1e5f035d16fc623ae5f74981db80a439803888314e3a555fd6f04acd51a3205"
 
 [[package]]
 name = "bytemuck"

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::{collections::HashSet, path::PathBuf};
 
-use object_store::buffered::BufReader;
+use object_store::ObjectMeta;
 use object_store::{path::Path, ObjectStore};
 
 use crate::Metadata;
@@ -15,6 +15,8 @@ where
     pub(crate) store: Arc<T>,
 
     pub(crate) path: Path,
+
+    pub(crate) object_meta: ObjectMeta,
 
     pub(crate) fam_path: Option<PathBuf>,
 
@@ -35,21 +37,21 @@ impl<T> BedCloud<T>
 where
     T: ObjectStore,
 {
-    // #[anyinput]
-    async fn count_lines(&self, path: Path) -> Result<usize, anyhow::Error> {
-        let data = self.store.get(&path).await?;
+    // // #[anyinput]
+    // async fn count_lines(&self, path: Path) -> Result<usize, anyhow::Error> {
+    //     let data = self.store.get(&path).await?;
 
-        // Create an async reader from the bytes stream
-        let reader = BufReader::new(data);
+    //     // Create an async reader from the bytes stream
+    //     let reader = BufReader::new(data);
 
-        // Count lines
-        let mut line_count = 0;
-        let mut line = String::new();
-        while reader.read_line(&mut line).await? != 0 {
-            line_count += 1;
-            line.clear();
-        }
+    //     // Count lines
+    //     let mut line_count = 0;
+    //     let mut line = String::new();
+    //     while reader.read_line(&mut line).await? != 0 {
+    //         line_count += 1;
+    //         line.clear();
+    //     }
 
-        Ok(line_count)
-    }
+    //     Ok(line_count)
+    // }
 }

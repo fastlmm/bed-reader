@@ -49,7 +49,11 @@ use ndarray::ShapeBuilder;
 use ndarray_npy::read_npy;
 #[cfg(test)]
 use num_traits::abs;
+#[cfg(test)]
+use object_store::delimited::newline_delimited_stream;
+#[cfg(test)]
 use object_store::local::LocalFileSystem;
+#[cfg(test)]
 use std::collections::HashSet;
 #[cfg(test)]
 use std::f32;
@@ -127,13 +131,13 @@ fn read_test() {
 
 #[test]
 fn rest_reader_bed() -> Result<(), Box<BedErrorPlus>> {
-    let file = sample_bed_file("some_missing.bed")?;
+    let file = sample_bed_file("some_missing.bed").unwrap();
     let is_a1_counted = false;
 
     let ref_val = reference_val(is_a1_counted);
     let ref_val_i8 = reference_val_i8(is_a1_counted);
 
-    let mut bed = Bed::new(file)?;
+    let mut bed = Bed::new(file).unwrap();
     let val = ReadOptions::builder()
         .is_a1_counted(is_a1_counted)
         .f32()
@@ -1229,6 +1233,7 @@ fn object_store_bed0() -> anyhow::Result<()> {
 fn object_store_bed1() -> anyhow::Result<()> {
     // use object_store::{local::LocalFileSystem, path::Path, ObjectStore};
     use crate::bed_cloud::BedCloud;
+    use object_store::ObjectStore;
     use tokio::runtime::Runtime;
 
     let rt = Runtime::new()?;
@@ -1236,11 +1241,19 @@ fn object_store_bed1() -> anyhow::Result<()> {
     // cmk00 see https://docs.rs/object_store/latest/object_store/ "// Fetch the object including metadata"
 
     rt.block_on(async {
-        let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
+        let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed").unwrap();
+        // replace bed extension with fam
+        let file = file.with_extension("fam");
+
+        let store = Arc::new(LocalFileSystem::new());
+        let path = object_store::path::Path::from_filesystem_path(file).unwrap();
+        let object_meta = store.head(&path).await.unwrap();
+        use futures_util::stream::StreamExt;
 
         let mut bed_cloud = BedCloud::<LocalFileSystem> {
-            store: Arc::new(LocalFileSystem::new()),
-            path: object_store::path::Path::from_filesystem_path(file)?,
+            store,
+            path,
+            object_meta,
             fam_path: None,
             bim_path: None,
             is_checked_early: false,
@@ -1250,15 +1263,45 @@ fn object_store_bed1() -> anyhow::Result<()> {
             skip_set: HashSet::new(),
         };
 
-        // let mut bed = Bed::new(&file)?;
-        let val = bed.read::<i8>()?;
-        let mean = val.mapv(|elem| elem as f64).mean().unwrap();
-        assert!(mean == -13.142); // really shouldn't do mean on data where -127 represents missing
+        let stream = bed_cloud
+            .store
+            .clone()
+            .get(&bed_cloud.path)
+            .await
+            .unwrap()
+            .into_stream();
 
-        let mut bed = Bed::new(&file)?;
-        let val = ReadOptions::builder().count_a2().i8().read(&mut bed)?;
-        let mean = val.mapv(|elem| elem as f64).mean().unwrap();
-        assert!(mean == -13.274); // really shouldn't do mean on data where -127 represents missing
-        Ok(())
-    })
+        // Create a stream of newline-delimited data
+        let new_line_stream = newline_delimited_stream(stream);
+
+        let mut newline_count = 0;
+        let mut errors_encountered = 0;
+
+        // Process each item in the stream
+        new_line_stream
+            .for_each(|item| {
+                async move {
+                    match item {
+                        Ok(bytes) => {
+                            // Count the number of newline characters in this chunk
+                            newline_count += bytecount::count(&bytes, b'\n');
+                        }
+                        Err(_) => {
+                            // Handle the error (e.g., increment an error counter or log the error)
+                            errors_encountered += 1;
+                        }
+                    }
+                }
+            })
+            .await;
+
+        if errors_encountered > 0 {
+            // Decide how to handle the errors
+            // For example, you could return an error if any were encountered
+            panic!("Errors encountered while processing the stream");
+        } else {
+            assert_eq!(newline_count, 10);
+        }
+    });
+    Ok(())
 }
