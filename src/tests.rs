@@ -1234,6 +1234,7 @@ fn object_store_bed1() -> anyhow::Result<()> {
     // use object_store::{local::LocalFileSystem, path::Path, ObjectStore};
     use crate::bed_cloud::BedCloud;
     use object_store::ObjectStore;
+    use std::sync::atomic::{AtomicUsize, Ordering};
     use tokio::runtime::Runtime;
 
     let rt = Runtime::new()?;
@@ -1274,33 +1275,32 @@ fn object_store_bed1() -> anyhow::Result<()> {
         // Create a stream of newline-delimited data
         let new_line_stream = newline_delimited_stream(stream);
 
-        let mut newline_count = 0;
-        let mut errors_encountered = 0;
+        let newline_count = AtomicUsize::new(0);
+        let errors_encountered = AtomicUsize::new(0);
 
         // Process each item in the stream
         new_line_stream
             .for_each(|item| {
+                let newline_count_ref = &newline_count;
+                let errors_encountered_ref = &errors_encountered;
                 async move {
                     match item {
                         Ok(bytes) => {
-                            // Count the number of newline characters in this chunk
-                            newline_count += bytecount::count(&bytes, b'\n');
+                            let count = bytecount::count(&bytes, b'\n');
+                            newline_count_ref.fetch_add(count, Ordering::SeqCst);
                         }
                         Err(_) => {
-                            // Handle the error (e.g., increment an error counter or log the error)
-                            errors_encountered += 1;
+                            errors_encountered_ref.fetch_add(1, Ordering::SeqCst);
                         }
                     }
                 }
             })
             .await;
 
-        if errors_encountered > 0 {
-            // Decide how to handle the errors
-            // For example, you could return an error if any were encountered
+        if errors_encountered.load(Ordering::SeqCst) > 0 {
             panic!("Errors encountered while processing the stream");
         } else {
-            assert_eq!(newline_count, 10);
+            assert_eq!(newline_count.load(Ordering::SeqCst), 10);
         }
     });
     Ok(())
