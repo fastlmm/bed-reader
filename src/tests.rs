@@ -968,6 +968,7 @@ fn test_sample_file() -> Result<(), Box<BedErrorPlus>> {
 
 #[test]
 #[allow(clippy::needless_borrow)]
+#[allow(clippy::needless_borrows_for_generic_args)]
 fn demo_path() -> Result<(), Box<BedErrorPlus>> {
     let path: &str = "bed_reader/tests/data/small.bed";
     let _ = Bed::new(&path)?; // borrow a &str
@@ -992,6 +993,7 @@ fn demo_path() -> Result<(), Box<BedErrorPlus>> {
 
 #[allow(clippy::single_char_pattern)]
 #[allow(clippy::needless_borrow)]
+#[allow(clippy::needless_borrows_for_generic_args)]
 #[test]
 fn demo_iter() -> Result<(), Box<BedErrorPlus>> {
     let list: [&str; 3] = ["i1", "i2", "i3"];
@@ -1018,6 +1020,7 @@ fn demo_iter() -> Result<(), Box<BedErrorPlus>> {
 
 #[test]
 #[allow(clippy::needless_borrow)]
+#[allow(clippy::needless_borrows_for_generic_args)]
 fn demo_index() -> Result<(), Box<BedErrorPlus>> {
     #[allow(clippy::let_unit_value)]
     let index: () = ();
@@ -1112,6 +1115,7 @@ fn demo_index2() -> Result<(), Box<BedErrorPlus>> {
 
 #[test]
 #[allow(clippy::needless_borrow)]
+#[allow(clippy::needless_borrows_for_generic_args)]
 fn use_index() -> Result<(), Box<BedErrorPlus>> {
     fn len100(index: impl Into<Index>) -> Result<usize, Box<BedErrorPlus>> {
         let index = index.into();

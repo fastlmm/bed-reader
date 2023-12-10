@@ -53,6 +53,8 @@ base16ct = { version = "0.2.0", features = ["alloc"] }
 ctor = "0.2.0"
 anyinput = { version = "0.1.6", features = ["ndarray"] }
 fetch-data = "0.1.6"
+object_store = "0.8.0"
+tokio = { version = "1.35.0", features = ["full"] }
 
 [dev-dependencies]
 ndarray-rand = "0.14.0"
