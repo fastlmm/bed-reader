@@ -49,6 +49,8 @@ use ndarray::ShapeBuilder;
 use ndarray_npy::read_npy;
 #[cfg(test)]
 use num_traits::abs;
+use object_store::local::LocalFileSystem;
+use std::collections::HashSet;
 #[cfg(test)]
 use std::f32;
 #[cfg(test)]
@@ -65,8 +67,10 @@ use std::ops::RangeInclusive;
 use std::path::Path;
 #[cfg(test)]
 use std::path::PathBuf;
+use std::sync::Arc;
 #[cfg(test)]
 use temp_testdir::TempDir;
+use tokio::runtime::Runtime;
 
 #[cfg(test)]
 use crate::assert_error_variant;
@@ -1194,4 +1198,67 @@ fn another_bed_read_example() -> Result<(), Box<BedErrorPlus>> {
         .read(&mut bed)?;
     println!("{:?}", val.dim());
     Ok(())
+}
+
+#[test]
+fn object_store_bed0() -> anyhow::Result<()> {
+    use object_store::{local::LocalFileSystem, path::Path, ObjectStore};
+
+    let rt = Runtime::new()?;
+
+    rt.block_on(async {
+        // Your async test logic here
+        let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
+        let path = Path::from_filesystem_path(file)?;
+
+        let store = Arc::new(LocalFileSystem::new());
+
+        // Read the file
+        let data = store.get(&path).await?;
+
+        let bytes = data.bytes().await?.to_vec();
+
+        println!("{:?}", bytes.len()); // Outputs the length of bytes
+        assert!(bytes.len() == 303);
+
+        Ok(())
+    })
+}
+
+#[test]
+fn object_store_bed1() -> anyhow::Result<()> {
+    // use object_store::{local::LocalFileSystem, path::Path, ObjectStore};
+    use crate::bed_cloud::BedCloud;
+    use tokio::runtime::Runtime;
+
+    let rt = Runtime::new()?;
+
+    // cmk00 see https://docs.rs/object_store/latest/object_store/ "// Fetch the object including metadata"
+
+    rt.block_on(async {
+        let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
+
+        let mut bed_cloud = BedCloud::<LocalFileSystem> {
+            store: Arc::new(LocalFileSystem::new()),
+            path: object_store::path::Path::from_filesystem_path(file)?,
+            fam_path: None,
+            bim_path: None,
+            is_checked_early: false,
+            iid_count: None,
+            sid_count: None,
+            metadata: Metadata::default(), // Replace with default initialization if Metadata has a default
+            skip_set: HashSet::new(),
+        };
+
+        // let mut bed = Bed::new(&file)?;
+        let val = bed.read::<i8>()?;
+        let mean = val.mapv(|elem| elem as f64).mean().unwrap();
+        assert!(mean == -13.142); // really shouldn't do mean on data where -127 represents missing
+
+        let mut bed = Bed::new(&file)?;
+        let val = ReadOptions::builder().count_a2().i8().read(&mut bed)?;
+        let mean = val.mapv(|elem| elem as f64).mean().unwrap();
+        assert!(mean == -13.274); // really shouldn't do mean on data where -127 represents missing
+        Ok(())
+    })
 }

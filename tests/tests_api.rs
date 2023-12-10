@@ -15,8 +15,6 @@ use bed_reader::WriteOptions;
 use ndarray as nd;
 use ndarray::s;
 use ndarray_rand::{rand::prelude::StdRng, rand::SeedableRng, rand_distr::Uniform, RandomExt};
-use object_store::local::LocalFileSystem;
-use object_store::ObjectStore;
 use temp_testdir::TempDir;
 use tokio::runtime::Runtime;
 
@@ -2258,22 +2256,28 @@ fn metadata_iid_sid2() -> Result<(), Box<BedErrorPlus>> {
 
 // cmk see https://github.com/apache/arrow-rs/tree/master/object_store
 // cmk see https://github.com/roeap/object-store-python
+
 #[test]
-fn object_store_bed1() {
-    let rt = Runtime::new().unwrap();
+fn object_store_bed0() -> anyhow::Result<()> {
+    use object_store::{local::LocalFileSystem, path::Path, ObjectStore};
+
+    let rt = Runtime::new()?;
 
     rt.block_on(async {
         // Your async test logic here
-        let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed").unwrap();
-        let path = object_store::path::Path::from_filesystem_path(file).unwrap();
+        let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
+        let path = Path::from_filesystem_path(file)?;
 
         let store = Arc::new(LocalFileSystem::new());
 
         // Read the file
-        let data = store.get(&path).await.unwrap();
+        let data = store.get(&path).await?;
 
-        let bytes = data.bytes().await.unwrap();
+        let bytes = data.bytes().await?.to_vec();
 
-        println!("{:?}", bytes.len()); // Outputs 1000000
+        println!("{:?}", bytes.len()); // Outputs the length of bytes
+        assert!(bytes.len() == 303);
+
+        Ok(())
     })
 }
