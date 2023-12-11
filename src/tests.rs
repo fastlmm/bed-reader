@@ -1242,13 +1242,13 @@ fn object_store_bed1() -> anyhow::Result<()> {
     // cmk00 see https://docs.rs/object_store/latest/object_store/ "// Fetch the object including metadata"
 
     rt.block_on(async {
-        let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed").unwrap();
+        let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
         // replace bed extension with fam
         let file = file.with_extension("fam");
 
         let store = Arc::new(LocalFileSystem::new());
-        let path = object_store::path::Path::from_filesystem_path(file).unwrap();
-        let object_meta = store.head(&path).await.unwrap();
+        let path = object_store::path::Path::from_filesystem_path(file)?;
+        let object_meta = store.head(&path).await?;
         use futures_util::stream::StreamExt;
 
         let mut bed_cloud = BedCloud::<LocalFileSystem> {
@@ -1268,8 +1268,7 @@ fn object_store_bed1() -> anyhow::Result<()> {
             .store
             .clone()
             .get(&bed_cloud.path)
-            .await
-            .unwrap()
+            .await?
             .into_stream();
 
         // Create a stream of newline-delimited data
@@ -1302,6 +1301,6 @@ fn object_store_bed1() -> anyhow::Result<()> {
         } else {
             assert_eq!(newline_count.load(Ordering::SeqCst), 10);
         }
-    });
-    Ok(())
+        Ok(())
+    })
 }
