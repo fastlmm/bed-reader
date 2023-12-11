@@ -1277,26 +1277,17 @@ fn object_store_bed1() -> anyhow::Result<()> {
         let new_line_stream = newline_delimited_stream(stream);
 
         let newline_count = AtomicUsize::new(0);
-
-        let result = new_line_stream
+        new_line_stream
             .try_for_each(|bytes| {
                 let count = bytecount::count(&bytes, b'\n');
                 newline_count.fetch_add(count, Ordering::SeqCst);
-                async { Ok(()) } // You need to return Ok(()) for each successful iteration
+                async { Ok(()) } // Return Ok(()) for each successful iteration
             })
-            .await;
+            .await
+            .map_err(anyhow::Error::new)?; // Convert the error and propagate it if present
 
-        // Handle the result of the stream processing
-        match result {
-            Ok(_) => {
-                // Processing completed successfully
-                assert_eq!(newline_count.load(Ordering::SeqCst), 10);
-                Ok(())
-            }
-            Err(e) => {
-                // An error occurred during processing
-                Err(e.into()) // Convert the error into anyhow::Error and return it
-            }
-        }
+        // If the code reaches here, it means no error was encountered
+        assert_eq!(newline_count.load(Ordering::SeqCst), 10);
+        Ok(())
     })
 }
