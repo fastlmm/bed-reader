@@ -212,40 +212,38 @@ pub(crate) async fn internal_read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
         .zip(out_val.axis_iter_mut(nd::Axis(1)))
         .chunks(chunk_size)
     {
-        let mut sid_indexes = Vec::with_capacity(chunk_size);
+        let mut ranges = Vec::with_capacity(chunk_size);
         let mut cols = Vec::with_capacity(chunk_size);
 
-        for (in_sid_i_signed, mut col) in chunk {
-            sid_indexes.push(*in_sid_i_signed);
-            cols.push(col);
-        }
-
-        for (in_sid_i_signed, mut col) in sid_indexes.into_iter().zip(cols.into_iter()) {
+        for (in_sid_i_signed, col) in chunk {
             // cmk similar code elsewhere
             // Turn signed sid_index into unsigned sid_index (or error)
             let in_sid_i = if (0..=upper_sid_count).contains(&in_sid_i_signed) {
-                in_sid_i_signed as u64
+                *in_sid_i_signed as u64
             } else if (lower_sid_count..=-1).contains(&in_sid_i_signed) {
                 (in_sid_count - ((-in_sid_i_signed) as usize)) as u64
             } else {
                 return Err(Box::new(BedErrorPlus::BedError(BedError::SidIndexTooBig(
-                    in_sid_i_signed,
+                    *in_sid_i_signed,
                 ))));
             };
 
             // Read the iid info for one snp from the disk
             let pos: u64 = in_sid_i * in_iid_count_div4_u64 + CB_HEADER_U64; // "as" and math is safe because of early checks
+            let range = pos as usize..(pos + in_iid_count_div4_u64) as usize;
 
-            // cmk somehow we must only compile is size(usize) is 64 bits.
-            // cmk we should turn sid_index into a slice of ranges.
-            let bytes = object_store
-                .get_range(
-                    &path,
-                    (pos as usize..(pos + in_iid_count_div4_u64) as usize),
-                )
-                .await
-                .map_err(BedErrorPlus::from)?;
+            ranges.push(range);
+            cols.push(col);
+        }
 
+        // cmk somehow we must only compile is size(usize) is 64 bits.
+        // cmk we should turn sid_index into a slice of ranges.
+        let vec_bytes = object_store
+            .get_ranges(&path, &ranges)
+            .await
+            .map_err(BedErrorPlus::from)?;
+
+        for (bytes, mut col) in vec_bytes.into_iter().zip(cols.into_iter()) {
             // let mut col = out_val.column_mut(i);
             // // cmk In parallel, decompress the iid info and put it in its column
             // // cmk .par_bridge() // This seems faster that parallel zip

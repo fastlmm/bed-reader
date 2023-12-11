@@ -1307,7 +1307,7 @@ fn cloud_internal_read() -> anyhow::Result<()> {
 
         let in_iid_count = bed_cloud.iid_count().await?;
         let in_sid_count = bed_cloud.sid_count().await?;
-        let iid_index = [0, 1];
+        let iid_index = [0, -2];
         let sid_index = [0, 1, 2];
 
         let is_f = true;
