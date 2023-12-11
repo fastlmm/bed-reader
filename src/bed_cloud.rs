@@ -174,7 +174,7 @@ pub(crate) async fn internal_read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
     iid_index: &[isize],
     sid_index: &[isize],
     missing_value: TVal,
-    // out_val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
+    out_val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
 ) -> Result<(), Box<BedErrorPlus>> {
     // Check the file length
 
@@ -202,7 +202,7 @@ pub(crate) async fn internal_read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
     // Possible optimization: We could try to read only the iid info needed
     // Possible optimization: We could read snp in their input order instead of their output order
     // cmk turn this into something more functional (streams?)
-    for in_sid_i_signed in sid_index {
+    for (i, in_sid_i_signed) in sid_index.iter().enumerate() {
         // Turn signed sid_index into unsigned sid_index (or error)
         let in_sid_i = if (0..=upper_sid_count).contains(in_sid_i_signed) {
             *in_sid_i_signed as u64
@@ -219,31 +219,31 @@ pub(crate) async fn internal_read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
 
         // cmk somehow we must only compile is size(usize) is 64 bits.
         // cmk we should turn sid_index into a slice of ranges.
-        let bytes_vector = object_store
-            .get_ranges(
+        let bytes = object_store
+            .get_range(
                 &path,
-                [(pos as usize..(pos + in_iid_count_div4_u64) as usize)].as_ref(),
+                (pos as usize..(pos + in_iid_count_div4_u64) as usize),
             )
             .await
             .map_err(BedErrorPlus::from)?;
-        // Ok(bytes_vector)
+
+        let mut col = out_val.column_mut(i);
+        // // cmk In parallel, decompress the iid info and put it in its column
+        // // cmk .par_bridge() // This seems faster that parallel zip
+        // .try_for_each(|(bytes_vector_result, mut col)| match bytes_vector_result {
+        //     Err(e) => Err(e),
+        //     Ok(bytes_vector) => {
+        for out_iid_i in 0..iid_index.len() {
+            let i_div_4 = i_div_4_array[out_iid_i];
+            let i_mod_4_times_2: u8 = i_mod_4_times_2_array[out_iid_i];
+            let encoded: u8 = bytes[i_div_4];
+            let genotype_byte: u8 = (encoded >> i_mod_4_times_2) & 0x03;
+            col[out_iid_i] = from_two_bits_to_value[genotype_byte as usize];
+        }
+        //         Ok(())
+        //     }
+        // })?;
     }
-    // // Zip in the column of the output array
-    // .zip(out_val.axis_iter_mut(nd::Axis(1)))
-    // // cmk In parallel, decompress the iid info and put it in its column
-    // // cmk .par_bridge() // This seems faster that parallel zip
-    // .try_for_each(|(bytes_vector_result, mut col)| match bytes_vector_result {
-    //     Err(e) => Err(e),
-    //     Ok(bytes_vector) => {
-    //         for out_iid_i in 0..iid_index.len() {
-    //             let i_div_4 = i_div_4_array[out_iid_i];
-    //             let i_mod_4_times_2 = i_mod_4_times_2_array[out_iid_i];
-    //             let genotype_byte: u8 = (bytes_vector[i_div_4] >> i_mod_4_times_2) & 0x03;
-    //             col[out_iid_i] = from_two_bits_to_value[genotype_byte as usize];
-    //         }
-    //         Ok(())
-    //     }
-    // })?;
 
     Ok(())
 }

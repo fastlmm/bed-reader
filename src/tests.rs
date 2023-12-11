@@ -1307,6 +1307,12 @@ fn cloud_internal_read() -> anyhow::Result<()> {
 
         let in_iid_count = bed_cloud.iid_count().await?;
         let in_sid_count = bed_cloud.sid_count().await?;
+        let iid_index = [0, 1];
+        let sid_index = [0, 1, 2];
+
+        let is_f = true;
+        let shape = ShapeBuilder::set_f((iid_index.len(), sid_index.len()), is_f);
+        let mut val = nd::Array2::default(shape);
 
         bed_cloud_internal_read_no_alloc(
             bed_cloud.store.clone(),
@@ -1315,11 +1321,18 @@ fn cloud_internal_read() -> anyhow::Result<()> {
             in_iid_count,
             in_sid_count,
             true,
-            &[0, 1],
-            &[2, 0, 3],
+            &iid_index,
+            &sid_index,
             -1i8,
+            &mut val.view_mut(),
         )
         .await?;
+
+        println!("{val:?}");
+
+        let expected = nd::arr2(&[[1i8, 0, -1], [2, 0, -1]]);
+        println!("{expected:?}");
+        assert!(allclose(&expected.view(), &val.view(), 0, true));
 
         Ok(())
     })
