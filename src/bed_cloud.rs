@@ -73,7 +73,7 @@ where
 
     // cmk #[anyinput]
     fn to_metadata_path(
-        bed_path: StorePath,
+        bed_path: &StorePath,
         metadata_path: &Option<StorePath>,
         extension: &str,
     ) -> Result<StorePath, Box<BedErrorPlus>> {
@@ -85,14 +85,14 @@ where
     }
 
     /// Return the path of the .fam file.
-    pub fn fam_path(&mut self) -> StorePath {
+    pub fn fam_path(&mut self) -> Result<StorePath, Box<BedErrorPlus>> {
         // We need to clone the path because self might mutate later
         if let Some(path) = &self.fam_path {
-            path.clone()
+            Ok(path.clone())
         } else {
-            let path = &self.to_metadata_path(&self.fam_path, "fam");
+            let path = BedCloud::<T>::to_metadata_path(&self.path, &self.fam_path, "fam")?;
             self.fam_path = Some(path.clone());
-            path
+            Ok(path)
         }
     }
 
@@ -100,7 +100,7 @@ where
         if let Some(iid_count) = self.iid_count {
             Ok(iid_count)
         } else {
-            let fam_path = self.fam_path();
+            let fam_path = self.fam_path()?;
             let iid_count = self.count_lines(&fam_path).await?;
             self.iid_count = Some(iid_count);
             Ok(iid_count)
@@ -121,9 +121,9 @@ fn change_extension(
     }
 
     // Append the new extension
-    path_str.push_str(".");
+    path_str.push('.');
     path_str.push_str(new_extension);
 
     // Parse the string back to StorePath
-    StorePath::parse(&path_str).map_err(Into::into)
+    StorePath::parse(&path_str).map_err(|e| BedErrorPlus::from(e).into())
 }

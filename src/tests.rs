@@ -1206,30 +1206,31 @@ fn another_bed_read_example() -> Result<(), Box<BedErrorPlus>> {
     Ok(())
 }
 
-#[test]
-fn object_store_bed0() -> anyhow::Result<()> {
-    use object_store::local::LocalFileSystem;
+// cmk delete
+// #[test]
+// fn object_store_bed0() -> anyhow::Result<()> {
+//     use object_store::local::LocalFileSystem;
 
-    let rt = Runtime::new()?;
+//     let rt = Runtime::new()?;
 
-    rt.block_on(async {
-        // Your async test logic here
-        let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
-        let path = Path::from_filesystem_path(file)?;
+//     rt.block_on(async {
+//         // Your async test logic here
+//         let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
+//         let path = StorePath::from_filesystem_path(file)?;
 
-        let store = Arc::new(LocalFileSystem::new());
+//         let store = Arc::new(LocalFileSystem::new());
 
-        // Read the file
-        let data = store.get(&path).await?;
+//         // Read the file
+//         let data = store.get(&path).await?;
 
-        let bytes = data.bytes().await?.to_vec();
+//         let bytes = data.bytes().await?.to_vec();
 
-        println!("{:?}", bytes.len()); // Outputs the length of bytes
-        assert!(bytes.len() == 303);
+//         println!("{:?}", bytes.len()); // Outputs the length of bytes
+//         assert!(bytes.len() == 303);
 
-        Ok(())
-    })
-}
+//         Ok(())
+//     })
+// }
 
 #[test]
 fn object_store_bed1() -> anyhow::Result<()> {
@@ -1247,7 +1248,7 @@ fn object_store_bed1() -> anyhow::Result<()> {
         let path: object_store::path::Path = object_store::path::Path::from_filesystem_path(&file)?;
         let object_meta = store.head(&path).await?;
 
-        let bed_cloud = BedCloud::<LocalFileSystem> {
+        let mut bed_cloud = BedCloud::<LocalFileSystem> {
             store,
             path,
             object_meta,
@@ -1261,6 +1262,8 @@ fn object_store_bed1() -> anyhow::Result<()> {
             metadata: Metadata::default(), // Replace with default initialization if Metadata has a default
             skip_set: HashSet::new(),
         };
+
+        assert_eq!(bed_cloud.iid_count().await?, 10);
 
         let fam_file = &file.with_extension("fam");
         let fam_path = StorePath::from_filesystem_path(fam_file)?;

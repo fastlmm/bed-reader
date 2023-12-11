@@ -186,6 +186,10 @@ pub enum BedErrorPlus {
     #[allow(missing_docs)]
     #[error(transparent)]
     ObjectStoreError(#[from] object_store::Error),
+
+    #[allow(missing_docs)]
+    #[error(transparent)]
+    ObjectStorePathError(#[from] object_store::path::Error),
 }
 // https://docs.rs/thiserror/1.0.23/thiserror/
 
