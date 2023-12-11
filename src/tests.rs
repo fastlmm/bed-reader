@@ -1208,7 +1208,7 @@ fn another_bed_read_example() -> Result<(), Box<BedErrorPlus>> {
 
 #[test]
 fn object_store_bed0() -> anyhow::Result<()> {
-    use object_store::{local::LocalFileSystem, path::Path, ObjectStore};
+    use object_store::local::LocalFileSystem;
 
     let rt = Runtime::new()?;
 
