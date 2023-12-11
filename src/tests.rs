@@ -1308,12 +1308,16 @@ fn cloud_internal_read() -> anyhow::Result<()> {
         let in_iid_count = bed_cloud.iid_count().await?;
         let in_sid_count = bed_cloud.sid_count().await?;
 
-        bed_cloud_internal_read_no_alloc::<i8, _>(
+        bed_cloud_internal_read_no_alloc(
             bed_cloud.store.clone(),
             bed_cloud.path,
             &bed_cloud.object_meta,
             in_iid_count,
             in_sid_count,
+            true,
+            &[0, 1],
+            &[2, 0, 3],
+            -1i8,
         )
         .await?;
 
