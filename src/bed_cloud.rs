@@ -197,8 +197,7 @@ pub(crate) async fn internal_read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
     let (i_div_4_array, i_mod_4_times_2_array) =
         check_and_precompute_iid_index(in_iid_count, iid_index)?;
 
-    let bytes_per_column = in_iid_count_div4;
-    let columns_at_once = std::cmp::max(1, max_chunk_size / bytes_per_column);
+    let chunk_size = std::cmp::max(1, max_chunk_size / in_iid_count_div4);
 
     // Check and compute work for each sid_index
 
@@ -211,17 +210,26 @@ pub(crate) async fn internal_read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
     for chunk in &sid_index
         .iter()
         .zip(out_val.axis_iter_mut(nd::Axis(1)))
-        .chunks(columns_at_once)
+        .chunks(chunk_size)
     {
-        for (in_sid_i_signed, mut col) in chunk.into_iter() {
+        let mut sid_indexes = Vec::with_capacity(chunk_size);
+        let mut cols = Vec::with_capacity(chunk_size);
+
+        for (in_sid_i_signed, mut col) in chunk {
+            sid_indexes.push(*in_sid_i_signed);
+            cols.push(col);
+        }
+
+        for (in_sid_i_signed, mut col) in sid_indexes.into_iter().zip(cols.into_iter()) {
+            // cmk similar code elsewhere
             // Turn signed sid_index into unsigned sid_index (or error)
-            let in_sid_i = if (0..=upper_sid_count).contains(in_sid_i_signed) {
-                *in_sid_i_signed as u64
-            } else if (lower_sid_count..=-1).contains(in_sid_i_signed) {
+            let in_sid_i = if (0..=upper_sid_count).contains(&in_sid_i_signed) {
+                in_sid_i_signed as u64
+            } else if (lower_sid_count..=-1).contains(&in_sid_i_signed) {
                 (in_sid_count - ((-in_sid_i_signed) as usize)) as u64
             } else {
                 return Err(Box::new(BedErrorPlus::BedError(BedError::SidIndexTooBig(
-                    *in_sid_i_signed,
+                    in_sid_i_signed,
                 ))));
             };
 
