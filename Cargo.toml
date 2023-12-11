@@ -56,8 +56,9 @@ fetch-data = "0.1.6"
 object_store = "0.8.0"
 tokio = { version = "1.35.0", features = ["full"] }
 anyhow = "1.0.75"                                                               # cmk
-futures-util = "0.3.29"
-bytecount = "0.6.7"
+futures-util = "0.3.29"                                                         # cmk need?
+bytecount = "0.6.7"                                                             # cmk need?
+itertools = "0.12.0"                                                            # cmk need?
 
 [dev-dependencies]
 ndarray-rand = "0.14.0"

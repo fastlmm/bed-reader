@@ -1314,6 +1314,9 @@ fn cloud_internal_read() -> anyhow::Result<()> {
         let shape = ShapeBuilder::set_f((iid_index.len(), sid_index.len()), is_f);
         let mut val = nd::Array2::default(shape);
 
+        let max_concurrent_requests = 10usize;
+        let max_chunk_size = 8_000_000usize;
+
         bed_cloud_internal_read_no_alloc(
             bed_cloud.store.clone(),
             bed_cloud.path,
@@ -1324,6 +1327,8 @@ fn cloud_internal_read() -> anyhow::Result<()> {
             &iid_index,
             &sid_index,
             -1i8,
+            max_concurrent_requests,
+            max_chunk_size,
             &mut val.view_mut(),
         )
         .await?;
