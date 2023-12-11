@@ -50,9 +50,9 @@ use ndarray_npy::read_npy;
 #[cfg(test)]
 use num_traits::abs;
 #[cfg(test)]
-use object_store::delimited::newline_delimited_stream;
-#[cfg(test)]
 use object_store::local::LocalFileSystem;
+#[cfg(test)]
+use object_store::path::Path as StorePath;
 #[cfg(test)]
 use std::collections::HashSet;
 #[cfg(test)]
@@ -71,10 +71,11 @@ use std::ops::RangeInclusive;
 use std::path::Path;
 #[cfg(test)]
 use std::path::PathBuf;
+#[cfg(test)]
 use std::sync::Arc;
-use std::sync::Mutex;
 #[cfg(test)]
 use temp_testdir::TempDir;
+#[cfg(test)]
 use tokio::runtime::Runtime;
 
 #[cfg(test)]
@@ -1232,10 +1233,8 @@ fn object_store_bed0() -> anyhow::Result<()> {
 
 #[test]
 fn object_store_bed1() -> anyhow::Result<()> {
-    // use object_store::{local::LocalFileSystem, path::Path, ObjectStore};
     use crate::bed_cloud::BedCloud;
     use object_store::ObjectStore;
-    use std::sync::atomic::{AtomicUsize, Ordering};
     use tokio::runtime::Runtime;
 
     let rt = Runtime::new()?;
@@ -1244,21 +1243,18 @@ fn object_store_bed1() -> anyhow::Result<()> {
 
     rt.block_on(async {
         let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
-        // replace bed extension with fam
-        let file = file.with_extension("fam");
-
         let store = Arc::new(LocalFileSystem::new());
-        let path = object_store::path::Path::from_filesystem_path(file)?;
+        let path: object_store::path::Path = object_store::path::Path::from_filesystem_path(&file)?;
         let object_meta = store.head(&path).await?;
-        // use futures_util::stream::StreamExt;
-        use futures_util::TryStreamExt;
 
-        let mut bed_cloud = BedCloud::<LocalFileSystem> {
+        let bed_cloud = BedCloud::<LocalFileSystem> {
             store,
             path,
             object_meta,
             fam_path: None,
+            fam_object_meta: None,
             bim_path: None,
+            bim_object_meta: None,
             is_checked_early: false,
             iid_count: None,
             sid_count: None,
@@ -1266,28 +1262,12 @@ fn object_store_bed1() -> anyhow::Result<()> {
             skip_set: HashSet::new(),
         };
 
-        let stream = bed_cloud
-            .store
-            .clone()
-            .get(&bed_cloud.path)
-            .await?
-            .into_stream();
+        let fam_file = &file.with_extension("fam");
+        let fam_path = StorePath::from_filesystem_path(fam_file)?;
 
-        // Create a stream of newline-delimited data
-        let new_line_stream = newline_delimited_stream(stream);
+        let count_lines = bed_cloud.count_lines(&fam_path).await?;
 
-        let newline_count = AtomicUsize::new(0);
-        new_line_stream
-            .try_for_each(|bytes| {
-                let count = bytecount::count(&bytes, b'\n');
-                newline_count.fetch_add(count, Ordering::SeqCst);
-                async { Ok(()) } // Return Ok(()) for each successful iteration
-            })
-            .await
-            .map_err(anyhow::Error::new)?; // Convert the error and propagate it if present
-
-        // If the code reaches here, it means no error was encountered
-        assert_eq!(newline_count.load(Ordering::SeqCst), 10);
+        assert_eq!(count_lines, 10);
         Ok(())
     })
 }

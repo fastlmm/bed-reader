@@ -106,6 +106,7 @@ use derive_builder::{Builder, UninitializedFieldError};
 use fetch_data::{FetchData, FetchDataError};
 use nd::ShapeBuilder;
 use ndarray as nd;
+use object_store::ObjectStore;
 use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::convert::TryFrom;
@@ -181,6 +182,10 @@ pub enum BedErrorPlus {
     #[allow(missing_docs)]
     #[error(transparent)]
     FetchData(#[from] FetchDataError),
+
+    #[allow(missing_docs)]
+    #[error(transparent)]
+    ObjectStoreError(#[from] object_store::Error),
 }
 // https://docs.rs/thiserror/1.0.23/thiserror/
 
