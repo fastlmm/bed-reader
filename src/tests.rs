@@ -72,6 +72,7 @@ use std::path::Path;
 #[cfg(test)]
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::Mutex;
 #[cfg(test)]
 use temp_testdir::TempDir;
 use tokio::runtime::Runtime;
@@ -1249,7 +1250,8 @@ fn object_store_bed1() -> anyhow::Result<()> {
         let store = Arc::new(LocalFileSystem::new());
         let path = object_store::path::Path::from_filesystem_path(file)?;
         let object_meta = store.head(&path).await?;
-        use futures_util::stream::StreamExt;
+        // use futures_util::stream::StreamExt;
+        use futures_util::TryStreamExt;
 
         let mut bed_cloud = BedCloud::<LocalFileSystem> {
             store,
@@ -1275,32 +1277,26 @@ fn object_store_bed1() -> anyhow::Result<()> {
         let new_line_stream = newline_delimited_stream(stream);
 
         let newline_count = AtomicUsize::new(0);
-        let errors_encountered = AtomicUsize::new(0);
 
-        // Process each item in the stream
-        new_line_stream
-            .for_each(|item| {
-                let newline_count_ref = &newline_count;
-                let errors_encountered_ref = &errors_encountered;
-                async move {
-                    match item {
-                        Ok(bytes) => {
-                            let count = bytecount::count(&bytes, b'\n');
-                            newline_count_ref.fetch_add(count, Ordering::SeqCst);
-                        }
-                        Err(_) => {
-                            errors_encountered_ref.fetch_add(1, Ordering::SeqCst);
-                        }
-                    }
-                }
+        let result = new_line_stream
+            .try_for_each(|bytes| {
+                let count = bytecount::count(&bytes, b'\n');
+                newline_count.fetch_add(count, Ordering::SeqCst);
+                async { Ok(()) } // You need to return Ok(()) for each successful iteration
             })
             .await;
 
-        if errors_encountered.load(Ordering::SeqCst) > 0 {
-            panic!("Errors encountered while processing the stream");
-        } else {
-            assert_eq!(newline_count.load(Ordering::SeqCst), 10);
+        // Handle the result of the stream processing
+        match result {
+            Ok(_) => {
+                // Processing completed successfully
+                assert_eq!(newline_count.load(Ordering::SeqCst), 10);
+                Ok(())
+            }
+            Err(e) => {
+                // An error occurred during processing
+                Err(e.into()) // Convert the error into anyhow::Error and return it
+            }
         }
-        Ok(())
     })
 }
