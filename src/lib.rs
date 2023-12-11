@@ -106,7 +106,6 @@ use derive_builder::{Builder, UninitializedFieldError};
 use fetch_data::{FetchData, FetchDataError};
 use nd::ShapeBuilder;
 use ndarray as nd;
-use object_store::ObjectStore;
 use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::convert::TryFrom;

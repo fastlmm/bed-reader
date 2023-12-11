@@ -4,6 +4,12 @@ use crate::allclose;
 #[cfg(test)]
 use crate::assert_eq_nan;
 #[cfg(test)]
+use crate::assert_error_variant;
+#[cfg(test)]
+use crate::bed_cloud::internal_read_no_alloc as bed_cloud_internal_read_no_alloc;
+#[cfg(test)]
+use crate::bed_cloud::BedCloud;
+#[cfg(test)]
 use crate::file_aat_piece;
 #[cfg(test)]
 use crate::file_ata_piece;
@@ -54,6 +60,8 @@ use object_store::local::LocalFileSystem;
 #[cfg(test)]
 use object_store::path::Path as StorePath;
 #[cfg(test)]
+use object_store::ObjectStore;
+#[cfg(test)]
 use std::collections::HashSet;
 #[cfg(test)]
 use std::f32;
@@ -77,9 +85,6 @@ use std::sync::Arc;
 use temp_testdir::TempDir;
 #[cfg(test)]
 use tokio::runtime::Runtime;
-
-#[cfg(test)]
-use crate::assert_error_variant;
 
 #[test]
 fn best_int8() {
@@ -1234,10 +1239,6 @@ fn another_bed_read_example() -> Result<(), Box<BedErrorPlus>> {
 
 #[test]
 fn object_store_bed1() -> anyhow::Result<()> {
-    use crate::bed_cloud::BedCloud;
-    use object_store::ObjectStore;
-    use tokio::runtime::Runtime;
-
     let rt = Runtime::new()?;
 
     // cmk00 see https://docs.rs/object_store/latest/object_store/ "// Fetch the object including metadata"
@@ -1271,6 +1272,51 @@ fn object_store_bed1() -> anyhow::Result<()> {
         let count_lines = bed_cloud.count_lines(&fam_path).await?;
 
         assert_eq!(count_lines, 10);
+        Ok(())
+    })
+}
+
+#[test]
+fn cloud_internal_read() -> anyhow::Result<()> {
+    let rt = Runtime::new()?;
+
+    // cmk00 see https://docs.rs/object_store/latest/object_store/ "// Fetch the object including metadata"
+
+    rt.block_on(async {
+        let bed_fam = sample_files(["small.bed", "small.fam"]).unwrap();
+
+        let store = Arc::new(LocalFileSystem::new());
+        let path: object_store::path::Path =
+            object_store::path::Path::from_filesystem_path(&bed_fam[0])?;
+        let object_meta = store.head(&path).await?;
+
+        let mut bed_cloud = BedCloud::<LocalFileSystem> {
+            store,
+            path,
+            object_meta,
+            fam_path: None,
+            fam_object_meta: None,
+            bim_path: None,
+            bim_object_meta: None,
+            is_checked_early: false,
+            iid_count: None,
+            sid_count: None,
+            metadata: Metadata::default(), // Replace with default initialization if Metadata has a default
+            skip_set: HashSet::new(),
+        };
+
+        let in_iid_count = bed_cloud.iid_count().await?;
+        let in_sid_count = bed_cloud.sid_count().await?;
+
+        bed_cloud_internal_read_no_alloc::<i8, _>(
+            bed_cloud.store.clone(),
+            bed_cloud.path,
+            &bed_cloud.object_meta,
+            in_iid_count,
+            in_sid_count,
+        )
+        .await?;
+
         Ok(())
     })
 }
