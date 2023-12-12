@@ -3,6 +3,7 @@ use std::sync::Arc;
 use bed_reader::allclose;
 use bed_reader::assert_eq_nan;
 use bed_reader::assert_error_variant;
+use bed_reader::bed_cloud::BedCloud;
 use bed_reader::sample_bed_file;
 use bed_reader::sample_file;
 use bed_reader::sample_files;
@@ -17,6 +18,7 @@ use bed_reader::WriteOptions;
 use ndarray as nd;
 use ndarray::s;
 use ndarray_rand::{rand::prelude::StdRng, rand::SeedableRng, rand_distr::Uniform, RandomExt};
+use object_store::local::LocalFileSystem;
 use temp_testdir::TempDir;
 use tokio::runtime::Runtime;
 
@@ -48,20 +50,33 @@ fn object_store_bed0() -> anyhow::Result<()> {
     })
 }
 
-// #[test]
-// fn rusty_bed1() -> Result<(), Box<BedErrorPlus>> {
-//     let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
-//     let mut bed = Bed::new(&file)?;
-//     let val = bed.read::<i8>()?;
-//     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
-//     assert!(mean == -13.142); // really shouldn't do mean on data where -127 represents missing
+#[test]
+fn rusty_bed1() -> Result<(), Box<BedErrorPlus>> {
+    use object_store::path::Path as StorePath;
 
-//     let mut bed = Bed::new(&file)?;
-//     let val = ReadOptions::builder().count_a2().i8().read(&mut bed)?;
-//     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
-//     assert!(mean == -13.274); // really shouldn't do mean on data where -127 represents missing
-//     Ok(())
-// }
+    let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
+    let path = StorePath::from_filesystem_path(file).map_err(BedErrorPlus::from)?;
+    let object_store = Arc::new(LocalFileSystem::new());
+    let mut bed_cloud = BedCloud::new(object_store.clone(), path.clone())?;
+
+    let rt = Runtime::new()?;
+    rt.block_on(async {
+        let val = bed_cloud.read::<i8>().await?;
+        let mean = val.mapv(|elem| elem as f64).mean().unwrap();
+        assert!(mean == -13.142); // really shouldn't do mean on data where -127 represents missing
+
+        let mut bed_cloud = BedCloud::new(object_store, path)?;
+        let val = ReadOptions::builder()
+            .count_a2()
+            .i8()
+            .read_cloud(&mut bed_cloud)
+            .await?;
+        let mean = val.mapv(|elem| elem as f64).mean().unwrap();
+        assert!(mean == -13.274); // really shouldn't do mean on data where -127 represents missing
+        Ok::<(), Box<BedErrorPlus>>(())
+    });
+    Ok(())
+}
 
 // #[test]
 // fn rusty_bed2() -> Result<(), Box<BedErrorPlus>> {

@@ -1,3 +1,5 @@
+use anyinput::anyinput;
+use derive_builder::Builder;
 use nd::ShapeBuilder;
 use ndarray as nd;
 use std::collections::HashSet;
@@ -12,8 +14,8 @@ use futures_util::TryStreamExt;
 use itertools::Itertools;
 use object_store::delimited::newline_delimited_stream;
 use object_store::path::Path as StorePath;
-use object_store::ObjectMeta;
 use object_store::ObjectStore;
+use object_store::{GetOptions, ObjectMeta};
 
 use crate::{
     check_and_precompute_iid_index, compute_max_chunk_size, compute_max_concurrent_requests,
@@ -23,44 +25,79 @@ use crate::{
 use crate::{MetadataFields, CB_HEADER_U64};
 
 /// cmk doc
-pub struct BedCloud<T>
+#[derive(Clone, Debug, Builder)]
+#[builder(build_fn(private, name = "build_no_file_check", error = "BedErrorPlus"))]
+pub struct BedCloud<TObjectStore>
 where
-    T: ObjectStore,
+    TObjectStore: ObjectStore,
 {
-    pub(crate) store: Arc<T>,
+    #[builder(setter(custom))]
+    object_store: Arc<TObjectStore>,
 
-    pub(crate) path: StorePath,
+    #[builder(setter(custom))]
+    path: StorePath,
 
-    pub(crate) object_meta: ObjectMeta,
+    // cmk do we want to cache the ObjectMeta?
+    #[builder(setter(custom))]
+    #[builder(default = "None")]
+    fam_path: Option<StorePath>,
 
-    pub(crate) fam_path: Option<StorePath>,
+    // // cmk needed? combine with path?
+    // #[builder(setter(custom))]
+    // #[builder(default = "None")]
+    // fam_object_meta: Option<ObjectMeta>,
+    #[builder(setter(custom))]
+    #[builder(default = "None")]
+    bim_path: Option<StorePath>,
 
-    // cmk needed? combine with path?
-    pub(crate) fam_object_meta: Option<ObjectMeta>,
+    // #[builder(setter(custom))]
+    // #[builder(default = "None")]
+    // bim_object_meta: Option<ObjectMeta>,
+    #[builder(setter(custom))]
+    #[builder(default = "true")]
+    is_checked_early: bool,
 
-    pub(crate) bim_path: Option<StorePath>,
+    #[builder(setter(custom))]
+    #[builder(default = "None")]
+    iid_count: Option<usize>,
 
-    pub(crate) bim_object_meta: Option<ObjectMeta>,
+    #[builder(setter(custom))]
+    #[builder(default = "None")]
+    sid_count: Option<usize>,
 
-    pub(crate) is_checked_early: bool,
+    #[builder(setter(custom))]
+    metadata: Metadata,
 
-    pub(crate) iid_count: Option<usize>,
-
-    pub(crate) sid_count: Option<usize>,
-
-    pub(crate) metadata: Metadata,
-
-    pub(crate) skip_set: HashSet<MetadataFields>,
+    #[builder(setter(custom))]
+    skip_set: HashSet<MetadataFields>,
 }
 
-impl<T> BedCloud<T>
+impl<TObjectStore> BedCloud<TObjectStore>
 where
-    T: ObjectStore,
+    TObjectStore: ObjectStore,
 {
+    /// cmk doc
+    #[anyinput]
+    pub fn builder(
+        object_store: Arc<TObjectStore>,
+        path: StorePath,
+    ) -> BedCloudBuilder<TObjectStore> {
+        BedCloudBuilder::new(object_store, path)
+    }
+
+    /// cmk doc
+    #[anyinput]
+    pub fn new(
+        object_store: Arc<TObjectStore>,
+        path: StorePath,
+    ) -> Result<Self, Box<BedErrorPlus>> {
+        BedCloud::builder(object_store, path).build()
+    }
+
     // #[anyinput]
     async fn count_lines(&self, path: &StorePath) -> Result<usize, Box<BedErrorPlus>> {
         let stream = self
-            .store
+            .object_store
             .clone()
             // cmk !!!! does this get get the whole file or just the first chunk?
             .get(path)
@@ -102,7 +139,8 @@ where
         if let Some(path) = &self.fam_path {
             Ok(path.clone())
         } else {
-            let path = BedCloud::<T>::to_metadata_path(&self.path, &self.fam_path, "fam")?;
+            let path =
+                BedCloud::<TObjectStore>::to_metadata_path(&self.path, &self.fam_path, "fam")?;
             self.fam_path = Some(path.clone());
             Ok(path)
         }
@@ -114,7 +152,8 @@ where
         if let Some(path) = &self.bim_path {
             Ok(path.clone())
         } else {
-            let path = BedCloud::<T>::to_metadata_path(&self.path, &self.bim_path, "bim")?;
+            let path =
+                BedCloud::<TObjectStore>::to_metadata_path(&self.path, &self.bim_path, "bim")?;
             self.bim_path = Some(path.clone());
             Ok(path)
         }
@@ -173,9 +212,8 @@ where
         }
 
         read_no_alloc(
-            self.store.clone(), // cmk rename "object_store" ??
+            self.object_store.clone(), // cmk rename "object_store" ??
             self.path.clone(),
-            &self.object_meta,
             iid_count,
             sid_count,
             read_options.is_a1_counted,
@@ -242,7 +280,7 @@ fn store_path_to_string(store_path: StorePath) -> String {
 
 #[allow(clippy::too_many_arguments)]
 // cmk #[anyinput]
-pub(crate) async fn internal_read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
+async fn internal_read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
     object_store: Arc<TStore>,
     path: StorePath,
     object_meta: &ObjectMeta,
@@ -351,10 +389,9 @@ pub(crate) async fn internal_read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
 
 #[allow(clippy::too_many_arguments)]
 // cmk #[anyinput]
-pub(crate) async fn read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
+async fn read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
     object_store: Arc<TStore>,
     path: StorePath,
-    object_meta: &ObjectMeta,
     iid_count: usize,
     sid_count: usize,
     is_a1_counted: bool,
@@ -366,7 +403,7 @@ pub(crate) async fn read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
 
     val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
 ) -> Result<(), Box<BedErrorPlus>> {
-    let bytes = open_and_check(object_store.clone(), &path).await?;
+    let (object_meta, bytes) = open_and_check(object_store.clone(), &path).await?;
 
     match bytes[2] {
         0 => {
@@ -376,7 +413,7 @@ pub(crate) async fn read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
             internal_read_no_alloc(
                 object_store,
                 path,
-                object_meta,
+                &object_meta,
                 sid_count,
                 iid_count,
                 is_a1_counted,
@@ -393,7 +430,7 @@ pub(crate) async fn read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
             internal_read_no_alloc(
                 object_store,
                 path,
-                object_meta,
+                &object_meta,
                 iid_count,
                 sid_count,
                 is_a1_counted,
@@ -419,20 +456,523 @@ pub(crate) async fn read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
 async fn open_and_check<TStore>(
     object_store: Arc<TStore>,
     path: &StorePath,
-) -> Result<Bytes, Box<BedErrorPlus>>
+) -> Result<(ObjectMeta, Bytes), Box<BedErrorPlus>>
 where
     TStore: ObjectStore,
 {
-    let bytes = object_store
-        .clone()
-        .get_range(path, 0..CB_HEADER_U64 as usize)
+    let get_options = GetOptions {
+        range: Some(0..CB_HEADER_U64 as usize),
+        ..Default::default()
+    };
+    let get_result = object_store
+        .get_opts(path, get_options)
         .await
         .map_err(BedErrorPlus::from)?;
+
+    let object_meta = get_result.meta.clone(); // cmk good idea?
+    let bytes = get_result.bytes().await.map_err(BedErrorPlus::from)?;
 
     if (BED_FILE_MAGIC1 != bytes[0]) || (BED_FILE_MAGIC2 != bytes[1]) {
         return Err(Box::new(
             BedError::IllFormed(store_path_to_string(path.clone())).into(),
         ));
     }
-    Ok(bytes)
+    Ok((object_meta, bytes))
+}
+
+impl<TObjectStore> BedCloudBuilder<TObjectStore>
+where
+    TObjectStore: ObjectStore,
+{
+    #[anyinput]
+    fn new(object_store: Arc<TObjectStore>, path: StorePath) -> Self {
+        Self {
+            object_store: Some(object_store.clone()),
+            path: Some(path.to_owned()),
+            fam_path: None,
+            bim_path: None,
+
+            is_checked_early: None,
+            iid_count: None,
+            sid_count: None,
+
+            metadata: Some(Metadata::new()),
+            skip_set: Some(HashSet::new()),
+        }
+    }
+
+    /// Create [`BedCloud`](struct.BedCloud.html) from the builder.
+    ///
+    /// > See [`BedCloud::builder`](struct.BedCloud.html#method.builder) for more details and examples.
+    pub fn build(&self) -> Result<BedCloud<TObjectStore>, Box<BedErrorPlus>> {
+        // let mut bed_cloud = self.build_no_file_check()?;
+
+        // cmk
+        // if bed_cloud.is_checked_early {
+        //     open_and_check(self.object_store.clone(), &bed_cloud.path).await?;
+        // }
+
+        // (bed_cloud.iid_count, bed_cloud.sid_count) = bed_cloud
+        //     .metadata
+        //     .check_counts(bed_cloud.iid_count, bed_cloud.sid_count)?;
+
+        // Ok(bed_cloud)
+        todo!("cmk")
+    }
+
+    // https://stackoverflow.com/questions/38183551/concisely-initializing-a-vector-of-strings
+    // https://stackoverflow.com/questions/65250496/how-to-convert-intoiteratoritem-asrefstr-to-iteratoritem-str-in-rust
+
+    /// Override the family id (fid) values found in the .fam file.
+    ///
+    /// By default, if fid values are needed and haven't already been found,
+    /// they will be read from the .fam file.
+    /// Providing them here avoids that file read and provides a way to give different values.
+    #[anyinput]
+    pub fn fid(mut self, fid: AnyIter<AnyString>) -> Self {
+        // Unwrap will always work because BedCloudBuilder starting with some metadata
+        self.metadata.as_mut().unwrap().set_fid(fid);
+        self
+    }
+
+    /// Override the individual id (iid) values found in the .fam file.
+    ///
+    /// By default, if iid values are needed and haven't already been found,
+    /// they will be read from the .fam file.
+    /// Providing them here avoids that file read and provides a way to give different values.
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{BedCloud, assert_eq_nan, sample_bed_file};
+    /// let file_name = sample_bed_file("small.bed_cloud")?;
+    /// use bed_reader::ReadOptions;
+    ///
+    /// let mut bed_cloud = BedCloud::builder(file_name)
+    ///    .iid(["sample1", "sample2", "sample3"])
+    ///    .build()?;
+    /// println!("{:?}", bed_cloud.iid()?); // Outputs ndarray ["sample1", "sample2", "sample3"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// ```
+    #[anyinput]
+    pub fn iid(mut self, iid: AnyIter<AnyString>) -> Self {
+        // Unwrap will always work because BedCloudBuilder starting with some metadata
+        self.metadata.as_mut().unwrap().set_iid(iid);
+        self
+    }
+
+    /// Override the father values found in the .fam file.
+    ///nd
+    /// By default, if father values are needed and haven't already been found,
+    /// they will be read from the .fam file.
+    /// Providing them here avoids that file read and provides a way to gi&ve different values.
+    #[anyinput]
+    pub fn father(mut self, father: AnyIter<AnyString>) -> Self {
+        // Unwrap will always work because BedCloudBuilder starting with some metadata
+        self.metadata.as_mut().unwrap().set_father(father);
+        self
+    }
+
+    /// Override the mother values found in the .fam file.
+    ///
+    /// By default, if mother values are needed and haven't already been found,
+    /// they will be read from the .fam file.
+    /// Providing them here avoids that file read and provides a way to give different values.
+    #[anyinput]
+    pub fn mother(mut self, mother: AnyIter<AnyString>) -> Self {
+        // Unwrap will always work because BedCloudBuilder starting with some metadata
+        self.metadata.as_mut().unwrap().set_mother(mother);
+        self
+    }
+
+    /// Override the sex values found in the .fam file.
+    ///
+    /// By default, if sex values are needed and haven't already been found,
+    /// they will be read from the .fam file.
+    /// Providing them here avoids that file read and provides a way to give different values.
+    #[anyinput]
+    pub fn sex(mut self, sex: AnyIter<i32>) -> Self {
+        // Unwrap will always work because BedCloudBuilder starting with some metadata
+        self.metadata.as_mut().unwrap().set_sex(sex);
+        self
+    }
+
+    /// Override the phenotype values found in the .fam file.
+    ///
+    /// Note that the phenotype values in the .fam file are seldom used.
+    /// By default, if phenotype values are needed and haven't already been found,
+    /// they will be read from the .fam file.
+    /// Providing them here avoids that file read and provides a way to give different values.
+    #[anyinput]
+    pub fn pheno(mut self, pheno: AnyIter<AnyString>) -> Self {
+        // Unwrap will always work because BedCloudBuilder starting with some metadata
+        self.metadata.as_mut().unwrap().set_pheno(pheno);
+        self
+    }
+
+    /// Override the chromosome values found in the .bim file.
+    ///
+    /// By default, if chromosome values are needed and haven't already been found,
+    /// they will be read from the .bim file.
+    /// Providing them here avoids that file read and provides a way to give different values.
+    #[anyinput]
+    pub fn chromosome(mut self, chromosome: AnyIter<AnyString>) -> Self {
+        // Unwrap will always work because BedCloudBuilder starting with some metadata
+        self.metadata.as_mut().unwrap().set_chromosome(chromosome);
+        self
+    }
+
+    /// Override the SNP id (sid) values found in the .fam file.
+    ///
+    /// By default, if sid values are needed and haven't already been found,
+    /// they will be read from the .bim file.
+    /// Providing them here avoids that file read and provides a way to give different values.
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_file};
+    /// let file_name = sample_bed_file("small.bed_cloud")?;
+    ///
+    /// let mut bed_cloud = BedCloud::builder(file_name)
+    ///    .sid(["SNP1", "SNP2", "SNP3", "SNP4"])
+    ///    .build()?;
+    /// println!("{:?}", bed_cloud.sid()?); // Outputs ndarray ["SNP1", "SNP2", "SNP3", "SNP4"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// ```
+    #[anyinput]
+    pub fn sid(mut self, sid: AnyIter<AnyString>) -> Self {
+        self.metadata.as_mut().unwrap().set_sid(sid);
+        self
+    }
+
+    /// Override the centimorgan position values found in the .bim file.
+    ///
+    /// By default, if centimorgan position values are needed and haven't already been found,
+    /// they will be read from the .bim file.
+    /// Providing them here avoids that file read and provides a way to give different values.
+    #[anyinput]
+    pub fn cm_position(mut self, cm_position: AnyIter<f32>) -> Self {
+        // Unwrap will always work because BedCloudBuilder starting with some metadata
+        self.metadata.as_mut().unwrap().set_cm_position(cm_position);
+        self
+    }
+
+    /// Override the base-pair position values found in the .bim file.
+    ///
+    /// By default, if base-pair position values are needed and haven't already been found,
+    /// they will be read from the .bim file.
+    /// Providing them here avoids that file read and provides a way to give different values.
+    #[anyinput]
+    pub fn bp_position(mut self, bp_position: AnyIter<i32>) -> Self {
+        // Unwrap will always work because BedCloudBuilder starting with some metadata
+        self.metadata.as_mut().unwrap().set_bp_position(bp_position);
+        self
+    }
+
+    /// Override the allele 1 values found in the .bim file.
+    ///
+    /// By default, if allele 1 values are needed and haven't already been found,
+    /// they will be read from the .bim file.
+    /// Providing them here avoids that file read and provides a way to give different values.
+    #[anyinput]
+    pub fn allele_1(mut self, allele_1: AnyIter<AnyString>) -> Self {
+        // Unwrap will always work because BedCloudBuilder starting with some metadata
+        self.metadata.as_mut().unwrap().set_allele_1(allele_1);
+        self
+    }
+
+    /// Override the allele 2 values found in the .bim file.
+    ///
+    /// By default, if allele 2 values are needed and haven't already been found,
+    /// they will be read from the .bim file.
+    /// Providing them here avoids that file read and provides a way to give different values.
+    #[anyinput]
+    pub fn allele_2(mut self, allele_2: AnyIter<AnyString>) -> Self {
+        // Unwrap will always work because BedCloudBuilder starting with some metadata
+        self.metadata.as_mut().unwrap().set_allele_2(allele_2);
+        self
+    }
+
+    /// Set the number of individuals (samples) in the data.
+    ///
+    /// By default, if this number is needed, it will be found
+    /// and remembered
+    /// by opening the .fam file and quickly counting the number
+    /// of lines. Providing the number thus avoids a file read.
+    pub fn iid_count(mut self, count: usize) -> Self {
+        self.iid_count = Some(Some(count));
+        self
+    }
+
+    /// Set the number of SNPs in the data.
+    ///
+    /// By default, if this number is needed, it will be found
+    /// and remembered
+    /// by opening the .bim file and quickly counting the number
+    /// of lines. Providing the number thus avoids a file read.
+    pub fn sid_count(mut self, count: usize) -> Self {
+        self.sid_count = Some(Some(count));
+        self
+    }
+
+    /// Don't check the header of the .bed_cloud file until and unless the file is actually read.
+    ///
+    /// By default, when a [`BedCloud`](struct.BedCloud.html) struct is created, the .bed_cloud
+    /// file header is checked. This stops that early check.
+    pub fn skip_early_check(mut self) -> Self {
+        self.is_checked_early = Some(false);
+        self
+    }
+
+    /// Set the path to the .fam file.
+    ///
+    /// If not set, the .fam file will be assumed
+    /// to have the same name as the .bed_cloud file, but with the extension .fam.
+    ///
+    /// # Example:
+    /// Read .bed_cloud, .fam, and .bim files with non-standard names.
+    /// ```
+    /// use bed_reader::{BedCloud, ReadOptions, sample_files};
+    /// let deb_maf_mib = sample_files(["small.deb", "small.maf", "small.mib"])?;
+    /// let mut bed_cloud = BedCloud::builder(&deb_maf_mib[0])
+    ///    .fam_path(&deb_maf_mib[1])
+    ///    .bim_path(&deb_maf_mib[2])
+    ///    .build()?;
+    /// println!("{:?}", bed_cloud.iid()?); // Outputs ndarray ["iid1", "iid2", "iid3"]
+    /// println!("{:?}", bed_cloud.sid()?); // Outputs ndarray ["sid1", "sid2", "sid3", "sid4"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// ```
+    // cmk #[anyinput]
+    pub fn fam_path(mut self, path: StorePath) -> Self {
+        self.fam_path = Some(Some(path.to_owned()));
+        self
+    }
+
+    /// Set the path to the .bim file.
+    ///
+    /// If not set, the .bim file will be assumed
+    /// to have the same name as the .bed_cloud file, but with the extension .bim.
+    ///
+    /// # Example:
+    /// Read .bed_cloud, .fam, and .bim files with non-standard names.
+    /// ```
+    /// use bed_reader::{BedCloud, ReadOptions, sample_files};
+    /// let deb_maf_mib = sample_files(["small.deb", "small.maf", "small.mib"])?;
+    /// let mut bed_cloud = BedCloud::builder(&deb_maf_mib[0])
+    ///    .fam_path(&deb_maf_mib[1])
+    ///    .bim_path(&deb_maf_mib[2])
+    ///    .build()?;
+    /// println!("{:?}", bed_cloud.iid()?); // Outputs ndarray ["iid1", "iid2", "iid3"]
+    /// println!("{:?}", bed_cloud.sid()?); // Outputs ndarray ["sid1", "sid2", "sid3", "sid4"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// ```
+    // #[anyinput]
+    pub fn bim_path(mut self, path: StorePath) -> Self {
+        self.bim_path = Some(Some(path.to_owned()));
+        self
+    }
+
+    /// Don't read the fid information from the .fam file.
+    ///
+    /// By default, when the .fam is read, the fid (the family id) is recorded.
+    /// This stops that recording. This is useful if the fid is not needed.
+    /// Asking for the fid after skipping it results in an error.    
+    pub fn skip_fid(mut self) -> Self {
+        // Unwrap will always work because BedCloudBuilder starting with some skip_set
+        self.skip_set.as_mut().unwrap().insert(MetadataFields::Fid);
+        self
+    }
+
+    /// Don't read the iid information from the .fam file.
+    ///
+    /// By default, when the .fam is read, the iid (the individual id) is recorded.
+    /// This stops that recording. This is useful if the iid is not needed.
+    /// Asking for the iid after skipping it results in an error.
+    pub fn skip_iid(mut self) -> Self {
+        // Unwrap will always work because BedCloudBuilder starting with some skip_set
+        self.skip_set.as_mut().unwrap().insert(MetadataFields::Iid);
+        self
+    }
+
+    /// Don't read the father information from the .fam file.
+    ///
+    /// By default, when the .fam is read, the father id is recorded.
+    /// This stops that recording. This is useful if the father id is not needed.
+    /// Asking for the father id after skipping it results in an error.    
+    pub fn skip_father(mut self) -> Self {
+        // Unwrap will always work because BedCloudBuilder starting with some skip_set
+        self.skip_set
+            .as_mut()
+            .unwrap()
+            .insert(MetadataFields::Father);
+        self
+    }
+
+    /// Don't read the mother information from the .fam file.
+    ///
+    /// By default, when the .fam is read, the mother id is recorded.
+    /// This stops that recording. This is useful if the mother id is not needed.
+    /// Asking for the mother id after skipping it results in an error.    
+    pub fn skip_mother(mut self) -> Self {
+        // Unwrap will always work because BedCloudBuilder starting with some skip_set
+        self.skip_set
+            .as_mut()
+            .unwrap()
+            .insert(MetadataFields::Mother);
+        self
+    }
+
+    /// Don't read the sex information from the .fam file.
+    ///
+    /// By default, when the .fam is read, the sex is recorded.
+    /// This stops that recording. This is useful if sex is not needed.
+    /// Asking for sex after skipping it results in an error.    
+    pub fn skip_sex(mut self) -> Self {
+        // Unwrap will always work because BedCloudBuilder starting with some skip_set
+        self.skip_set.as_mut().unwrap().insert(MetadataFields::Sex);
+        self
+    }
+
+    /// Don't read the phenotype information from the .fam file.
+    ///
+    /// Note that the phenotype information in the .fam file is
+    /// seldom used.
+    ///
+    /// By default, when the .fam is read, the phenotype is recorded.
+    /// This stops that recording. This is useful if this phenotype
+    /// information is not needed.
+    /// Asking for the phenotype after skipping it results in an error.    
+    pub fn skip_pheno(mut self) -> Self {
+        // Unwrap will always work because BedCloudBuilder starting with some skip_set
+        self.skip_set
+            .as_mut()
+            .unwrap()
+            .insert(MetadataFields::Pheno);
+        self
+    }
+
+    /// Don't read the chromosome information from the .bim file.
+    ///
+    /// By default, when the .bim is read, the chromosome is recorded.
+    /// This stops that recording. This is useful if the chromosome is not needed.
+    /// Asking for the chromosome after skipping it results in an error.    
+    pub fn skip_chromosome(mut self) -> Self {
+        // Unwrap will always work because BedCloudBuilder starting with some skip_set
+        self.skip_set
+            .as_mut()
+            .unwrap()
+            .insert(MetadataFields::Chromosome);
+        self
+    }
+
+    /// Don't read the SNP id information from the .bim file.
+    ///
+    /// By default, when the .bim is read, the sid (SNP id) is recorded.
+    /// This stops that recording. This is useful if the sid is not needed.
+    /// Asking for the sid after skipping it results in an error.    
+    pub fn skip_sid(mut self) -> Self {
+        // Unwrap will always work because BedCloudBuilder starting with some skip_set
+        self.skip_set.as_mut().unwrap().insert(MetadataFields::Sid);
+        self
+    }
+
+    /// Don't read the centimorgan position information from the .bim file.
+    ///
+    /// By default, when the .bim is read, the cm position is recorded.
+    /// This stops that recording. This is useful if the cm position is not needed.
+    /// Asking for the cm position after skipping it results in an error.    
+    pub fn skip_cm_position(mut self) -> Self {
+        // Unwrap will always work because BedCloudBuilder starting with some skip_set
+        self.skip_set
+            .as_mut()
+            .unwrap()
+            .insert(MetadataFields::CmPosition);
+        self
+    }
+
+    /// Don't read the base-pair position information from the .bim file.
+    ///
+    /// By default, when the .bim is read, the bp position is recorded.
+    /// This stops that recording. This is useful if the bp position is not needed.
+    /// Asking for the cp position after skipping it results in an error.    
+    pub fn skip_bp_position(mut self) -> Self {
+        // Unwrap will always work because BedCloudBuilder starting with some skip_set
+        self.skip_set
+            .as_mut()
+            .unwrap()
+            .insert(MetadataFields::BpPosition);
+        self
+    }
+
+    /// Don't read the allele 1 information from the .bim file.
+    ///
+    /// By default, when the .bim is read, allele 1 is recorded.
+    /// This stops that recording. This is useful if allele 1 is not needed.
+    /// Asking for allele 1 after skipping it results in an error.    
+    pub fn skip_allele_1(mut self) -> Self {
+        // Unwrap will always work because BedCloudBuilder starting with some skip_set
+        self.skip_set
+            .as_mut()
+            .unwrap()
+            .insert(MetadataFields::Allele1);
+        self
+    }
+
+    /// Don't read the allele 2 information from the .bim file.
+    ///
+    /// By default, when the .bim is read, allele 2 is recorded.
+    /// This stops that recording. This is useful if allele 2 is not needed.
+    /// Asking for allele 2 after skipping it results in an error.    
+    pub fn skip_allele_2(mut self) -> Self {
+        // Unwrap will always work because BedCloudBuilder starting with some skip_set
+        self.skip_set
+            .as_mut()
+            .unwrap()
+            .insert(MetadataFields::Allele2);
+        self
+    }
+
+    /// Override the metadata in the .fam and .bim files with info merged in from a [`Metadata`](struct.Metadata.html).
+    ///
+    /// # Example
+    ///
+    /// In the example, we create a [`Metadata`](struct.Metadata.html) with iid
+    /// and sid arrays. Next, we use [`BedCloudBuilder`](struct.BedCloudBuilder.html) to override the fid array
+    /// and an iid array. Then, we add the metadata to the [`BedCloudBuilder`](struct.BedCloudBuilder.html),
+    /// overwriting iid (again) and overriding sid. Finally, we print these
+    /// three arrays and chromosome. Chromosome was never overridden so
+    /// it is read from the *.bim file.
+    ///```
+    /// use ndarray as nd;
+    /// use bed_reader::{BedCloud, Metadata, sample_bed_file};
+    ///
+    /// let file_name = sample_bed_file("small.bed_cloud")?;
+    /// let metadata = Metadata::builder()
+    ///     .iid(["i1", "i2", "i3"])
+    ///     .sid(["s1", "s2", "s3", "s4"])
+    ///     .build()?;
+    /// let mut bed_cloud = BedCloud::builder(file_name)
+    ///     .fid(["f1", "f2", "f3"])
+    ///     .iid(["x1", "x2", "x3"])
+    ///     .metadata(&metadata)
+    ///     .build()?;
+    /// println!("{0:?}", bed_cloud.fid()?);  // Outputs ndarray ["f1", "f2", "f3"]
+    /// println!("{0:?}", bed_cloud.iid()?);  // Outputs ndarray ["i1", "i2", "i3"]
+    /// println!("{0:?}", bed_cloud.sid()?);  // Outputs ndarray ["s1", "s2", "s3", "s4"]
+    /// println!("{0:?}", bed_cloud.chromosome()?);  // Outputs ndarray ["1", "1", "5", "Y"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// ```
+    pub fn metadata(mut self, metadata: &Metadata) -> Self {
+        self.metadata = Some(
+            Metadata::builder()
+                .metadata(&self.metadata.unwrap()) // unwrap is ok because we know we have metadata
+                .metadata(metadata) // consistent counts will be check later by the BedCloudBuilder
+                .build_no_file_check()
+                .unwrap(), // unwrap is ok because nothing can go wrong
+        );
+
+        self
+    }
 }

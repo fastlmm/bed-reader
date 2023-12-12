@@ -101,11 +101,13 @@
 mod python_module;
 mod tests;
 use anyinput::anyinput;
+use bed_cloud::BedCloud;
 use core::fmt::Debug;
 use derive_builder::{Builder, UninitializedFieldError};
 use fetch_data::{FetchData, FetchDataError};
 use nd::ShapeBuilder;
 use ndarray as nd;
+use object_store::ObjectStore;
 use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::convert::TryFrom;
@@ -4236,6 +4238,15 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
         bed.read_with_options(&read_options)
     }
 
+    /// cmk
+    pub async fn read_cloud<TStore: ObjectStore>(
+        &self,
+        bed_cloud: &mut BedCloud<TStore>,
+    ) -> Result<nd::Array2<TVal>, Box<BedErrorPlus>> {
+        let read_options = self.build()?;
+        bed_cloud.read_with_options(&read_options).await
+    }
+
     /// Read genotype data with options, into a preallocated array.
     ///
     /// > Also see [`Bed::read_and_fill`](struct.Bed.html#method.read_and_fill) and
@@ -4276,6 +4287,8 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
         let read_options = self.build()?;
         bed.read_and_fill_with_options(val, &read_options)
     }
+
+    // cmk should there be read_and_fill_cloud?
 
     /// Order of the output array, Fortran-style (default)
     ///
