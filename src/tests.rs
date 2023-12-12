@@ -1211,71 +1211,6 @@ fn another_bed_read_example() -> Result<(), Box<BedErrorPlus>> {
     Ok(())
 }
 
-// cmk delete
-// #[test]
-// fn object_store_bed0() -> anyhow::Result<()> {
-//     use object_store::local::LocalFileSystem;
-
-//     let rt = Runtime::new()?;
-
-//     rt.block_on(async {
-//         // Your async test logic here
-//         let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
-//         let path = StorePath::from_filesystem_path(file)?;
-
-//         let store = Arc::new(LocalFileSystem::new());
-
-//         // Read the file
-//         let data = store.get(&path).await?;
-
-//         let bytes = data.bytes().await?.to_vec();
-
-//         println!("{:?}", bytes.len()); // Outputs the length of bytes
-//         assert!(bytes.len() == 303);
-
-//         Ok(())
-//     })
-// }
-
-#[test]
-fn object_store_bed1() -> anyhow::Result<()> {
-    let rt = Runtime::new()?;
-
-    // cmk00 see https://docs.rs/object_store/latest/object_store/ "// Fetch the object including metadata"
-
-    rt.block_on(async {
-        let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
-        let store = Arc::new(LocalFileSystem::new());
-        let path: object_store::path::Path = object_store::path::Path::from_filesystem_path(&file)?;
-        let object_meta = store.head(&path).await?;
-
-        let mut bed_cloud = BedCloud::<LocalFileSystem> {
-            store,
-            path,
-            object_meta,
-            fam_path: None,
-            fam_object_meta: None,
-            bim_path: None,
-            bim_object_meta: None,
-            is_checked_early: false,
-            iid_count: None,
-            sid_count: None,
-            metadata: Metadata::default(), // Replace with default initialization if Metadata has a default
-            skip_set: HashSet::new(),
-        };
-
-        assert_eq!(bed_cloud.iid_count().await?, 10);
-
-        let fam_file = &file.with_extension("fam");
-        let fam_path = StorePath::from_filesystem_path(fam_file)?;
-
-        let count_lines = bed_cloud.count_lines(&fam_path).await?;
-
-        assert_eq!(count_lines, 10);
-        Ok(())
-    })
-}
-
 #[test]
 fn cloud_read() -> anyhow::Result<()> {
     let rt = Runtime::new()?;
@@ -1311,17 +1246,7 @@ fn cloud_read() -> anyhow::Result<()> {
             .i8()
             .build()?;
 
-        let iid_count_in = bed_cloud.iid_count().await?;
-        let sid_count_in: usize = bed_cloud.sid_count().await?;
-
-        let iid_count_out = read_options.iid_index.len(iid_count_in)?;
-        let sid_count_out = read_options.sid_index.len(sid_count_in)?;
-        let shape = ShapeBuilder::set_f((iid_count_out, sid_count_out), read_options.is_f);
-        let mut val = nd::Array2::default(shape);
-
-        bed_cloud
-            .read_and_fill_with_options(&mut val.view_mut(), &read_options)
-            .await?;
+        let val = bed_cloud.read_with_options(&read_options).await?;
 
         println!("{val:?}");
 

@@ -1,3 +1,4 @@
+use nd::ShapeBuilder;
 use ndarray as nd;
 use std::collections::HashSet;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -57,7 +58,7 @@ where
     T: ObjectStore,
 {
     // #[anyinput]
-    pub(crate) async fn count_lines(&self, path: &StorePath) -> Result<usize, Box<BedErrorPlus>> {
+    async fn count_lines(&self, path: &StorePath) -> Result<usize, Box<BedErrorPlus>> {
         let stream = self
             .store
             .clone()
@@ -188,6 +189,24 @@ where
         .await?;
 
         Ok(())
+    }
+
+    /// cmk doc
+    pub async fn read_with_options<TVal: BedVal>(
+        &mut self,
+        read_options: &ReadOptions<TVal>,
+    ) -> Result<nd::Array2<TVal>, Box<BedErrorPlus>> {
+        let iid_count_in = self.iid_count().await?;
+        let sid_count_in = self.sid_count().await?;
+        let iid_count_out = read_options.iid_index.len(iid_count_in)?;
+        let sid_count_out = read_options.sid_index.len(sid_count_in)?;
+        let shape = ShapeBuilder::set_f((iid_count_out, sid_count_out), read_options.is_f);
+        let mut val = nd::Array2::<TVal>::default(shape);
+
+        self.read_and_fill_with_options(&mut val.view_mut(), read_options)
+            .await?;
+
+        Ok(val)
     }
 }
 
