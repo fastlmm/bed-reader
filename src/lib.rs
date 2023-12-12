@@ -135,6 +135,7 @@ use std::ops::AddAssign;
 use std::ops::{Div, Sub};
 use thiserror::Error;
 use tokio::task::JoinError;
+/// cmk docks
 pub mod bed_cloud;
 
 const BED_FILE_MAGIC1: u8 = 0x6C; // 0b01101100 or 'l' (lowercase 'L')
@@ -3105,6 +3106,37 @@ fn compute_num_threads(option_num_threads: Option<usize>) -> Result<usize, Box<B
     Ok(num_threads)
 }
 
+fn compute_max_concurrent_requests(
+    option_max_concurrent_requests: Option<usize>,
+) -> Result<usize, Box<BedErrorPlus>> {
+    let max_concurrent_requests =
+        if let Some(max_concurrent_requests) = option_max_concurrent_requests {
+            max_concurrent_requests
+        // } else if let Ok(num_threads) = env::var("BED_READER_NUM_THREADS") {
+        //     num_threads.parse::<usize>()?
+        // } else if let Ok(num_threads) = env::var("NUM_THREADS") {
+        //     num_threads.parse::<usize>()?
+        } else {
+            10
+        };
+    Ok(max_concurrent_requests)
+}
+
+fn compute_max_chunk_size(
+    option_max_chunk_size: Option<usize>,
+) -> Result<usize, Box<BedErrorPlus>> {
+    let max_chunk_size = if let Some(max_chunk_size) = option_max_chunk_size {
+        max_chunk_size
+    // } else if let Ok(num_threads) = env::var("BED_READER_NUM_THREADS") {
+    //     num_threads.parse::<usize>()?
+    // } else if let Ok(num_threads) = env::var("NUM_THREADS") {
+    //     num_threads.parse::<usize>()?
+    } else {
+        10
+    };
+    Ok(max_chunk_size)
+}
+
 impl Index {
     // We can't define a 'From' because we want to add count at the last moment.
     // Later Would be nice to not always allocate a new vec, maybe with Rc<[T]>?
@@ -3713,7 +3745,6 @@ impl From<()> for Index {
 /// See the [Table of Index Expressions](index.html#index-expressions)
 /// for a list of expressions for selecting individuals (sample)
 /// and SNPs (variants).
-
 #[derive(Debug, Clone, Builder)]
 #[builder(build_fn(error = "BedErrorPlus"))]
 pub struct ReadOptions<TVal: BedVal> {
@@ -3927,6 +3958,14 @@ pub struct ReadOptions<TVal: BedVal> {
     /// ```
     #[builder(default, setter(strip_option))]
     num_threads: Option<usize>,
+
+    /// cmk docs
+    #[builder(default, setter(strip_option))]
+    max_concurrent_requests: Option<usize>,
+
+    /// cmk docs
+    #[builder(default, setter(strip_option))]
+    max_chunk_size: Option<usize>,
 }
 
 impl<TVal: BedVal> ReadOptions<TVal> {

@@ -15,8 +15,9 @@ use object_store::ObjectMeta;
 use object_store::ObjectStore;
 
 use crate::{
-    check_and_precompute_iid_index, set_up_two_bits_to_value, try_div_4, BedError, BedErrorPlus,
-    BedVal, Metadata, BED_FILE_MAGIC1, BED_FILE_MAGIC2,
+    check_and_precompute_iid_index, compute_max_chunk_size, compute_max_concurrent_requests,
+    set_up_two_bits_to_value, try_div_4, BedError, BedErrorPlus, BedVal, Hold, Metadata,
+    ReadOptions, BED_FILE_MAGIC1, BED_FILE_MAGIC2,
 };
 use crate::{MetadataFields, CB_HEADER_U64};
 
@@ -90,7 +91,7 @@ where
         if let Some(metadata_path) = metadata_path {
             Ok(metadata_path.to_owned())
         } else {
-            change_extension(&bed_path, extension)
+            change_extension(bed_path, extension)
         }
     }
 
@@ -118,6 +119,7 @@ where
         }
     }
 
+    /// cmk doc
     pub async fn iid_count(&mut self) -> Result<usize, Box<BedErrorPlus>> {
         if let Some(iid_count) = self.iid_count {
             Ok(iid_count)
@@ -129,6 +131,7 @@ where
         }
     }
 
+    /// cmk doc
     pub async fn sid_count(&mut self) -> Result<usize, Box<BedErrorPlus>> {
         if let Some(sid_count) = self.sid_count {
             Ok(sid_count)
@@ -138,6 +141,53 @@ where
             self.sid_count = Some(sid_count);
             Ok(sid_count)
         }
+    }
+
+    /// cmk doc
+    pub async fn read_and_fill_with_options<TVal: BedVal>(
+        &mut self,
+        val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.,
+        read_options: &ReadOptions<TVal>,
+    ) -> Result<(), Box<BedErrorPlus>> {
+        // must do these one-at-a-time because they mutate self to cache the results
+        let iid_count = self.iid_count().await?;
+        let sid_count = self.sid_count().await?;
+
+        let max_concurrent_requests =
+            compute_max_concurrent_requests(read_options.max_concurrent_requests)?;
+
+        let max_chunk_size = compute_max_chunk_size(read_options.max_chunk_size)?;
+
+        // If we already have a Vec<isize>, reference it. If we don't, create one and reference it.
+        let iid_hold = Hold::new(&read_options.iid_index, iid_count)?;
+        let iid_index = iid_hold.as_ref();
+        let sid_hold = Hold::new(&read_options.sid_index, sid_count)?;
+        let sid_index = sid_hold.as_ref();
+
+        let dim = val.dim();
+        if dim != (iid_index.len(), sid_index.len()) {
+            return Err(Box::new(
+                BedError::InvalidShape(iid_index.len(), sid_index.len(), dim.0, dim.1).into(),
+            ));
+        }
+
+        read_no_alloc(
+            self.store.clone(), // cmk rename "object_store" ??
+            self.path.clone(),
+            &self.object_meta,
+            iid_count,
+            sid_count,
+            read_options.is_a1_counted,
+            iid_index,
+            sid_index,
+            read_options.missing_value,
+            max_concurrent_requests,
+            max_chunk_size,
+            &mut val.view_mut(),
+        )
+        .await?;
+
+        Ok(())
     }
 }
 

@@ -1305,37 +1305,27 @@ fn cloud_read() -> anyhow::Result<()> {
             skip_set: HashSet::new(),
         };
 
-        let in_iid_count = bed_cloud.iid_count().await?;
-        let in_sid_count = bed_cloud.sid_count().await?;
-        let iid_index = [0, -2];
-        let sid_index = [0, 1, 2];
+        let read_options = ReadOptions::builder()
+            .iid_index([0, -2])
+            .sid_index([0, 1, 2])
+            .i8()
+            .build()?;
 
-        let is_f = true;
-        let shape = ShapeBuilder::set_f((iid_index.len(), sid_index.len()), is_f);
+        let iid_count_in = bed_cloud.iid_count().await?;
+        let sid_count_in: usize = bed_cloud.sid_count().await?;
+
+        let iid_count_out = read_options.iid_index.len(iid_count_in)?;
+        let sid_count_out = read_options.sid_index.len(sid_count_in)?;
+        let shape = ShapeBuilder::set_f((iid_count_out, sid_count_out), read_options.is_f);
         let mut val = nd::Array2::default(shape);
 
-        let max_concurrent_requests = 10usize;
-        let max_chunk_size = 8_000_000usize;
-
-        bed_cloud_read_no_alloc(
-            bed_cloud.store.clone(),
-            bed_cloud.path,
-            &bed_cloud.object_meta,
-            in_iid_count,
-            in_sid_count,
-            true,
-            &iid_index,
-            &sid_index,
-            -1i8,
-            max_concurrent_requests,
-            max_chunk_size,
-            &mut val.view_mut(),
-        )
-        .await?;
+        bed_cloud
+            .read_and_fill_with_options(&mut val.view_mut(), &read_options)
+            .await?;
 
         println!("{val:?}");
 
-        let expected = nd::arr2(&[[1i8, 0, -1], [2, 0, -1]]);
+        let expected = nd::arr2(&[[1i8, 0, -127], [2, 0, -127]]);
         println!("{expected:?}");
         assert!(allclose(&expected.view(), &val.view(), 0, true));
 
