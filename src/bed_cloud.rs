@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio::sync::Semaphore;
-use tokio::task;
+use tokio::task::{self, JoinHandle};
 
 // cmk really need futures_util and bytes...???
 use futures_util::TryStreamExt;
@@ -214,13 +214,14 @@ pub(crate) async fn internal_read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
     // cmk turn this into something more functional (streams?)
     for chunk in &sid_index
         .iter()
-        .zip(out_val.axis_iter_mut(nd::Axis(1)))
+        // .zip(out_val.axis_iter_mut(nd::Axis(1)))
         .chunks(chunk_size)
     {
         // ======== prepare ranges and cols ================ cmk refactor
         let mut ranges = Vec::with_capacity(chunk_size);
-        let mut cols = Vec::with_capacity(chunk_size);
-        for (in_sid_i_signed, col) in chunk {
+        // let mut cols = Vec::with_capacity(chunk_size);
+        let mut in_sid_i_vec = Vec::with_capacity(chunk_size);
+        for in_sid_i_signed in chunk {
             // cmk similar code elsewhere
             // Turn signed sid_index into unsigned sid_index (or error)
             let in_sid_i = if (0..=upper_sid_count).contains(in_sid_i_signed) {
@@ -237,26 +238,28 @@ pub(crate) async fn internal_read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
             let pos: u64 = in_sid_i * in_iid_count_div4_u64 + CB_HEADER_U64; // "as" and math is safe because of early checks
             let range = pos as usize..(pos + in_iid_count_div4_u64) as usize;
             ranges.push(range);
-            cols.push(col);
+            // cols.push(col);
+            in_sid_i_vec.push(in_sid_i);
         }
 
         let permit = semaphore.clone().acquire_owned().await.unwrap(); // cmk unwrap
         let path_clone = path.clone();
-        let ranges_clone = ranges.clone();
         let object_store_clone = object_store.clone();
-        let handle = task::spawn(async move {
+        let handle: JoinHandle<Result<_, BedErrorPlus>> = task::spawn(async move {
             // cmk somehow we must only compile is size(usize) is 64 bits.
             // cmk we should turn sid_index into a slice of ranges.
-            object_store_clone
-                .get_ranges(&path_clone, &ranges_clone)
+            let vec_bytes = object_store_clone
+                .get_ranges(&path_clone, &ranges)
                 .await
+                .map_err(BedErrorPlus::from)?; // cmk unwrap
+            Ok((vec_bytes, in_sid_i_vec))
         });
 
         match handle.await {
-            Ok(Ok(vec_bytes)) => {
+            Ok(Ok((vec_bytes, in_sid_i_vec))) => {
                 drop(permit);
-                for (bytes, mut col) in vec_bytes.into_iter().zip(cols.into_iter()) {
-                    // let mut col = out_val.column_mut(i);
+                for (bytes, in_sid_i) in vec_bytes.into_iter().zip(in_sid_i_vec.into_iter()) {
+                    let mut col = out_val.column_mut(in_sid_i as usize);
                     // // cmk In parallel, decompress the iid info and put it in its column
                     // // cmk .par_bridge() // This seems faster that parallel zip
                     // .try_for_each(|(bytes_vector_result, mut col)| match bytes_vector_result {
@@ -271,7 +274,7 @@ pub(crate) async fn internal_read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
                     }
                 }
             }
-            Ok(Err(e)) => return Err(BedErrorPlus::from(e).into()),
+            Ok(Err(e)) => return Err(e.into()),
             Err(e) => return Err(BedErrorPlus::from(e).into()),
         }
     }
