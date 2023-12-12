@@ -150,6 +150,7 @@ dependencies = [
  "base16ct 0.2.0",
  "bytecount",
  "byteorder",
+ "bytes",
  "ctor 0.2.0",
  "derive_builder",
  "directories 5.0.1",

@@ -6,7 +6,7 @@ use crate::assert_eq_nan;
 #[cfg(test)]
 use crate::assert_error_variant;
 #[cfg(test)]
-use crate::bed_cloud::internal_read_no_alloc as bed_cloud_internal_read_no_alloc;
+use crate::bed_cloud::read_no_alloc as bed_cloud_read_no_alloc;
 #[cfg(test)]
 use crate::bed_cloud::BedCloud;
 #[cfg(test)]
@@ -1277,7 +1277,7 @@ fn object_store_bed1() -> anyhow::Result<()> {
 }
 
 #[test]
-fn cloud_internal_read() -> anyhow::Result<()> {
+fn cloud_read() -> anyhow::Result<()> {
     let rt = Runtime::new()?;
 
     // cmk00 see https://docs.rs/object_store/latest/object_store/ "// Fetch the object including metadata"
@@ -1317,7 +1317,7 @@ fn cloud_internal_read() -> anyhow::Result<()> {
         let max_concurrent_requests = 10usize;
         let max_chunk_size = 8_000_000usize;
 
-        bed_cloud_internal_read_no_alloc(
+        bed_cloud_read_no_alloc(
             bed_cloud.store.clone(),
             bed_cloud.path,
             &bed_cloud.object_meta,

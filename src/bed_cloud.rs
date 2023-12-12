@@ -6,6 +6,7 @@ use tokio::sync::Semaphore;
 use tokio::task::{self, JoinHandle};
 
 // cmk really need futures_util and bytes...???
+use bytes::Bytes;
 use futures_util::TryStreamExt;
 use itertools::Itertools;
 use object_store::delimited::newline_delimited_stream;
@@ -15,7 +16,7 @@ use object_store::ObjectStore;
 
 use crate::{
     check_and_precompute_iid_index, set_up_two_bits_to_value, try_div_4, BedError, BedErrorPlus,
-    BedVal, Metadata,
+    BedVal, Metadata, BED_FILE_MAGIC1, BED_FILE_MAGIC2,
 };
 use crate::{MetadataFields, CB_HEADER_U64};
 
@@ -59,6 +60,7 @@ where
         let stream = self
             .store
             .clone()
+            // cmk !!!! does this get get the whole file or just the first chunk?
             .get(path)
             .await
             .map_err(BedErrorPlus::from)?
@@ -209,14 +211,7 @@ pub(crate) async fn internal_read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
 
     let semaphore = Arc::new(Semaphore::new(max_concurrent_requests));
 
-    // Possible optimization: We could try to read only the iid info needed
-    // Possible optimization: We could read snp in their input order instead of their output order
-    // cmk turn this into something more functional (streams?)
-    for chunk in &sid_index
-        .iter()
-        // .zip(out_val.axis_iter_mut(nd::Axis(1)))
-        .chunks(chunk_size)
-    {
+    for chunk in &sid_index.iter().chunks(chunk_size) {
         // ======== prepare ranges and cols ================ cmk refactor
         let mut ranges = Vec::with_capacity(chunk_size);
         // let mut cols = Vec::with_capacity(chunk_size);
@@ -234,7 +229,6 @@ pub(crate) async fn internal_read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
                 ))));
             };
 
-            // Read the iid info for one snp from the disk
             let pos: u64 = in_sid_i * in_iid_count_div4_u64 + CB_HEADER_U64; // "as" and math is safe because of early checks
             let range = pos as usize..(pos + in_iid_count_div4_u64) as usize;
             ranges.push(range);
@@ -243,8 +237,8 @@ pub(crate) async fn internal_read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
         }
 
         let permit = semaphore.clone().acquire_owned().await.unwrap(); // cmk unwrap
-        let path_clone = path.clone();
-        let object_store_clone = object_store.clone();
+        let path_clone = path.clone(); // cmk fast enough?
+        let object_store_clone = object_store.clone(); // This is Arc fast
         let handle: JoinHandle<Result<_, BedErrorPlus>> = task::spawn(async move {
             // cmk somehow we must only compile is size(usize) is 64 bits.
             // cmk we should turn sid_index into a slice of ranges.
@@ -280,4 +274,92 @@ pub(crate) async fn internal_read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
     }
 
     Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+// cmk #[anyinput]
+pub(crate) async fn read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
+    object_store: Arc<TStore>,
+    path: StorePath,
+    object_meta: &ObjectMeta,
+    iid_count: usize,
+    sid_count: usize,
+    is_a1_counted: bool,
+    iid_index: &[isize],
+    sid_index: &[isize],
+    missing_value: TVal,
+    max_concurrent_requests: usize,
+    max_chunk_size: usize,
+
+    val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
+) -> Result<(), Box<BedErrorPlus>> {
+    let bytes = open_and_check(object_store.clone(), &path).await?;
+
+    match bytes[2] {
+        0 => {
+            // We swap 'iid' and 'sid' and then reverse the axes.
+            let mut val_t = val.view_mut().reversed_axes();
+
+            internal_read_no_alloc(
+                object_store,
+                path,
+                object_meta,
+                sid_count,
+                iid_count,
+                is_a1_counted,
+                sid_index,
+                iid_index,
+                missing_value,
+                max_concurrent_requests,
+                max_chunk_size,
+                &mut val_t,
+            )
+            .await?;
+        }
+        1 => {
+            internal_read_no_alloc(
+                object_store,
+                path,
+                object_meta,
+                iid_count,
+                sid_count,
+                is_a1_counted,
+                iid_index,
+                sid_index,
+                missing_value,
+                max_concurrent_requests,
+                max_chunk_size,
+                val,
+            )
+            .await?
+        }
+        _ => {
+            return Err(Box::new(
+                BedError::BadMode(store_path_to_string(path)).into(),
+            ))
+        }
+    };
+    Ok(())
+}
+
+// cmk #[anyinput]
+async fn open_and_check<TStore>(
+    object_store: Arc<TStore>,
+    path: &StorePath,
+) -> Result<Bytes, Box<BedErrorPlus>>
+where
+    TStore: ObjectStore,
+{
+    let bytes = object_store
+        .clone()
+        .get_range(path, 0..CB_HEADER_U64 as usize)
+        .await
+        .map_err(BedErrorPlus::from)?;
+
+    if (BED_FILE_MAGIC1 != bytes[0]) || (BED_FILE_MAGIC2 != bytes[1]) {
+        return Err(Box::new(
+            BedError::IllFormed(store_path_to_string(path.clone())).into(),
+        ));
+    }
+    Ok(bytes)
 }

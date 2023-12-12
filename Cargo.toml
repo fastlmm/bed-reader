@@ -59,6 +59,7 @@ anyhow = "1.0.75"                                                               
 futures-util = "0.3.29"                                                         # cmk need?
 bytecount = "0.6.7"                                                             # cmk need?
 itertools = "0.12.0"                                                            # cmk need?
+bytes = "1.5.0"                                                                 # cmk need?
 
 [dev-dependencies]
 ndarray-rand = "0.14.0"
