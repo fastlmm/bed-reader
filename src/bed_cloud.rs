@@ -2,6 +2,8 @@ use ndarray as nd;
 use std::collections::HashSet;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use tokio::sync::Semaphore;
+use tokio::task;
 
 // cmk really need futures_util and bytes...???
 use futures_util::TryStreamExt;
@@ -204,6 +206,9 @@ pub(crate) async fn internal_read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
     let from_two_bits_to_value = set_up_two_bits_to_value(is_a1_counted, missing_value);
     let lower_sid_count = -(in_sid_count as isize);
     let upper_sid_count: isize = (in_sid_count as isize) - 1;
+
+    let semaphore = Arc::new(Semaphore::new(max_concurrent_requests));
+
     // Possible optimization: We could try to read only the iid info needed
     // Possible optimization: We could read snp in their input order instead of their output order
     // cmk turn this into something more functional (streams?)
@@ -212,15 +217,15 @@ pub(crate) async fn internal_read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
         .zip(out_val.axis_iter_mut(nd::Axis(1)))
         .chunks(chunk_size)
     {
+        // ======== prepare ranges and cols ================ cmk refactor
         let mut ranges = Vec::with_capacity(chunk_size);
         let mut cols = Vec::with_capacity(chunk_size);
-
         for (in_sid_i_signed, col) in chunk {
             // cmk similar code elsewhere
             // Turn signed sid_index into unsigned sid_index (or error)
-            let in_sid_i = if (0..=upper_sid_count).contains(&in_sid_i_signed) {
+            let in_sid_i = if (0..=upper_sid_count).contains(in_sid_i_signed) {
                 *in_sid_i_signed as u64
-            } else if (lower_sid_count..=-1).contains(&in_sid_i_signed) {
+            } else if (lower_sid_count..=-1).contains(in_sid_i_signed) {
                 (in_sid_count - ((-in_sid_i_signed) as usize)) as u64
             } else {
                 return Err(Box::new(BedErrorPlus::BedError(BedError::SidIndexTooBig(
@@ -231,36 +236,44 @@ pub(crate) async fn internal_read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
             // Read the iid info for one snp from the disk
             let pos: u64 = in_sid_i * in_iid_count_div4_u64 + CB_HEADER_U64; // "as" and math is safe because of early checks
             let range = pos as usize..(pos + in_iid_count_div4_u64) as usize;
-
             ranges.push(range);
             cols.push(col);
         }
 
-        // cmk somehow we must only compile is size(usize) is 64 bits.
-        // cmk we should turn sid_index into a slice of ranges.
-        let vec_bytes = object_store
-            .get_ranges(&path, &ranges)
-            .await
-            .map_err(BedErrorPlus::from)?;
+        let permit = semaphore.clone().acquire_owned().await.unwrap(); // cmk unwrap
+        let path_clone = path.clone();
+        let ranges_clone = ranges.clone();
+        let object_store_clone = object_store.clone();
+        let handle = task::spawn(async move {
+            // cmk somehow we must only compile is size(usize) is 64 bits.
+            // cmk we should turn sid_index into a slice of ranges.
+            object_store_clone
+                .get_ranges(&path_clone, &ranges_clone)
+                .await
+        });
 
-        for (bytes, mut col) in vec_bytes.into_iter().zip(cols.into_iter()) {
-            // let mut col = out_val.column_mut(i);
-            // // cmk In parallel, decompress the iid info and put it in its column
-            // // cmk .par_bridge() // This seems faster that parallel zip
-            // .try_for_each(|(bytes_vector_result, mut col)| match bytes_vector_result {
-            //     Err(e) => Err(e),
-            //     Ok(bytes_vector) => {
-            for out_iid_i in 0..iid_index.len() {
-                let i_div_4 = i_div_4_array[out_iid_i];
-                let i_mod_4_times_2: u8 = i_mod_4_times_2_array[out_iid_i];
-                let encoded: u8 = bytes[i_div_4];
-                let genotype_byte: u8 = (encoded >> i_mod_4_times_2) & 0x03;
-                col[out_iid_i] = from_two_bits_to_value[genotype_byte as usize];
+        match handle.await {
+            Ok(Ok(vec_bytes)) => {
+                drop(permit);
+                for (bytes, mut col) in vec_bytes.into_iter().zip(cols.into_iter()) {
+                    // let mut col = out_val.column_mut(i);
+                    // // cmk In parallel, decompress the iid info and put it in its column
+                    // // cmk .par_bridge() // This seems faster that parallel zip
+                    // .try_for_each(|(bytes_vector_result, mut col)| match bytes_vector_result {
+                    //     Err(e) => Err(e),
+                    //     Ok(bytes_vector) => {
+                    for out_iid_i in 0..iid_index.len() {
+                        let i_div_4 = i_div_4_array[out_iid_i];
+                        let i_mod_4_times_2: u8 = i_mod_4_times_2_array[out_iid_i];
+                        let encoded: u8 = bytes[i_div_4];
+                        let genotype_byte: u8 = (encoded >> i_mod_4_times_2) & 0x03;
+                        col[out_iid_i] = from_two_bits_to_value[genotype_byte as usize];
+                    }
+                }
             }
+            Ok(Err(e)) => return Err(BedErrorPlus::from(e).into()),
+            Err(e) => return Err(BedErrorPlus::from(e).into()),
         }
-        //         Ok(())
-        //     }
-        // })?;
     }
 
     Ok(())

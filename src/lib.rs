@@ -134,6 +134,7 @@ use std::num::{ParseFloatError, ParseIntError};
 use std::ops::AddAssign;
 use std::ops::{Div, Sub};
 use thiserror::Error;
+use tokio::task::JoinError;
 pub mod bed_cloud;
 
 const BED_FILE_MAGIC1: u8 = 0x6C; // 0b01101100 or 'l' (lowercase 'L')
@@ -189,6 +190,10 @@ pub enum BedErrorPlus {
     #[allow(missing_docs)]
     #[error(transparent)]
     ObjectStorePathError(#[from] object_store::path::Error),
+
+    #[allow(missing_docs)]
+    #[error(transparent)]
+    JoinError(#[from] JoinError),
 }
 // https://docs.rs/thiserror/1.0.23/thiserror/
 
