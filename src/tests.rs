@@ -1,4 +1,3 @@
-use crate::BedBuilder;
 // https://stackoverflow.com/questions/32900809/how-to-suppress-function-is-never-used-warning-for-a-function-used-by-tests
 #[cfg(test)]
 use crate::allclose;
@@ -6,8 +5,6 @@ use crate::allclose;
 use crate::assert_eq_nan;
 #[cfg(test)]
 use crate::assert_error_variant;
-#[cfg(test)]
-use crate::bed_cloud::read_no_alloc as bed_cloud_read_no_alloc;
 #[cfg(test)]
 use crate::bed_cloud::BedCloud;
 #[cfg(test)]
@@ -58,8 +55,6 @@ use ndarray_npy::read_npy;
 use num_traits::abs;
 #[cfg(test)]
 use object_store::local::LocalFileSystem;
-#[cfg(test)]
-use object_store::path::Path as StorePath;
 #[cfg(test)]
 use object_store::ObjectStore;
 #[cfg(test)]

@@ -15,8 +15,9 @@ use bed_reader::WriteOptions;
 use ndarray as nd;
 use ndarray::s;
 use ndarray_rand::{rand::prelude::StdRng, rand::SeedableRng, rand_distr::Uniform, RandomExt};
+use std::collections::HashSet;
+use std::panic::catch_unwind;
 use temp_testdir::TempDir;
-use tokio::runtime::Runtime;
 
 #[test]
 fn rusty_bed1() -> Result<(), Box<BedErrorPlus>> {
@@ -49,11 +50,6 @@ fn rusty_bed2() -> Result<(), Box<BedErrorPlus>> {
 
     Ok(())
 }
-
-#[cfg(test)]
-use std::collections::HashSet;
-use std::panic::catch_unwind;
-use std::sync::Arc;
 
 #[test]
 fn rusty_bed3() -> Result<(), Box<BedErrorPlus>> {
@@ -2252,32 +2248,4 @@ fn metadata_iid_sid2() -> Result<(), Box<BedErrorPlus>> {
     println!("{:?}", metadata.sid()); // Outputs ndarray Some(["SNP1", "SNP2", "SNP3", "SNP4"])
 
     Ok(())
-}
-
-// cmk see https://github.com/apache/arrow-rs/tree/master/object_store
-// cmk see https://github.com/roeap/object-store-python
-
-#[test]
-fn object_store_bed0() -> anyhow::Result<()> {
-    use object_store::{local::LocalFileSystem, path::Path, ObjectStore};
-
-    let rt = Runtime::new()?;
-
-    rt.block_on(async {
-        // Your async test logic here
-        let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
-        let path = Path::from_filesystem_path(file)?;
-
-        let store = Arc::new(LocalFileSystem::new());
-
-        // Read the file
-        let data = store.get(&path).await?;
-
-        let bytes = data.bytes().await?.to_vec();
-
-        println!("{:?}", bytes.len()); // Outputs the length of bytes
-        assert!(bytes.len() == 303);
-
-        Ok(())
-    })
 }
