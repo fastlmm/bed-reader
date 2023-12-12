@@ -186,9 +186,7 @@ where
             max_chunk_size,
             &mut val.view_mut(),
         )
-        .await?;
-
-        Ok(())
+        .await
     }
 
     /// cmk doc
@@ -207,6 +205,12 @@ where
             .await?;
 
         Ok(val)
+    }
+
+    /// cmk doc
+    pub async fn read<TVal: BedVal>(&mut self) -> Result<nd::Array2<TVal>, Box<BedErrorPlus>> {
+        let read_options = ReadOptions::<TVal>::builder().build()?;
+        self.read_with_options(&read_options).await
     }
 }
 

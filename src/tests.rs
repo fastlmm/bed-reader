@@ -1,3 +1,4 @@
+use crate::BedBuilder;
 // https://stackoverflow.com/questions/32900809/how-to-suppress-function-is-never-used-warning-for-a-function-used-by-tests
 #[cfg(test)]
 use crate::allclose;
@@ -1252,6 +1253,12 @@ fn cloud_read() -> anyhow::Result<()> {
 
         let expected = nd::arr2(&[[1i8, 0, -127], [2, 0, -127]]);
         println!("{expected:?}");
+        assert!(allclose(&expected.view(), &val.view(), 0, true));
+
+        let val = bed_cloud.read::<i8>().await?;
+        println!("{val:?}");
+        let mut bed = Bed::new(&bed_fam[0])?;
+        let expected = bed.read::<i8>()?;
         assert!(allclose(&expected.view(), &val.view(), 0, true));
 
         Ok(())
