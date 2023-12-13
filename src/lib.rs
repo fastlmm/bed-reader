@@ -6241,6 +6241,7 @@ impl Metadata {
         Ok((clone, count))
     }
 
+    /// cmk doc
     pub async fn read_cloud_fam<TArc>(
         &self,
         object_store: &TArc,
@@ -6399,6 +6400,7 @@ impl Metadata {
         Ok((clone, count))
     }
 
+    /// cmk doc
     pub async fn read_cloud_bim<TArc>(
         &self,
         object_store: &TArc,
@@ -6546,7 +6548,7 @@ impl Metadata {
             // Split the chunk into lines
             let lines = std::str::from_utf8(&chunk)
                 .map_err(BedErrorPlus::from)?
-                .split('\n');
+                .split_terminator('\n');
 
             for line in lines {
                 // let line = line?;

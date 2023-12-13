@@ -6,8 +6,6 @@ use crate::assert_eq_nan;
 #[cfg(test)]
 use crate::assert_error_variant;
 #[cfg(test)]
-use crate::bed_cloud::BedCloud;
-#[cfg(test)]
 use crate::file_aat_piece;
 #[cfg(test)]
 use crate::file_ata_piece;
@@ -54,12 +52,6 @@ use ndarray_npy::read_npy;
 #[cfg(test)]
 use num_traits::abs;
 #[cfg(test)]
-use object_store::local::LocalFileSystem;
-#[cfg(test)]
-use object_store::ObjectStore;
-#[cfg(test)]
-use std::collections::HashSet;
-#[cfg(test)]
 use std::f32;
 #[cfg(test)]
 use std::f64;
@@ -76,11 +68,7 @@ use std::path::Path;
 #[cfg(test)]
 use std::path::PathBuf;
 #[cfg(test)]
-use std::sync::Arc;
-#[cfg(test)]
 use temp_testdir::TempDir;
-#[cfg(test)]
-use tokio::runtime::Runtime;
 
 #[test]
 fn best_int8() {

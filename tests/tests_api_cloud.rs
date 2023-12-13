@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use bed_reader::allclose;
@@ -6,21 +7,13 @@ use bed_reader::assert_error_variant;
 use bed_reader::bed_cloud::BedCloud;
 use bed_reader::sample_bed_file;
 use bed_reader::sample_file;
-use bed_reader::sample_files;
 use bed_reader::BedError;
 use bed_reader::BedErrorPlus;
-use bed_reader::Metadata;
-use bed_reader::MetadataFields;
 use bed_reader::ReadOptions;
-use bed_reader::SliceInfo1;
-use bed_reader::WriteOptions;
 use ndarray as nd;
 use ndarray::s;
-use ndarray_rand::{rand::prelude::StdRng, rand::SeedableRng, rand_distr::Uniform, RandomExt};
 use object_store::local::LocalFileSystem;
 use object_store::path::Path as StorePath;
-use object_store::ObjectStore;
-use temp_testdir::TempDir;
 use tokio::runtime::Runtime;
 
 // cmk see https://github.com/apache/arrow-rs/tree/master/object_store
@@ -259,41 +252,59 @@ fn bad_header_cloud() -> Result<(), Box<BedErrorPlus>> {
     Ok(())
 }
 
-// #[test]
-// fn doc_test_test() -> Result<(), Box<BedErrorPlus>> {
-//     let file_name = sample_bed_file("small.bed")?;
-//     let mut bed = Bed::new(file_name)?;
-//     let val = bed.read::<f64>()?;
-//     assert_eq_nan(
-//         &val,
-//         &nd::array![
-//             [1.0, 0.0, f64::NAN, 0.0],
-//             [2.0, 0.0, f64::NAN, 2.0],
-//             [0.0, 1.0, 2.0, 0.0]
-//         ],
-//     );
+#[test]
+fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
+    let rt = Runtime::new()?;
+    rt.block_on(async {
+        let object_store = Arc::new(LocalFileSystem::new());
+        let file_name = sample_bed_file("small.bed")?;
+        let path = StorePath::from_filesystem_path(file_name).map_err(BedErrorPlus::from)?;
 
-//     let file_name2 = sample_bed_file("some_missing.bed")?;
-//     let mut bed2 = Bed::new(&file_name2)?;
-//     let val2 = ReadOptions::builder()
-//         .f64()
-//         .iid_index(s![..;2])
-//         .sid_index(20..30)
-//         .read(&mut bed2)?;
-//     assert!(val2.dim() == (50, 10));
+        let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+        let val = bed_cloud.read::<f64>().await?;
+        assert_eq_nan(
+            &val,
+            &nd::array![
+                [1.0, 0.0, f64::NAN, 0.0],
+                [2.0, 0.0, f64::NAN, 2.0],
+                [0.0, 1.0, 2.0, 0.0]
+            ],
+        );
 
-//     let mut bed3 = Bed::new(&file_name2)?;
-//     println!("{:?}", bed3.iid()?.slice(s![..5]));
-//     println!("{:?}", bed3.sid()?.slice(s![..5]));
-//     println!("{:?}", bed3.chromosome()?.iter().collect::<HashSet<_>>());
-//     let val3 = ReadOptions::builder()
-//         .sid_index(bed3.chromosome()?.map(|elem| elem == "5"))
-//         .f64()
-//         .read(&mut bed3)?;
-//     assert!(val3.dim() == (100, 6));
+        let file_name2 = sample_bed_file("some_missing.bed")?;
+        let path2 = StorePath::from_filesystem_path(file_name2).map_err(BedErrorPlus::from)?;
+        let mut bed_cloud2 = BedCloud::new(&object_store, &path2).await?;
+        let val2 = ReadOptions::builder()
+            .f64()
+            .iid_index(s![..;2])
+            .sid_index(20..30)
+            .read_cloud(&mut bed_cloud2)
+            .await?;
+        assert!(val2.dim() == (50, 10));
 
-//     Ok(())
-// }
+        let mut bed_cloud3 = BedCloud::new(&object_store, &path2).await?;
+        println!("{:?}", bed_cloud3.iid().await?.slice(s![..5]));
+        println!("{:?}", bed_cloud3.sid().await?.slice(s![..5]));
+        println!(
+            "{:?}",
+            bed_cloud3
+                .chromosome()
+                .await?
+                .iter()
+                .collect::<HashSet<_>>()
+        );
+        let val3 = ReadOptions::builder()
+            .sid_index(bed_cloud3.chromosome().await?.map(|elem| elem == "5"))
+            .f64()
+            .read_cloud(&mut bed_cloud3)
+            .await?;
+        assert!(val3.dim() == (100, 6));
+
+        Ok::<(), Box<BedErrorPlus>>(())
+    })?;
+
+    Ok(())
+}
 
 // #[test]
 // fn open_examples() -> Result<(), Box<BedErrorPlus>> {
