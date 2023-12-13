@@ -7,7 +7,6 @@ use bed_reader::bed_cloud::BedCloud;
 use bed_reader::sample_bed_file;
 use bed_reader::sample_file;
 use bed_reader::sample_files;
-use bed_reader::Bed;
 use bed_reader::BedError;
 use bed_reader::BedErrorPlus;
 use bed_reader::Metadata;
@@ -19,45 +18,43 @@ use ndarray as nd;
 use ndarray::s;
 use ndarray_rand::{rand::prelude::StdRng, rand::SeedableRng, rand_distr::Uniform, RandomExt};
 use object_store::local::LocalFileSystem;
+use object_store::path::Path as StorePath;
+use object_store::ObjectStore;
 use temp_testdir::TempDir;
 use tokio::runtime::Runtime;
 
 // cmk see https://github.com/apache/arrow-rs/tree/master/object_store
 // cmk see https://github.com/roeap/object-store-python
 
-#[test]
-fn object_store_bed0() -> anyhow::Result<()> {
-    use object_store::{local::LocalFileSystem, path::Path, ObjectStore};
+// #[test]
+// fn object_store_bed0() -> anyhow::Result<()> {
+//     let rt = Runtime::new()?;
 
-    let rt = Runtime::new()?;
+//     rt.block_on(async {
+//         // Your async test logic here
+//         let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
+//         let path = StorePath::from_filesystem_path(file)?;
 
-    rt.block_on(async {
-        // Your async test logic here
-        let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
-        let path = Path::from_filesystem_path(file)?;
+//         let store = Arc::new(LocalFileSystem::new());
 
-        let store = Arc::new(LocalFileSystem::new());
+//         // Read the file
+//         let data = store.get(&path).await?;
 
-        // Read the file
-        let data = store.get(&path).await?;
+//         let bytes = data.bytes().await?.to_vec();
 
-        let bytes = data.bytes().await?.to_vec();
+//         println!("{:?}", bytes.len()); // Outputs the length of bytes
+//         assert!(bytes.len() == 303);
 
-        println!("{:?}", bytes.len()); // Outputs the length of bytes
-        assert!(bytes.len() == 303);
-
-        Ok(())
-    })
-}
+//         Ok(())
+//     })
+// }
 
 #[test]
-fn rusty_bed1() -> Result<(), Box<BedErrorPlus>> {
-    use object_store::path::Path as StorePath;
-
-    let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
-    let path = StorePath::from_filesystem_path(file).map_err(BedErrorPlus::from)?;
+fn rusty_cloud_bed1() -> Result<(), Box<BedErrorPlus>> {
+    let file_path = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
+    let store_path = StorePath::from_filesystem_path(file_path).map_err(BedErrorPlus::from)?;
     let object_store = Arc::new(LocalFileSystem::new());
-    let mut bed_cloud = BedCloud::new(object_store.clone(), path.clone())?;
+    let mut bed_cloud = BedCloud::new(&object_store, &store_path)?;
 
     let rt = Runtime::new()?;
     rt.block_on(async {
@@ -65,7 +62,7 @@ fn rusty_bed1() -> Result<(), Box<BedErrorPlus>> {
         let mean = val.mapv(|elem| elem as f64).mean().unwrap();
         assert!(mean == -13.142); // really shouldn't do mean on data where -127 represents missing
 
-        let mut bed_cloud = BedCloud::new(object_store, path)?;
+        let mut bed_cloud = BedCloud::new(&object_store, &store_path)?;
         let val = ReadOptions::builder()
             .count_a2()
             .i8()
@@ -74,26 +71,33 @@ fn rusty_bed1() -> Result<(), Box<BedErrorPlus>> {
         let mean = val.mapv(|elem| elem as f64).mean().unwrap();
         assert!(mean == -13.274); // really shouldn't do mean on data where -127 represents missing
         Ok::<(), Box<BedErrorPlus>>(())
-    });
+    })?;
     Ok(())
 }
 
-// #[test]
-// fn rusty_bed2() -> Result<(), Box<BedErrorPlus>> {
-//     let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
-//     let mut bed = Bed::new(file)?;
+#[test]
+fn rusty_cloud_bed2() -> Result<(), Box<BedErrorPlus>> {
+    let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
+    let path = StorePath::from_filesystem_path(file).map_err(BedErrorPlus::from)?;
+    let object_store = Arc::new(LocalFileSystem::new());
+    let mut bed_cloud = BedCloud::new(&object_store, &path)?;
 
-//     let val = ReadOptions::builder()
-//         .iid_index(0)
-//         .sid_index(vec![1])
-//         .i8()
-//         .read(&mut bed)?;
-//     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
-//     println!("{mean:?}");
-//     assert!(mean == 1.0); // really shouldn't do mean on data where -127 represents missing
+    let rt = Runtime::new()?;
+    rt.block_on(async {
+        let val = ReadOptions::builder()
+            .iid_index(0)
+            .sid_index(vec![1])
+            .i8()
+            .read_cloud(&mut bed_cloud)
+            .await?;
+        let mean = val.mapv(|elem| elem as f64).mean().unwrap();
+        println!("{mean:?}");
+        assert!(mean == 1.0); // really shouldn't do mean on data where -127 represents missing
+        Ok::<(), Box<BedErrorPlus>>(())
+    })?;
 
-//     Ok(())
-// }
+    Ok(())
+}
 
 // #[cfg(test)]
 // use std::collections::HashSet;

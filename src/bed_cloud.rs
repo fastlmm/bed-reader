@@ -79,18 +79,19 @@ where
     /// cmk doc
     #[anyinput]
     pub fn builder(
-        object_store: Arc<TObjectStore>,
-        path: StorePath,
+        object_store: &Arc<TObjectStore>,
+        path: &StorePath,
     ) -> BedCloudBuilder<TObjectStore> {
         BedCloudBuilder::new(object_store, path)
     }
 
     /// cmk doc
-    #[anyinput]
+    // cmk #[anyinput]
     pub fn new(
-        object_store: Arc<TObjectStore>,
-        path: StorePath,
+        object_store: &Arc<TObjectStore>,
+        path: &StorePath,
     ) -> Result<Self, Box<BedErrorPlus>> {
+        // cmk do this?? let path = path.into();
         BedCloud::builder(object_store, path).build()
     }
 
@@ -99,7 +100,6 @@ where
         let stream = self
             .object_store
             .clone()
-            // cmk !!!! does this get get the whole file or just the first chunk?
             .get(path)
             .await
             .map_err(BedErrorPlus::from)?
@@ -213,7 +213,7 @@ where
 
         read_no_alloc(
             self.object_store.clone(), // cmk rename "object_store" ??
-            self.path.clone(),
+            &self.path,
             iid_count,
             sid_count,
             read_options.is_a1_counted,
@@ -282,7 +282,7 @@ fn store_path_to_string(store_path: StorePath) -> String {
 // cmk #[anyinput]
 async fn internal_read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
     object_store: Arc<TStore>,
-    path: StorePath,
+    path: &StorePath,
     object_meta: &ObjectMeta,
     in_iid_count: usize,
     in_sid_count: usize,
@@ -303,7 +303,7 @@ async fn internal_read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
     let file_len2 = in_iid_count_div4_u64 * (in_sid_count as u64) + CB_HEADER_U64;
     if file_len != file_len2 {
         return Err(Box::new(
-            BedError::IllFormed(store_path_to_string(path)).into(),
+            BedError::IllFormed(store_path_to_string(path.clone())).into(),
         ));
     }
 
@@ -391,7 +391,7 @@ async fn internal_read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
 // cmk #[anyinput]
 async fn read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
     object_store: Arc<TStore>,
-    path: StorePath,
+    path: &StorePath,
     iid_count: usize,
     sid_count: usize,
     is_a1_counted: bool,
@@ -445,7 +445,7 @@ async fn read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
         }
         _ => {
             return Err(Box::new(
-                BedError::BadMode(store_path_to_string(path)).into(),
+                BedError::BadMode(store_path_to_string(path.clone())).into(),
             ))
         }
     };
@@ -484,11 +484,11 @@ impl<TObjectStore> BedCloudBuilder<TObjectStore>
 where
     TObjectStore: ObjectStore,
 {
-    #[anyinput]
-    fn new(object_store: Arc<TObjectStore>, path: StorePath) -> Self {
+    // #[anyinput]
+    fn new(object_store: &Arc<TObjectStore>, path: &StorePath) -> Self {
         Self {
             object_store: Some(object_store.clone()),
-            path: Some(path.to_owned()),
+            path: Some(path.clone()),
             fam_path: None,
             bim_path: None,
 
