@@ -321,12 +321,13 @@ where
 
     let semaphore = Arc::new(Semaphore::new(max_concurrent_requests));
 
-    for chunk in &sid_index.iter().chunks(chunk_size) {
+    for (chunk_index, chunk) in sid_index.iter().chunks(chunk_size).into_iter().enumerate() {
         // ======== prepare ranges and cols ================ cmk refactor
         let mut ranges = Vec::with_capacity(chunk_size);
         // let mut cols = Vec::with_capacity(chunk_size);
-        let mut in_sid_i_vec = Vec::with_capacity(chunk_size);
-        for in_sid_i_signed in chunk {
+        let mut out_sid_i_vec = Vec::with_capacity(chunk_size);
+        for (inner_index, in_sid_i_signed) in chunk.enumerate() {
+            let out_sid_i = chunk_index * chunk_size + inner_index;
             // cmk similar code elsewhere
             // Turn signed sid_index into unsigned sid_index (or error)
             let in_sid_i = if (0..=upper_sid_count).contains(in_sid_i_signed) {
@@ -343,7 +344,7 @@ where
             let range = pos as usize..(pos + in_iid_count_div4_u64) as usize;
             ranges.push(range);
             // cols.push(col);
-            in_sid_i_vec.push(in_sid_i);
+            out_sid_i_vec.push(out_sid_i);
         }
 
         let permit = semaphore.clone().acquire_owned().await.unwrap(); // cmk unwrap
@@ -356,14 +357,14 @@ where
                 .get_ranges(&path_clone, &ranges)
                 .await
                 .map_err(BedErrorPlus::from)?; // cmk unwrap
-            Ok((vec_bytes, in_sid_i_vec))
+            Ok((vec_bytes, out_sid_i_vec))
         });
 
         match handle.await {
-            Ok(Ok((vec_bytes, in_sid_i_vec))) => {
+            Ok(Ok((vec_bytes, out_sid_i_vec))) => {
                 drop(permit);
-                for (bytes, in_sid_i) in vec_bytes.into_iter().zip(in_sid_i_vec.into_iter()) {
-                    let mut col = out_val.column_mut(in_sid_i as usize);
+                for (bytes, out_sid_i) in vec_bytes.into_iter().zip(out_sid_i_vec.into_iter()) {
+                    let mut col = out_val.column_mut(out_sid_i);
                     // // cmk In parallel, decompress the iid info and put it in its column
                     // // cmk .par_bridge() // This seems faster that parallel zip
                     // .try_for_each(|(bytes_vector_result, mut col)| match bytes_vector_result {

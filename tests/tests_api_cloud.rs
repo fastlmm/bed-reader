@@ -50,8 +50,14 @@ use tokio::runtime::Runtime;
 // }
 
 #[test]
-fn rusty_cloud_bed1() -> Result<(), Box<BedErrorPlus>> {
+fn rusty_cloud_bed0() -> Result<(), Box<BedErrorPlus>> {
     let file_path = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
+    use bed_reader::Bed;
+
+    let mut bed = Bed::new(&file_path)?;
+    let val0 = bed.read::<i8>()?;
+    println!("{val0:?}");
+
     let store_path = StorePath::from_filesystem_path(file_path).map_err(BedErrorPlus::from)?;
     let object_store = Arc::new(LocalFileSystem::new());
 
@@ -59,6 +65,38 @@ fn rusty_cloud_bed1() -> Result<(), Box<BedErrorPlus>> {
     rt.block_on(async {
         let mut bed_cloud = BedCloud::new(&object_store, &store_path).await?;
         let val = bed_cloud.read::<i8>().await?;
+        println!("{val:?}");
+
+        assert!(allclose(&val0.view(), &val.view(), 0, true));
+        Ok::<(), Box<BedErrorPlus>>(())
+    })?;
+    Ok(())
+}
+
+#[test]
+fn rusty_cloud_bed1() -> Result<(), Box<BedErrorPlus>> {
+    let file_path = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
+    use bed_reader::Bed;
+
+    let mut bed = Bed::new(&file_path)?;
+    let val = bed.read::<i8>()?;
+    println!("{val:?}");
+    let mean = val.mapv(|elem| elem as f64).mean().unwrap();
+    assert!(mean == -13.142); // really shouldn't do mean on data where -127 represents missing
+
+    let mut bed = Bed::new(&file_path)?;
+    let val = ReadOptions::builder().count_a2().i8().read(&mut bed)?;
+    let mean = val.mapv(|elem| elem as f64).mean().unwrap();
+    assert!(mean == -13.274); // really shouldn't do mean on data where -127 represents missing
+
+    let store_path = StorePath::from_filesystem_path(file_path).map_err(BedErrorPlus::from)?;
+    let object_store = Arc::new(LocalFileSystem::new());
+
+    let rt = Runtime::new()?;
+    rt.block_on(async {
+        let mut bed_cloud = BedCloud::new(&object_store, &store_path).await?;
+        let val = bed_cloud.read::<i8>().await?;
+        println!("{val:?}");
         let mean = val.mapv(|elem| elem as f64).mean().unwrap();
         assert!(mean == -13.142); // really shouldn't do mean on data where -127 represents missing
 
@@ -77,7 +115,20 @@ fn rusty_cloud_bed1() -> Result<(), Box<BedErrorPlus>> {
 
 #[test]
 fn rusty_cloud_bed2() -> Result<(), Box<BedErrorPlus>> {
+    use bed_reader::Bed;
+
     let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
+
+    let mut bed = Bed::new(&file)?;
+    let val = ReadOptions::builder()
+        .iid_index(0)
+        .sid_index(vec![1])
+        .i8()
+        .read(&mut bed)?;
+    let mean = val.mapv(|elem| elem as f64).mean().unwrap();
+    println!("{mean:?}");
+    assert!(mean == 1.0); // really shouldn't do mean on data where -127 represents missing
+
     let path = StorePath::from_filesystem_path(file).map_err(BedErrorPlus::from)?;
     let object_store = Arc::new(LocalFileSystem::new());
 
