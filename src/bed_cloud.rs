@@ -87,12 +87,12 @@ where
 
     /// cmk doc
     // cmk #[anyinput]
-    pub fn new(
+    pub async fn new(
         object_store: &Arc<TObjectStore>,
         path: &StorePath,
     ) -> Result<Self, Box<BedErrorPlus>> {
         // cmk do this?? let path = path.into();
-        BedCloud::builder(object_store, path).build()
+        BedCloud::builder(object_store, path).build().await
     }
 
     // #[anyinput]
@@ -212,7 +212,7 @@ where
         }
 
         read_no_alloc(
-            self.object_store.clone(), // cmk rename "object_store" ??
+            &self.object_store, // cmk rename "object_store" ??
             &self.path,
             iid_count,
             sid_count,
@@ -281,7 +281,7 @@ fn store_path_to_string(store_path: StorePath) -> String {
 #[allow(clippy::too_many_arguments)]
 // cmk #[anyinput]
 async fn internal_read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
-    object_store: Arc<TStore>,
+    object_store: &Arc<TStore>,
     path: &StorePath,
     object_meta: &ObjectMeta,
     in_iid_count: usize,
@@ -390,7 +390,7 @@ async fn internal_read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
 #[allow(clippy::too_many_arguments)]
 // cmk #[anyinput]
 async fn read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
-    object_store: Arc<TStore>,
+    object_store: &Arc<TStore>,
     path: &StorePath,
     iid_count: usize,
     sid_count: usize,
@@ -403,7 +403,7 @@ async fn read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
 
     val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
 ) -> Result<(), Box<BedErrorPlus>> {
-    let (object_meta, bytes) = open_and_check(object_store.clone(), &path).await?;
+    let (object_meta, bytes) = open_and_check(object_store, path).await?;
 
     match bytes[2] {
         0 => {
@@ -454,7 +454,7 @@ async fn read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
 
 // cmk #[anyinput]
 async fn open_and_check<TStore>(
-    object_store: Arc<TStore>,
+    object_store: &Arc<TStore>,
     path: &StorePath,
 ) -> Result<(ObjectMeta, Bytes), Box<BedErrorPlus>>
 where
@@ -504,20 +504,19 @@ where
     /// Create [`BedCloud`](struct.BedCloud.html) from the builder.
     ///
     /// > See [`BedCloud::builder`](struct.BedCloud.html#method.builder) for more details and examples.
-    pub fn build(&self) -> Result<BedCloud<TObjectStore>, Box<BedErrorPlus>> {
-        // let mut bed_cloud = self.build_no_file_check()?;
+    pub async fn build(&self) -> Result<BedCloud<TObjectStore>, Box<BedErrorPlus>> {
+        let mut bed_cloud = self.build_no_file_check()?;
 
-        // cmk
-        // if bed_cloud.is_checked_early {
-        //     open_and_check(self.object_store.clone(), &bed_cloud.path).await?;
-        // }
+        // cmk is this unwrap OK?
+        if bed_cloud.is_checked_early {
+            open_and_check(&self.object_store.unwrap(), &bed_cloud.path).await?;
+        }
 
-        // (bed_cloud.iid_count, bed_cloud.sid_count) = bed_cloud
-        //     .metadata
-        //     .check_counts(bed_cloud.iid_count, bed_cloud.sid_count)?;
+        (bed_cloud.iid_count, bed_cloud.sid_count) = bed_cloud
+            .metadata
+            .check_counts(bed_cloud.iid_count, bed_cloud.sid_count)?;
 
-        // Ok(bed_cloud)
-        todo!("cmk")
+        Ok(bed_cloud)
     }
 
     // https://stackoverflow.com/questions/38183551/concisely-initializing-a-vector-of-strings
