@@ -54,15 +54,15 @@ fn rusty_cloud_bed1() -> Result<(), Box<BedErrorPlus>> {
     let file_path = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
     let store_path = StorePath::from_filesystem_path(file_path).map_err(BedErrorPlus::from)?;
     let object_store = Arc::new(LocalFileSystem::new());
-    let mut bed_cloud = BedCloud::new(&object_store, &store_path)?;
 
     let rt = Runtime::new()?;
     rt.block_on(async {
+        let mut bed_cloud = BedCloud::new(&object_store, &store_path).await?;
         let val = bed_cloud.read::<i8>().await?;
         let mean = val.mapv(|elem| elem as f64).mean().unwrap();
         assert!(mean == -13.142); // really shouldn't do mean on data where -127 represents missing
 
-        let mut bed_cloud = BedCloud::new(&object_store, &store_path)?;
+        let mut bed_cloud = BedCloud::new(&object_store, &store_path).await?;
         let val = ReadOptions::builder()
             .count_a2()
             .i8()
@@ -80,10 +80,10 @@ fn rusty_cloud_bed2() -> Result<(), Box<BedErrorPlus>> {
     let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
     let path = StorePath::from_filesystem_path(file).map_err(BedErrorPlus::from)?;
     let object_store = Arc::new(LocalFileSystem::new());
-    let mut bed_cloud = BedCloud::new(&object_store, &path)?;
 
     let rt = Runtime::new()?;
     rt.block_on(async {
+        let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
         let val = ReadOptions::builder()
             .iid_index(0)
             .sid_index(vec![1])

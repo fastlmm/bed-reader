@@ -113,7 +113,9 @@ use std::collections::HashSet;
 use std::convert::TryFrom;
 use std::fs::{self};
 use std::io::Write;
-use std::ops::{Bound, Range, RangeBounds, RangeFrom, RangeInclusive, RangeTo, RangeToInclusive};
+use std::ops::{
+    Bound, Deref, Range, RangeBounds, RangeFrom, RangeInclusive, RangeTo, RangeToInclusive,
+};
 use std::rc::Rc;
 use std::{
     env,
@@ -333,8 +335,14 @@ pub enum BedError {
 // Trait alias
 
 /// A trait alias, used internally, for the values of a .bed file, namely i8, f32, f64.
-pub trait BedVal: Copy + Default + From<i8> + Debug + Sync + Send + Missing + PartialEq {}
-impl<T> BedVal for T where T: Copy + Default + From<i8> + Debug + Sync + Send + Missing + PartialEq {}
+pub trait BedVal:
+    Copy + Default + From<i8> + Debug + Sync + Send + Sync + Missing + PartialEq
+{
+}
+impl<T> BedVal for T where
+    T: Copy + Default + From<i8> + Debug + Sync + Send + Sync + Missing + PartialEq
+{
+}
 
 fn create_pool(num_threads: usize) -> Result<rayon::ThreadPool, Box<BedErrorPlus>> {
     match rayon::ThreadPoolBuilder::new()
@@ -791,7 +799,7 @@ enum Dist {
 
 #[allow(dead_code)]
 fn impute_and_zero_mean_snps<
-    T: Default + Copy + Debug + Sync + Send + Float + ToPrimitive + FromPrimitive,
+    T: Default + Copy + Debug + Sync + Send + Sync + Float + ToPrimitive + FromPrimitive,
 >(
     val: &mut nd::ArrayViewMut2<'_, T>,
     dist: Dist,
@@ -831,7 +839,9 @@ fn impute_and_zero_mean_snps<
 
 // Later move the other fast-lmm functions into their own package
 #[allow(dead_code)]
-fn find_factor<T: Default + Copy + Debug + Sync + Send + Float + ToPrimitive + FromPrimitive>(
+fn find_factor<
+    T: Default + Copy + Debug + Sync + Send + Sync + Float + ToPrimitive + FromPrimitive,
+>(
     dist: &Dist,
     mean_s: T,
     std: T,
@@ -866,7 +876,9 @@ fn find_factor<T: Default + Copy + Debug + Sync + Send + Float + ToPrimitive + F
 }
 
 #[allow(dead_code)]
-fn _process_sid<T: Default + Copy + Debug + Sync + Send + Float + ToPrimitive + FromPrimitive>(
+fn _process_sid<
+    T: Default + Copy + Debug + Sync + Send + Sync + Float + ToPrimitive + FromPrimitive,
+>(
     col: &mut nd::ArrayViewMut1<'_, T>,
     apply_in_place: bool,
     use_stats: bool,
@@ -936,7 +948,7 @@ fn _process_sid<T: Default + Copy + Debug + Sync + Send + Float + ToPrimitive + 
 
 #[allow(dead_code)]
 fn _process_all_iids<
-    T: Default + Copy + Debug + Sync + Send + Float + ToPrimitive + FromPrimitive,
+    T: Default + Copy + Debug + Sync + Send + Sync + Float + ToPrimitive + FromPrimitive,
 >(
     val: &mut nd::ArrayViewMut2<'_, T>,
     apply_in_place: bool,
@@ -1165,7 +1177,7 @@ for output in output_list:
 #[allow(clippy::too_many_arguments)]
 #[allow(dead_code)]
 #[anyinput]
-fn file_ata_piece<T: Float + Send + Sync + AddAssign>(
+fn file_ata_piece<T: Float + Send + Sync + Sync + AddAssign>(
     path: AnyPath,
     offset: u64,
     row_count: usize,
@@ -1198,7 +1210,7 @@ fn file_ata_piece<T: Float + Send + Sync + AddAssign>(
 
 #[allow(dead_code)]
 #[anyinput]
-fn _file_ata_piece_internal<T: Float + Send + Sync + AddAssign>(
+fn _file_ata_piece_internal<T: Float + Send + Sync + Sync + AddAssign>(
     path: AnyPath,
     offset: u64,
     row_count: usize,
@@ -1281,7 +1293,7 @@ fn col_product<T: Float + AddAssign>(col_i: &[T], col_j: &[T]) -> T {
 #[allow(clippy::too_many_arguments)]
 #[allow(dead_code)]
 #[anyinput]
-fn file_aat_piece<T: Float + Sync + Send + AddAssign>(
+fn file_aat_piece<T: Float + Sync + Send + Sync + AddAssign>(
     path: AnyPath,
     offset: u64,
     row_count: usize,
@@ -4239,10 +4251,14 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     }
 
     /// cmk
-    pub async fn read_cloud<TStore: ObjectStore>(
+    pub async fn read_cloud<TArc>(
         &self,
-        bed_cloud: &mut BedCloud<TStore>,
-    ) -> Result<nd::Array2<TVal>, Box<BedErrorPlus>> {
+        bed_cloud: &mut BedCloud<TArc>,
+    ) -> Result<nd::Array2<TVal>, Box<BedErrorPlus>>
+    where
+        TArc: Clone + Deref + Send + Sync + 'static,
+        TArc::Target: ObjectStore + Send + Sync,
+    {
         let read_options = self.build()?;
         bed_cloud.read_with_options(&read_options).await
     }
@@ -6665,8 +6681,8 @@ fn option_rc_as_ref<T>(field: &Option<Rc<nd::Array1<T>>>) -> Option<&nd::Array1<
 
 #[allow(dead_code)]
 fn matrix_subset_no_alloc<
-    TIn: Copy + Default + Debug + Sync + Send + Sized,
-    TOut: Copy + Default + Debug + Sync + Send + From<TIn>,
+    TIn: Copy + Default + Debug + Sync + Send + Sync + Sized,
+    TOut: Copy + Default + Debug + Sync + Send + Sync + From<TIn>,
 >(
     in_val: &nd::ArrayView3<'_, TIn>,
     iid_index: &[usize],

@@ -3,6 +3,7 @@ use derive_builder::Builder;
 use nd::ShapeBuilder;
 use ndarray as nd;
 use std::collections::HashSet;
+use std::ops::Deref;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio::sync::Semaphore;
@@ -27,12 +28,13 @@ use crate::{MetadataFields, CB_HEADER_U64};
 /// cmk doc
 #[derive(Clone, Debug, Builder)]
 #[builder(build_fn(private, name = "build_no_file_check", error = "BedErrorPlus"))]
-pub struct BedCloud<TObjectStore>
+pub struct BedCloud<TArc>
 where
-    TObjectStore: ObjectStore,
+    TArc: Clone + Deref + Send + Sync + 'static,
+    TArc::Target: ObjectStore + Send + Sync,
 {
     #[builder(setter(custom))]
-    object_store: Arc<TObjectStore>,
+    object_store: TArc,
 
     #[builder(setter(custom))]
     path: StorePath,
@@ -72,25 +74,20 @@ where
     skip_set: HashSet<MetadataFields>,
 }
 
-impl<TObjectStore> BedCloud<TObjectStore>
+impl<TArc> BedCloud<TArc>
 where
-    TObjectStore: ObjectStore,
+    TArc: Clone + Deref + Send + Sync + 'static,
+    TArc::Target: ObjectStore + Send + Sync,
 {
     /// cmk doc
     #[anyinput]
-    pub fn builder(
-        object_store: &Arc<TObjectStore>,
-        path: &StorePath,
-    ) -> BedCloudBuilder<TObjectStore> {
+    pub fn builder(object_store: &TArc, path: &StorePath) -> BedCloudBuilder<TArc> {
         BedCloudBuilder::new(object_store, path)
     }
 
     /// cmk doc
     // cmk #[anyinput]
-    pub async fn new(
-        object_store: &Arc<TObjectStore>,
-        path: &StorePath,
-    ) -> Result<Self, Box<BedErrorPlus>> {
+    pub async fn new(object_store: &TArc, path: &StorePath) -> Result<Self, Box<BedErrorPlus>> {
         // cmk do this?? let path = path.into();
         BedCloud::builder(object_store, path).build().await
     }
@@ -139,8 +136,7 @@ where
         if let Some(path) = &self.fam_path {
             Ok(path.clone())
         } else {
-            let path =
-                BedCloud::<TObjectStore>::to_metadata_path(&self.path, &self.fam_path, "fam")?;
+            let path = BedCloud::<TArc>::to_metadata_path(&self.path, &self.fam_path, "fam")?;
             self.fam_path = Some(path.clone());
             Ok(path)
         }
@@ -152,8 +148,7 @@ where
         if let Some(path) = &self.bim_path {
             Ok(path.clone())
         } else {
-            let path =
-                BedCloud::<TObjectStore>::to_metadata_path(&self.path, &self.bim_path, "bim")?;
+            let path = BedCloud::<TArc>::to_metadata_path(&self.path, &self.bim_path, "bim")?;
             self.bim_path = Some(path.clone());
             Ok(path)
         }
@@ -280,8 +275,8 @@ fn store_path_to_string(store_path: StorePath) -> String {
 
 #[allow(clippy::too_many_arguments)]
 // cmk #[anyinput]
-async fn internal_read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
-    object_store: &Arc<TStore>,
+async fn internal_read_no_alloc<TVal: BedVal, TArc>(
+    object_store: &TArc,
     path: &StorePath,
     object_meta: &ObjectMeta,
     in_iid_count: usize,
@@ -293,7 +288,11 @@ async fn internal_read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
     max_concurrent_requests: usize,
     max_chunk_size: usize,
     out_val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
-) -> Result<(), Box<BedErrorPlus>> {
+) -> Result<(), Box<BedErrorPlus>>
+where
+    TArc: Clone + Deref + Send + Sync + 'static,
+    TArc::Target: ObjectStore + Send + Sync,
+{
     // Check the file length
 
     let (in_iid_count_div4, in_iid_count_div4_u64) =
@@ -349,11 +348,11 @@ async fn internal_read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
 
         let permit = semaphore.clone().acquire_owned().await.unwrap(); // cmk unwrap
         let path_clone = path.clone(); // cmk fast enough?
-        let object_store_clone = object_store.clone(); // This is Arc fast
+        let object_store = object_store.clone(); // cmk fast enough?
         let handle: JoinHandle<Result<_, BedErrorPlus>> = task::spawn(async move {
             // cmk somehow we must only compile is size(usize) is 64 bits.
             // cmk we should turn sid_index into a slice of ranges.
-            let vec_bytes = object_store_clone
+            let vec_bytes = object_store
                 .get_ranges(&path_clone, &ranges)
                 .await
                 .map_err(BedErrorPlus::from)?; // cmk unwrap
@@ -389,8 +388,8 @@ async fn internal_read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
 
 #[allow(clippy::too_many_arguments)]
 // cmk #[anyinput]
-async fn read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
-    object_store: &Arc<TStore>,
+async fn read_no_alloc<TVal: BedVal, TArc>(
+    object_store: &TArc,
     path: &StorePath,
     iid_count: usize,
     sid_count: usize,
@@ -402,7 +401,11 @@ async fn read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
     max_chunk_size: usize,
 
     val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
-) -> Result<(), Box<BedErrorPlus>> {
+) -> Result<(), Box<BedErrorPlus>>
+where
+    TArc: Clone + Deref + Send + Sync + 'static,
+    TArc::Target: ObjectStore + Send + Sync,
+{
     let (object_meta, bytes) = open_and_check(object_store, path).await?;
 
     match bytes[2] {
@@ -453,12 +456,13 @@ async fn read_no_alloc<TVal: BedVal, TStore: ObjectStore>(
 }
 
 // cmk #[anyinput]
-async fn open_and_check<TStore>(
-    object_store: &Arc<TStore>,
+async fn open_and_check<TArc>(
+    object_store: &TArc,
     path: &StorePath,
 ) -> Result<(ObjectMeta, Bytes), Box<BedErrorPlus>>
 where
-    TStore: ObjectStore,
+    TArc: Clone + Deref + Send + Sync + 'static,
+    TArc::Target: ObjectStore + Send + Sync,
 {
     let get_options = GetOptions {
         range: Some(0..CB_HEADER_U64 as usize),
@@ -480,12 +484,13 @@ where
     Ok((object_meta, bytes))
 }
 
-impl<TObjectStore> BedCloudBuilder<TObjectStore>
+impl<TArc> BedCloudBuilder<TArc>
 where
-    TObjectStore: ObjectStore,
+    TArc: Clone + Deref + Send + Sync + 'static,
+    TArc::Target: ObjectStore + Send + Sync,
 {
     // #[anyinput]
-    fn new(object_store: &Arc<TObjectStore>, path: &StorePath) -> Self {
+    fn new(object_store: &TArc, path: &StorePath) -> Self {
         Self {
             object_store: Some(object_store.clone()),
             path: Some(path.clone()),
@@ -504,12 +509,13 @@ where
     /// Create [`BedCloud`](struct.BedCloud.html) from the builder.
     ///
     /// > See [`BedCloud::builder`](struct.BedCloud.html#method.builder) for more details and examples.
-    pub async fn build(&self) -> Result<BedCloud<TObjectStore>, Box<BedErrorPlus>> {
+    pub async fn build(&self) -> Result<BedCloud<TArc>, Box<BedErrorPlus>> {
         let mut bed_cloud = self.build_no_file_check()?;
 
         // cmk is this unwrap OK?
         if bed_cloud.is_checked_early {
-            open_and_check(&self.object_store.unwrap(), &bed_cloud.path).await?;
+            let arc = self.object_store.as_ref().unwrap().clone();
+            open_and_check(&arc, &bed_cloud.path).await?;
         }
 
         (bed_cloud.iid_count, bed_cloud.sid_count) = bed_cloud
