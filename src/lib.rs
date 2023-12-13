@@ -105,8 +105,12 @@ use bed_cloud::BedCloud;
 use core::fmt::Debug;
 use derive_builder::{Builder, UninitializedFieldError};
 use fetch_data::{FetchData, FetchDataError};
+use futures_util::pin_mut;
+use futures_util::StreamExt;
 use nd::ShapeBuilder;
 use ndarray as nd;
+use object_store::delimited::newline_delimited_stream;
+use object_store::path::Path as StorePath;
 use object_store::ObjectStore;
 use std::cmp::Ordering;
 use std::collections::HashSet;
@@ -117,6 +121,7 @@ use std::ops::{
     Bound, Deref, Range, RangeBounds, RangeFrom, RangeInclusive, RangeTo, RangeToInclusive,
 };
 use std::rc::Rc;
+use std::str::Utf8Error;
 use std::{
     env,
     fs::File,
@@ -199,6 +204,10 @@ pub enum BedErrorPlus {
     #[allow(missing_docs)]
     #[error(transparent)]
     JoinError(#[from] JoinError),
+
+    #[allow(missing_docs)]
+    #[error(transparent)]
+    Utf8Error(#[from] Utf8Error),
 }
 // https://docs.rs/thiserror/1.0.23/thiserror/
 
@@ -2828,30 +2837,7 @@ impl Bed {
         val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.,
     ) -> Result<(), Box<BedErrorPlus>> {
         let read_options = ReadOptions::<TVal>::builder().build()?;
-        let num_threads = compute_num_threads(read_options.num_threads)?;
-
-        let iid_count = self.iid_count()?;
-        let sid_count = self.sid_count()?;
-
-        // If we already have a Vec<isize>, reference it. If we don't, create one and reference it.
-        let iid_hold = Hold::new(&read_options.iid_index, iid_count)?;
-        let iid_index = iid_hold.as_ref();
-        let sid_hold = Hold::new(&read_options.sid_index, sid_count)?;
-        let sid_index = sid_hold.as_ref();
-
-        read_no_alloc(
-            &self.path,
-            iid_count,
-            sid_count,
-            read_options.is_a1_counted,
-            iid_index,
-            sid_index,
-            read_options.missing_value,
-            num_threads,
-            &mut val.view_mut(),
-        )?;
-
-        Ok(())
+        self.read_and_fill_with_options(val, &read_options)
     }
 
     /// Read genotype data with options.
@@ -6255,6 +6241,73 @@ impl Metadata {
         Ok((clone, count))
     }
 
+    pub async fn read_cloud_fam<TArc>(
+        &self,
+        object_store: &TArc,
+        path: &StorePath,
+        skip_set: &HashSet<MetadataFields>,
+    ) -> Result<(Metadata, usize), Box<BedErrorPlus>>
+    where
+        TArc: Clone + Deref + Send + Sync + 'static,
+        TArc::Target: ObjectStore + Send + Sync,
+    {
+        let mut field_vec: Vec<usize> = Vec::new();
+
+        if self.fid.is_none() && !skip_set.contains(&MetadataFields::Fid) {
+            field_vec.push(0);
+        }
+        if self.iid.is_none() && !skip_set.contains(&MetadataFields::Iid) {
+            field_vec.push(1);
+        }
+        if self.father.is_none() && !skip_set.contains(&MetadataFields::Father) {
+            field_vec.push(2);
+        }
+        if self.mother.is_none() && !skip_set.contains(&MetadataFields::Mother) {
+            field_vec.push(3);
+        }
+        if self.sex.is_none() && !skip_set.contains(&MetadataFields::Sex) {
+            field_vec.push(4);
+        }
+        if self.pheno.is_none() && !skip_set.contains(&MetadataFields::Pheno) {
+            field_vec.push(5);
+        }
+
+        let (mut vec_of_vec, count) = self
+            .read_cloud_fam_or_bim(&field_vec, true, object_store, path)
+            .await?;
+
+        let mut clone = self.clone();
+
+        // unwraps are safe because we pop once for every push
+        if clone.pheno.is_none() && !skip_set.contains(&MetadataFields::Pheno) {
+            clone.pheno = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
+        }
+        if clone.sex.is_none() && !skip_set.contains(&MetadataFields::Sex) {
+            let vec = vec_of_vec.pop().unwrap();
+            let array = vec
+                .iter()
+                .map(|s| s.parse::<i32>())
+                .collect::<Result<nd::Array1<i32>, _>>()?;
+            clone.sex = Some(Rc::new(array));
+        }
+        if clone.mother.is_none() && !skip_set.contains(&MetadataFields::Mother) {
+            clone.mother = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
+        }
+        if clone.father.is_none() && !skip_set.contains(&MetadataFields::Father) {
+            clone.father = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
+        }
+        if clone.iid.is_none() && !skip_set.contains(&MetadataFields::Iid) {
+            clone.iid = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
+        }
+        if clone.fid.is_none() && !skip_set.contains(&MetadataFields::Fid) {
+            clone.fid = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
+        }
+
+        clone.check_counts(Some(count), None)?;
+
+        Ok((clone, count))
+    }
+
     /// Create a new [`Metadata`](struct.Metadata.html) by filling in empty fields with a .bim file.
     ///
     /// # Example
@@ -6346,6 +6399,78 @@ impl Metadata {
         Ok((clone, count))
     }
 
+    pub async fn read_cloud_bim<TArc>(
+        &self,
+        object_store: &TArc,
+        path: &StorePath,
+        skip_set: &HashSet<MetadataFields>,
+    ) -> Result<(Metadata, usize), Box<BedErrorPlus>>
+    where
+        TArc: Clone + Deref + Send + Sync + 'static,
+        TArc::Target: ObjectStore + Send + Sync,
+    {
+        let mut field_vec: Vec<usize> = Vec::new();
+        if self.chromosome.is_none() && !skip_set.contains(&MetadataFields::Chromosome) {
+            field_vec.push(0);
+        }
+        if self.sid.is_none() && !skip_set.contains(&MetadataFields::Sid) {
+            field_vec.push(1);
+        }
+
+        if self.cm_position.is_none() && !skip_set.contains(&MetadataFields::CmPosition) {
+            field_vec.push(2);
+        }
+        if self.bp_position.is_none() && !skip_set.contains(&MetadataFields::BpPosition) {
+            field_vec.push(3);
+        }
+        if self.allele_1.is_none() && !skip_set.contains(&MetadataFields::Allele1) {
+            field_vec.push(4);
+        }
+        if self.allele_2.is_none() && !skip_set.contains(&MetadataFields::Allele2) {
+            field_vec.push(5);
+        }
+
+        let mut clone = self.clone();
+        let (mut vec_of_vec, count) = self
+            .read_cloud_fam_or_bim(&field_vec, false, object_store, path)
+            .await?;
+
+        // unwraps are safe because we pop once for every push
+        if clone.allele_2.is_none() && !skip_set.contains(&MetadataFields::Allele2) {
+            clone.allele_2 = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
+        }
+        if clone.allele_1.is_none() && !skip_set.contains(&MetadataFields::Allele1) {
+            clone.allele_1 = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
+        }
+        if clone.bp_position.is_none() && !skip_set.contains(&MetadataFields::BpPosition) {
+            let vec = vec_of_vec.pop().unwrap();
+            let array = vec
+                .iter()
+                .map(|s| s.parse::<i32>())
+                .collect::<Result<nd::Array1<i32>, _>>()?;
+            clone.bp_position = Some(Rc::new(array));
+        }
+        if clone.cm_position.is_none() && !skip_set.contains(&MetadataFields::CmPosition) {
+            let vec = vec_of_vec.pop().unwrap();
+            let array = vec
+                .iter()
+                .map(|s| s.parse::<f32>())
+                .collect::<Result<nd::Array1<f32>, _>>()?;
+            clone.cm_position = Some(Rc::new(array));
+        }
+
+        if clone.sid.is_none() && !skip_set.contains(&MetadataFields::Sid) {
+            clone.sid = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
+        }
+        if clone.chromosome.is_none() && !skip_set.contains(&MetadataFields::Chromosome) {
+            clone.chromosome = Some(Rc::new(nd::Array::from_vec(vec_of_vec.pop().unwrap())));
+        }
+
+        clone.check_counts(None, Some(count))?;
+
+        Ok((clone, count))
+    }
+
     #[anyinput]
     fn read_fam_or_bim(
         &self,
@@ -6383,6 +6508,68 @@ impl Metadata {
                 if field_vec.contains(&field_index) {
                     vec_of_vec[of_interest_count].push(field.to_string());
                     of_interest_count += 1;
+                }
+            }
+        }
+
+        Ok((vec_of_vec, count))
+    }
+
+    async fn read_cloud_fam_or_bim<TArc>(
+        &self,
+        field_vec: &[usize],
+        is_split_whitespace: bool,
+        object_store: &TArc,
+        path: &StorePath,
+    ) -> Result<(Vec<Vec<String>>, usize), Box<BedErrorPlus>>
+    where
+        TArc: Clone + Deref + Send + Sync + 'static,
+        TArc::Target: ObjectStore + Send + Sync,
+    {
+        let mut vec_of_vec = vec![vec![]; field_vec.len()];
+
+        let stream = object_store
+            .clone()
+            .get(path)
+            .await
+            .map_err(BedErrorPlus::from)?
+            .into_stream();
+
+        let new_line_stream = newline_delimited_stream(stream);
+        pin_mut!(new_line_stream);
+
+        let mut count = 0;
+        while let Some(chunk_result) = new_line_stream.next().await {
+            let chunk = chunk_result.map_err(BedErrorPlus::from)?; // Handle the chunk result
+
+            // Assuming chunk is a Bytes that can be converted to a string
+            // Split the chunk into lines
+            let lines = std::str::from_utf8(&chunk)
+                .map_err(BedErrorPlus::from)?
+                .split('\n');
+
+            for line in lines {
+                // let line = line?;
+                count += 1;
+
+                let fields: Vec<&str> = if is_split_whitespace {
+                    line.split_whitespace().collect()
+                } else {
+                    line.split('\t').collect()
+                };
+
+                if fields.len() != 6 {
+                    return Err(
+                        BedError::MetadataFieldCount(6, fields.len(), path.to_string()).into(),
+                    );
+                }
+
+                let mut of_interest_count = 0;
+                for (field_index, field) in fields.iter().enumerate() {
+                    if field_vec.contains(&field_index) {
+                        vec_of_vec[of_interest_count].push(field.to_string());
+                        of_interest_count += 1;
+                    }
                 }
             }
         }

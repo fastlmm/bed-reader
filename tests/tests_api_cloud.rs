@@ -150,66 +150,114 @@ fn rusty_cloud_bed2() -> Result<(), Box<BedErrorPlus>> {
     Ok(())
 }
 
-// #[cfg(test)]
-// use std::collections::HashSet;
-// use std::panic::catch_unwind;
-// use std::sync::Arc;
+#[test]
+fn rusty_cloud_bed3() -> Result<(), Box<BedErrorPlus>> {
+    let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
 
-// #[test]
-// fn rusty_bed3() -> Result<(), Box<BedErrorPlus>> {
-//     let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
-//     let mut bed = Bed::new(file)?;
-//     let iid_bool: nd::Array1<bool> = (0..bed.iid_count()?).map(|elem| (elem % 2) != 0).collect();
-//     let sid_bool: nd::Array1<bool> = (0..bed.sid_count()?).map(|elem| (elem % 8) != 0).collect();
-//     let val = ReadOptions::builder()
-//         .missing_value(-127)
-//         .iid_index(iid_bool)
-//         .sid_index(sid_bool)
-//         .read(&mut bed)?;
-//     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
-//     println!("{mean:?}");
-//     assert!(mean == -14.50344827586207); // really shouldn't do mean on data where -127 represents missing
+    let path = StorePath::from_filesystem_path(file).map_err(BedErrorPlus::from)?;
+    let object_store = Arc::new(LocalFileSystem::new());
 
-//     Ok(())
-// }
+    let rt = Runtime::new()?;
+    rt.block_on(async {
+        let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+        let iid_bool: nd::Array1<bool> = (0..bed_cloud.iid_count().await?)
+            .map(|elem| (elem % 2) != 0)
+            .collect();
+        let sid_bool: nd::Array1<bool> = (0..bed_cloud.sid_count().await?)
+            .map(|elem| (elem % 8) != 0)
+            .collect();
+        let val = ReadOptions::builder()
+            .missing_value(-127)
+            .iid_index(iid_bool)
+            .sid_index(sid_bool)
+            .read_cloud(&mut bed_cloud)
+            .await?;
+        let mean = val.mapv(|elem| elem as f64).mean().unwrap();
+        println!("{mean:?}");
+        assert!(mean == -14.50344827586207); // really shouldn't do mean on data where -127 represents missing
+        Ok::<(), Box<BedErrorPlus>>(())
+    })?;
 
-// #[test]
-// fn rusty_bed_allele() -> Result<(), Box<BedErrorPlus>> {
-//     let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
-//     let mut bed = Bed::new(file)?;
-//     let val = ReadOptions::builder().count_a2().i8().read(&mut bed)?;
+    Ok(())
+}
 
-//     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
-//     println!("{mean:?}");
-//     assert!(mean == -13.274); // really shouldn't do mean on data where -127 represents missing
+#[test]
+fn rusty_cloud_bed_allele() -> Result<(), Box<BedErrorPlus>> {
+    let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
 
-//     Ok(())
-// }
+    let path = StorePath::from_filesystem_path(file).map_err(BedErrorPlus::from)?;
+    let object_store = Arc::new(LocalFileSystem::new());
 
-// #[test]
-// fn rusty_bed_order() -> Result<(), Box<BedErrorPlus>> {
-//     let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
-//     let mut bed = Bed::new(file)?;
-//     let val = ReadOptions::builder().c().i8().read(&mut bed)?;
+    let rt = Runtime::new()?;
+    rt.block_on(async {
+        let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+        let val = ReadOptions::builder()
+            .count_a2()
+            .i8()
+            .read_cloud(&mut bed_cloud)
+            .await?;
 
-//     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
-//     println!("{mean:?}");
-//     assert!(mean == -13.142); // really shouldn't do mean on data where -127 represents missing
+        let mean = val.mapv(|elem| elem as f64).mean().unwrap();
+        println!("{mean:?}");
+        assert!(mean == -13.274); // really shouldn't do mean on data where -127 represents missing
 
-//     Ok(())
-// }
+        Ok::<(), Box<BedErrorPlus>>(())
+    })?;
 
-// #[test]
-// fn bad_header() -> Result<(), Box<BedErrorPlus>> {
-//     let filename = sample_file("badfile.bed")?;
-//     let bed = Bed::builder(&filename).skip_early_check().build()?;
-//     println!("{:?}", bed.path());
+    Ok(())
+}
 
-//     let result = Bed::new(&filename);
-//     assert_error_variant!(result, BedErrorPlus::BedError(BedError::IllFormed(_)));
+#[test]
+fn rusty_cloud_bed_order() -> Result<(), Box<BedErrorPlus>> {
+    let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
 
-//     Ok(())
-// }
+    let path = StorePath::from_filesystem_path(file).map_err(BedErrorPlus::from)?;
+    let object_store = Arc::new(LocalFileSystem::new());
+
+    let rt = Runtime::new()?;
+    rt.block_on(async {
+        let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+        let val = ReadOptions::builder()
+            .c()
+            .i8()
+            .read_cloud(&mut bed_cloud)
+            .await?;
+
+        let mean = val.mapv(|elem| elem as f64).mean().unwrap();
+        println!("{mean:?}");
+        assert!(mean == -13.142); // really shouldn't do mean on data where -127 represents missing
+
+        Ok::<(), Box<BedErrorPlus>>(())
+    })?;
+
+    Ok(())
+}
+
+#[test]
+fn bad_header_cloud() -> Result<(), Box<BedErrorPlus>> {
+    let rt = Runtime::new()?;
+    rt.block_on(async {
+        // Prepare the file and path for BedCloud
+        let filename = sample_file("badfile.bed")?;
+        let path = StorePath::from_filesystem_path(filename).map_err(BedErrorPlus::from)?;
+
+        // Create an instance of BedCloud with skip_early_check
+        let object_store = Arc::new(LocalFileSystem::new());
+        let bed_cloud = BedCloud::builder(&object_store, &path)
+            .skip_early_check()
+            .build()
+            .await?;
+
+        println!("{:?}", bed_cloud.path());
+
+        // Attempt to create a new BedCloud instance and handle the error
+        let result = BedCloud::new(&object_store, &path).await;
+        assert_error_variant!(result, BedErrorPlus::BedError(BedError::IllFormed(_)));
+        Ok::<(), Box<BedErrorPlus>>(())
+    })?;
+
+    Ok(())
+}
 
 // #[test]
 // fn doc_test_test() -> Result<(), Box<BedErrorPlus>> {

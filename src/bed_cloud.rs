@@ -20,8 +20,8 @@ use object_store::{GetOptions, ObjectMeta};
 
 use crate::{
     check_and_precompute_iid_index, compute_max_chunk_size, compute_max_concurrent_requests,
-    set_up_two_bits_to_value, try_div_4, BedError, BedErrorPlus, BedVal, Hold, Metadata,
-    ReadOptions, BED_FILE_MAGIC1, BED_FILE_MAGIC2,
+    set_up_two_bits_to_value, try_div_4, BedError, BedErrorPlus, BedVal, FromStringArray, Hold,
+    Metadata, ReadOptions, BED_FILE_MAGIC1, BED_FILE_MAGIC2,
 };
 use crate::{MetadataFields, CB_HEADER_U64};
 
@@ -72,179 +72,6 @@ where
 
     #[builder(setter(custom))]
     skip_set: HashSet<MetadataFields>,
-}
-
-impl<TArc> BedCloud<TArc>
-where
-    TArc: Clone + Deref + Send + Sync + 'static,
-    TArc::Target: ObjectStore + Send + Sync,
-{
-    /// cmk doc
-    #[anyinput]
-    pub fn builder(object_store: &TArc, path: &StorePath) -> BedCloudBuilder<TArc> {
-        BedCloudBuilder::new(object_store, path)
-    }
-
-    /// cmk doc
-    // cmk #[anyinput]
-    pub async fn new(object_store: &TArc, path: &StorePath) -> Result<Self, Box<BedErrorPlus>> {
-        // cmk do this?? let path = path.into();
-        BedCloud::builder(object_store, path).build().await
-    }
-
-    // #[anyinput]
-    async fn count_lines(&self, path: &StorePath) -> Result<usize, Box<BedErrorPlus>> {
-        let stream = self
-            .object_store
-            .clone()
-            .get(path)
-            .await
-            .map_err(BedErrorPlus::from)?
-            .into_stream();
-
-        let new_line_stream = newline_delimited_stream(stream);
-
-        let newline_count = AtomicUsize::new(0);
-        new_line_stream
-            .try_for_each(|bytes| {
-                let count = bytecount::count(&bytes, b'\n');
-                newline_count.fetch_add(count, Ordering::SeqCst);
-                async { Ok(()) } // Return Ok(()) for each successful iteration
-            })
-            .await
-            .map_err(BedErrorPlus::from)?; // Convert the error and propagate it if present
-
-        Ok(newline_count.load(Ordering::SeqCst))
-    }
-
-    // cmk #[anyinput]
-    fn to_metadata_path(
-        bed_path: &StorePath,
-        metadata_path: &Option<StorePath>,
-        extension: &str,
-    ) -> Result<StorePath, Box<BedErrorPlus>> {
-        if let Some(metadata_path) = metadata_path {
-            Ok(metadata_path.to_owned())
-        } else {
-            change_extension(bed_path, extension)
-        }
-    }
-
-    /// Return the path of the .fam file.
-    pub fn fam_path(&mut self) -> Result<StorePath, Box<BedErrorPlus>> {
-        // We need to clone the path because self might mutate later
-        if let Some(path) = &self.fam_path {
-            Ok(path.clone())
-        } else {
-            let path = BedCloud::<TArc>::to_metadata_path(&self.path, &self.fam_path, "fam")?;
-            self.fam_path = Some(path.clone());
-            Ok(path)
-        }
-    }
-
-    /// Return the path of the .bim file.
-    pub fn bim_path(&mut self) -> Result<StorePath, Box<BedErrorPlus>> {
-        // We need to clone the path because self might mutate later
-        if let Some(path) = &self.bim_path {
-            Ok(path.clone())
-        } else {
-            let path = BedCloud::<TArc>::to_metadata_path(&self.path, &self.bim_path, "bim")?;
-            self.bim_path = Some(path.clone());
-            Ok(path)
-        }
-    }
-
-    /// cmk doc
-    pub async fn iid_count(&mut self) -> Result<usize, Box<BedErrorPlus>> {
-        if let Some(iid_count) = self.iid_count {
-            Ok(iid_count)
-        } else {
-            let fam_path = self.fam_path()?;
-            let iid_count = self.count_lines(&fam_path).await?;
-            self.iid_count = Some(iid_count);
-            Ok(iid_count)
-        }
-    }
-
-    /// cmk doc
-    pub async fn sid_count(&mut self) -> Result<usize, Box<BedErrorPlus>> {
-        if let Some(sid_count) = self.sid_count {
-            Ok(sid_count)
-        } else {
-            let bim_path = self.bim_path()?;
-            let sid_count = self.count_lines(&bim_path).await?;
-            self.sid_count = Some(sid_count);
-            Ok(sid_count)
-        }
-    }
-
-    /// cmk doc
-    pub async fn read_and_fill_with_options<TVal: BedVal>(
-        &mut self,
-        val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.,
-        read_options: &ReadOptions<TVal>,
-    ) -> Result<(), Box<BedErrorPlus>> {
-        // must do these one-at-a-time because they mutate self to cache the results
-        let iid_count = self.iid_count().await?;
-        let sid_count = self.sid_count().await?;
-
-        let max_concurrent_requests =
-            compute_max_concurrent_requests(read_options.max_concurrent_requests)?;
-
-        let max_chunk_size = compute_max_chunk_size(read_options.max_chunk_size)?;
-
-        // If we already have a Vec<isize>, reference it. If we don't, create one and reference it.
-        let iid_hold = Hold::new(&read_options.iid_index, iid_count)?;
-        let iid_index = iid_hold.as_ref();
-        let sid_hold = Hold::new(&read_options.sid_index, sid_count)?;
-        let sid_index = sid_hold.as_ref();
-
-        let dim = val.dim();
-        if dim != (iid_index.len(), sid_index.len()) {
-            return Err(Box::new(
-                BedError::InvalidShape(iid_index.len(), sid_index.len(), dim.0, dim.1).into(),
-            ));
-        }
-
-        read_no_alloc(
-            &self.object_store, // cmk rename "object_store" ??
-            &self.path,
-            iid_count,
-            sid_count,
-            read_options.is_a1_counted,
-            iid_index,
-            sid_index,
-            read_options.missing_value,
-            max_concurrent_requests,
-            max_chunk_size,
-            &mut val.view_mut(),
-        )
-        .await
-    }
-
-    /// cmk doc
-    pub async fn read_with_options<TVal: BedVal>(
-        &mut self,
-        read_options: &ReadOptions<TVal>,
-    ) -> Result<nd::Array2<TVal>, Box<BedErrorPlus>> {
-        let iid_count_in = self.iid_count().await?;
-        let sid_count_in = self.sid_count().await?;
-        let iid_count_out = read_options.iid_index.len(iid_count_in)?;
-        let sid_count_out = read_options.sid_index.len(sid_count_in)?;
-        let shape = ShapeBuilder::set_f((iid_count_out, sid_count_out), read_options.is_f);
-        let mut val = nd::Array2::<TVal>::default(shape);
-
-        self.read_and_fill_with_options(&mut val.view_mut(), read_options)
-            .await?;
-
-        Ok(val)
-    }
-
-    /// cmk doc
-    pub async fn read<TVal: BedVal>(&mut self) -> Result<nd::Array2<TVal>, Box<BedErrorPlus>> {
-        let read_options = ReadOptions::<TVal>::builder().build()?;
-        self.read_with_options(&read_options).await
-    }
 }
 
 fn change_extension(
@@ -980,5 +807,1097 @@ where
         );
 
         self
+    }
+}
+
+impl<TArc> BedCloud<TArc>
+where
+    TArc: Clone + Deref + Send + Sync + 'static,
+    TArc::Target: ObjectStore + Send + Sync,
+{
+    /// cmk doc
+    /// Attempts to open a PLINK .bed file for reading. Supports options.
+    ///
+    /// > Also see [`Bed::new`](struct.Bed.html#method.new), which does not support options.
+    ///
+    /// The options, [listed here](struct.BedBuilder.html#implementations), can:
+    ///  * set the path of the .fam and/or .bim file
+    ///  * override some metadata, for example, replace the individual ids.
+    ///  * set the number of individuals (samples) or SNPs (variants)
+    ///  * control checking the validity of the .bed file's header
+    ///  * skip reading selected metadata
+    ///
+    /// Note that this method is a lazy about holding files, so unlike `std::fs::File::open(&path)`, it
+    /// will not necessarily lock the file(s).
+    ///
+    /// # Errors
+    /// By default, this method will return an error if the file is missing or its header
+    /// is ill-formed. It will also return an error if the options contradict each other.
+    /// See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
+    /// for all possible errors.
+    ///
+    /// # Examples
+    /// List individual (sample) [`iid`](struct.Bed.html#method.iid) and
+    /// SNP (variant) [`sid`](struct.Bed.html#method.sid),
+    /// then [`read`](struct.Bed.html#method.read) the whole file.
+    ///
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, assert_eq_nan, sample_bed_file};
+    ///
+    /// let file_name = sample_bed_file("small.bed")?;
+    /// let mut bed = Bed::builder(file_name).build()?;
+    /// println!("{:?}", bed.iid()?); // Outputs ndarray ["iid1", "iid2", "iid3"]
+    /// println!("{:?}", bed.sid()?); // Outputs ndarray ["snp1", "snp2", "snp3", "snp4"]
+    /// let val = bed.read::<f64>()?;
+    ///
+    /// assert_eq_nan(
+    ///     &val,
+    ///     &nd::array![
+    ///         [1.0, 0.0, f64::NAN, 0.0],
+    ///         [2.0, 0.0, f64::NAN, 2.0],
+    ///         [0.0, 1.0, 2.0, 0.0]
+    ///     ],
+    /// );
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// ```
+    ///
+    /// Replace [`iid`](struct.Bed.html#method.iid).
+    /// ```
+    /// # use ndarray as nd;
+    /// # use bed_reader::{Bed, ReadOptions, assert_eq_nan, sample_bed_file};
+    /// # let file_name = sample_bed_file("small.bed")?;
+    /// let mut bed = Bed::builder(file_name)
+    ///    .iid(["sample1", "sample2", "sample3"])
+    ///    .build()?;
+    /// println!("{:?}", bed.iid()?); // Outputs ndarray ["sample1", "sample2", "sample3"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// ```
+    /// Give the number of individuals (samples) and SNPs (variants) so that the .fam and
+    /// .bim files need never be opened.
+    /// ```
+    /// # use ndarray as nd;
+    /// # use bed_reader::{Bed, ReadOptions, assert_eq_nan, sample_bed_file};
+    /// # let file_name = sample_bed_file("small.bed")?;
+    /// let mut bed = Bed::builder(file_name).iid_count(3).sid_count(4).build()?;
+    /// let val = bed.read::<f64>()?;
+    ///
+    /// assert_eq_nan(
+    ///     &val,
+    ///     &nd::array![
+    ///         [1.0, 0.0, f64::NAN, 0.0],
+    ///         [2.0, 0.0, f64::NAN, 2.0],
+    ///         [0.0, 1.0, 2.0, 0.0]
+    ///     ],
+    /// );
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// ```
+    /// Mark some properties as "don’t read or offer".
+    /// ```
+    /// # use ndarray as nd;
+    /// # use bed_reader::{Bed, ReadOptions, assert_eq_nan, sample_bed_file};
+    /// # let file_name = sample_bed_file("small.bed")?;
+    /// let mut bed = Bed::builder(file_name)
+    ///     .skip_father()
+    ///     .skip_mother()
+    ///     .skip_sex()
+    ///     .skip_pheno()
+    ///     .skip_allele_1()
+    ///     .skip_allele_2()
+    ///     .build()?;
+    /// println!("{:?}", bed.iid()?); // Outputs ndarray ["iid1", "iid2", "iid3"]
+    /// bed.allele_2().expect_err("Can't be read");
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// ```
+    ///
+    pub fn builder(object_store: &TArc, path: &StorePath) -> BedCloudBuilder<TArc> {
+        BedCloudBuilder::new(object_store, path)
+    }
+
+    /// Attempts to open a PLINK .bed file for reading. Does not support options.
+    ///
+    /// > Also see [`Bed::builder`](struct.Bed.html#method.builder), which does support options.
+    ///
+    /// Note that this method is a lazy about holding files, so unlike `std::fs::File::open(&path)`, it
+    /// will not necessarily lock the file(s).
+    ///
+    /// # Errors
+    /// By default, this method will return an error if the file is missing or its header
+    /// is ill-formed. See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
+    /// for all possible errors.
+    ///
+    /// # Examples
+    /// List individual (sample) [`iid`](struct.Bed.html#method.iid) and
+    /// SNP (variant) [`sid`](struct.Bed.html#method.sid),
+    /// then [`read`](struct.Bed.html#method.read) the whole file.
+    ///
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, assert_eq_nan, sample_bed_file};
+    ///
+    /// let file_name = sample_bed_file("small.bed")?;
+    /// let mut bed = Bed::new(file_name)?;
+    /// println!("{:?}", bed.iid()?); // Outputs ndarray: ["iid1", "iid2", "iid3"]
+    /// println!("{:?}", bed.sid()?); // Outputs ndarray: ["sid1", "sid2", "sid3", "sid4"]
+    /// let val = bed.read::<f64>()?;
+    ///
+    /// assert_eq_nan(
+    ///     &val,
+    ///     &nd::array![
+    ///         [1.0, 0.0, f64::NAN, 0.0],
+    ///         [2.0, 0.0, f64::NAN, 2.0],
+    ///         [0.0, 1.0, 2.0, 0.0]
+    ///     ],
+    /// );
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// ```
+    ///
+    /// Open the file and read data for one SNP (variant)
+    /// at index position 2.
+    /// ```
+    /// # use ndarray as nd;
+    /// # use bed_reader::{Bed, ReadOptions, assert_eq_nan, sample_bed_file};
+    /// # let file_name = sample_bed_file("small.bed")?;
+    ///
+    /// let mut bed = Bed::new(file_name)?;
+    /// let val = ReadOptions::builder().sid_index(2).f64().read(&mut bed)?;
+    ///
+    /// assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// ```
+    pub async fn new(object_store: &TArc, path: &StorePath) -> Result<Self, Box<BedErrorPlus>> {
+        BedCloud::builder(object_store, path).build().await
+    }
+
+    async fn count_lines(&self, path: &StorePath) -> Result<usize, Box<BedErrorPlus>> {
+        let stream = self
+            .object_store
+            .clone()
+            .get(path)
+            .await
+            .map_err(BedErrorPlus::from)?
+            .into_stream();
+
+        let new_line_stream = newline_delimited_stream(stream);
+
+        let newline_count = AtomicUsize::new(0);
+        new_line_stream
+            .try_for_each(|bytes| {
+                let count = bytecount::count(&bytes, b'\n');
+                newline_count.fetch_add(count, Ordering::SeqCst);
+                async { Ok(()) } // Return Ok(()) for each successful iteration
+            })
+            .await
+            .map_err(BedErrorPlus::from)?; // Convert the error and propagate it if present
+
+        Ok(newline_count.load(Ordering::SeqCst))
+    }
+
+    /// Number of individuals (samples)
+    ///
+    /// If this number is needed, it will be found
+    /// by opening the .fam file and quickly counting the number
+    /// of lines. Once found, the number will be remembered.
+    /// The file read can be avoided by setting the
+    /// number with [`BedBuilder::iid_count`](struct.BedBuilder.html#method.iid_count)
+    /// or, for example, [`BedBuilder::iid`](struct.BedBuilder.html#method.iid).
+    ///
+    /// # Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions, assert_eq_nan, sample_bed_file};
+    ///
+    /// let file_name = sample_bed_file("small.bed")?;
+    /// let mut bed = Bed::new(file_name)?;
+    /// let iid_count = bed.iid_count()?;
+    ///
+    /// assert!(iid_count == 3);
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    pub async fn iid_count(&mut self) -> Result<usize, Box<BedErrorPlus>> {
+        if let Some(iid_count) = self.iid_count {
+            Ok(iid_count)
+        } else {
+            let fam_path = self.fam_path()?;
+            let iid_count = self.count_lines(&fam_path).await?;
+            self.iid_count = Some(iid_count);
+            Ok(iid_count)
+        }
+    }
+
+    /// Number of SNPs (variants)
+    ///
+    /// If this number is needed, it will be found
+    /// by opening the .bim file and quickly counting the number
+    /// of lines. Once found, the number will be remembered.
+    /// The file read can be avoided by setting the
+    /// number with [`BedBuilder::sid_count`](struct.BedBuilder.html#method.sid_count)
+    /// or, for example, [`BedBuilder::sid`](struct.BedBuilder.html#method.sid).
+    ///
+    /// # Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions, assert_eq_nan, sample_bed_file};
+    ///
+    /// let file_name = sample_bed_file("small.bed")?;
+    /// let mut bed = Bed::new(file_name)?;
+    /// let sid_count = bed.sid_count()?;
+    ///
+    /// assert!(sid_count == 4);
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    pub async fn sid_count(&mut self) -> Result<usize, Box<BedErrorPlus>> {
+        if let Some(sid_count) = self.sid_count {
+            Ok(sid_count)
+        } else {
+            let bim_path = self.bim_path()?;
+            let sid_count = self.count_lines(&bim_path).await?;
+            self.sid_count = Some(sid_count);
+            Ok(sid_count)
+        }
+    }
+
+    /// Number of individuals (samples) and SNPs (variants)
+    ///
+    /// If these numbers aren't known, they will be found
+    /// by opening the .fam and .bim files and quickly counting the number
+    /// of lines. Once found, the numbers will be remembered.
+    /// The file read can be avoided by setting the
+    /// number with [`BedBuilder::iid_count`](struct.BedBuilder.html#method.iid_count)
+    /// and [`BedBuilder::sid_count`](struct.BedBuilder.html#method.sid_count).
+    ///
+    /// # Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions, sample_bed_file};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = sample_bed_file("small.bed")?;
+    /// let mut bed = Bed::new(file_name)?;
+    /// let dim = bed.dim()?;
+    ///
+    /// assert!(dim == (3,4));
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    pub async fn dim(&mut self) -> Result<(usize, usize), Box<BedErrorPlus>> {
+        Ok((self.iid_count().await?, self.sid_count().await?))
+    }
+
+    /// Family id of each of individual (sample)
+    ///
+    /// If this ndarray is needed, it will be found
+    /// by reading the .fam file. Once found, this ndarray
+    /// and other information in the .fam file will be remembered.
+    /// The file read can be avoided by setting the
+    /// array with [`BedBuilder::fid`](struct.BedBuilder.html#method.fid).
+    ///
+    /// # Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions, sample_bed_file};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = sample_bed_file("small.bed")?;
+    /// let mut bed = Bed::new(file_name)?;
+    /// let fid = bed.fid()?;
+    /// println!("{fid:?}"); // Outputs ndarray ["fid1", "fid1", "fid2"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    pub async fn fid(&mut self) -> Result<&nd::Array1<String>, Box<BedErrorPlus>> {
+        self.unlazy_fam::<String>(self.metadata.fid.is_none(), MetadataFields::Fid, "fid")
+            .await?;
+        Ok(self.metadata.fid.as_ref().unwrap()) //unwrap always works because of lazy_fam
+    }
+
+    /// Individual id of each of individual (sample)
+    ///
+    /// If this ndarray is needed, it will be found
+    /// by reading the .fam file. Once found, this ndarray
+    /// and other information in the .fam file will be remembered.
+    /// The file read can be avoided by setting the
+    /// array with [`BedBuilder::iid`](struct.BedBuilder.html#method.iid).
+    ///
+    /// # Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions, sample_bed_file};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = sample_bed_file("small.bed")?;
+    /// let mut bed = Bed::new(file_name)?;
+    /// let iid = bed.iid()?;    ///
+    /// println!("{iid:?}"); // Outputs ndarray ["iid1", "iid2", "iid3"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    pub async fn iid(&mut self) -> Result<&nd::Array1<String>, Box<BedErrorPlus>> {
+        self.unlazy_fam::<String>(self.metadata.iid.is_none(), MetadataFields::Iid, "iid")
+            .await?;
+        Ok(self.metadata.iid.as_ref().unwrap()) //unwrap always works because of lazy_fam
+    }
+
+    /// Father id of each of individual (sample)
+    ///
+    /// If this ndarray is needed, it will be found
+    /// by reading the .fam file. Once found, this ndarray
+    /// and other information in the .fam file will be remembered.
+    /// The file read can be avoided by setting the
+    /// array with [`BedBuilder::father`](struct.BedBuilder.html#method.father).
+    ///
+    /// # Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions, sample_bed_file};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = sample_bed_file("small.bed")?;
+    /// let mut bed = Bed::new(file_name)?;
+    /// let father = bed.father()?;
+    /// println!("{father:?}"); // Outputs ndarray ["iid23", "iid23", "iid22"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), Box<BedErrorPlus>>(())    
+    pub async fn father(&mut self) -> Result<&nd::Array1<String>, Box<BedErrorPlus>> {
+        self.unlazy_fam::<String>(
+            self.metadata.father.is_none(),
+            MetadataFields::Father,
+            "father",
+        )
+        .await?;
+        Ok(self.metadata.father.as_ref().unwrap()) //unwrap always works because of lazy_fam
+    }
+
+    /// Mother id of each of individual (sample)
+    ///
+    /// If this ndarray is needed, it will be found
+    /// by reading the .fam file. Once found, this ndarray
+    /// and other information in the .fam file will be remembered.
+    /// The file read can be avoided by setting the
+    /// array with [`BedBuilder::mother`](struct.BedBuilder.html#method.mother).
+    ///
+    /// # Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions, sample_bed_file};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = sample_bed_file("small.bed")?;
+    /// let mut bed = Bed::new(file_name)?;
+    /// let mother = bed.mother()?;
+    /// println!("{mother:?}"); // Outputs ndarray ["iid34", "iid34", "iid33"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    pub async fn mother(&mut self) -> Result<&nd::Array1<String>, Box<BedErrorPlus>> {
+        self.unlazy_fam::<String>(
+            self.metadata.mother.is_none(),
+            MetadataFields::Mother,
+            "mother",
+        )
+        .await?;
+        Ok(self.metadata.mother.as_ref().unwrap()) //unwrap always works because of lazy_fam
+    }
+
+    /// Sex each of individual (sample)
+    ///
+    /// 0 is unknown, 1 is male, 2 is female
+    ///
+    /// If this ndarray is needed, it will be found
+    /// by reading the .fam file. Once found, this ndarray
+    /// and other information in the .fam file will be remembered.
+    /// The file read can be avoided by setting the
+    /// array with [`BedBuilder::sex`](struct.BedBuilder.html#method.sex).
+    ///
+    /// # Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions, sample_bed_file};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = sample_bed_file("small.bed")?;
+    /// let mut bed = Bed::new(file_name)?;
+    /// let sex = bed.sex()?;
+    /// println!("{sex:?}"); // Outputs ndarray [1, 2, 0]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    pub async fn sex(&mut self) -> Result<&nd::Array1<i32>, Box<BedErrorPlus>> {
+        self.unlazy_fam::<String>(self.metadata.sex.is_none(), MetadataFields::Sex, "sex")
+            .await?;
+        Ok(self.metadata.sex.as_ref().unwrap()) //unwrap always works because of lazy_fam
+    }
+
+    /// A phenotype for each individual (seldom used)
+    ///
+    /// If this ndarray is needed, it will be found
+    /// by reading the .fam file. Once found, this ndarray
+    /// and other information in the .fam file will be remembered.
+    /// The file read can be avoided by setting the
+    /// array with [`BedBuilder::pheno`](struct.BedBuilder.html#method.pheno).
+    ///
+    /// # Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions, sample_bed_file};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = sample_bed_file("small.bed")?;
+    /// let mut bed = Bed::new(file_name)?;
+    /// let pheno = bed.pheno()?;
+    /// println!("{pheno:?}"); // Outputs ndarray ["red", "red", "blue"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    pub async fn pheno(&mut self) -> Result<&nd::Array1<String>, Box<BedErrorPlus>> {
+        self.unlazy_fam::<String>(
+            self.metadata.pheno.is_none(),
+            MetadataFields::Pheno,
+            "pheno",
+        )
+        .await?;
+        Ok(self.metadata.pheno.as_ref().unwrap()) //unwrap always works because of lazy_fam
+    }
+
+    /// Chromosome of each SNP (variant)
+    ///
+    /// If this ndarray is needed, it will be found
+    /// by reading the .bim file. Once found, this ndarray
+    /// and other information in the .bim file will be remembered.
+    /// The file read can be avoided by setting the
+    /// array with [`BedBuilder::chromosome`](struct.BedBuilder.html#method.chromosome).
+    ///
+    /// # Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions, sample_bed_file};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = sample_bed_file("small.bed")?;
+    /// let mut bed = Bed::new(file_name)?;
+    /// let chromosome = bed.chromosome()?;
+    /// println!("{chromosome:?}"); // Outputs ndarray ["1", "1", "5", "Y"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    pub async fn chromosome(&mut self) -> Result<&nd::Array1<String>, Box<BedErrorPlus>> {
+        self.unlazy_bim::<String>(
+            self.metadata.chromosome.is_none(),
+            MetadataFields::Chromosome,
+            "chromosome",
+        )
+        .await?;
+        Ok(self.metadata.chromosome.as_ref().unwrap()) //unwrap always works because of lazy_bim
+    }
+
+    /// SNP id of each SNP (variant)
+    ///
+    /// If this ndarray is needed, it will be found
+    /// by reading the .bim file. Once found, this ndarray
+    /// and other information in the .bim file will be remembered.
+    /// The file read can be avoided by setting the
+    /// array with [`BedBuilder::sid`](struct.BedBuilder.html#method.sid).
+    ///
+    /// # Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions, sample_bed_file};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = sample_bed_file("small.bed")?;
+    /// let mut bed = Bed::new(file_name)?;
+    /// let sid = bed.sid()?;
+    /// println!("{sid:?}"); // Outputs ndarray "sid1", "sid2", "sid3", "sid4"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    pub async fn sid(&mut self) -> Result<&nd::Array1<String>, Box<BedErrorPlus>> {
+        self.unlazy_bim::<String>(self.metadata.sid.is_none(), MetadataFields::Sid, "sid")
+            .await?;
+        Ok(self.metadata.sid.as_ref().unwrap()) //unwrap always works because of lazy_bim
+    }
+
+    /// Centimorgan position of each SNP (variant)
+    ///
+    /// If this ndarray is needed, it will be found
+    /// by reading the .bim file. Once found, this ndarray
+    /// and other information in the .bim file will be remembered.
+    /// The file read can be avoided by setting the
+    /// array with [`BedBuilder::cm_position`](struct.BedBuilder.html#method.cm_position).
+    ///
+    /// # Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions, sample_bed_file};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = sample_bed_file("small.bed")?;
+    /// let mut bed = Bed::new(file_name)?;
+    /// let cm_position = bed.cm_position()?;
+    /// println!("{cm_position:?}"); // Outputs ndarray [100.4, 2000.5, 4000.7, 7000.9]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    pub async fn cm_position(&mut self) -> Result<&nd::Array1<f32>, Box<BedErrorPlus>> {
+        self.unlazy_bim::<String>(
+            self.metadata.cm_position.is_none(),
+            MetadataFields::CmPosition,
+            "cm_position",
+        )
+        .await?;
+        Ok(self.metadata.cm_position.as_ref().unwrap()) //unwrap always works because of lazy_bim
+    }
+
+    /// Base-pair position of each SNP (variant)
+    ///
+    /// If this ndarray is needed, it will be found
+    /// by reading the .bim file. Once found, this ndarray
+    /// and other information in the .bim file will be remembered.
+    /// The file read can be avoided by setting the
+    /// array with [`BedBuilder::bp_position`](struct.BedBuilder.html#method.bp_position).
+    ///
+    /// # Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions, sample_bed_file};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = sample_bed_file("small.bed")?;
+    /// let mut bed = Bed::new(file_name)?;
+    /// let bp_position = bed.bp_position()?;
+    /// println!("{bp_position:?}"); // Outputs ndarray [1, 100, 1000, 1004]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    pub async fn bp_position(&mut self) -> Result<&nd::Array1<i32>, Box<BedErrorPlus>> {
+        self.unlazy_bim::<String>(
+            self.metadata.bp_position.is_none(),
+            MetadataFields::BpPosition,
+            "bp_position",
+        )
+        .await?;
+        Ok(self.metadata.bp_position.as_ref().unwrap()) //unwrap always works because of lazy_bim
+    }
+
+    /// First allele of each SNP (variant)
+    ///
+    /// If this ndarray is needed, it will be found
+    /// by reading the .bim file. Once found, this ndarray
+    /// and other information in the .bim file will be remembered.
+    /// The file read can be avoided by setting the
+    /// array with [`BedBuilder::allele_1`](struct.BedBuilder.html#method.allele_1).
+    ///
+    /// # Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions, sample_bed_file};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = sample_bed_file("small.bed")?;
+    /// let mut bed = Bed::new(file_name)?;
+    /// let allele_1 = bed.allele_1()?;
+    /// println!("{allele_1:?}"); // Outputs ndarray ["A", "T", "A", "T"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    pub async fn allele_1(&mut self) -> Result<&nd::Array1<String>, Box<BedErrorPlus>> {
+        self.unlazy_bim::<String>(
+            self.metadata.allele_1.is_none(),
+            MetadataFields::Allele1,
+            "allele_1",
+        )
+        .await?;
+        Ok(self.metadata.allele_1.as_ref().unwrap()) //unwrap always works because of lazy_bim
+    }
+
+    /// Second allele of each SNP (variant)
+    ///
+    /// If this ndarray is needed, it will be found
+    /// by reading the .bim file. Once found, this ndarray
+    /// and other information in the .bim file will be remembered.
+    /// The file read can be avoided by setting the
+    /// array with [`BedBuilder::allele_2`](struct.BedBuilder.html#method.allele_2).
+    ///
+    /// # Example:
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions, sample_bed_file};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = sample_bed_file("small.bed")?;
+    /// let mut bed = Bed::new(file_name)?;
+    /// let allele_2 = bed.allele_2()?;
+    /// println!("{allele_2:?}"); // Outputs ndarray ["A", "C", "C", "G"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    pub async fn allele_2(&mut self) -> Result<&nd::Array1<String>, Box<BedErrorPlus>> {
+        self.unlazy_bim::<String>(
+            self.metadata.allele_2.is_none(),
+            MetadataFields::Allele2,
+            "allele_2",
+        )
+        .await?;
+        Ok(self.metadata.allele_2.as_ref().unwrap()) //unwrap always works because of lazy_bim
+    }
+
+    /// [`Metadata`](struct.Metadata.html) for this dataset, for example, the individual (sample) Ids.
+    ///
+    /// This returns a struct with 12 fields. Each field is a ndarray.
+    /// The struct will always be new, but the 12 ndarrays will be
+    /// shared with this [`Bed`](struct.Bed.html).
+    ///
+    /// If the needed, the metadata will be read from the .fam and/or .bim files.
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, sample_bed_file};
+    ///
+    /// let file_name = sample_bed_file("small.bed")?;
+    /// let mut bed = Bed::new(file_name)?;
+    /// let metadata = bed.metadata()?;
+    /// println!("{0:?}", metadata.iid()); // Outputs Some(["iid1", "iid2", "iid3"] ...)
+    /// println!("{0:?}", metadata.sid()); // Outputs Some(["sid1", "sid2", "sid3", "sid4"] ...)
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    pub async fn metadata(&mut self) -> Result<Metadata, Box<BedErrorPlus>> {
+        self.fam().await?;
+        self.bim().await?;
+        Ok(self.metadata.clone())
+    }
+
+    /// Return the store path of the .bed file.
+    pub fn path(&self) -> &StorePath {
+        &self.path
+    }
+
+    /// Return the ObjectStore of the .bed file.
+    pub fn object_store(&self) -> &TArc {
+        &self.object_store
+    }
+
+    /// Return the path of the .fam file.
+    pub fn fam_path(&mut self) -> Result<StorePath, Box<BedErrorPlus>> {
+        // We need to clone the path because self might mutate later
+        if let Some(path) = &self.fam_path {
+            Ok(path.clone())
+        } else {
+            let path = BedCloud::<TArc>::to_metadata_path(&self.path, &self.fam_path, "fam")?;
+            self.fam_path = Some(path.clone());
+            Ok(path)
+        }
+    }
+
+    /// Return the path of the .bim file.
+    pub fn bim_path(&mut self) -> Result<StorePath, Box<BedErrorPlus>> {
+        // We need to clone the path because self might mutate later
+        if let Some(path) = &self.bim_path {
+            Ok(path.clone())
+        } else {
+            let path = BedCloud::<TArc>::to_metadata_path(&self.path, &self.bim_path, "bim")?;
+            self.bim_path = Some(path.clone());
+            Ok(path)
+        }
+    }
+
+    /// Read genotype data.
+    ///
+    /// > Also see [`ReadOptions::builder`](struct.ReadOptions.html#method.builder) which supports selection and options.
+    ///
+    /// # Errors
+    /// See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
+    /// for all possible errors.
+    ///
+    /// # Examples
+    /// Read all data in a .bed file.
+    ///
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions, sample_bed_file};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = sample_bed_file("small.bed")?;
+    /// let mut bed = Bed::new(file_name)?;
+    /// let val = bed.read::<f64>()?;
+    ///
+    /// assert_eq_nan(
+    ///     &val,
+    ///     &nd::array![
+    ///         [1.0, 0.0, f64::NAN, 0.0],
+    ///         [2.0, 0.0, f64::NAN, 2.0],
+    ///         [0.0, 1.0, 2.0, 0.0]
+    ///     ],
+    /// );
+    ///
+    /// // Your output array can be f32, f64, or i8
+    /// let val = bed.read::<i8>()?;
+    /// assert_eq_nan(
+    ///     &val,
+    ///     &nd::array![
+    ///         [1, 0, -127, 0],
+    ///         [2, 0, -127, 2],
+    ///         [0, 1, 2, 0]
+    ///     ],
+    /// );
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// ```    
+    pub async fn read<TVal: BedVal>(&mut self) -> Result<nd::Array2<TVal>, Box<BedErrorPlus>> {
+        let read_options = ReadOptions::<TVal>::builder().build()?;
+        self.read_with_options(&read_options).await
+    }
+
+    /// Read genotype data with options, into a preallocated array.
+    ///
+    /// > Also see [`ReadOptionsBuilder::read_and_fill`](struct.ReadOptionsBuilder.html#method.read_and_fill).
+    ///
+    /// Note that options [`ReadOptions::f`](struct.ReadOptions.html#method.f),
+    /// [`ReadOptions::c`](struct.ReadOptions.html#method.c), and [`ReadOptions::is_f`](struct.ReadOptionsBuilder.html#method.is_f)
+    /// are ignored. Instead, the order of the preallocated array is used.
+    ///
+    /// # Errors
+    /// See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
+    /// for all possible errors.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions, sample_bed_file};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// // Read the SNPs indexed by 2.
+    /// let file_name = sample_bed_file("small.bed")?;
+    /// let mut bed = Bed::new(file_name)?;
+    /// let read_options = ReadOptions::builder().sid_index(2).build()?;
+    /// let mut val = nd::Array2::<f64>::default((3, 1));
+    /// bed.read_and_fill_with_options(&mut val.view_mut(), &read_options)?;
+    ///
+    /// assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// ```  
+    pub async fn read_and_fill_with_options<TVal: BedVal>(
+        &mut self,
+        val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.,
+        read_options: &ReadOptions<TVal>,
+    ) -> Result<(), Box<BedErrorPlus>> {
+        // must do these one-at-a-time because they mutate self to cache the results
+        let iid_count = self.iid_count().await?;
+        let sid_count = self.sid_count().await?;
+
+        let max_concurrent_requests =
+            compute_max_concurrent_requests(read_options.max_concurrent_requests)?;
+
+        let max_chunk_size = compute_max_chunk_size(read_options.max_chunk_size)?;
+
+        // If we already have a Vec<isize>, reference it. If we don't, create one and reference it.
+        let iid_hold = Hold::new(&read_options.iid_index, iid_count)?;
+        let iid_index = iid_hold.as_ref();
+        let sid_hold = Hold::new(&read_options.sid_index, sid_count)?;
+        let sid_index = sid_hold.as_ref();
+
+        let dim = val.dim();
+        if dim != (iid_index.len(), sid_index.len()) {
+            return Err(Box::new(
+                BedError::InvalidShape(iid_index.len(), sid_index.len(), dim.0, dim.1).into(),
+            ));
+        }
+
+        read_no_alloc(
+            &self.object_store, // cmk rename "object_store" ??
+            &self.path,
+            iid_count,
+            sid_count,
+            read_options.is_a1_counted,
+            iid_index,
+            sid_index,
+            read_options.missing_value,
+            max_concurrent_requests,
+            max_chunk_size,
+            &mut val.view_mut(),
+        )
+        .await
+    }
+
+    /// Read all genotype data into a preallocated array.
+    ///
+    /// > Also see [`ReadOptions::builder`](struct.ReadOptions.html#method.builder).
+    ///
+    /// # Errors
+    /// See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
+    /// for all possible errors.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions, sample_bed_file};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// let file_name = sample_bed_file("small.bed")?;
+    /// let mut bed = Bed::new(file_name)?;
+    /// let mut val = nd::Array2::<i8>::default(bed.dim()?);
+    /// bed.read_and_fill(&mut val.view_mut())?;
+    ///
+    /// assert_eq_nan(
+    ///     &val,
+    ///     &nd::array![
+    ///         [1, 0, -127, 0],
+    ///         [2, 0, -127, 2],
+    ///         [0, 1, 2, 0]
+    ///     ],
+    /// );
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// ```
+    pub async fn read_and_fill<TVal: BedVal>(
+        &mut self,
+        val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.,
+    ) -> Result<(), Box<BedErrorPlus>> {
+        let read_options = ReadOptions::<TVal>::builder().build()?;
+        self.read_and_fill_with_options(val, &read_options).await
+    }
+
+    /// Read genotype data with options.
+    ///
+    /// > Also see [`ReadOptions::builder`](struct.ReadOptions.html#method.builder).
+    ///
+    /// # Errors
+    /// See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
+    /// for all possible errors.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, ReadOptions, sample_bed_file};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// // Read the SNPs indexed by 2.
+    /// let file_name = sample_bed_file("small.bed")?;
+    /// let mut bed = Bed::new(file_name)?;
+    /// let read_options = ReadOptions::builder().sid_index(2).f64().build()?;
+    /// let val = bed.read_with_options(&read_options)?;
+    ///
+    /// assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// ```  
+    pub async fn read_with_options<TVal: BedVal>(
+        &mut self,
+        read_options: &ReadOptions<TVal>,
+    ) -> Result<nd::Array2<TVal>, Box<BedErrorPlus>> {
+        let iid_count_in = self.iid_count().await?;
+        let sid_count_in = self.sid_count().await?;
+        let iid_count_out = read_options.iid_index.len(iid_count_in)?;
+        let sid_count_out = read_options.sid_index.len(sid_count_in)?;
+        let shape = ShapeBuilder::set_f((iid_count_out, sid_count_out), read_options.is_f);
+        let mut val = nd::Array2::<TVal>::default(shape);
+
+        self.read_and_fill_with_options(&mut val.view_mut(), read_options)
+            .await?;
+
+        Ok(val)
+    }
+
+    fn to_metadata_path(
+        bed_path: &StorePath,
+        metadata_path: &Option<StorePath>,
+        extension: &str,
+    ) -> Result<StorePath, Box<BedErrorPlus>> {
+        if let Some(metadata_path) = metadata_path {
+            Ok(metadata_path.to_owned())
+        } else {
+            change_extension(bed_path, extension)
+        }
+    }
+
+    /// Write genotype data with default metadata.
+    ///
+    /// > Also see [`WriteOptions::builder`](struct.WriteOptions.html#method.builder), which supports metadata and options.
+    ///
+    /// # Errors
+    /// See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
+    /// for all possible errors.
+    ///
+    /// # Example
+    /// In this example, write genotype data using default metadata.
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, WriteOptions};
+    ///
+    /// let output_folder = temp_testdir::TempDir::default();
+    /// let output_file = output_folder.join("small.bed");
+    ///
+    /// let val = nd::array![[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]];
+    /// Bed::write(&val, &output_file)?;
+    ///
+    /// // If we then read the new file and list the chromosome property,
+    /// // it is an array of zeros, the default chromosome value.
+    /// let mut bed2 = Bed::new(&output_file)?;
+    /// println!("{:?}", bed2.chromosome()?); // Outputs ndarray ["0", "0", "0", "0"]
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// ```
+    // cmk need to do 'write'
+    // pub fn write<S: nd::Data<Elem = TVal>, TVal: BedVal>(
+    //     val: &nd::ArrayBase<S, nd::Ix2>,
+    //     path: &Path,
+    // ) -> Result<(), Box<BedErrorPlus>> {
+    //     WriteOptions::builder(path).write(val)
+    // }
+
+    /// Given an 2D array of genotype data and a [`WriteOptions`](struct.WriteOptionsBuilder.html), write to a .bed file.
+    ///
+    /// > Also see [`WriteOptionsBuilder::write`](struct.WriteOptionsBuilder.html#method.write), which creates
+    /// > a [`WriteOptions`](struct.WriteOptionsBuilder.html) and writes to file in one step.
+    ///
+    /// # Example
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{Bed, WriteOptions};
+    ///
+    /// let val = nd::array![
+    ///     [1.0, 0.0, f64::NAN, 0.0],
+    ///     [2.0, 0.0, f64::NAN, 2.0],
+    ///     [0.0, 1.0, 2.0, 0.0]
+    /// ];
+    ///
+    /// let output_folder = temp_testdir::TempDir::default();
+    /// let output_file = output_folder.join("small.bed");
+    /// let write_options = WriteOptions::builder(output_file)
+    ///     .iid(["iid1", "iid2", "iid3"])
+    ///     .sid(["sid1", "sid2", "sid3", "sid4"])
+    ///     .build(3,4)?;
+    ///
+    /// Bed::write_with_options(&val, &write_options)?;
+    /// # use bed_reader::BedErrorPlus;
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// ```
+    // cmk need to do 'write_with_options'
+    // pub fn write_with_options<S, TVal>(
+    //     val: &nd::ArrayBase<S, nd::Ix2>,
+    //     write_options: &WriteOptions<TVal>,
+    // ) -> Result<(), Box<BedErrorPlus>>
+    // where
+    //     S: nd::Data<Elem = TVal>,
+    //     TVal: BedVal,
+    // {
+    //     let (iid_count, sid_count) = val.dim();
+    //     if iid_count != write_options.iid_count() {
+    //         return Err(BedError::InconsistentCount(
+    //             "iid".to_string(),
+    //             write_options.iid_count(),
+    //             iid_count,
+    //         )
+    //         .into());
+    //     }
+    //     if sid_count != write_options.sid_count() {
+    //         return Err(BedError::InconsistentCount(
+    //             "sid".to_string(),
+    //             write_options.sid_count(),
+    //             sid_count,
+    //         )
+    //         .into());
+    //     }
+
+    //     let num_threads = compute_num_threads(write_options.num_threads)?;
+    //     write_val(
+    //         &write_options.path,
+    //         val,
+    //         write_options.is_a1_counted,
+    //         write_options.missing_value,
+    //         num_threads,
+    //     )?;
+
+    //     if !write_options.skip_fam() {
+    //         if let Err(e) = write_options.metadata.write_fam(write_options.fam_path()) {
+    //             // Clean up the file
+    //             let _ = fs::remove_file(&write_options.fam_path);
+    //             return Err(e);
+    //         }
+    //     }
+
+    //     if !write_options.skip_bim() {
+    //         if let Err(e) = write_options.metadata.write_bim(write_options.bim_path()) {
+    //             // Clean up the file
+    //             let _ = fs::remove_file(&write_options.bim_path);
+    //             return Err(e);
+    //         }
+    //     }
+
+    //     Ok(())
+    // }
+
+    async fn unlazy_fam<T: FromStringArray<T>>(
+        &mut self,
+        is_none: bool,
+        field_index: MetadataFields,
+        name: &str,
+    ) -> Result<(), Box<BedErrorPlus>> {
+        if self.skip_set.contains(&field_index) {
+            return Err(BedError::CannotUseSkippedMetadata(name.to_string()).into());
+        }
+        if is_none {
+            self.fam().await?
+        }
+        Ok(())
+    }
+
+    async fn unlazy_bim<T: FromStringArray<T>>(
+        &mut self,
+        is_none: bool,
+        field_index: MetadataFields,
+        name: &str,
+    ) -> Result<(), Box<BedErrorPlus>> {
+        if self.skip_set.contains(&field_index) {
+            return Err(BedError::CannotUseSkippedMetadata(name.to_string()).into());
+        }
+        if is_none {
+            self.bim().await?
+        }
+        Ok(())
+    }
+
+    async fn fam(&mut self) -> Result<(), Box<BedErrorPlus>> {
+        let fam_path = self.fam_path()?;
+
+        let (metadata, count) = self
+            .metadata
+            .read_cloud_fam(&self.object_store, &fam_path, &self.skip_set)
+            .await?;
+        self.metadata = metadata;
+
+        match self.iid_count {
+            Some(iid_count) => {
+                if iid_count != count {
+                    return Err(
+                        BedError::InconsistentCount("iid".to_string(), iid_count, count).into(),
+                    );
+                }
+            }
+            None => {
+                self.iid_count = Some(count);
+            }
+        }
+        Ok(())
+    }
+
+    async fn bim(&mut self) -> Result<(), Box<BedErrorPlus>> {
+        let bim_path = self.bim_path()?;
+
+        let (metadata, count) = self
+            .metadata
+            .read_cloud_bim(&self.object_store, &bim_path, &self.skip_set)
+            .await?;
+        self.metadata = metadata;
+
+        match self.sid_count {
+            Some(sid_count) => {
+                if sid_count != count {
+                    return Err(
+                        BedError::InconsistentCount("sid".to_string(), sid_count, count).into(),
+                    );
+                }
+            }
+            None => {
+                self.sid_count = Some(count);
+            }
+        }
+        Ok(())
     }
 }
