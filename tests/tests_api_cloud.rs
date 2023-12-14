@@ -6,8 +6,8 @@ use bed_reader::assert_eq_nan;
 use bed_reader::assert_error_variant;
 use bed_reader::sample_bed_file;
 use bed_reader::sample_bed_store_path;
-use bed_reader::sample_file;
-use bed_reader::sample_files;
+use bed_reader::sample_store_path;
+use bed_reader::sample_store_paths;
 use bed_reader::BedCloud;
 use bed_reader::BedError;
 use bed_reader::BedErrorPlus;
@@ -200,12 +200,7 @@ fn rusty_cloud_bed_order() -> Result<(), Box<BedErrorPlus>> {
 fn bad_header_cloud() -> Result<(), Box<BedErrorPlus>> {
     let rt = Runtime::new()?;
     rt.block_on(async {
-        // Prepare the file and path for BedCloud
-        let filename = sample_file("badfile.bed")?;
-        let path = StorePath::from_filesystem_path(filename).map_err(BedErrorPlus::from)?;
-
-        // Create an instance of BedCloud with skip_early_check
-        let object_store = Arc::new(LocalFileSystem::new());
+        let (object_store, path) = sample_store_path("badfile.bed")?;
         let bed_cloud = BedCloud::builder(&object_store, &path)
             .skip_early_check()
             .build()
@@ -226,9 +221,7 @@ fn bad_header_cloud() -> Result<(), Box<BedErrorPlus>> {
 fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
     let rt = Runtime::new()?;
     rt.block_on(async {
-        let object_store = Arc::new(LocalFileSystem::new());
-        let file_name = sample_bed_file("small.bed")?;
-        let path = StorePath::from_filesystem_path(file_name).map_err(BedErrorPlus::from)?;
+        let (object_store, path) = sample_bed_store_path("small.bed")?;
 
         let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
         let val = bed_cloud.read::<f64>().await?;
@@ -241,8 +234,7 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
             ],
         );
 
-        let file_name2 = sample_bed_file("some_missing.bed")?;
-        let path2 = StorePath::from_filesystem_path(file_name2).map_err(BedErrorPlus::from)?;
+        let (object_store, path2) = sample_bed_store_path("some_missing.bed")?;
         let mut bed_cloud2 = BedCloud::new(&object_store, &path2).await?;
         let val2 = ReadOptions::builder()
             .f64()
@@ -294,10 +286,7 @@ fn open_examples_cloud() -> Result<(), Box<BedErrorPlus>> {
 
     let rt = Runtime::new()?;
     rt.block_on(async {
-        // Reading basic information and data
-        let file_name = sample_bed_file("small.bed")?;
-        let path = StorePath::from_filesystem_path(file_name).map_err(BedErrorPlus::from)?;
-        let object_store = Arc::new(LocalFileSystem::new());
+        let (object_store, path) = sample_bed_store_path("small.bed")?;
         let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
 
         println!("{:?}", bed_cloud.iid().await?);
@@ -476,9 +465,7 @@ fn hello_father_cloud() -> Result<(), Box<BedErrorPlus>> {
     let rt = Runtime::new()?;
     rt.block_on(async {
         // Initialize BedCloud with the sample file and custom father metadata
-        let file_name = sample_bed_file("small.bed")?;
-        let path = StorePath::from_filesystem_path(file_name).map_err(BedErrorPlus::from)?;
-        let object_store = Arc::new(LocalFileSystem::new());
+        let (object_store, path) = sample_bed_store_path("small.bed")?;
 
         let mut bed_cloud = BedCloud::builder(&object_store, &path)
             .father(["f1", "f2", "f3"])
@@ -500,10 +487,7 @@ fn hello_father_cloud() -> Result<(), Box<BedErrorPlus>> {
 fn max_concurrent_requests() -> Result<(), Box<BedErrorPlus>> {
     let rt = Runtime::new()?;
     rt.block_on(async {
-        // Initialize BedCloud with the sample file
-        let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
-        let path = StorePath::from_filesystem_path(file).map_err(BedErrorPlus::from)?;
-        let object_store = Arc::new(LocalFileSystem::new());
+        let (object_store, path) = sample_bed_store_path("plink_sim_10s_100v_10pmiss.bed")?;
         let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
 
         // Read data with specified number of threads (or equivalent parallel processing setting)
@@ -525,22 +509,14 @@ fn max_concurrent_requests() -> Result<(), Box<BedErrorPlus>> {
 fn fam_and_bim_cloud() -> Result<(), Box<BedErrorPlus>> {
     let rt = Runtime::new()?;
     rt.block_on(async {
-        // Acquire paths for the deb, maf, and mib files
-        let deb_maf_mib = sample_files(["small.deb", "small.maf", "small.mib"])?;
-        let deb_path =
-            StorePath::from_filesystem_path(&deb_maf_mib[0]).map_err(BedErrorPlus::from)?;
-        let maf_path =
-            StorePath::from_filesystem_path(&deb_maf_mib[1]).map_err(BedErrorPlus::from)?;
-        let mib_path =
-            StorePath::from_filesystem_path(&deb_maf_mib[2]).map_err(BedErrorPlus::from)?;
-
-        let object_store = Arc::new(LocalFileSystem::new());
+        let (object_store, deb_maf_mib) =
+            sample_store_paths(["small.deb", "small.maf", "small.mib"])?;
 
         // Build BedCloud with custom fam and bim paths
         // cmk should they have their own object_store?
-        let mut bed_cloud = BedCloud::builder(&object_store, &deb_path)
-            .fam_path(&maf_path)
-            .bim_path(&mib_path)
+        let mut bed_cloud = BedCloud::builder(&object_store, &deb_maf_mib[0])
+            .fam_path(&deb_maf_mib[1])
+            .bim_path(&deb_maf_mib[2])
             .build()
             .await?;
 

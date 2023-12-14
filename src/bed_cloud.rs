@@ -938,13 +938,15 @@ where
     ///
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{Bed, assert_eq_nan, sample_bed_file};
+    /// use bed_reader::{BedCloud, assert_eq_nan, sample_bed_store_path};
     ///
-    /// let file_name = sample_bed_file("small.bed")?;
-    /// let mut bed = Bed::new(file_name)?;
-    /// println!("{:?}", bed.iid()?); // Outputs ndarray: ["iid1", "iid2", "iid3"]
-    /// println!("{:?}", bed.sid()?); // Outputs ndarray: ["sid1", "sid2", "sid3", "sid4"]
-    /// let val = bed.read::<f64>()?;
+    /// let rt = Runtime::new().unwrap();
+    /// rt.block_on(async {
+    /// let (object_store, path) = sample_bed_store_path("small.bed")?;
+    /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray: ["iid1", "iid2", "iid3"]
+    /// println!("{:?}", bed_cloud.sid().await?); // Outputs ndarray: ["sid1", "sid2", "sid3", "sid4"]
+    /// let val = bed_cloud.read::<f64>().await?;
     ///
     /// assert_eq_nan(
     ///     &val,
@@ -954,6 +956,9 @@ where
     ///         [0.0, 1.0, 2.0, 0.0]
     ///     ],
     /// );
+    /// Ok::<(), Box<BedErrorPlus>>(())
+    /// })?;
+    /// # use tokio::runtime::Runtime;
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
