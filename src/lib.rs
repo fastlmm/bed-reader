@@ -1618,7 +1618,7 @@ impl BedBuilder {
     }
 
     /// Override the father values found in the .fam file.
-    ///nd
+    ///
     /// By default, if father values are needed and haven't already been found,
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to gi&ve different values.

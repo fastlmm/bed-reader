@@ -1,23 +1,21 @@
 use anyinput::anyinput;
+use bytes::Bytes;
 use derive_builder::Builder;
+use futures_util::TryStreamExt;
+use itertools::Itertools;
 use nd::ShapeBuilder;
 use ndarray as nd;
+use object_store::delimited::newline_delimited_stream;
 use object_store::local::LocalFileSystem;
+use object_store::path::Path as StorePath;
+use object_store::ObjectStore;
+use object_store::{GetOptions, ObjectMeta};
 use std::collections::HashSet;
 use std::ops::Deref;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio::sync::Semaphore;
 use tokio::task::{self, JoinHandle};
-
-// cmk really need futures_util and bytes...???
-use bytes::Bytes;
-use futures_util::TryStreamExt;
-use itertools::Itertools;
-use object_store::delimited::newline_delimited_stream;
-use object_store::path::Path as StorePath;
-use object_store::ObjectStore;
-use object_store::{GetOptions, ObjectMeta};
 
 use crate::{
     check_and_precompute_iid_index, compute_max_chunk_size, compute_max_concurrent_requests,
@@ -26,7 +24,35 @@ use crate::{
 };
 use crate::{MetadataFields, CB_HEADER_U64};
 
-/// cmk doc
+/// Represents a PLINK .bed file that is open for reading genotype data and metadata.
+///
+/// Construct with [`Bed::new`](struct.Bed.html#method.new) or [`Bed::builder`](struct.Bed.html#method.builder).
+///
+/// # Example
+///
+/// Open a file for reading. Then, read the individual (sample) ids
+/// and all the genotype data.
+/// ```
+/// use ndarray as nd;
+/// use bed_reader::{Bed, ReadOptions, sample_bed_file};
+/// use bed_reader::assert_eq_nan;
+///
+/// let file_name = sample_bed_file("small.bed")?;
+/// let mut bed = Bed::new(file_name)?;
+/// println!("{:?}", bed.iid()?); // Outputs ndarray ["iid1", "iid2", "iid3"]
+/// let val = ReadOptions::builder().f64().read(&mut bed)?;
+///
+/// assert_eq_nan(
+///     &val,
+///     &nd::array![
+///         [1.0, 0.0, f64::NAN, 0.0],
+///         [2.0, 0.0, f64::NAN, 2.0],
+///         [0.0, 1.0, 2.0, 0.0]
+///     ],
+/// );
+/// # use bed_reader::BedErrorPlus;
+/// # Ok::<(), Box<BedErrorPlus>>(())
+/// ```
 #[derive(Clone, Debug, Builder)]
 #[builder(build_fn(private, name = "build_no_file_check", error = "BedErrorPlus"))]
 pub struct BedCloud<TArc>
@@ -46,16 +72,10 @@ where
     fam_path: Option<StorePath>,
 
     // // cmk needed? combine with path?
-    // #[builder(setter(custom))]
-    // #[builder(default = "None")]
-    // fam_object_meta: Option<ObjectMeta>,
     #[builder(setter(custom))]
     #[builder(default = "None")]
     bim_path: Option<StorePath>,
 
-    // #[builder(setter(custom))]
-    // #[builder(default = "None")]
-    // bim_object_meta: Option<ObjectMeta>,
     #[builder(setter(custom))]
     #[builder(default = "true")]
     is_checked_early: bool,
@@ -95,14 +115,12 @@ fn change_extension(
     StorePath::parse(&path_str).map_err(|e| BedErrorPlus::from(e).into())
 }
 
-// cmk #[anyinput]
 // cmk needed?
 fn store_path_to_string(store_path: &StorePath) -> String {
     StorePath::to_string(store_path)
 }
 
 #[allow(clippy::too_many_arguments)]
-// cmk #[anyinput]
 async fn internal_read_no_alloc<TVal: BedVal, TArc>(
     object_store: &TArc,
     path: &StorePath,
@@ -216,7 +234,6 @@ where
 }
 
 #[allow(clippy::too_many_arguments)]
-// cmk #[anyinput]
 async fn read_no_alloc<TVal: BedVal, TArc>(
     object_store: &TArc,
     path: &StorePath,
@@ -284,7 +301,6 @@ where
     Ok(())
 }
 
-// cmk #[anyinput]
 async fn open_and_check<TArc>(
     object_store: &TArc,
     path: &StorePath,
@@ -395,7 +411,7 @@ where
     }
 
     /// Override the father values found in the .fam file.
-    ///nd
+    ///
     /// By default, if father values are needed and haven't already been found,
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to gi&ve different values.
@@ -576,7 +592,6 @@ where
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
-    // cmk #[anyinput]
     pub fn fam_path(mut self, path: &StorePath) -> Self {
         self.fam_path = Some(Some(path.to_owned()));
         self
@@ -816,7 +831,6 @@ where
     TArc: Clone + Deref + Send + Sync + 'static,
     TArc::Target: ObjectStore + Send + Sync,
 {
-    /// cmk doc
     /// Attempts to open a PLINK .bed file for reading. Supports options.
     ///
     /// > Also see [`Bed::new`](struct.Bed.html#method.new), which does not support options.
@@ -940,8 +954,8 @@ where
     /// use ndarray as nd;
     /// use bed_reader::{BedCloud, assert_eq_nan, sample_bed_store_path};
     ///
-    /// let rt = Runtime::new().unwrap();
-    /// rt.block_on(async {
+    /// # let rt = Runtime::new().unwrap();
+    /// # rt.block_on(async {
     /// let (object_store, path) = sample_bed_store_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
     /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray: ["iid1", "iid2", "iid3"]
@@ -956,8 +970,8 @@ where
     ///         [0.0, 1.0, 2.0, 0.0]
     ///     ],
     /// );
-    /// Ok::<(), Box<BedErrorPlus>>(())
-    /// })?;
+    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// # })?;
     /// # use tokio::runtime::Runtime;
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), Box<BedErrorPlus>>(())
@@ -1604,7 +1618,7 @@ where
         }
 
         read_no_alloc(
-            &self.object_store, // cmk rename "object_store" ??
+            &self.object_store,
             &self.path,
             iid_count,
             sid_count,
@@ -1908,7 +1922,6 @@ where
     }
 }
 
-/// cmk update docs
 /// Returns the local path to a sample .bed file. If necessary, the file will be downloaded.
 ///
 /// The .fam and .bim files will also be downloaded, if they are not already present.
@@ -1932,7 +1945,6 @@ pub fn sample_bed_store_path(
     Ok((object_store, vec[0].clone()))
 }
 
-/// cmk update docs
 /// Returns the local path to a sample file. If necessary, the file will be downloaded.
 ///
 /// A SHA256 hash is used to verify that the file is correct.
@@ -1951,7 +1963,6 @@ pub fn sample_store_path(
     Ok((object_store, store_path))
 }
 
-/// cmk update docs
 /// Returns the local paths to a list of files. If necessary, the files will be downloaded.
 ///
 /// SHA256 hashes are used to verify that the files are correct.
