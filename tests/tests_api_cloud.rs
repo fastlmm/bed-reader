@@ -306,128 +306,160 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
     Ok(())
 }
 
-// #[test]
-// fn open_examples() -> Result<(), Box<BedErrorPlus>> {
-//     //     >>> from bed_reader import open_bed, sample_bed_file
-//     //     >>>
-//     //     >>> file_name = sample_bed_file("small.bed")
-//     //     >>> bed = open_bed(file_name)
-//     //     >>> print(bed.iid)
-//     //     ['iid1' 'iid2' 'iid3']
-//     //     >>> print(bed.sid)
-//     //     ['sid1' 'sid2' 'sid3' 'sid4']
-//     //     >>> print(bed.read())
-//     //     [[ 1.  0. nan  0.]
-//     //      [ 2.  0. nan  2.]
-//     //      [ 0.  1.  2.  0.]]
-//     //     >>> del bed  # optional: delete bed object
+#[test]
+fn open_examples_cloud() -> Result<(), Box<BedErrorPlus>> {
+    //     >>> from bed_reader import open_bed, sample_bed_file
+    //     >>>
+    //     >>> file_name = sample_bed_file("small.bed")
+    //     >>> bed = open_bed(file_name)
+    //     >>> print(bed.iid)
+    //     ['iid1' 'iid2' 'iid3']
+    //     >>> print(bed.sid)
+    //     ['sid1' 'sid2' 'sid3' 'sid4']
+    //     >>> print(bed.read())
+    //     [[ 1.  0. nan  0.]
+    //      [ 2.  0. nan  2.]
+    //      [ 0.  1.  2.  0.]]
+    //     >>> del bed  # optional: delete bed object
 
-//     let file_name = sample_bed_file("small.bed")?;
-//     let mut bed = Bed::new(&file_name)?;
-//     println!("{:?}", bed.iid()?);
-//     println!("{:?}", bed.sid()?);
-//     println!("{:?}", bed.read::<f64>()?);
+    let rt = Runtime::new()?;
+    rt.block_on(async {
+        // Reading basic information and data
+        let file_name = sample_bed_file("small.bed")?;
+        let path = StorePath::from_filesystem_path(file_name).map_err(BedErrorPlus::from)?;
+        let object_store = Arc::new(LocalFileSystem::new());
+        let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
 
-//     // ["iid1", "iid2", "iid3"], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
-//     // ["sid1", "sid2", "sid3", "sid4"], shape=[4], strides=[1], layout=CFcf (0xf), const ndim=1
-//     // [[1.0, 0.0, NaN, 0.0],
-//     //  [2.0, 0.0, NaN, 2.0],
-//     //  [0.0, 1.0, 2.0, 0.0]], shape=[3, 4], strides=[1, 3], layout=Ff (0xa), const ndim=2
+        println!("{:?}", bed_cloud.iid().await?);
+        println!("{:?}", bed_cloud.sid().await?);
+        println!("{:?}", bed_cloud.read::<f64>().await?);
 
-//     // Open the file and read data for one SNP (variant)
-//     // at index position 2.
+        // ["iid1", "iid2", "iid3"], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
+        // ["sid1", "sid2", "sid3", "sid4"], shape=[4], strides=[1], layout=CFcf (0xf), const ndim=1
+        // [[1.0, 0.0, NaN, 0.0],
+        //  [2.0, 0.0, NaN, 2.0],
+        //  [0.0, 1.0, 2.0, 0.0]], shape=[3, 4], strides=[1, 3], layout=Ff (0xa), const ndim=2
 
-//     // .. doctest::
+        // Open the file and read data for one SNP (variant)
+        // at index position 2.
 
-//     //     >>> import numpy as np
-//     //     >>> with open_bed(file_name) as bed:
-//     //     ...     print(bed.read(np.s_[:,2]))
-//     //     [[nan]
-//     //      [nan]
-//     //      [ 2.]]
+        // .. doctest::
 
-//     let mut bed = Bed::new(&file_name)?;
-//     println!(
-//         "{:?}",
-//         ReadOptions::builder().sid_index(2).f64().read(&mut bed)?
-//     );
+        //     >>> import numpy as np
+        //     >>> with open_bed(file_name) as bed:
+        //     ...     print(bed.read(np.s_[:,2]))
+        //     [[nan]
+        //      [nan]
+        //      [ 2.]]
 
-//     // [[NaN],
-//     //  [NaN],
-//     //  [2.0]], shape=[3, 1], strides=[1, 3], layout=CFcf (0xf), const ndim=2
+        let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+        println!(
+            "{:?}",
+            ReadOptions::builder()
+                .sid_index(2)
+                .f64()
+                .read_cloud(&mut bed_cloud)
+                .await?
+        );
 
-//     // Replace :attr:`iid`.
+        // [[NaN],
+        //  [NaN],
+        //  [2.0]], shape=[3, 1], strides=[1, 3], layout=CFcf (0xf), const ndim=2
 
-//     //     >>> bed = open_bed(file_name, properties={"iid":["sample1","sample2","sample3"]})
-//     //     >>> print(bed.iid) # replaced
-//     //     ['sample1' 'sample2' 'sample3']
-//     //     >>> print(bed.sid) # same as before
-//     //     ['sid1' 'sid2' 'sid3' 'sid4']
+        // Replace :attr:`iid`.
 
-//     let mut bed = Bed::builder(&file_name)
-//         .iid(["sample1", "sample2", "sample3"])
-//         .build()?;
-//     println!("{:?}", bed.iid()?);
-//     println!("{:?}", bed.sid()?);
+        //     >>> bed = open_bed(file_name, properties={"iid":["sample1","sample2","sample3"]})
+        //     >>> print(bed.iid) # replaced
+        //     ['sample1' 'sample2' 'sample3']
+        //     >>> print(bed.sid) # same as before
+        //     ['sid1' 'sid2' 'sid3' 'sid4']
 
-//     // ["sample1", "sample2", "sample3"], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
-//     // ["sid1", "sid2", "sid3", "sid4"], shape=[4], strides=[1], layout=CFcf (0xf), const ndim=
+        let mut bed_cloud = BedCloud::builder(&object_store, &path)
+            .iid(["sample1", "sample2", "sample3"])
+            .build()
+            .await?;
+        println!("{:?}", bed_cloud.iid().await?);
+        println!("{:?}", bed_cloud.sid().await?);
 
-//     // Do more testing of Rust
-//     let iid = nd::array!["sample1", "sample2", "sample3"];
-//     let mut _bed = Bed::builder(&file_name).iid(iid).build()?;
-//     let iid = nd::array![
-//         "sample1".to_string(),
-//         "sample2".to_string(),
-//         "sample3".to_string()
-//     ];
-//     let mut _bed = Bed::builder(&file_name).iid(iid).build()?;
-//     let iid = vec!["sample1", "sample2", "sample3"];
-//     let mut _bed = Bed::builder(&file_name).iid(iid).build()?;
-//     let iid = vec![
-//         "sample1".to_string(),
-//         "sample2".to_string(),
-//         "sample3".to_string(),
-//     ];
-//     let mut _bed = Bed::builder(&file_name).iid(iid).build()?;
+        // ["sample1", "sample2", "sample3"], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
+        // ["sid1", "sid2", "sid3", "sid4"], shape=[4], strides=[1], layout=CFcf (0xf), const ndim=
 
-//     // Give the number of individuals (samples) and SNPs (variants) so that the .fam and
-//     // .bim files need never be opened.
+        // Do more testing of Rust
+        let iid = nd::array!["sample1", "sample2", "sample3"];
+        let mut _bed_cloud = BedCloud::builder(&object_store, &path)
+            .iid(iid)
+            .build()
+            .await?;
+        let iid = nd::array![
+            "sample1".to_string(),
+            "sample2".to_string(),
+            "sample3".to_string()
+        ];
+        let mut _bed_cloud = BedCloud::builder(&object_store, &path)
+            .iid(iid)
+            .build()
+            .await?;
+        let iid = vec!["sample1", "sample2", "sample3"];
+        let mut _bed_cloud = BedCloud::builder(&object_store, &path)
+            .iid(iid)
+            .build()
+            .await?;
+        let iid = vec![
+            "sample1".to_string(),
+            "sample2".to_string(),
+            "sample3".to_string(),
+        ];
+        let mut _bed_cloud = BedCloud::builder(&object_store, &path)
+            .iid(iid)
+            .build()
+            .await?;
 
-//     //     >>> with open_bed(file_name, iid_count=3, sid_count=4) as bed:
-//     //     ...     print(bed.read())
-//     //     [[ 1.  0. nan  0.]
-//     //      [ 2.  0. nan  2.]
-//     //      [ 0.  1.  2.  0.]]
+        // Give the number of individuals (samples) and SNPs (variants) so that the .fam and
+        // .bim files need never be opened.
 
-//     let mut bed = Bed::builder(&file_name).iid_count(3).sid_count(4).build()?;
-//     println!("{:?}", bed.read::<f64>()?);
+        //     >>> with open_bed(file_name, iid_count=3, sid_count=4) as bed:
+        //     ...     print(bed.read())
+        //     [[ 1.  0. nan  0.]
+        //      [ 2.  0. nan  2.]
+        //      [ 0.  1.  2.  0.]]
 
-//     //  [[1.0, 0.0, NaN, 0.0],
-//     //   [2.0, 0.0, NaN, 2.0],
-//     //   [0.0, 1.0, 2.0, 0.0]], shape=[3, 4], strides=[1, 3], layout=Ff (0xa), const ndim=2
+        let mut bed_cloud = BedCloud::builder(&object_store, &path)
+            .iid_count(3)
+            .sid_count(4)
+            .build()
+            .await?;
+        println!("{:?}", bed_cloud.read::<f64>().await?);
 
-//     // Mark some properties as "don’t read or offer".
+        //  [[1.0, 0.0, NaN, 0.0],
+        //   [2.0, 0.0, NaN, 2.0],
+        //   [0.0, 1.0, 2.0, 0.0]], shape=[3, 4], strides=[1, 3], layout=Ff (0xa), const ndim=2
 
-//     //     >>> bed = open_bed(file_name, properties={
-//     //     ...    "father" : None, "mother" : None, "sex" : None, "pheno" : None,
-//     //     ...    "allele_1" : None, "allele_2":None })
-//     //     >>> print(bed.iid)        # read from file
-//     //     ['iid1' 'iid2' 'iid3']
-//     //     >>> print(bed.allele_2)   # not read and not offered
-//     //     None
+        // Mark some properties as "don’t read or offer".
 
-//     let mut bed = Bed::builder(&file_name).skip_allele_2().build()?;
-//     println!("{:?}", bed.iid()?);
+        //     >>> bed = open_bed(file_name, properties={
+        //     ...    "father" : None, "mother" : None, "sex" : None, "pheno" : None,
+        //     ...    "allele_1" : None, "allele_2":None })
+        //     >>> print(bed.iid)        # read from file
+        //     ['iid1' 'iid2' 'iid3']
+        //     >>> print(bed.allele_2)   # not read and not offered
+        //     None
 
-//     let result = bed.allele_2();
-//     assert_error_variant!(
-//         result,
-//         BedErrorPlus::BedError(BedError::CannotUseSkippedMetadata(_))
-//     );
+        let mut bed = BedCloud::builder(&object_store, &path)
+            .skip_allele_2()
+            .build()
+            .await?;
+        println!("{:?}", bed.iid().await?);
 
-//     Ok(())
-// }
+        let result = bed.allele_2().await;
+        assert_error_variant!(
+            result,
+            BedErrorPlus::BedError(BedError::CannotUseSkippedMetadata(_))
+        );
+        Ok::<(), Box<BedErrorPlus>>(())
+    })?;
+
+    Ok(())
+}
 
 // #[test]
 // fn metadata_etc() -> Result<(), Box<BedErrorPlus>> {
@@ -464,7 +496,7 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
 //     let mut bed = Bed::builder(sample_bed_file("small.bed")?)
 //         .father(["f1", "f2", "f3"])
 //         .skip_mother()
-//         .build()?;
+//         .build().await?;
 //     println!("{:?}", bed.father()?);
 //     // ["f1", "f2", "f3"], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
 //     bed.mother().unwrap_err();
@@ -491,7 +523,7 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
 //     let mut bed = Bed::builder(&deb_maf_mib[0])
 //         .fam_path(&deb_maf_mib[1])
 //         .bim_path(&deb_maf_mib[2])
-//         .build()?;
+//         .build().await?;
 
 //     println!("{:?}", bed.iid()?);
 //     println!("{:?}", bed.sid()?);
@@ -699,7 +731,7 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
 //     let mut deb = Bed::builder(&output_file)
 //         .fam_path(&fam_file)
 //         .bim_path(&bim_file)
-//         .build()?;
+//         .build().await?;
 //     let val2 = deb.read::<f64>()?;
 //     let metadata2 = deb.metadata()?;
 
@@ -782,7 +814,7 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
 //         .skip_bp_position()
 //         .skip_allele_1()
 //         .skip_allele_2()
-//         .build()?;
+//         .build().await?;
 //     bed.mother().unwrap_err();
 
 //     Ok(())
@@ -804,7 +836,7 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
 //         .cm_position([0.0, 0.0, 0.0, 0.0])
 //         .allele_1(["a", "b", "c", "d"])
 //         .allele_2(["a", "b", "c", "d"])
-//         .build()?;
+//         .build().await?;
 
 //     let _ = bed.pheno()?;
 //     Ok(())
@@ -866,9 +898,9 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
 //     let file_name = sample_bed_file("small.bed")?;
 
 //     // We give the wrong number for iid_count and then expect an error
-//     let mut bed = Bed::builder(&file_name)
+//     let mut bed = BedCloud::builder(&object_store, &path)
 //         .iid(["i1", "i2", "i3", "i4"])
-//         .build()?;
+//         .build().await?;
 //     let iid_count = bed.iid_count()?;
 //     assert_eq!(iid_count, 4);
 //     let fid_result = bed.fid();
@@ -878,16 +910,16 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
 //     );
 
 //     assert_error_variant!(
-//         Bed::builder(&file_name)
+//         BedCloud::builder(&object_store, &path)
 //             .fid(["f1", "f1", "f1"])
 //             .iid(["i1", "i2", "i3", "i4"])
 //             .build(),
 //         BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))
 //     );
 
-//     let mut bed = Bed::builder(&file_name)
+//     let mut bed = BedCloud::builder(&object_store, &path)
 //         .bim_path(sample_file("small.bad_bim")?)
-//         .build()?;
+//         .build().await?;
 
 //     assert_error_variant!(
 //         bed.sid(),
@@ -895,23 +927,23 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
 //     );
 
 //     // We give the wrong number for iid_count and then expect an error
-//     let mut bed = Bed::builder(&file_name).iid_count(4).build()?;
+//     let mut bed = BedCloud::builder(&object_store, &path).iid_count(4).build().await?;
 //     assert_eq!(bed.iid_count()?, 4);
 //     assert_error_variant!(
 //         bed.iid(),
 //         BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))
 //     );
 
-//     let mut bed = Bed::builder(&file_name)
+//     let mut bed = BedCloud::builder(&object_store, &path)
 //         .bim_path(sample_file("small.bim")?)
-//         .build()?;
+//         .build().await?;
 //     assert_eq!(bed.iid_count()?, 3);
 //     assert_eq!(bed.sid_count()?, 4);
 //     let mut bed = Bed::new(&file_name)?;
 //     assert_eq!(bed.iid_count()?, 3);
 //     assert_eq!(bed.sid_count()?, 4);
 
-//     let mut bed = Bed::builder(&file_name).build()?;
+//     let mut bed = BedCloud::builder(&object_store, &path).build().await?;
 //     let _ = bed.iid()?;
 //     let _ = bed.iid_count()?;
 
@@ -961,7 +993,7 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
 //         .f()
 //         .i8()
 //         .iid_index([false, false, true])
-//         .build()?;
+//         .build().await?;
 
 //     let mut val = nd::Array2::<i8>::default((3, 4));
 //     let result = bed.read_and_fill_with_options(&mut val.view_mut(), &read_options);
@@ -1054,7 +1086,7 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
 // #[test]
 // fn bed_builder() -> Result<(), Box<BedErrorPlus>> {
 //     let file_name = sample_bed_file("small.bed")?;
-//     let mut bed = Bed::builder(&file_name).build()?;
+//     let mut bed = BedCloud::builder(&object_store, &path).build().await?;
 //     println!("{:?}", bed.iid()?);
 //     println!("{:?}", bed.sid()?);
 //     let val = bed.read::<f64>()?;
@@ -1068,18 +1100,18 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
 //         ],
 //     );
 
-//     let mut bed = Bed::builder(&file_name).build()?;
+//     let mut bed = BedCloud::builder(&object_store, &path).build().await?;
 //     let val = ReadOptions::builder().sid_index(2).f64().read(&mut bed)?;
 
 //     assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
 
-//     let mut bed = Bed::builder(&file_name)
+//     let mut bed = BedCloud::builder(&object_store, &path)
 //         .iid(["sample1", "sample2", "sample3"])
-//         .build()?;
+//         .build().await?;
 //     println!("{:?}", bed.iid()?); // replaced
 //     println!("{:?}", bed.sid()?); // same as before
 
-//     let mut bed = Bed::builder(&file_name).iid_count(3).sid_count(4).build()?;
+//     let mut bed = BedCloud::builder(&object_store, &path).iid_count(3).sid_count(4).build().await?;
 //     let val = bed.read::<f64>()?;
 //     assert_eq_nan(
 //         &val,
@@ -1090,14 +1122,14 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
 //         ],
 //     );
 
-//     let mut bed = Bed::builder(&file_name)
+//     let mut bed = BedCloud::builder(&object_store, &path)
 //         .skip_father()
 //         .skip_mother()
 //         .skip_sex()
 //         .skip_pheno()
 //         .skip_allele_1()
 //         .skip_allele_2()
-//         .build()?;
+//         .build().await?;
 //     println!("{:?}", bed.iid()?);
 //     bed.allele_2().expect_err("Can't be read");
 
@@ -1477,8 +1509,8 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
 //     let metadata = Metadata::builder()
 //         .iid(["iid1", "iid2", "iid3"])
 //         .sid(["sid1", "sid2", "sid3", "sid4"])
-//         .build()?;
-//     let mut bed = Bed::builder(&file_name).metadata(&metadata).build()?;
+//         .build().await?;
+//     let mut bed = BedCloud::builder(&object_store, &path).metadata(&metadata).build().await?;
 //     let metadata2 = bed.metadata()?;
 //     println!("{metadata2:?}");
 
@@ -1486,7 +1518,7 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
 //     let metadata = bed.metadata()?;
 //     println!("{metadata:?}");
 
-//     let mut bed = Bed::builder(&file_name).metadata(&metadata).build()?;
+//     let mut bed = BedCloud::builder(&object_store, &path).metadata(&metadata).build().await?;
 //     let metadata2 = bed.metadata()?;
 //     println!("{metadata2:?}");
 
@@ -1744,7 +1776,7 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
 //     let metadata = Metadata::builder()
 //         .iid((0..iid_count).map(|iid_index| format!("iid_{iid_index}")))
 //         .sid((0..sid_count).map(|sid_index| format!("sid_{sid_index}")))
-//         .build()?;
+//         .build().await?;
 
 //     let temp_out = TempDir::default();
 
@@ -1941,7 +1973,7 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
 //     // Read the SNPs indexed by 2.
 //     let file_name = sample_bed_file("small.bed")?;
 //     let mut bed = Bed::new(file_name)?;
-//     let read_options = ReadOptions::builder().sid_index(2).build()?;
+//     let read_options = ReadOptions::builder().sid_index(2).build().await?;
 //     let mut val = nd::Array2::<f64>::default((3, 1));
 //     bed.read_and_fill_with_options(&mut val.view_mut(), &read_options)?;
 
@@ -1967,8 +1999,8 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
 //     let metadata = Metadata::builder()
 //         .iid(["i1", "i2", "i3"])
 //         .sid(["s1", "s2", "s3", "s4"])
-//         .build()?;
-//     let result = Bed::builder(&file_name)
+//         .build().await?;
+//     let result = BedCloud::builder(&object_store, &path)
 //         .fid(["f1", "f2", "f3", "f4"])
 //         .metadata(&metadata)
 //         .build();
@@ -1980,12 +2012,12 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
 //     let metadata = Metadata::builder()
 //         .iid(["i1", "i2", "i3"])
 //         .sid(["s1", "s2", "s3", "s4"])
-//         .build()?;
-//     let mut bed = Bed::builder(&file_name)
+//         .build().await?;
+//     let mut bed = BedCloud::builder(&object_store, &path)
 //         .fid(["f1", "f2", "f3"])
 //         .iid(["x1", "x2", "x3"])
 //         .metadata(&metadata)
-//         .build()?;
+//         .build().await?;
 //     println!("{0:?}", bed.fid()?); // Outputs ndarray ["f1", "f2", "f3"]
 //     println!("{0:?}", bed.iid()?); // Outputs ndarray ["i1", "i2", "i3"]
 //     println!("{0:?}", bed.sid()?); // Outputs ndarray ["s1", "s2", "s3", "s4"]
@@ -1996,7 +2028,7 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
 //         .fid(["f1", "f2", "f3"])
 //         .iid(["x1", "x2", "x3"])
 //         .metadata(&metadata)
-//         .build()?;
+//         .build().await?;
 //     bed.fid().expect_err("Should fail");
 //     println!("{0:?}", bed.iid()?); // Outputs ndarray ["i1", "i2", "i3"]
 //     println!("{0:?}", bed.sid()?); // Outputs ndarray ["s1", "s2", "s3", "s4"]
@@ -2013,7 +2045,7 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
 //     let metadata = Metadata::builder()
 //         .iid(["i1", "i2", "i3"])
 //         .sid(["s1", "s2", "s3", "s4"])
-//         .build()?;
+//         .build().await?;
 //     let write_options = WriteOptions::builder(output_file)
 //         .f32()
 //         .fid(["f1", "f2", "f3"])
@@ -2032,12 +2064,12 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
 //     let metadata1 = Metadata::builder()
 //         .iid(["i1", "i2", "i3"])
 //         .sid(["s1", "s2", "s3", "s4"])
-//         .build()?;
+//         .build().await?;
 //     let metadata2 = Metadata::builder()
 //         .fid(["f1", "f2", "f3"])
 //         .iid(["x1", "x2", "x3"])
 //         .metadata(&metadata1)
-//         .build()?;
+//         .build().await?;
 //     println!("{0:?}", metadata2.fid()); // Outputs optional ndarray Some(["f1", "f2", "f3"]...)
 //     println!("{0:?}", metadata2.iid()); // Outputs optional ndarray Some(["i1", "i2", "i3"]...)
 //     println!("{0:?}", metadata2.sid()); // Outputs optional ndarray Some(["s1", "s2", "s3", "s4"]...)
@@ -2050,7 +2082,7 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
 //     let metadata = Metadata::builder()
 //         .iid(["i1", "i2", "i3"])
 //         .sid(["s1", "s2", "s3", "s4"])
-//         .build()?;
+//         .build().await?;
 //     let mut rng = StdRng::seed_from_u64(0);
 //     let val = nd::Array::random_using((3, 4), Uniform::from(-1..3), &mut rng);
 
@@ -2085,7 +2117,7 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
 //     let metadata0 = Metadata::builder()
 //         .iid(["i1", "i2", "i3"])
 //         .sid(["s1", "s2", "s3", "s4"])
-//         .build()?;
+//         .build().await?;
 //     let metadata_filled = metadata0.fill(3, 4)?;
 //     println!("{0:?}", metadata_filled.iid()); // Outputs optional ndarray Some(["i1", "i2", "i3"]...)
 //     println!("{0:?}", metadata_filled.sid()); // Outputs optional ndarray Some(["s1", "s2", "s3", "s4"]...)
@@ -2099,7 +2131,7 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
 //     let metadata0 = Metadata::builder()
 //         .iid(["i1", "i2", "i3"])
 //         .sid(["s1", "s2", "s3", "s4"])
-//         .build()?;
+//         .build().await?;
 //     let metadata_filled = metadata0.fill(3, 4)?;
 
 //     let temp_out = TempDir::default();
@@ -2115,7 +2147,7 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
 
 // #[test]
 // fn metadata_iid_sid() -> Result<(), Box<BedErrorPlus>> {
-//     let metadata = Metadata::builder().iid(["i1", "i2", "i3"]).build()?;
+//     let metadata = Metadata::builder().iid(["i1", "i2", "i3"]).build().await?;
 //     println!("{0:?}", metadata.iid()); // Outputs optional ndarray Some(["i1", "i2", "i3"]...)
 //     println!("{0:?}", metadata.sid()); // Outputs None
 //     Ok(())
@@ -2123,7 +2155,7 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
 
 // #[test]
 // fn read_options_properties() -> Result<(), Box<BedErrorPlus>> {
-//     let read_options = ReadOptions::builder().sid_index([2, 3, 0]).i8().build()?;
+//     let read_options = ReadOptions::builder().sid_index([2, 3, 0]).i8().build().await?;
 //     assert_eq!(read_options.missing_value(), -127);
 //     println!("{0:?}", read_options.iid_index()); // Outputs 'All'
 //     println!("{0:?}", read_options.sid_index()); // Outputs 'Vec([2, 3, 0])'
@@ -2211,7 +2243,7 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
 // #[test]
 // fn bed_inconsistent_count() -> Result<(), Box<BedErrorPlus>> {
 //     // Bed: fid vs metadata
-//     let metadata = Metadata::builder().iid(["f1", "f2", "f3", "f4"]).build()?;
+//     let metadata = Metadata::builder().iid(["f1", "f2", "f3", "f4"]).build().await?;
 //     let result = Bed::builder(sample_bed_file("small.bed")?)
 //         .fid(["f1", "f2", "f3"])
 //         .metadata(&metadata)
@@ -2229,7 +2261,7 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
 //         .skip_mother()
 //         .skip_sex()
 //         .skip_pheno()
-//         .build()?;
+//         .build().await?;
 //     let result = bed.fid();
 //     assert_error_variant!(
 //         result,
@@ -2249,7 +2281,7 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
 //     // Bed: iid vs file
 //     let mut bed = Bed::builder(sample_bed_file("small.bed")?)
 //         .iid(["i1", "i2", "i3", "i4"])
-//         .build()?;
+//         .build().await?;
 //     let result = bed.fid();
 //     assert_error_variant!(
 //         result,
@@ -2266,7 +2298,7 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
 //     let output_file = temp_out.join("small.bed");
 
 //     // WriteOptions: fid vs build
-//     let metadata = Metadata::builder().build()?;
+//     let metadata = Metadata::builder().build().await?;
 //     let result = WriteOptions::builder(&output_file)
 //         .i8()
 //         .fid(["f1", "f2", "f3", "f4"])
@@ -2278,7 +2310,7 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
 //     );
 
 //     // WriteOptions: metadata vs build
-//     let metadata = Metadata::builder().iid(["f1", "f2", "f3", "f4"]).build()?;
+//     let metadata = Metadata::builder().iid(["f1", "f2", "f3", "f4"]).build().await?;
 //     let result = WriteOptions::builder(&output_file)
 //         .i8()
 //         .metadata(&metadata)
@@ -2297,7 +2329,7 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
 //     let skip_set = HashSet::<MetadataFields>::new();
 
 //     // Metadata: iid vs file
-//     let metadata = Metadata::builder().iid(["i1", "i2", "i3", "i4"]).build()?;
+//     let metadata = Metadata::builder().iid(["i1", "i2", "i3", "i4"]).build().await?;
 //     let result = metadata.read_fam(sample_file("small.fam")?, &skip_set);
 //     assert_error_variant!(
 //         result,
@@ -2305,7 +2337,7 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
 //     );
 
 //     // Metadata: fid vs metadata
-//     let metadata = Metadata::builder().iid(["f1", "f2", "f3", "f4"]).build()?;
+//     let metadata = Metadata::builder().iid(["f1", "f2", "f3", "f4"]).build().await?;
 //     let result = Metadata::builder()
 //         .fid(["f1", "f2", "f3"])
 //         .metadata(&metadata)
@@ -2316,7 +2348,7 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
 //     );
 
 //     // Metadata: file vs file:
-//     let metadata = Metadata::builder().build()?;
+//     let metadata = Metadata::builder().build().await?;
 //     let result = metadata.read_fam(sample_file("small.fam_bad")?, &skip_set);
 //     assert_error_variant!(
 //         result,
@@ -2334,7 +2366,7 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
 //     );
 
 //     // Metadata: iid vs fill
-//     let metadata = Metadata::builder().iid(["i1", "i2", "i3", "i4"]).build()?;
+//     let metadata = Metadata::builder().iid(["i1", "i2", "i3", "i4"]).build().await?;
 //     let result = metadata.fill(3, 4);
 //     assert_error_variant!(
 //         result,
@@ -2365,7 +2397,7 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
 //     let bed_fam_bim = sample_files(["small.bed", "small.fam", "small.bim_bad_positions.bim"])?;
 //     let mut bed = Bed::builder(&bed_fam_bim[0])
 //         .bim_path(&bed_fam_bim[2])
-//         .build()?;
+//         .build().await?;
 //     let result = bed.cm_position();
 //     assert_error_variant!(result, BedErrorPlus::ParseIntError(_));
 //     Ok(())
@@ -2402,12 +2434,12 @@ fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
 // fn metadata_iid_sid2() -> Result<(), Box<BedErrorPlus>> {
 //     let metadata = Metadata::builder()
 //         .iid(["sample1", "sample2", "sample3"])
-//         .build()?;
+//         .build().await?;
 //     println!("{:?}", metadata.iid()); // Outputs ndarray Some(["sample1", "sample2", "sample3"])
 
 //     let metadata = Metadata::builder()
 //         .sid(["SNP1", "SNP2", "SNP3", "SNP4"])
-//         .build()?;
+//         .build().await?;
 //     println!("{:?}", metadata.sid()); // Outputs ndarray Some(["SNP1", "SNP2", "SNP3", "SNP4"])
 
 //     Ok(())
