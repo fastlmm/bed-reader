@@ -4,9 +4,11 @@ use std::sync::Arc;
 use bed_reader::allclose;
 use bed_reader::assert_eq_nan;
 use bed_reader::assert_error_variant;
-use bed_reader::bed_cloud::BedCloud;
 use bed_reader::sample_bed_file;
+use bed_reader::sample_bed_store_path;
 use bed_reader::sample_file;
+use bed_reader::sample_files;
+use bed_reader::BedCloud;
 use bed_reader::BedError;
 use bed_reader::BedErrorPlus;
 use bed_reader::ReadOptions;
@@ -18,29 +20,6 @@ use tokio::runtime::Runtime;
 
 // cmk see https://github.com/apache/arrow-rs/tree/master/object_store
 // cmk see https://github.com/roeap/object-store-python
-
-// #[test]
-// fn object_store_bed0() -> anyhow::Result<()> {
-//     let rt = Runtime::new()?;
-
-//     rt.block_on(async {
-//         // Your async test logic here
-//         let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
-//         let path = StorePath::from_filesystem_path(file)?;
-
-//         let store = Arc::new(LocalFileSystem::new());
-
-//         // Read the file
-//         let data = store.get(&path).await?;
-
-//         let bytes = data.bytes().await?.to_vec();
-
-//         println!("{:?}", bytes.len()); // Outputs the length of bytes
-//         assert!(bytes.len() == 303);
-
-//         Ok(())
-//     })
-// }
 
 #[test]
 fn rusty_cloud_bed0() -> Result<(), Box<BedErrorPlus>> {
@@ -145,10 +124,7 @@ fn rusty_cloud_bed2() -> Result<(), Box<BedErrorPlus>> {
 
 #[test]
 fn rusty_cloud_bed3() -> Result<(), Box<BedErrorPlus>> {
-    let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
-
-    let path = StorePath::from_filesystem_path(file).map_err(BedErrorPlus::from)?;
-    let object_store = Arc::new(LocalFileSystem::new());
+    let (object_store, path) = sample_bed_store_path("plink_sim_10s_100v_10pmiss.bed")?;
 
     let rt = Runtime::new()?;
     rt.block_on(async {
@@ -176,10 +152,7 @@ fn rusty_cloud_bed3() -> Result<(), Box<BedErrorPlus>> {
 
 #[test]
 fn rusty_cloud_bed_allele() -> Result<(), Box<BedErrorPlus>> {
-    let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
-
-    let path = StorePath::from_filesystem_path(file).map_err(BedErrorPlus::from)?;
-    let object_store = Arc::new(LocalFileSystem::new());
+    let (object_store, path) = sample_bed_store_path("plink_sim_10s_100v_10pmiss.bed")?;
 
     let rt = Runtime::new()?;
     rt.block_on(async {
@@ -202,10 +175,7 @@ fn rusty_cloud_bed_allele() -> Result<(), Box<BedErrorPlus>> {
 
 #[test]
 fn rusty_cloud_bed_order() -> Result<(), Box<BedErrorPlus>> {
-    let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
-
-    let path = StorePath::from_filesystem_path(file).map_err(BedErrorPlus::from)?;
-    let object_store = Arc::new(LocalFileSystem::new());
+    let (object_store, path) = sample_bed_store_path("plink_sim_10s_100v_10pmiss.bed")?;
 
     let rt = Runtime::new()?;
     rt.block_on(async {
@@ -461,79 +431,130 @@ fn open_examples_cloud() -> Result<(), Box<BedErrorPlus>> {
     Ok(())
 }
 
-// #[test]
-// fn metadata_etc() -> Result<(), Box<BedErrorPlus>> {
-//     // >>> file_name = sample_bed_file("small.bed")
-//     // >>> with open_bed(file_name) as bed:
-//     // ...     print(bed.sex)
-//     // [1 2 0]
-//     let mut bed = Bed::new(sample_bed_file("small.bed")?)?;
-//     println!("{:?}", bed.sex()?);
-//     // [1, 2, 0], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
+#[test]
+fn metadata_etc_cloud() -> Result<(), Box<BedErrorPlus>> {
+    let rt = Runtime::new()?;
+    rt.block_on(async {
+        // Initialize BedCloud with the sample file
+        let file_name = sample_bed_file("small.bed")?;
+        let path = StorePath::from_filesystem_path(file_name).map_err(BedErrorPlus::from)?;
+        let object_store = Arc::new(LocalFileSystem::new());
 
-//     let mut bed = Bed::new(sample_bed_file("small.bed")?)?;
-//     println!("{:?}", bed.cm_position()?);
-//     // [100.4, 2000.5, 4000.7, 7000.9], shape=[4], strides=[1], layout=CFcf (0xf), const ndim=1
+        // Reading sex data
+        let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+        println!("{:?}", bed_cloud.sex().await?);
+        // Expected output: [1, 2, 0], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
 
-//     println!("{:?}", bed.bp_position()?);
-//     // [1, 100, 1000, 1004], shape=[4], strides=[1], layout=CFcf (0xf), const ndim=1
+        // Reading centiMorgan position
+        let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+        println!("{:?}", bed_cloud.cm_position().await?);
+        // Expected output: [100.4, 2000.5, 4000.7, 7000.9], shape=[4], strides=[1], layout=CFcf (0xf), const ndim=1
 
-//     let mut bed = Bed::new(sample_bed_file("small.bed")?)?;
-//     println!("{:?}", bed.fid()?);
-//     // ["fid1", "fid1", "fid2"], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
+        // Reading base pair position
+        println!("{:?}", bed_cloud.bp_position().await?);
+        // Expected output: [1, 100, 1000, 1004], shape=[4], strides=[1], layout=CFcf (0xf), const ndim=1
 
-//     println!("{:?}", bed.father()?);
-//     // ["iid23", "iid23", "iid22"], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
+        // Reading family ID
+        let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+        println!("{:?}", bed_cloud.fid().await?);
+        // Expected output: ["fid1", "fid1", "fid2"], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
 
-//     println!("{:?}", bed.mother()?);
-//     // ["iid34", "iid34", "iid33"], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
+        // Reading father ID
+        println!("{:?}", bed_cloud.father().await?);
+        // Expected output: ["iid23", "iid23", "iid22"], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
 
-//     Ok(())
-// }
+        // Reading mother ID
+        println!("{:?}", bed_cloud.mother().await?);
+        // Expected output: ["iid34", "iid34", "iid33"], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
 
-// #[test]
-// fn hello_father() -> Result<(), Box<BedErrorPlus>> {
-//     let mut bed = Bed::builder(sample_bed_file("small.bed")?)
-//         .father(["f1", "f2", "f3"])
-//         .skip_mother()
-//         .build().await?;
-//     println!("{:?}", bed.father()?);
-//     // ["f1", "f2", "f3"], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
-//     bed.mother().unwrap_err();
+        Ok(()) // cmk make other tests end like this
+    })
+}
 
-//     Ok(())
-// }
+#[test]
+fn hello_father_cloud() -> Result<(), Box<BedErrorPlus>> {
+    let rt = Runtime::new()?;
+    rt.block_on(async {
+        // Initialize BedCloud with the sample file and custom father metadata
+        let file_name = sample_bed_file("small.bed")?;
+        let path = StorePath::from_filesystem_path(file_name).map_err(BedErrorPlus::from)?;
+        let object_store = Arc::new(LocalFileSystem::new());
 
-// #[test]
-// fn num_threads() -> Result<(), Box<BedErrorPlus>> {
-//     let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
-//     let mut bed = Bed::new(file)?;
+        let mut bed_cloud = BedCloud::builder(&object_store, &path)
+            .father(["f1", "f2", "f3"])
+            .skip_mother()
+            .build()
+            .await?;
 
-//     let val = ReadOptions::builder().num_threads(4).i8().read(&mut bed)?;
-//     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
-//     println!("{mean:?}");
-//     assert!(mean == -13.142); // really shouldn't do mean on data where -127 represents missing
+        println!("{:?}", bed_cloud.father().await?);
+        // Expected output: ["f1", "f2", "f3"], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
 
-//     Ok(())
-// }
+        // Attempt to access mother data, expecting an error
+        bed_cloud.mother().await.unwrap_err();
 
-// #[test]
-// fn fam_and_bim() -> Result<(), Box<BedErrorPlus>> {
-//     let deb_maf_mib = sample_files(["small.deb", "small.maf", "small.mib"])?;
-//     let mut bed = Bed::builder(&deb_maf_mib[0])
-//         .fam_path(&deb_maf_mib[1])
-//         .bim_path(&deb_maf_mib[2])
-//         .build().await?;
+        Ok(())
+    })
+}
 
-//     println!("{:?}", bed.iid()?);
-//     println!("{:?}", bed.sid()?);
-//     let val: nd::Array2<i8> = bed.read()?;
-//     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
-//     println!("{mean:?}");
-//     assert!(mean == -20.5); // really shouldn't do mean on data where -127 represents missing
+#[test]
+fn max_concurrent_requests() -> Result<(), Box<BedErrorPlus>> {
+    let rt = Runtime::new()?;
+    rt.block_on(async {
+        // Initialize BedCloud with the sample file
+        let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
+        let path = StorePath::from_filesystem_path(file).map_err(BedErrorPlus::from)?;
+        let object_store = Arc::new(LocalFileSystem::new());
+        let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
 
-//     Ok(())
-// }
+        // Read data with specified number of threads (or equivalent parallel processing setting)
+        let val = ReadOptions::builder()
+            .max_concurrent_requests(1)
+            .max_chunk_size(1_000_000)
+            .i8()
+            .read_cloud(&mut bed_cloud)
+            .await?;
+        let mean = val.mapv(|elem| elem as f64).mean().unwrap();
+        println!("{mean:?}");
+        assert!(mean == -13.142); // really shouldn't do mean on data where -127 represents missing
+
+        Ok(())
+    })
+}
+
+#[test]
+fn fam_and_bim_cloud() -> Result<(), Box<BedErrorPlus>> {
+    let rt = Runtime::new()?;
+    rt.block_on(async {
+        // Acquire paths for the deb, maf, and mib files
+        let deb_maf_mib = sample_files(["small.deb", "small.maf", "small.mib"])?;
+        let deb_path =
+            StorePath::from_filesystem_path(&deb_maf_mib[0]).map_err(BedErrorPlus::from)?;
+        let maf_path =
+            StorePath::from_filesystem_path(&deb_maf_mib[1]).map_err(BedErrorPlus::from)?;
+        let mib_path =
+            StorePath::from_filesystem_path(&deb_maf_mib[2]).map_err(BedErrorPlus::from)?;
+
+        let object_store = Arc::new(LocalFileSystem::new());
+
+        // Build BedCloud with custom fam and bim paths
+        // cmk should they have their own object_store?
+        let mut bed_cloud = BedCloud::builder(&object_store, &deb_path)
+            .fam_path(&maf_path)
+            .bim_path(&mib_path)
+            .build()
+            .await?;
+
+        // Read and process data
+        println!("{:?}", bed_cloud.iid().await?);
+        println!("{:?}", bed_cloud.sid().await?);
+        let val: nd::Array2<i8> = bed_cloud.read().await?;
+        let mean = val.mapv(|elem| elem as f64).mean().unwrap();
+        println!("{mean:?}");
+        assert!(mean == -20.5); // really shouldn't do mean on data where -127 represents missing
+
+        Ok(())
+    })
+}
 
 // #[test]
 // fn readme_examples() -> Result<(), Box<BedErrorPlus>> {

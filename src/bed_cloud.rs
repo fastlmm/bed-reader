@@ -2,6 +2,7 @@ use anyinput::anyinput;
 use derive_builder::Builder;
 use nd::ShapeBuilder;
 use ndarray as nd;
+use object_store::local::LocalFileSystem;
 use std::collections::HashSet;
 use std::ops::Deref;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -21,7 +22,7 @@ use object_store::{GetOptions, ObjectMeta};
 use crate::{
     check_and_precompute_iid_index, compute_max_chunk_size, compute_max_concurrent_requests,
     set_up_two_bits_to_value, try_div_4, BedError, BedErrorPlus, BedVal, FromStringArray, Hold,
-    Metadata, ReadOptions, BED_FILE_MAGIC1, BED_FILE_MAGIC2,
+    Metadata, ReadOptions, BED_FILE_MAGIC1, BED_FILE_MAGIC2, STATIC_FETCH_DATA,
 };
 use crate::{MetadataFields, CB_HEADER_U64};
 
@@ -96,8 +97,8 @@ fn change_extension(
 
 // cmk #[anyinput]
 // cmk needed?
-fn store_path_to_string(store_path: StorePath) -> String {
-    StorePath::to_string(&store_path)
+fn store_path_to_string(store_path: &StorePath) -> String {
+    StorePath::to_string(store_path)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -129,7 +130,7 @@ where
     let file_len2 = in_iid_count_div4_u64 * (in_sid_count as u64) + CB_HEADER_U64;
     if file_len != file_len2 {
         return Err(Box::new(
-            BedError::IllFormed(store_path_to_string(path.clone())).into(),
+            BedError::IllFormed(store_path_to_string(path)).into(),
         ));
     }
 
@@ -276,7 +277,7 @@ where
         }
         _ => {
             return Err(Box::new(
-                BedError::BadMode(store_path_to_string(path.clone())).into(),
+                BedError::BadMode(store_path_to_string(path)).into(),
             ))
         }
     };
@@ -306,7 +307,7 @@ where
 
     if (BED_FILE_MAGIC1 != bytes[0]) || (BED_FILE_MAGIC2 != bytes[1]) {
         return Err(Box::new(
-            BedError::IllFormed(store_path_to_string(path.clone())).into(),
+            BedError::IllFormed(store_path_to_string(path)).into(),
         ));
     }
     Ok((object_meta, bytes))
@@ -576,7 +577,7 @@ where
     /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     // cmk #[anyinput]
-    pub fn fam_path(mut self, path: StorePath) -> Self {
+    pub fn fam_path(mut self, path: &StorePath) -> Self {
         self.fam_path = Some(Some(path.to_owned()));
         self
     }
@@ -601,7 +602,7 @@ where
     /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     // #[anyinput]
-    pub fn bim_path(mut self, path: StorePath) -> Self {
+    pub fn bim_path(mut self, path: &StorePath) -> Self {
         self.bim_path = Some(Some(path.to_owned()));
         self
     }
@@ -1900,4 +1901,69 @@ where
         }
         Ok(())
     }
+}
+
+/// cmk update docs
+/// Returns the local path to a sample .bed file. If necessary, the file will be downloaded.
+///
+/// The .fam and .bim files will also be downloaded, if they are not already present.
+/// SHA256 hashes are used to verify that the files are correct.
+/// The files will be in a directory determined by environment variable `BED_READER_DATA_DIR`.
+/// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
+#[anyinput]
+pub fn sample_bed_store_path(
+    bed_path: AnyPath,
+) -> Result<(Arc<LocalFileSystem>, StorePath), Box<BedErrorPlus>> {
+    use std::path::PathBuf;
+
+    let mut path_list: Vec<PathBuf> = Vec::new();
+    for ext in ["bed", "bim", "fam"].iter() {
+        let file_path = bed_path.with_extension(ext);
+        path_list.push(file_path);
+    }
+
+    let (object_store, vec) = sample_store_paths(path_list)?;
+    assert!(vec.len() == 3);
+    Ok((object_store, vec[0].clone()))
+}
+
+/// cmk update docs
+/// Returns the local path to a sample file. If necessary, the file will be downloaded.
+///
+/// A SHA256 hash is used to verify that the file is correct.
+/// The file will be in a directory determined by environment variable `BED_READER_DATA_DIR`.
+/// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
+#[anyinput]
+pub fn sample_store_path(
+    path: AnyPath,
+) -> Result<(Arc<LocalFileSystem>, StorePath), Box<BedErrorPlus>> {
+    let object_store = Arc::new(LocalFileSystem::new());
+
+    let file_path = STATIC_FETCH_DATA
+        .fetch_file(path)
+        .map_err(BedErrorPlus::from)?;
+    let store_path = StorePath::from_filesystem_path(file_path).map_err(BedErrorPlus::from)?;
+    Ok((object_store, store_path))
+}
+
+/// cmk update docs
+/// Returns the local paths to a list of files. If necessary, the files will be downloaded.
+///
+/// SHA256 hashes are used to verify that the files are correct.
+/// The files will be in a directory determined by environment variable `BED_READER_DATA_DIR`.
+/// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
+#[anyinput]
+pub fn sample_store_paths(
+    path_list: AnyIter<AnyPath>,
+) -> Result<(Arc<LocalFileSystem>, Vec<StorePath>), Box<BedErrorPlus>> {
+    let object_store = Arc::new(LocalFileSystem::new());
+
+    let file_paths = STATIC_FETCH_DATA
+        .fetch_files(path_list)
+        .map_err(BedErrorPlus::from)?;
+    let store_paths = file_paths
+        .iter()
+        .map(|file_path| StorePath::from_filesystem_path(file_path).map_err(BedErrorPlus::from))
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok((object_store, store_paths))
 }

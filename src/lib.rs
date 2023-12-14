@@ -101,7 +101,7 @@
 mod python_module;
 mod tests;
 use anyinput::anyinput;
-use bed_cloud::BedCloud;
+pub use bed_cloud::{sample_bed_store_path, sample_store_path, sample_store_paths, BedCloud};
 use core::fmt::Debug;
 use derive_builder::{Builder, UninitializedFieldError};
 use fetch_data::{FetchData, FetchDataError};
@@ -6950,10 +6950,9 @@ pub fn sample_bed_file(bed_path: AnyPath) -> Result<PathBuf, Box<BedErrorPlus>> 
 /// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
 #[anyinput]
 pub fn sample_file(path: AnyPath) -> Result<PathBuf, Box<BedErrorPlus>> {
-    match STATIC_FETCH_DATA.fetch_file(path) {
-        Ok(path) => Ok(path),
-        Err(e) => Err(e.into()),
-    }
+    Ok(STATIC_FETCH_DATA
+        .fetch_file(path)
+        .map_err(BedErrorPlus::from)?)
 }
 
 /// Returns the local paths to a list of files. If necessary, the files will be downloaded.
@@ -6965,8 +6964,7 @@ pub fn sample_file(path: AnyPath) -> Result<PathBuf, Box<BedErrorPlus>> {
 pub fn sample_files(path_list: AnyIter<AnyPath>) -> Result<Vec<PathBuf>, Box<BedErrorPlus>>
 where
 {
-    match STATIC_FETCH_DATA.fetch_files(path_list) {
-        Ok(path) => Ok(path),
-        Err(e) => Err(e.into()),
-    }
+    Ok(STATIC_FETCH_DATA
+        .fetch_files(path_list)
+        .map_err(BedErrorPlus::from)?)
 }
