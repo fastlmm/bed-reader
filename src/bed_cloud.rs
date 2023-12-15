@@ -10,12 +10,11 @@ use object_store::local::LocalFileSystem;
 use object_store::path::Path as StorePath;
 use object_store::ObjectStore;
 use object_store::{GetOptions, ObjectMeta};
+use std::cmp::max;
 use std::collections::HashSet;
 use std::ops::Deref;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use tokio::sync::Semaphore;
-use tokio::task::{self, JoinHandle};
 
 use crate::{
     check_and_precompute_iid_index, compute_max_chunk_size, compute_max_concurrent_requests,
@@ -121,6 +120,25 @@ fn store_path_to_string(store_path: &StorePath) -> String {
     StorePath::to_string(store_path)
 }
 
+fn convert_negative_sid_index(
+    in_sid_i_signed: isize,
+    upper_sid_count: isize,
+    lower_sid_count: isize,
+) -> Result<u64, Box<BedErrorPlus>> {
+    if (0..=upper_sid_count).contains(&in_sid_i_signed) {
+        Ok(in_sid_i_signed as u64)
+    } else if (lower_sid_count..=-1).contains(&in_sid_i_signed) {
+        Ok((upper_sid_count - (-in_sid_i_signed)) as u64)
+    } else {
+        Err(Box::new(BedErrorPlus::BedError(BedError::SidIndexTooBig(
+            in_sid_i_signed,
+        ))))
+    }
+}
+
+// cmk somehow we must only compile is size(usize) is 64 bits.
+// cmk we should turn sid_index into a slice of ranges.
+
 #[allow(clippy::too_many_arguments)]
 async fn internal_read_no_alloc<TVal: BedVal, TArc>(
     object_store: &TArc,
@@ -134,31 +152,17 @@ async fn internal_read_no_alloc<TVal: BedVal, TArc>(
     missing_value: TVal,
     max_concurrent_requests: usize,
     max_chunk_size: usize,
-    out_val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
+    out_val: &mut nd::ArrayViewMut2<'_, TVal>,
 ) -> Result<(), Box<BedErrorPlus>>
 where
     TArc: Clone + Deref + Send + Sync + 'static,
     TArc::Target: ObjectStore + Send + Sync,
 {
-    // Check the file length
-
     let (in_iid_count_div4, in_iid_count_div4_u64) =
-        try_div_4(in_iid_count, in_sid_count, CB_HEADER_U64)?;
-    // "as" and math is safe because of early checks
-    let file_len = object_meta.size as u64;
-    let file_len2 = in_iid_count_div4_u64 * (in_sid_count as u64) + CB_HEADER_U64;
-    if file_len != file_len2 {
-        return Err(Box::new(
-            BedError::IllFormed(store_path_to_string(path)).into(),
-        ));
-    }
-
-    // Check and precompute for each iid_index
-
+        check_file_length(in_iid_count, in_sid_count, object_meta, path)?;
     let (i_div_4_array, i_mod_4_times_2_array) =
         check_and_precompute_iid_index(in_iid_count, iid_index)?;
-
-    let chunk_size = std::cmp::max(1, max_chunk_size / in_iid_count_div4);
+    let chunk_size = max(1, max_chunk_size / in_iid_count_div4);
 
     // Check and compute work for each sid_index
 
@@ -166,72 +170,77 @@ where
     let lower_sid_count = -(in_sid_count as isize);
     let upper_sid_count: isize = (in_sid_count as isize) - 1;
 
-    let semaphore = Arc::new(Semaphore::new(max_concurrent_requests));
-
     for (chunk_index, chunk) in sid_index.iter().chunks(chunk_size).into_iter().enumerate() {
-        // ======== prepare ranges and cols ================ cmk refactor
         let mut ranges = Vec::with_capacity(chunk_size);
-        // let mut cols = Vec::with_capacity(chunk_size);
         let mut out_sid_i_vec = Vec::with_capacity(chunk_size);
         for (inner_index, in_sid_i_signed) in chunk.enumerate() {
             let out_sid_i = chunk_index * chunk_size + inner_index;
-            // cmk similar code elsewhere
-            // Turn signed sid_index into unsigned sid_index (or error)
-            let in_sid_i = if (0..=upper_sid_count).contains(in_sid_i_signed) {
-                *in_sid_i_signed as u64
-            } else if (lower_sid_count..=-1).contains(in_sid_i_signed) {
-                (in_sid_count - ((-in_sid_i_signed) as usize)) as u64
-            } else {
-                return Err(Box::new(BedErrorPlus::BedError(BedError::SidIndexTooBig(
-                    *in_sid_i_signed,
-                ))));
-            };
-
+            let in_sid_i =
+                convert_negative_sid_index(*in_sid_i_signed, upper_sid_count, lower_sid_count)?;
             let pos: u64 = in_sid_i * in_iid_count_div4_u64 + CB_HEADER_U64; // "as" and math is safe because of early checks
             let range = pos as usize..(pos + in_iid_count_div4_u64) as usize;
             ranges.push(range);
-            // cols.push(col);
             out_sid_i_vec.push(out_sid_i);
         }
 
-        let permit = semaphore.clone().acquire_owned().await.unwrap(); // cmk unwrap
-        let path_clone = path.clone(); // cmk fast enough?
-        let object_store = object_store.clone(); // cmk fast enough?
-        let handle: JoinHandle<Result<_, BedErrorPlus>> = task::spawn(async move {
-            // cmk somehow we must only compile is size(usize) is 64 bits.
-            // cmk we should turn sid_index into a slice of ranges.
-            let vec_bytes = object_store
-                .get_ranges(&path_clone, &ranges)
-                .await
-                .map_err(BedErrorPlus::from)?; // cmk unwrap
-            Ok((vec_bytes, out_sid_i_vec))
-        });
-
-        match handle.await {
-            Ok(Ok((vec_bytes, out_sid_i_vec))) => {
-                drop(permit);
-                for (bytes, out_sid_i) in vec_bytes.into_iter().zip(out_sid_i_vec.into_iter()) {
-                    let mut col = out_val.column_mut(out_sid_i);
-                    // // cmk In parallel, decompress the iid info and put it in its column
-                    // // cmk .par_bridge() // This seems faster that parallel zip
-                    // .try_for_each(|(bytes_vector_result, mut col)| match bytes_vector_result {
-                    //     Err(e) => Err(e),
-                    //     Ok(bytes_vector) => {
-                    for out_iid_i in 0..iid_index.len() {
-                        let i_div_4 = i_div_4_array[out_iid_i];
-                        let i_mod_4_times_2: u8 = i_mod_4_times_2_array[out_iid_i];
-                        let encoded: u8 = bytes[i_div_4];
-                        let genotype_byte: u8 = (encoded >> i_mod_4_times_2) & 0x03;
-                        col[out_iid_i] = from_two_bits_to_value[genotype_byte as usize];
-                    }
-                }
-            }
-            Ok(Err(e)) => return Err(e.into()),
-            Err(e) => return Err(BedErrorPlus::from(e).into()),
+        let vec_bytes = object_store
+            .get_ranges(path, &ranges)
+            .await
+            .map_err(BedErrorPlus::from)?;
+        for (bytes, out_sid_i) in vec_bytes.into_iter().zip(out_sid_i_vec.into_iter()) {
+            decode_into_column(
+                iid_index,
+                &i_div_4_array,
+                &i_mod_4_times_2_array,
+                bytes,
+                out_val.column_mut(out_sid_i),
+                from_two_bits_to_value,
+            );
         }
     }
 
     Ok(())
+}
+
+fn check_file_length(
+    in_iid_count: usize,
+    in_sid_count: usize,
+    object_meta: &ObjectMeta,
+    path: &StorePath,
+) -> Result<(usize, u64), Box<BedErrorPlus>> {
+    let (in_iid_count_div4, in_iid_count_div4_u64) =
+        try_div_4(in_iid_count, in_sid_count, CB_HEADER_U64)?;
+    let file_len = object_meta.size as u64;
+    let file_len2 = in_iid_count_div4_u64 * (in_sid_count as u64) + CB_HEADER_U64;
+    if file_len != file_len2 {
+        return Err(Box::new(
+            BedError::IllFormed(store_path_to_string(path)).into(),
+        ));
+    }
+    Ok((in_iid_count_div4, in_iid_count_div4_u64))
+}
+
+#[inline]
+fn decode_into_column<TVal: BedVal>(
+    iid_index: &[isize],
+    i_div_4_array: &nd::prelude::ArrayBase<nd::OwnedRepr<usize>, nd::prelude::Dim<[usize; 1]>>,
+    i_mod_4_times_2_array: &nd::prelude::ArrayBase<nd::OwnedRepr<u8>, nd::prelude::Dim<[usize; 1]>>,
+    bytes: Bytes,
+    mut col: nd::prelude::ArrayBase<nd::ViewRepr<&mut TVal>, nd::prelude::Dim<[usize; 1]>>,
+    from_two_bits_to_value: [TVal; 4],
+) {
+    // // cmk In parallel, decompress the iid info and put it in its column
+    // // cmk .par_bridge() // This seems faster that parallel zip
+    // .try_for_each(|(bytes_vector_result, mut col)| match bytes_vector_result {
+    //     Err(e) => Err(e),
+    //     Ok(bytes_vector) => {
+    for out_iid_i in 0..iid_index.len() {
+        let i_div_4 = i_div_4_array[out_iid_i];
+        let i_mod_4_times_2: u8 = i_mod_4_times_2_array[out_iid_i];
+        let encoded: u8 = bytes[i_div_4];
+        let genotype_byte: u8 = (encoded >> i_mod_4_times_2) & 0x03;
+        col[out_iid_i] = from_two_bits_to_value[genotype_byte as usize];
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
