@@ -173,24 +173,19 @@ where
 
     // For each chunk of columns to read ...
 
-    // create an iterator it will return a sequence of results with err--if negative indexes are bad--or async moves.
-    // the async moves will them selves return a result of either the bytesread+columnIndex
     let chunks = sid_index.iter().chunks(chunk_size);
     let iterator = chunks.into_iter().enumerate().map(|(chunk_index, chunk)| {
-        let (ranges, out_sid_i_vec) = extract_ranges(
+        let result = extract_ranges(
             chunk_size,
             chunk,
             chunk_index,
             upper_sid_count,
             lower_sid_count,
             in_iid_count_div4_u64,
-        )
-        .unwrap(); // cmk
-
+        );
         async move {
-            // Find the ranges of offests to read and the column indexes to put the results in
+            let (ranges, out_sid_i_vec) = result?;
 
-            // Do the async read for that chunk of columns
             let vec_bytes = object_store
                 .get_ranges(path, &ranges)
                 .await
@@ -200,34 +195,24 @@ where
         }
     });
 
-    // Convert iterator into stream
-    let stream = futures_util::stream::iter(iterator);
-    let mut stream = stream.buffer_unordered(max_concurrent_requests);
-
+    let mut stream = futures_util::stream::iter(iterator).buffer_unordered(max_concurrent_requests);
     while let Some(result) = stream.next().await {
-        match result {
-            Ok((vec_bytes, out_sid_i_vec)) => {
-                // Handle the successful result here
-                // You can process vec_bytes and out_sid_i_vec as needed
-                decode_bytes_into_columns(
-                    vec_bytes,
-                    out_sid_i_vec,
-                    iid_index,
-                    &i_div_4_array,
-                    &i_mod_4_times_2_array,
-                    out_val,
-                    from_two_bits_to_value,
-                );
-            }
-            Err(e) => {
-                return Err(e);
-            }
-        }
+        let (vec_bytes, out_sid_i_vec) = result?;
+        decode_bytes_into_columns(
+            vec_bytes,
+            out_sid_i_vec,
+            iid_index,
+            &i_div_4_array,
+            &i_mod_4_times_2_array,
+            out_val,
+            from_two_bits_to_value,
+        );
     }
 
     Ok(())
 }
 
+#[inline]
 #[allow(clippy::type_complexity)]
 fn extract_ranges(
     chunk_size: usize,
