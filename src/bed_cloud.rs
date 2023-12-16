@@ -196,6 +196,7 @@ where
     });
 
     let mut stream = futures_util::stream::iter(iterator).buffer_unordered(max_concurrent_requests);
+
     while let Some(result) = stream.next().await {
         let (vec_bytes, out_sid_i_vec) = result?;
         decode_bytes_into_columns(
