@@ -1,7 +1,7 @@
 use anyinput::anyinput;
 use bytes::Bytes;
 use derive_builder::Builder;
-use futures_util::TryStreamExt;
+use futures_util::{StreamExt, TryStreamExt};
 use itertools::Itertools;
 use nd::ShapeBuilder;
 use ndarray as nd;
@@ -158,48 +158,124 @@ where
     TArc: Clone + Deref + Send + Sync + 'static,
     TArc::Target: ObjectStore + Send + Sync,
 {
+    // compute numbers outside of the loop
     let (in_iid_count_div4, in_iid_count_div4_u64) =
         check_file_length(in_iid_count, in_sid_count, object_meta, path)?;
     let (i_div_4_array, i_mod_4_times_2_array) =
         check_and_precompute_iid_index(in_iid_count, iid_index)?;
     let chunk_size = max(1, max_chunk_size / in_iid_count_div4);
-
-    // Check and compute work for each sid_index
-
     let from_two_bits_to_value = set_up_two_bits_to_value(is_a1_counted, missing_value);
     let lower_sid_count = -(in_sid_count as isize);
     let upper_sid_count: isize = (in_sid_count as isize) - 1;
 
-    for (chunk_index, chunk) in sid_index.iter().chunks(chunk_size).into_iter().enumerate() {
-        let mut ranges = Vec::with_capacity(chunk_size);
-        let mut out_sid_i_vec = Vec::with_capacity(chunk_size);
-        for (inner_index, in_sid_i_signed) in chunk.enumerate() {
-            let out_sid_i = chunk_index * chunk_size + inner_index;
-            let in_sid_i =
-                convert_negative_sid_index(*in_sid_i_signed, upper_sid_count, lower_sid_count)?;
-            let pos: u64 = in_sid_i * in_iid_count_div4_u64 + CB_HEADER_U64; // "as" and math is safe because of early checks
-            let range = pos as usize..(pos + in_iid_count_div4_u64) as usize;
-            ranges.push(range);
-            out_sid_i_vec.push(out_sid_i);
-        }
+    // sid_index is a slice that tells us which columns to read from the (column-major) file.
+    // out_val is a column-major array to fill the decode results.
 
-        let vec_bytes = object_store
-            .get_ranges(path, &ranges)
-            .await
-            .map_err(BedErrorPlus::from)?;
-        for (bytes, out_sid_i) in vec_bytes.into_iter().zip(out_sid_i_vec.into_iter()) {
-            decode_into_column(
-                iid_index,
-                &i_div_4_array,
-                &i_mod_4_times_2_array,
-                bytes,
-                out_val.column_mut(out_sid_i),
-                from_two_bits_to_value,
-            );
+    // For each chunk of columns to read ...
+
+    // create an iterator it will return a sequence of results with err--if negative indexes are bad--or async moves.
+    // the async moves will them selves return a result of either the bytesread+columnIndex
+    let chunks = sid_index.iter().chunks(chunk_size);
+    let iterator = chunks.into_iter().enumerate().map(|(chunk_index, chunk)| {
+        let (ranges, out_sid_i_vec) = extract_ranges(
+            chunk_size,
+            chunk,
+            chunk_index,
+            upper_sid_count,
+            lower_sid_count,
+            in_iid_count_div4_u64,
+        )
+        .unwrap(); // cmk
+
+        async move {
+            // Find the ranges of offests to read and the column indexes to put the results in
+
+            // Do the async read for that chunk of columns
+            let vec_bytes = object_store
+                .get_ranges(path, &ranges)
+                .await
+                .map_err(BedErrorPlus::from)?;
+
+            Result::<_, Box<BedErrorPlus>>::Ok((vec_bytes, out_sid_i_vec))
+        }
+    });
+
+    // Convert iterator into stream
+    let stream = futures_util::stream::iter(iterator);
+    let mut stream = stream.buffer_unordered(max_concurrent_requests);
+
+    while let Some(result) = stream.next().await {
+        match result {
+            Ok((vec_bytes, out_sid_i_vec)) => {
+                // Handle the successful result here
+                // You can process vec_bytes and out_sid_i_vec as needed
+                decode_bytes_into_columns(
+                    vec_bytes,
+                    out_sid_i_vec,
+                    iid_index,
+                    &i_div_4_array,
+                    &i_mod_4_times_2_array,
+                    out_val,
+                    from_two_bits_to_value,
+                );
+            }
+            Err(e) => {
+                return Err(e);
+            }
         }
     }
 
     Ok(())
+}
+
+#[allow(clippy::type_complexity)]
+fn extract_ranges(
+    chunk_size: usize,
+    chunk: itertools::Chunk<'_, std::slice::Iter<'_, isize>>,
+    chunk_index: usize,
+    upper_sid_count: isize,
+    lower_sid_count: isize,
+    in_iid_count_div4_u64: u64,
+) -> Result<(Vec<std::ops::Range<usize>>, Vec<usize>), Box<BedErrorPlus>> {
+    let mut ranges = Vec::with_capacity(chunk_size);
+    let mut out_sid_i_vec = Vec::with_capacity(chunk_size);
+    for (inner_index, in_sid_i_signed) in chunk.enumerate() {
+        let out_sid_i = chunk_index * chunk_size + inner_index;
+        let in_sid_i =
+            convert_negative_sid_index(*in_sid_i_signed, upper_sid_count, lower_sid_count)?;
+        let pos: u64 = in_sid_i * in_iid_count_div4_u64 + CB_HEADER_U64; // "as" and math is safe because of early checks
+        let range = pos as usize..(pos + in_iid_count_div4_u64) as usize;
+        ranges.push(range);
+        out_sid_i_vec.push(out_sid_i);
+    }
+    Ok((ranges, out_sid_i_vec))
+}
+
+#[inline]
+fn decode_bytes_into_columns<TVal: BedVal>(
+    vec_bytes: Vec<Bytes>,
+    out_sid_i_vec: Vec<usize>,
+    iid_index: &[isize],
+    i_div_4_array: &nd::prelude::ArrayBase<nd::OwnedRepr<usize>, nd::prelude::Dim<[usize; 1]>>,
+    i_mod_4_times_2_array: &nd::prelude::ArrayBase<nd::OwnedRepr<u8>, nd::prelude::Dim<[usize; 1]>>,
+    out_val: &mut nd::prelude::ArrayBase<nd::ViewRepr<&mut TVal>, nd::prelude::Dim<[usize; 2]>>,
+    from_two_bits_to_value: [TVal; 4],
+) {
+    for (bytes, out_sid_i) in vec_bytes.into_iter().zip(out_sid_i_vec.into_iter()) {
+        let mut col = out_val.column_mut(out_sid_i);
+        // // cmk In parallel, decompress the iid info and put it in its column
+        // // cmk .par_bridge() // This seems faster that parallel zip
+        // .try_for_each(|(bytes_vector_result, mut col)| match bytes_vector_result {
+        //     Err(e) => Err(e),
+        //     Ok(bytes_vector) => {
+        for out_iid_i in 0..iid_index.len() {
+            let i_div_4 = i_div_4_array[out_iid_i];
+            let i_mod_4_times_2: u8 = i_mod_4_times_2_array[out_iid_i];
+            let encoded: u8 = bytes[i_div_4];
+            let genotype_byte: u8 = (encoded >> i_mod_4_times_2) & 0x03;
+            col[out_iid_i] = from_two_bits_to_value[genotype_byte as usize];
+        }
+    }
 }
 
 fn check_file_length(
@@ -221,28 +297,6 @@ fn check_file_length(
 }
 
 #[inline]
-fn decode_into_column<TVal: BedVal>(
-    iid_index: &[isize],
-    i_div_4_array: &nd::prelude::ArrayBase<nd::OwnedRepr<usize>, nd::prelude::Dim<[usize; 1]>>,
-    i_mod_4_times_2_array: &nd::prelude::ArrayBase<nd::OwnedRepr<u8>, nd::prelude::Dim<[usize; 1]>>,
-    bytes: Bytes,
-    mut col: nd::prelude::ArrayBase<nd::ViewRepr<&mut TVal>, nd::prelude::Dim<[usize; 1]>>,
-    from_two_bits_to_value: [TVal; 4],
-) {
-    // // cmk In parallel, decompress the iid info and put it in its column
-    // // cmk .par_bridge() // This seems faster that parallel zip
-    // .try_for_each(|(bytes_vector_result, mut col)| match bytes_vector_result {
-    //     Err(e) => Err(e),
-    //     Ok(bytes_vector) => {
-    for out_iid_i in 0..iid_index.len() {
-        let i_div_4 = i_div_4_array[out_iid_i];
-        let i_mod_4_times_2: u8 = i_mod_4_times_2_array[out_iid_i];
-        let encoded: u8 = bytes[i_div_4];
-        let genotype_byte: u8 = (encoded >> i_mod_4_times_2) & 0x03;
-        col[out_iid_i] = from_two_bits_to_value[genotype_byte as usize];
-    }
-}
-
 #[allow(clippy::too_many_arguments)]
 async fn read_no_alloc<TVal: BedVal, TArc>(
     object_store: &TArc,
