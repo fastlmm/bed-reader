@@ -16,6 +16,7 @@ use ndarray as nd;
 use ndarray::s;
 use object_store::local::LocalFileSystem;
 use object_store::path::Path as StorePath;
+use temp_testdir::TempDir;
 
 // cmk see https://github.com/apache/arrow-rs/tree/master/object_store
 // cmk see https://github.com/roeap/object-store-python
@@ -478,110 +479,65 @@ async fn fam_and_bim_cloud() -> Result<(), Box<BedErrorPlus>> {
     Ok(())
 }
 
-// #[test]
-// fn readme_examples() -> Result<(), Box<BedErrorPlus>> {
-//     // Read genomic data from a .bed file.
+#[tokio::test]
+async fn readme_examples_cloud() -> Result<(), Box<BedErrorPlus>> {
+    // Read genomic data from a .bed file.
 
-//     // >>> import numpy as np
-//     // >>> from bed_reader import open_bed, sample_bed_file
-//     // >>>
-//     // >>> file_name = sample_bed_file("small.bed")
-//     // >>> bed = open_bed(file_name)
-//     // >>> val = bed.read()
-//     // >>> print(val)
-//     // [[ 1.  0. nan  0.]
-//     //  [ 2.  0. nan  2.]
-//     //  [ 0.  1.  2.  0.]]
-//     // >>> del bed
+    let (object_store, path) = sample_bed_store_path("small.bed")?;
+    let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    let val = bed_cloud.read::<f64>().await?;
+    println!("{val:?}");
+    // [[1.0, 0.0, NaN, 0.0],
+    // [2.0, 0.0, NaN, 2.0],
+    // [0.0, 1.0, 2.0, 0.0]], shape=[3, 4], strides=[1, 3], layout=Ff (0xa), const ndim=2
 
-//     let file_name = sample_bed_file("small.bed")?;
-//     let mut bed = Bed::new(file_name)?;
-//     let val = bed.read::<f64>()?;
-//     println!("{val:?}");
-//     // [[1.0, 0.0, NaN, 0.0],
-//     // [2.0, 0.0, NaN, 2.0],
-//     // [0.0, 1.0, 2.0, 0.0]], shape=[3, 4], strides=[1, 3], layout=Ff (0xa), const ndim=2
+    // Read every second individual and SNPs (variants) from 20 to 30.
 
-//     // Read every second individual and SNPs (variants) from 20 to 30.
+    let (object_store2, path2) = sample_bed_store_path("some_missing.bed")?;
+    let mut bed_cloud2 = BedCloud::new(&object_store2, &path2).await?;
+    let val2 = ReadOptions::<f64>::builder()
+        .iid_index(s![..;2])
+        .sid_index(20..30)
+        .read_cloud(&mut bed_cloud2)
+        .await?;
+    println!("{:?}", val2.dim()); // (50, 10)
 
-//     // >>> file_name2 = sample_bed_file("some_missing.bed")
-//     // >>> bed2 = open_bed(file_name2)
-//     // >>> val2 = bed2.read(index=np.s_[::2,20:30])
-//     // >>> print(val2.shape)
-//     // (50, 10)
-//     // >>> del bed2
+    // List the first 5 individual (sample) ids, the first 5 SNP (variant) ids,
+    // and every unique chromosome. Then, read every genomic value in chromosome 5.
 
-//     let file_name2 = sample_bed_file("some_missing.bed")?;
-//     let mut bed2 = Bed::new(&file_name2)?;
-//     let val2 = ReadOptions::<f64>::builder()
-//         .iid_index(s![..;2])
-//         .sid_index(20..30)
-//         .read(&mut bed2)?;
-//     println!("{:?}", val2.dim()); // (50, 10)
+    let mut bed_cloud3 = BedCloud::new(&object_store2, &path2).await?;
+    let iid = bed_cloud3.iid().await?;
+    let s = iid.slice(s![..5]);
+    println!("{:?}", s);
+    println!("{:?}", bed_cloud3.iid().await?.slice(s![..5]));
+    println!("{:?}", bed_cloud3.sid().await?.slice(s![..5]));
+    let unique = bed_cloud3
+        .chromosome()
+        .await?
+        .iter()
+        .collect::<HashSet<_>>();
+    println!("{unique:?}");
 
-//     // List the first 5 individual (sample) ids, the first 5 SNP (variant) ids,
-//     // and every unique chromosome. Then, read every genomic value in chromosome 5.
+    let is_5 = nd::Zip::from(bed_cloud3.chromosome().await?).par_map_collect(|elem| elem == "5");
+    let val3 = ReadOptions::builder()
+        .sid_index(is_5)
+        .f64()
+        .read_cloud(&mut bed_cloud3)
+        .await?;
+    println!("{:?}", val3.dim());
+    // ["iid_0", "iid_1", "iid_2", "iid_3", "iid_4"], shape=[5], strides=[1], layout=CFcf (0xf), const ndim=1
+    // ["sid_0", "sid_1", "sid_2", "sid_3", "sid_4"], shape=[5], strides=[1], layout=CFcf (0xf), const ndim=1
+    // {"10", "11", "4", "21", "22", "14", "3", "12", "20", "15", "19", "8", "6", "18", "9", "2", "16", "13", "17", "1", "7", "5"}
+    // (100, 6)
+    Ok(())
+}
 
-//     // >>> with open_bed(file_name2) as bed3:
-//     // ...     print(bed3.iid[:5])
-//     // ...     print(bed3.sid[:5])
-//     // ...     print(np.unique(bed3.chromosome))
-//     // ...     val3 = bed3.read(index=np.s_[:,bed3.chromosome=='5'])
-//     // ...     print(val3.shape)
-//     // ['iid_0' 'iid_1' 'iid_2' 'iid_3' 'iid_4']
-//     // ['sid_0' 'sid_1' 'sid_2' 'sid_3' 'sid_4']
-//     // ['1' '10' '11' '12' '13' '14' '15' '16' '17' '18' '19' '2' '20' '21' '22'
-//     //  '3' '4' '5' '6' '7' '8' '9']
-//     // (100, 6)
-
-//     let mut bed3 = Bed::new(&file_name2)?;
-//     let iid = bed3.iid()?;
-//     let s = iid.slice(s![..5]);
-//     println!("{:?}", s);
-//     println!("{:?}", bed3.iid()?.slice(s![..5]));
-//     println!("{:?}", bed3.sid()?.slice(s![..5]));
-//     let unique = bed3.chromosome()?.iter().collect::<HashSet<_>>();
-//     println!("{unique:?}");
-//     // let is_5 = bed3.chromosome()?.map(|elem| elem == "5");
-//     let is_5 = nd::Zip::from(bed3.chromosome()?).par_map_collect(|elem| elem == "5");
-//     let val3 = ReadOptions::builder()
-//         .sid_index(is_5)
-//         .f64()
-//         .read(&mut bed3)?;
-//     println!("{:?}", val3.dim());
-//     // ["iid_0", "iid_1", "iid_2", "iid_3", "iid_4"], shape=[5], strides=[1], layout=CFcf (0xf), const ndim=1
-//     // ["sid_0", "sid_1", "sid_2", "sid_3", "sid_4"], shape=[5], strides=[1], layout=CFcf (0xf), const ndim=1
-//     // {"10", "11", "4", "21", "22", "14", "3", "12", "20", "15", "19", "8", "6", "18", "9", "2", "16", "13", "17", "1", "7", "5"}
-//     // (100, 6)
-//     Ok(())
-// }
-
-// #[test]
-// fn write_docs() -> Result<(), Box<BedErrorPlus>> {
+// cmk implement write
+// #[tokio::test]
+// async fn write_docs_cloud() -> Result<(), Box<BedErrorPlus>> {
 //     // In this example, all properties are given.
 
-//     //     >>> from bed_reader import to_bed, tmp_path
-//     //     >>>
-//     //     >>> output_file = tmp_path() / "small.bed"
-//     //     >>> val = [[1.0, 0.0, np.nan, 0.0],
-//     //     ...        [2.0, 0.0, np.nan, 2.0],
-//     //     ...        [0.0, 1.0, 2.0, 0.0]]
-//     //     >>> properties = {
-//     //     ...    "fid": ["fid1", "fid1", "fid2"],
-//     //     ...    "iid": ["iid1", "iid2", "iid3"],
-//     //     ...    "father": ["iid23", "iid23", "iid22"],
-//     //     ...    "mother": ["iid34", "iid34", "iid33"],
-//     //     ...    "sex": [1, 2, 0],
-//     //     ...    "pheno": ["red", "red", "blue"],
-//     //     ...    "chromosome": ["1", "1", "5", "Y"],
-//     //     ...    "sid": ["sid1", "sid2", "sid3", "sid4"],
-//     //     ...    "cm_position": [100.4, 2000.5, 4000.7, 7000.9],
-//     //     ...    "bp_position": [1, 100, 1000, 1004],
-//     //     ...    "allele_1": ["A", "T", "A", "T"],
-//     //     ...    "allele_2": ["A", "C", "C", "G"],
-//     //     ... }
-//     //     >>> to_bed(output_file, val, properties=properties)
-
+//     let (object_store, path) = sample_bed_store_path("small.bed")?;
 //     let output_folder = TempDir::default();
 
 //     let output_file = output_folder.join("small.bed");
@@ -590,7 +546,7 @@ async fn fam_and_bim_cloud() -> Result<(), Box<BedErrorPlus>> {
 //         [2.0, 0.0, f64::NAN, 2.0],
 //         [0.0, 1.0, 2.0, 0.0]
 //     ];
-//     WriteOptions::builder(output_file)
+//     WriteOptions::builder(&object_store, &path)
 //         .fid(["fid1", "fid1", "fid2"])
 //         .iid(["iid1", "iid2", "iid3"])
 //         .father(["iid23", "iid23", "iid22"])
@@ -603,187 +559,214 @@ async fn fam_and_bim_cloud() -> Result<(), Box<BedErrorPlus>> {
 //         .bp_position([1, 100, 1000, 1004])
 //         .allele_1(["A", "T", "A", "T"])
 //         .allele_2(["A", "C", "C", "G"])
-//         .write(&val)?;
+//         .write_cloud(&val)
+//         .await?;
 
 //     // Here, no properties are given, so default values are assigned.
 //     // If we then read the new file and list the chromosome property,
 //     // it is an array of '0's, the default chromosome value.
 
-//     //     >>> output_file2 = tmp_path() / "small2.bed"
-//     //     >>> val = [[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]]
-//     //     >>> to_bed(output_file2, val)
-//     //     >>>
-//     //     >>> from bed_reader import open_bed
-//     //     >>> with open_bed(output_file2) as bed2:
-//     //     ...     print(bed2.chromosome)
-//     //     ['0' '0' '0' '0']
+//     let (object_store2, path2) = sample_bed_store_path("small2.bed")?;
 //     let output_file2 = output_folder.join("small2.bed");
-//     let val = nd::array![[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]];
-//     Bed::write(&val, &output_file2)?;
-//     let mut bed2 = Bed::new(&output_file2)?;
-//     println!("{:?}", bed2.chromosome()?);
+//     let val2 = nd::array![[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]];
+//     BedCloud::write_cloud(&val2, &object_store2, &path2).await?;
+//     let mut bed_cloud2 = BedCloud::new(&object_store2, &path2).await?;
+//     println!("{:?}", bed_cloud2.chromosome().await?);
 //     // ["0", "0", "0", "0"], shape=[4], strides=[1], layout=CFcf (0xf), const ndim=1
 
 //     Ok(())
 // }
 
-// #[test]
-// fn read_write() -> Result<(), Box<BedErrorPlus>> {
-//     // with open_bed(shared_datadir / "small.bed") as bed:
-//     // val = bed.read()
-//     // properties = bed.properties
+// cmk implement write
 
-//     let file_name = sample_bed_file("small.bed")?;
-//     let mut bed = Bed::new(file_name)?;
-//     let val = bed.read::<f64>()?;
-//     let metadata = bed.metadata()?;
+// #[tokio::test]
+// async fn read_write_cloud() -> Result<(), Box<BedErrorPlus>> {
+//     // Read the BED file and its properties.
+
+//     let (object_store, path) = sample_bed_store_path("small.bed")?;
+//     let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+//     let val = bed_cloud.read::<f64>().await?;
+//     let metadata = bed_cloud.metadata().await?;
 //     println!("{metadata:?}");
 
-//     // output_file = tmp_path / "small.deb"
-//     // fam_file = tmp_path / "small.maf"
-//     // bim_file = tmp_path / "small.mib"
+//     // Write to a new BED file.
 
 //     let temp_out = TempDir::default();
 //     let output_file = temp_out.join("small.deb");
 //     let fam_file = temp_out.join("small.maf");
 //     let bim_file = temp_out.join("small.mib");
 
-//     // to_bed(
-//     // output_file,
-//     // val,
-//     // properties=properties,
-//     // fam_filepath=fam_file,
-//     // bim_filepath=bim_file,
-//     // )
-
-//     WriteOptions::builder(&output_file)
+//     let (object_store_out, path_out) = create_bed_store_path(&output_file)?;
+//     WriteOptions::builder(&object_store_out, &path_out)
 //         .metadata(&metadata)
 //         .fam_path(&fam_file)
 //         .bim_path(&bim_file)
-//         .write(&val)?;
+//         .write_cloud(&val)
+//         .await?;
 
-//     // // assert output_file.exists() and fam_file.exists() and bim_file.exists()
+//     // Assert that the output files exist.
 //     assert!(
 //         output_file.exists() & fam_file.exists() & bim_file.exists(),
-//         "don't exist"
+//         "Files don't exist"
 //     );
 
-//     // with open_bed(output_file, fam_filepath=fam_file, bim_filepath=bim_file) as deb:
-//     // val2 = deb.read()
-//     // properties2 = deb.properties
-//     let mut deb = Bed::builder(&output_file)
+//     // Read from the new BED file and compare properties.
+
+//     let mut deb_cloud = BedCloud::builder(&object_store_out, &path_out)
 //         .fam_path(&fam_file)
 //         .bim_path(&bim_file)
-//         .build().await?;
-//     let val2 = deb.read::<f64>()?;
-//     let metadata2 = deb.metadata()?;
+//         .build_cloud()
+//         .await?;
+//     let val2 = deb_cloud.read::<f64>().await?;
+//     let metadata2 = deb_cloud.metadata().await?;
 
-//     // assert np.allclose(val, val2, equal_nan=true)
+//     // Assert that the values and metadata are close/equal.
 //     assert!(
 //         allclose(&val.view(), &val2.view(), 1e-08, true),
-//         "not close"
+//         "Values are not close"
 //     );
 //     println!("{metadata:?}");
 //     println!("{metadata2:?}");
-//     assert!(metadata == metadata2, "meta not equal");
+//     assert!(metadata == metadata2, "Metadata not equal");
 
 //     Ok(())
 // }
 
-// #[test]
-// fn range() -> Result<(), Box<BedErrorPlus>> {
-//     let file_name = sample_bed_file("small.bed")?;
-//     let mut bed = Bed::new(file_name)?;
-//     ReadOptions::builder().iid_index(0..2).i8().read(&mut bed)?;
-//     ReadOptions::builder()
-//         .iid_index(0..=2)
-//         .i8()
-//         .read(&mut bed)?;
-//     ReadOptions::builder().iid_index(..2).i8().read(&mut bed)?;
-//     ReadOptions::builder().iid_index(..=2).i8().read(&mut bed)?;
-//     ReadOptions::builder().iid_index(0..).i8().read(&mut bed)?;
-//     ReadOptions::builder().iid_index(..).i8().read(&mut bed)?;
+#[tokio::test]
+async fn range_cloud() -> Result<(), Box<BedErrorPlus>> {
+    let (object_store, path) = sample_bed_store_path("small.bed")?;
 
-//     Ok(())
-// }
+    let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    ReadOptions::builder()
+        .iid_index(0..2)
+        .i8()
+        .read_cloud(&mut bed_cloud)
+        .await?;
+    ReadOptions::builder()
+        .iid_index(0..=2)
+        .i8()
+        .read_cloud(&mut bed_cloud)
+        .await?;
+    ReadOptions::builder()
+        .iid_index(..2)
+        .i8()
+        .read_cloud(&mut bed_cloud)
+        .await?;
+    ReadOptions::builder()
+        .iid_index(..=2)
+        .i8()
+        .read_cloud(&mut bed_cloud)
+        .await?;
+    ReadOptions::builder()
+        .iid_index(0..)
+        .i8()
+        .read_cloud(&mut bed_cloud)
+        .await?;
+    ReadOptions::builder()
+        .iid_index(..)
+        .i8()
+        .read_cloud(&mut bed_cloud)
+        .await?;
 
-// #[test]
-// fn nd_slice() -> Result<(), Box<BedErrorPlus>> {
-//     let ndarray = nd::array![0, 1, 2, 3];
-//     println!("{:?}", ndarray.slice(nd::s![1..3])); // [1, 2]
-//     println!("{:?}", ndarray.slice(nd::s![1..3;-1])); // [2, 1]
-//     #[allow(clippy::reversed_empty_ranges)]
-//     let slice = nd::s![3..1;-1];
-//     println!("{:?}", ndarray.slice(slice)); // []
+    Ok(())
+}
 
-//     let file_name = sample_bed_file("small.bed")?;
-//     let mut bed = Bed::new(file_name)?;
-//     ReadOptions::builder()
-//         .iid_index(nd::s![0..2])
-//         .i8()
-//         .read(&mut bed)?;
-//     ReadOptions::builder()
-//         .iid_index(nd::s![..2])
-//         .i8()
-//         .read(&mut bed)?;
-//     ReadOptions::builder()
-//         .iid_index(nd::s![0..])
-//         .i8()
-//         .read(&mut bed)?;
-//     ReadOptions::builder()
-//         .iid_index(nd::s![0..2])
-//         .i8()
-//         .read(&mut bed)?;
-//     ReadOptions::builder()
-//         .iid_index(nd::s![-2..-1;-1])
-//         .i8()
-//         .read(&mut bed)?;
+#[tokio::test]
+async fn nd_slice_cloud() -> Result<(), Box<BedErrorPlus>> {
+    // ndarray operations (remain synchronous)
+    let ndarray = nd::array![0, 1, 2, 3];
+    println!("{:?}", ndarray.slice(nd::s![1..3])); // [1, 2]
+    println!("{:?}", ndarray.slice(nd::s![1..3;-1])); // [2, 1]
+    #[allow(clippy::reversed_empty_ranges)]
+    let slice = nd::s![3..1;-1];
+    println!("{:?}", ndarray.slice(slice)); // []
 
-//     Ok(())
-// }
+    // Reading BED file with various slice options
+    let (object_store, path) = sample_bed_store_path("small.bed")?;
+    let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
 
-// #[test]
-// fn skip_coverage() -> Result<(), Box<BedErrorPlus>> {
-//     let mut bed = Bed::builder(sample_bed_file("small.bed")?)
-//         .skip_fid()
-//         .skip_iid()
-//         .skip_father()
-//         .skip_mother()
-//         .skip_sex()
-//         .skip_pheno()
-//         .skip_chromosome()
-//         .skip_sid()
-//         .skip_cm_position()
-//         .skip_bp_position()
-//         .skip_allele_1()
-//         .skip_allele_2()
-//         .build().await?;
-//     bed.mother().unwrap_err();
+    ReadOptions::builder()
+        .iid_index(nd::s![0..2])
+        .i8()
+        .read_cloud(&mut bed_cloud)
+        .await?;
+    ReadOptions::builder()
+        .iid_index(nd::s![..2])
+        .i8()
+        .read_cloud(&mut bed_cloud)
+        .await?;
+    ReadOptions::builder()
+        .iid_index(nd::s![0..])
+        .i8()
+        .read_cloud(&mut bed_cloud)
+        .await?;
+    ReadOptions::builder()
+        .iid_index(nd::s![0..2])
+        .i8()
+        .read_cloud(&mut bed_cloud)
+        .await?;
+    ReadOptions::builder()
+        .iid_index(nd::s![-2..-1;-1])
+        .i8()
+        .read_cloud(&mut bed_cloud)
+        .await?;
 
-//     Ok(())
-// }
+    Ok(())
+}
 
-// #[test]
-// fn into_iter() -> Result<(), Box<BedErrorPlus>> {
-//     let file_name = sample_bed_file("small.bed")?;
-//     let mut bed = Bed::builder(file_name)
-//         .fid(["sample1", "sample2", "sample3"])
-//         .iid(["sample1", "sample2", "sample3"])
-//         .father(["sample1", "sample2", "sample3"])
-//         .mother(["sample1", "sample2", "sample3"])
-//         .sex([0, 0, 0])
-//         .pheno(["sample1", "sample2", "sample3"])
-//         .chromosome(["a", "b", "c", "d"])
-//         .sid(["a", "b", "c", "d"])
-//         .bp_position([0, 0, 0, 0])
-//         .cm_position([0.0, 0.0, 0.0, 0.0])
-//         .allele_1(["a", "b", "c", "d"])
-//         .allele_2(["a", "b", "c", "d"])
-//         .build().await?;
+#[tokio::test]
+async fn skip_coverage_cloud() -> Result<(), Box<BedErrorPlus>> {
+    let (object_store, path) = sample_bed_store_path("small.bed")?;
 
-//     let _ = bed.pheno()?;
-//     Ok(())
-// }
+    let mut bed_cloud = BedCloud::builder(&object_store, &path)
+        .skip_fid()
+        .skip_iid()
+        .skip_father()
+        .skip_mother()
+        .skip_sex()
+        .skip_pheno()
+        .skip_chromosome()
+        .skip_sid()
+        .skip_cm_position()
+        .skip_bp_position()
+        .skip_allele_1()
+        .skip_allele_2()
+        .build()
+        .await?;
+
+    // If the mother information is skipped, it should return an error.
+    assert!(
+        bed_cloud.mother().await.is_err(),
+        "Mother data should not be available"
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn into_iter_cloud() -> Result<(), Box<BedErrorPlus>> {
+    let (object_store, path) = sample_bed_store_path("small.bed")?;
+
+    let mut bed_cloud = BedCloud::builder(&object_store, &path)
+        .fid(["sample1", "sample2", "sample3"])
+        .iid(["sample1", "sample2", "sample3"])
+        .father(["sample1", "sample2", "sample3"])
+        .mother(["sample1", "sample2", "sample3"])
+        .sex([0, 0, 0])
+        .pheno(["sample1", "sample2", "sample3"])
+        .chromosome(["a", "b", "c", "d"])
+        .sid(["a", "b", "c", "d"])
+        .bp_position([0, 0, 0, 0])
+        .cm_position([0.0, 0.0, 0.0, 0.0])
+        .allele_1(["a", "b", "c", "d"])
+        .allele_2(["a", "b", "c", "d"])
+        .build()
+        .await?;
+
+    // Assuming pheno is an async method in BedCloud.
+    let _ = bed_cloud.pheno().await?;
+    Ok(())
+}
 
 // #[test]
 // fn range_same() -> Result<(), Box<BedErrorPlus>> {
