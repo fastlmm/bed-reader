@@ -4236,13 +4236,13 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     }
 
     /// cmk
-    pub async fn read_cloud<TArc>(
+    pub async fn read_cloud<TArcStore>(
         &self,
-        bed_cloud: &mut BedCloud<TArc>,
+        bed_cloud: &mut BedCloud<TArcStore>,
     ) -> Result<nd::Array2<TVal>, Box<BedErrorPlus>>
     where
-        TArc: ArcStore,
-        TArc::Target: ArcStoreTarget,
+        TArcStore: ArcStore,
+        TArcStore::Target: ArcStoreTarget,
     {
         let read_options = self.build()?;
         bed_cloud.read_with_options(&read_options).await
@@ -4290,14 +4290,14 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     }
 
     /// cmk docs
-    pub async fn read_and_fill_cloud<TArc>(
+    pub async fn read_and_fill_cloud<TArcStore>(
         &self,
-        bed_cloud: &mut BedCloud<TArc>,
+        bed_cloud: &mut BedCloud<TArcStore>,
         val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
     ) -> Result<(), Box<BedErrorPlus>>
     where
-        TArc: ArcStore,
-        TArc::Target: ArcStoreTarget,
+        TArcStore: ArcStore,
+        TArcStore::Target: ArcStoreTarget,
     {
         let read_options = self.build()?;
         bed_cloud
@@ -6255,15 +6255,15 @@ impl Metadata {
     }
 
     /// cmk doc
-    pub async fn read_fam_cloud<TArc, I>(
+    pub async fn read_fam_cloud<TArcStore, I>(
         &self,
         object_path: I,
         skip_set: &HashSet<MetadataFields>,
     ) -> Result<(Metadata, usize), Box<BedErrorPlus>>
     where
-        TArc: ArcStore,
-        TArc::Target: ArcStoreTarget,
-        I: Into<ObjectPath<TArc>>,
+        TArcStore: ArcStore,
+        TArcStore::Target: ArcStoreTarget,
+        I: Into<ObjectPath<TArcStore>>,
     {
         let object_path = object_path.into();
         let mut field_vec: Vec<usize> = Vec::new();
@@ -6415,15 +6415,15 @@ impl Metadata {
     }
 
     /// cmk doc
-    pub async fn read_bim_cloud<TArc, I>(
+    pub async fn read_bim_cloud<TArcStore, I>(
         &self,
         object_path: I,
         skip_set: &HashSet<MetadataFields>,
     ) -> Result<(Metadata, usize), Box<BedErrorPlus>>
     where
-        TArc: ArcStore,
-        TArc::Target: ArcStoreTarget,
-        I: Into<ObjectPath<TArc>>,
+        TArcStore: ArcStore,
+        TArcStore::Target: ArcStoreTarget,
+        I: Into<ObjectPath<TArcStore>>,
     {
         let object_path = object_path.into();
         let mut field_vec: Vec<usize> = Vec::new();
@@ -6532,15 +6532,15 @@ impl Metadata {
         Ok((vec_of_vec, count))
     }
 
-    async fn read_fam_or_bim_cloud<TArc>(
+    async fn read_fam_or_bim_cloud<TArcStore>(
         &self,
         field_vec: &[usize],
         is_split_whitespace: bool,
-        object_path: &ObjectPath<TArc>,
+        object_path: &ObjectPath<TArcStore>,
     ) -> Result<(Vec<Vec<String>>, usize), Box<BedErrorPlus>>
     where
-        TArc: ArcStore,
-        TArc::Target: ArcStoreTarget,
+        TArcStore: ArcStore,
+        TArcStore::Target: ArcStoreTarget,
     {
         let mut vec_of_vec = vec![vec![]; field_vec.len()];
 
