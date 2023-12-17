@@ -1,5 +1,6 @@
 use anyinput::anyinput;
 use bytes::Bytes;
+use core::fmt;
 use derive_builder::Builder;
 use futures_util::{StreamExt, TryStreamExt};
 use itertools::Itertools;
@@ -9,7 +10,7 @@ use object_store::delimited::newline_delimited_stream;
 use object_store::local::LocalFileSystem;
 use object_store::path::Path as StorePath;
 use object_store::ObjectStore;
-use object_store::{GetOptions, ObjectMeta};
+use object_store::{GetOptions, GetResult, ObjectMeta};
 use std::cmp::max;
 use std::collections::HashSet;
 use std::ops::Deref;
@@ -37,7 +38,7 @@ use crate::{MetadataFields, CB_HEADER_U64};
 /// use bed_reader::assert_eq_nan;
 ///
 /// # Runtime::new().unwrap().block_on(async {
-/// let (object_store, path) = sample_bed_store_path("small.bed")?;
+/// let (object_path) = sample_bed_store_path("small.bed")?;
 /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
 /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray ["iid1", "iid2", "iid3"]
 /// let val = ReadOptions::builder().f64().read_cloud(&mut bed_cloud).await?;
@@ -57,24 +58,21 @@ use crate::{MetadataFields, CB_HEADER_U64};
 #[builder(build_fn(private, name = "build_no_file_check", error = "BedErrorPlus"))]
 pub struct BedCloud<TArc>
 where
-    TArc: Clone + Deref + Send + Sync + 'static,
-    TArc::Target: ObjectStore + Send + Sync,
+    TArc: ArcStore,
+    TArc::Target: ArcStoreTarget,
 {
     #[builder(setter(custom))]
-    object_store: TArc,
-
-    #[builder(setter(custom))]
-    path: StorePath,
+    object_path: ObjectPath<TArc>,
 
     // cmk do we want to cache the ObjectMeta?
     #[builder(setter(custom))]
     #[builder(default = "None")]
-    fam_path: Option<StorePath>,
+    fam_object_path: Option<ObjectPath<TArc>>,
 
     // // cmk needed? combine with path?
     #[builder(setter(custom))]
     #[builder(default = "None")]
-    bim_path: Option<StorePath>,
+    bim_object_path: Option<ObjectPath<TArc>>,
 
     #[builder(setter(custom))]
     #[builder(default = "true")]
@@ -93,31 +91,6 @@ where
 
     #[builder(setter(custom))]
     skip_set: HashSet<MetadataFields>,
-}
-
-fn change_extension(
-    store_path: &StorePath,
-    new_extension: &str,
-) -> Result<StorePath, Box<BedErrorPlus>> {
-    let mut path_str = store_path.to_string();
-
-    // Find the last dot in the path
-    if let Some(dot_index) = path_str.rfind('.') {
-        // Remove the current extension
-        path_str.truncate(dot_index);
-    }
-
-    // Append the new extension
-    path_str.push('.');
-    path_str.push_str(new_extension);
-
-    // Parse the string back to StorePath
-    StorePath::parse(&path_str).map_err(|e| BedErrorPlus::from(e).into())
-}
-
-// cmk needed?
-fn store_path_to_string(store_path: &StorePath) -> String {
-    StorePath::to_string(store_path)
 }
 
 fn convert_negative_sid_index(
@@ -141,8 +114,7 @@ fn convert_negative_sid_index(
 
 #[allow(clippy::too_many_arguments)]
 async fn internal_read_no_alloc<TVal: BedVal, TArc>(
-    object_store: &TArc,
-    path: &StorePath,
+    object_path: &ObjectPath<TArc>,
     object_meta: &ObjectMeta,
     in_iid_count: usize,
     in_sid_count: usize,
@@ -155,12 +127,12 @@ async fn internal_read_no_alloc<TVal: BedVal, TArc>(
     out_val: &mut nd::ArrayViewMut2<'_, TVal>,
 ) -> Result<(), Box<BedErrorPlus>>
 where
-    TArc: Clone + Deref + Send + Sync + 'static,
-    TArc::Target: ObjectStore + Send + Sync,
+    TArc: ArcStore,
+    TArc::Target: ArcStoreTarget,
 {
     // compute numbers outside of the loop
     let (in_iid_count_div4, in_iid_count_div4_u64) =
-        check_file_length(in_iid_count, in_sid_count, object_meta, path)?;
+        check_file_length(in_iid_count, in_sid_count, object_meta, object_path)?;
     let (i_div_4_array, i_mod_4_times_2_array) =
         check_and_precompute_iid_index(in_iid_count, iid_index)?;
     let chunk_size = max(1, max_chunk_size / in_iid_count_div4);
@@ -186,8 +158,9 @@ where
         async move {
             let (ranges, out_sid_i_vec) = result?;
 
-            let vec_bytes = object_store
-                .get_ranges(path, &ranges)
+            // cmk00 define get_ranges on object_store
+            let vec_bytes = object_path
+                .get_ranges(&ranges)
                 .await
                 .map_err(BedErrorPlus::from)?;
 
@@ -264,19 +237,23 @@ fn decode_bytes_into_columns<TVal: BedVal>(
     }
 }
 
-fn check_file_length(
+fn check_file_length<TArc>(
     in_iid_count: usize,
     in_sid_count: usize,
     object_meta: &ObjectMeta,
-    path: &StorePath,
-) -> Result<(usize, u64), Box<BedErrorPlus>> {
+    object_path: &ObjectPath<TArc>,
+) -> Result<(usize, u64), Box<BedErrorPlus>>
+where
+    TArc: ArcStore,
+    TArc::Target: ArcStoreTarget,
+{
     let (in_iid_count_div4, in_iid_count_div4_u64) =
         try_div_4(in_iid_count, in_sid_count, CB_HEADER_U64)?;
     let file_len = object_meta.size as u64;
     let file_len2 = in_iid_count_div4_u64 * (in_sid_count as u64) + CB_HEADER_U64;
     if file_len != file_len2 {
         return Err(Box::new(
-            BedError::IllFormed(store_path_to_string(path)).into(),
+            BedError::IllFormed(object_path.to_string()).into(),
         ));
     }
     Ok((in_iid_count_div4, in_iid_count_div4_u64))
@@ -285,8 +262,7 @@ fn check_file_length(
 #[inline]
 #[allow(clippy::too_many_arguments)]
 async fn read_no_alloc<TVal: BedVal, TArc>(
-    object_store: &TArc,
-    path: &StorePath,
+    object_path: &ObjectPath<TArc>,
     iid_count: usize,
     sid_count: usize,
     is_a1_counted: bool,
@@ -299,10 +275,10 @@ async fn read_no_alloc<TVal: BedVal, TArc>(
     val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
 ) -> Result<(), Box<BedErrorPlus>>
 where
-    TArc: Clone + Deref + Send + Sync + 'static,
-    TArc::Target: ObjectStore + Send + Sync,
+    TArc: ArcStore,
+    TArc::Target: ArcStoreTarget,
 {
-    let (object_meta, bytes) = open_and_check(object_store, path).await?;
+    let (object_meta, bytes) = open_and_check(object_path).await?;
 
     match bytes[2] {
         0 => {
@@ -310,8 +286,7 @@ where
             let mut val_t = val.view_mut().reversed_axes();
 
             internal_read_no_alloc(
-                object_store,
-                path,
+                object_path,
                 &object_meta,
                 sid_count,
                 iid_count,
@@ -327,8 +302,7 @@ where
         }
         1 => {
             internal_read_no_alloc(
-                object_store,
-                path,
+                object_path,
                 &object_meta,
                 iid_count,
                 sid_count,
@@ -342,29 +316,24 @@ where
             )
             .await?
         }
-        _ => {
-            return Err(Box::new(
-                BedError::BadMode(store_path_to_string(path)).into(),
-            ))
-        }
+        _ => return Err(Box::new(BedError::BadMode(object_path.to_string()).into())),
     };
     Ok(())
 }
 
 async fn open_and_check<TArc>(
-    object_store: &TArc,
-    path: &StorePath,
+    object_path: &ObjectPath<TArc>,
 ) -> Result<(ObjectMeta, Bytes), Box<BedErrorPlus>>
 where
-    TArc: Clone + Deref + Send + Sync + 'static,
-    TArc::Target: ObjectStore + Send + Sync,
+    TArc: ArcStore,
+    TArc::Target: ArcStoreTarget,
 {
     let get_options = GetOptions {
         range: Some(0..CB_HEADER_U64 as usize),
         ..Default::default()
     };
-    let get_result = object_store
-        .get_opts(path, get_options)
+    let get_result = object_path
+        .get_opts(get_options)
         .await
         .map_err(BedErrorPlus::from)?;
 
@@ -373,7 +342,7 @@ where
 
     if (BED_FILE_MAGIC1 != bytes[0]) || (BED_FILE_MAGIC2 != bytes[1]) {
         return Err(Box::new(
-            BedError::IllFormed(store_path_to_string(path)).into(),
+            BedError::IllFormed(object_path.to_string()).into(),
         ));
     }
     Ok((object_meta, bytes))
@@ -381,16 +350,16 @@ where
 
 impl<TArc> BedCloudBuilder<TArc>
 where
-    TArc: Clone + Deref + Send + Sync + 'static,
-    TArc::Target: ObjectStore + Send + Sync,
+    TArc: ArcStore,
+    TArc::Target: ArcStoreTarget,
 {
     // #[anyinput]
-    fn new(object_store: &TArc, path: &StorePath) -> Self {
+    // cmk00 also accept &ObjectPath
+    fn new(object_path: ObjectPath<TArc>) -> Self {
         Self {
-            object_store: Some(object_store.clone()),
-            path: Some(path.clone()),
-            fam_path: None,
-            bim_path: None,
+            object_path: Some(object_path),
+            fam_object_path: None,
+            bim_object_path: None,
 
             is_checked_early: None,
             iid_count: None,
@@ -409,8 +378,8 @@ where
 
         // cmk is this unwrap OK?
         if bed_cloud.is_checked_early {
-            let arc = self.object_store.as_ref().unwrap().clone();
-            open_and_check(&arc, &bed_cloud.path).await?;
+            let object_path = self.object_path.as_ref().unwrap().clone();
+            open_and_check(&object_path).await?;
         }
 
         (bed_cloud.iid_count, bed_cloud.sid_count) = bed_cloud
@@ -443,7 +412,7 @@ where
     /// ```
     /// use ndarray as nd;
     /// use bed_reader::{BedCloud, assert_eq_nan, sample_bed_store_path};
-    /// let (object_store, path) = sample_bed_store_path("small.bed_cloud")?;
+    /// let (object_path) = sample_bed_store_path("small.bed_cloud")?;
     /// use bed_reader::ReadOptions;
     ///
     /// let mut bed_cloud = BedCloud::builder(file_name)
@@ -529,7 +498,7 @@ where
     /// ```
     /// use ndarray as nd;
     /// use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_store_path};
-    /// let (object_store, path) = sample_bed_store_path("small.bed_cloud")?;
+    /// let (object_path) = sample_bed_store_path("small.bed_cloud")?;
     ///
     /// let mut bed_cloud = BedCloud::builder(file_name)
     ///    .sid(["SNP1", "SNP2", "SNP3", "SNP4"])
@@ -642,8 +611,8 @@ where
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
-    pub fn fam_path(mut self, path: &StorePath) -> Self {
-        self.fam_path = Some(Some(path.to_owned()));
+    pub fn fam_object_path(mut self, object_path: ObjectPath<TArc>) -> Self {
+        self.fam_object_path = Some(Some(object_path));
         self
     }
 
@@ -667,8 +636,12 @@ where
     /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     // #[anyinput]
-    pub fn bim_path(mut self, path: &StorePath) -> Self {
-        self.bim_path = Some(Some(path.to_owned()));
+    pub fn bim_object_path<I>(mut self, object_path: I) -> Self
+    where
+        I: Into<ObjectPath<TArc>>,
+    {
+        let object_path = object_path.into();
+        self.bim_object_path = Some(Some(object_path));
         self
     }
 
@@ -846,7 +819,7 @@ where
     /// use ndarray as nd;
     /// use bed_reader::{BedCloud, Metadata, sample_bed_store_path};
     ///
-    /// let (object_store, path) = sample_bed_store_path("small.bed_cloud")?;
+    /// let (object_path) = sample_bed_store_path("small.bed_cloud")?;
     /// let metadata = Metadata::builder()
     ///     .iid(["i1", "i2", "i3"])
     ///     .sid(["s1", "s2", "s3", "s4"])
@@ -878,8 +851,8 @@ where
 
 impl<TArc> BedCloud<TArc>
 where
-    TArc: Clone + Deref + Send + Sync + 'static,
-    TArc::Target: ObjectStore + Send + Sync,
+    TArc: ArcStore,
+    TArc::Target: ArcStoreTarget,
 {
     /// Attempts to open a PLINK .bed file for reading. Supports options.
     ///
@@ -910,7 +883,7 @@ where
     /// use ndarray as nd;
     /// use bed_reader::{BedCloud, assert_eq_nan, sample_bed_store_path};
     ///
-    /// let (object_store, path) = sample_bed_store_path("small.bed")?;
+    /// let (object_path) = sample_bed_store_path("small.bed")?;
     /// let mut bed_cloud = Bed::builder(file_name).build()?;
     /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray ["iid1", "iid2", "iid3"]
     /// println!("{:?}", bed.sid()?); // Outputs ndarray ["snp1", "snp2", "snp3", "snp4"]
@@ -932,7 +905,7 @@ where
     /// ```
     /// # use ndarray as nd;
     /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_store_path};
-    /// # let (object_store, path) = sample_bed_store_path("small.bed")?;
+    /// # let (object_path) = sample_bed_store_path("small.bed")?;
     /// let mut bed_cloud = Bed::builder(file_name)
     ///    .iid(["sample1", "sample2", "sample3"])
     ///    .build()?;
@@ -945,7 +918,7 @@ where
     /// ```
     /// # use ndarray as nd;
     /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_store_path};
-    /// # let (object_store, path) = sample_bed_store_path("small.bed")?;
+    /// # let (object_path) = sample_bed_store_path("small.bed")?;
     /// let mut bed_cloud = Bed::builder(file_name).iid_count(3).sid_count(4).build()?;
     /// let val = bed.read::<f64>()?;
     ///
@@ -964,7 +937,7 @@ where
     /// ```
     /// # use ndarray as nd;
     /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_store_path};
-    /// # let (object_store, path) = sample_bed_store_path("small.bed")?;
+    /// # let (object_path) = sample_bed_store_path("small.bed")?;
     /// let mut bed_cloud = Bed::builder(file_name)
     ///     .skip_father()
     ///     .skip_mother()
@@ -979,8 +952,13 @@ where
     /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     ///
-    pub fn builder(object_store: &TArc, path: &StorePath) -> BedCloudBuilder<TArc> {
-        BedCloudBuilder::new(object_store, path)
+    // cmk00 also accept &ObjectPath
+    pub fn builder<I>(object_path: I) -> BedCloudBuilder<TArc>
+    where
+        I: Into<ObjectPath<TArc>>,
+    {
+        let object_path = object_path.into();
+        BedCloudBuilder::new(object_path)
     }
 
     /// Attempts to open a PLINK .bed file for reading. Does not support options.
@@ -1005,7 +983,7 @@ where
     /// use bed_reader::{BedCloud, assert_eq_nan, sample_bed_store_path};
     ///
     /// # Runtime::new().unwrap().block_on(async {
-    /// let (object_store, path) = sample_bed_store_path("small.bed")?;
+    /// let (object_path) = sample_bed_store_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
     /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray: ["iid1", "iid2", "iid3"]
     /// println!("{:?}", bed_cloud.sid().await?); // Outputs ndarray: ["sid1", "sid2", "sid3", "sid4"]
@@ -1029,7 +1007,7 @@ where
     /// # use ndarray as nd;
     /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_store_path};
     /// # Runtime::new().unwrap().block_on(async {
-    /// # let (object_store, path) = sample_bed_store_path("small.bed")?;
+    /// # let (object_path) = sample_bed_store_path("small.bed")?;
     ///
     /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
     /// let val = ReadOptions::builder().sid_index(2).f64().read_cloud(&mut bed_cloud).await?;
@@ -1038,32 +1016,13 @@ where
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
-    pub async fn new(object_store: &TArc, path: &StorePath) -> Result<Self, Box<BedErrorPlus>> {
-        BedCloud::builder(object_store, path).build().await
-    }
-
-    async fn count_lines(&self, path: &StorePath) -> Result<usize, Box<BedErrorPlus>> {
-        let stream = self
-            .object_store
-            .clone()
-            .get(path)
-            .await
-            .map_err(BedErrorPlus::from)?
-            .into_stream();
-
-        let new_line_stream = newline_delimited_stream(stream);
-
-        let newline_count = AtomicUsize::new(0);
-        new_line_stream
-            .try_for_each(|bytes| {
-                let count = bytecount::count(&bytes, b'\n');
-                newline_count.fetch_add(count, Ordering::SeqCst);
-                async { Ok(()) } // Return Ok(()) for each successful iteration
-            })
-            .await
-            .map_err(BedErrorPlus::from)?; // Convert the error and propagate it if present
-
-        Ok(newline_count.load(Ordering::SeqCst))
+    // cmk00 also accept &ObjectPath
+    pub async fn new<I>(object_path: I) -> Result<Self, Box<BedErrorPlus>>
+    where
+        I: Into<ObjectPath<TArc>>,
+    {
+        let object_path = object_path.into();
+        BedCloud::builder(object_path).build().await
     }
 
     /// Number of individuals (samples)
@@ -1080,7 +1039,7 @@ where
     /// use ndarray as nd;
     /// use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_store_path};
     ///
-    /// let (object_store, path) = sample_bed_store_path("small.bed")?;
+    /// let (object_path) = sample_bed_store_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
     /// let iid_count = bed.iid_count()?;
     ///
@@ -1091,8 +1050,8 @@ where
         if let Some(iid_count) = self.iid_count {
             Ok(iid_count)
         } else {
-            let fam_path = self.fam_path()?;
-            let iid_count = self.count_lines(&fam_path).await?;
+            let fam_object_path = self.fam_object_path()?;
+            let iid_count = count_lines(&fam_object_path).await?;
             self.iid_count = Some(iid_count);
             Ok(iid_count)
         }
@@ -1112,7 +1071,7 @@ where
     /// use ndarray as nd;
     /// use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_store_path};
     ///
-    /// let (object_store, path) = sample_bed_store_path("small.bed")?;
+    /// let (object_path) = sample_bed_store_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
     /// let sid_count = bed.sid_count()?;
     ///
@@ -1123,8 +1082,8 @@ where
         if let Some(sid_count) = self.sid_count {
             Ok(sid_count)
         } else {
-            let bim_path = self.bim_path()?;
-            let sid_count = self.count_lines(&bim_path).await?;
+            let bim_object_path = self.bim_object_path()?;
+            let sid_count = count_lines(&bim_object_path).await?;
             self.sid_count = Some(sid_count);
             Ok(sid_count)
         }
@@ -1145,7 +1104,7 @@ where
     /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let (object_store, path) = sample_bed_store_path("small.bed")?;
+    /// let (object_path) = sample_bed_store_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
     /// let dim = bed.dim()?;
     ///
@@ -1170,7 +1129,7 @@ where
     /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let (object_store, path) = sample_bed_store_path("small.bed")?;
+    /// let (object_path) = sample_bed_store_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
     /// let fid = bed.fid()?;
     /// println!("{fid:?}"); // Outputs ndarray ["fid1", "fid1", "fid2"]
@@ -1196,7 +1155,7 @@ where
     /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let (object_store, path) = sample_bed_store_path("small.bed")?;
+    /// let (object_path) = sample_bed_store_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
     /// let iid = bed_cloud.iid().await?;    ///
     /// println!("{iid:?}"); // Outputs ndarray ["iid1", "iid2", "iid3"]
@@ -1222,7 +1181,7 @@ where
     /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let (object_store, path) = sample_bed_store_path("small.bed")?;
+    /// let (object_path) = sample_bed_store_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
     /// let father = bed.father()?;
     /// println!("{father:?}"); // Outputs ndarray ["iid23", "iid23", "iid22"]
@@ -1252,7 +1211,7 @@ where
     /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let (object_store, path) = sample_bed_store_path("small.bed")?;
+    /// let (object_path) = sample_bed_store_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
     /// let mother = bed.mother()?;
     /// println!("{mother:?}"); // Outputs ndarray ["iid34", "iid34", "iid33"]
@@ -1284,7 +1243,7 @@ where
     /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let (object_store, path) = sample_bed_store_path("small.bed")?;
+    /// let (object_path) = sample_bed_store_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
     /// let sex = bed.sex()?;
     /// println!("{sex:?}"); // Outputs ndarray [1, 2, 0]
@@ -1310,7 +1269,7 @@ where
     /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let (object_store, path) = sample_bed_store_path("small.bed")?;
+    /// let (object_path) = sample_bed_store_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
     /// let pheno = bed.pheno()?;
     /// println!("{pheno:?}"); // Outputs ndarray ["red", "red", "blue"]
@@ -1340,7 +1299,7 @@ where
     /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let (object_store, path) = sample_bed_store_path("small.bed")?;
+    /// let (object_path) = sample_bed_store_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
     /// let chromosome = bed.chromosome()?;
     /// println!("{chromosome:?}"); // Outputs ndarray ["1", "1", "5", "Y"]
@@ -1370,7 +1329,7 @@ where
     /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let (object_store, path) = sample_bed_store_path("small.bed")?;
+    /// let (object_path) = sample_bed_store_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
     /// let sid = bed.sid()?;
     /// println!("{sid:?}"); // Outputs ndarray "sid1", "sid2", "sid3", "sid4"]
@@ -1396,7 +1355,7 @@ where
     /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let (object_store, path) = sample_bed_store_path("small.bed")?;
+    /// let (object_path) = sample_bed_store_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
     /// let cm_position = bed.cm_position()?;
     /// println!("{cm_position:?}"); // Outputs ndarray [100.4, 2000.5, 4000.7, 7000.9]
@@ -1426,7 +1385,7 @@ where
     /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let (object_store, path) = sample_bed_store_path("small.bed")?;
+    /// let (object_path) = sample_bed_store_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
     /// let bp_position = bed.bp_position()?;
     /// println!("{bp_position:?}"); // Outputs ndarray [1, 100, 1000, 1004]
@@ -1458,11 +1417,11 @@ where
     /// # let rt = Runtime::new().unwrap();
     /// # rt.block_on(async {
     ///
-    /// let (object_store, path) = sample_bed_store_path("small.bed")?;
+    /// let (object_path) = sample_bed_store_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
     /// let allele_1 = bed_cloud.allele_1().await?;
     /// println!("{allele_1:?}"); // Outputs ndarray ["A", "T", "A", "T"]
-    /// # let (object_store, path) = sample_bed_store_path("small.bed")?;
+    /// # let (object_path) = sample_bed_store_path("small.bed")?;
     /// # let rt = Runtime::new().unwrap();
     /// # rt.block_on(async {
     pub async fn allele_1(&mut self) -> Result<&nd::Array1<String>, Box<BedErrorPlus>> {
@@ -1489,7 +1448,7 @@ where
     /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
     /// use bed_reader::assert_eq_nan;
     /// # Runtime::new().unwrap().block_on(async {    ///
-    /// let (object_store, path) = sample_bed_store_path("small.bed")?;
+    /// let (object_path) = sample_bed_store_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
     /// let allele_2 = bed_cloud.allele_2().await?;
     /// println!("{allele_2:?}"); // Outputs ndarray ["A", "C", "C", "G"]
@@ -1517,7 +1476,7 @@ where
     /// use ndarray as nd;
     /// use bed_reader::{BedCloud, sample_bed_store_path};
     ///
-    /// let (object_store, path) = sample_bed_store_path("small.bed")?;
+    /// let (object_path) = sample_bed_store_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
     /// let metadata = bed.metadata()?;
     /// println!("{0:?}", metadata.iid()); // Outputs Some(["iid1", "iid2", "iid3"] ...)
@@ -1530,37 +1489,35 @@ where
         Ok(self.metadata.clone())
     }
 
-    /// Return the store path of the .bed file.
-    pub fn path(&self) -> &StorePath {
-        &self.path
-    }
-
-    /// Return the ObjectStore of the .bed file.
-    pub fn object_store(&self) -> &TArc {
-        &self.object_store
+    /// cmk doc
+    // Return the object_path of the .bed file.
+    pub fn object_path(&self) -> &ObjectPath<TArc> {
+        &self.object_path
     }
 
     /// Return the path of the .fam file.
-    pub fn fam_path(&mut self) -> Result<StorePath, Box<BedErrorPlus>> {
+    pub fn fam_object_path(&mut self) -> Result<ObjectPath<TArc>, Box<BedErrorPlus>> {
         // We need to clone the path because self might mutate later
-        if let Some(path) = &self.fam_path {
-            Ok(path.clone())
+        if let Some(fam_object_path) = &self.fam_object_path {
+            Ok(fam_object_path.clone())
         } else {
-            let path = BedCloud::<TArc>::to_metadata_path(&self.path, &self.fam_path, "fam")?;
-            self.fam_path = Some(path.clone());
-            Ok(path)
+            let fam_object_path =
+                to_metadata_path(&self.object_path, &self.fam_object_path, "fam")?;
+            self.fam_object_path = Some(fam_object_path.clone());
+            Ok(fam_object_path)
         }
     }
 
     /// Return the path of the .bim file.
-    pub fn bim_path(&mut self) -> Result<StorePath, Box<BedErrorPlus>> {
+    pub fn bim_object_path(&mut self) -> Result<ObjectPath<TArc>, Box<BedErrorPlus>> {
         // We need to clone the path because self might mutate later
-        if let Some(path) = &self.bim_path {
-            Ok(path.clone())
+        if let Some(bim_object_path) = &self.bim_object_path {
+            Ok(bim_object_path.clone())
         } else {
-            let path = BedCloud::<TArc>::to_metadata_path(&self.path, &self.bim_path, "bim")?;
-            self.bim_path = Some(path.clone());
-            Ok(path)
+            let bim_object_path =
+                to_metadata_path(&self.object_path, &self.bim_object_path, "bim")?;
+            self.bim_object_path = Some(bim_object_path.clone());
+            Ok(bim_object_path)
         }
     }
 
@@ -1580,7 +1537,7 @@ where
     /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let (object_store, path) = sample_bed_store_path("small.bed")?;
+    /// let (object_path) = sample_bed_store_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
     /// let val = bed.read::<f64>()?;
     ///
@@ -1631,7 +1588,7 @@ where
     /// use bed_reader::assert_eq_nan;
     ///
     /// // Read the SNPs indexed by 2.
-    /// let (object_store, path) = sample_bed_store_path("small.bed")?;
+    /// let (object_path) = sample_bed_store_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
     /// let read_options = ReadOptions::builder().sid_index(2).build()?;
     /// let mut val = nd::Array2::<f64>::default((3, 1));
@@ -1669,8 +1626,7 @@ where
         }
 
         read_no_alloc(
-            &self.object_store,
-            &self.path,
+            &self.object_path,
             iid_count,
             sid_count,
             read_options.is_a1_counted,
@@ -1699,7 +1655,7 @@ where
     /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let (object_store, path) = sample_bed_store_path("small.bed")?;
+    /// let (object_path) = sample_bed_store_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
     /// let mut val = nd::Array2::<i8>::default(bed.dim()?);
     /// bed.read_and_fill(&mut val.view_mut())?;
@@ -1739,7 +1695,7 @@ where
     /// use bed_reader::assert_eq_nan;
     ///
     /// // Read the SNPs indexed by 2.
-    /// let (object_store, path) = sample_bed_store_path("small.bed")?;
+    /// let (object_path) = sample_bed_store_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
     /// let read_options = ReadOptions::builder().sid_index(2).f64().build()?;
     /// let val = bed.read_with_options(&read_options)?;
@@ -1763,18 +1719,6 @@ where
             .await?;
 
         Ok(val)
-    }
-
-    fn to_metadata_path(
-        bed_path: &StorePath,
-        metadata_path: &Option<StorePath>,
-        extension: &str,
-    ) -> Result<StorePath, Box<BedErrorPlus>> {
-        if let Some(metadata_path) = metadata_path {
-            Ok(metadata_path.to_owned())
-        } else {
-            change_extension(bed_path, extension)
-        }
     }
 
     /// Write genotype data with default metadata.
@@ -1925,11 +1869,11 @@ where
     }
 
     async fn fam(&mut self) -> Result<(), Box<BedErrorPlus>> {
-        let fam_path = self.fam_path()?;
+        let fam_object_path = self.fam_object_path()?;
 
         let (metadata, count) = self
             .metadata
-            .read_fam_cloud(&self.object_store, &fam_path, &self.skip_set)
+            .read_fam_cloud(&fam_object_path, &self.skip_set)
             .await?;
         self.metadata = metadata;
 
@@ -1949,11 +1893,11 @@ where
     }
 
     async fn bim(&mut self) -> Result<(), Box<BedErrorPlus>> {
-        let bim_path = self.bim_path()?;
+        let bim_object_path = self.bim_object_path()?;
 
         let (metadata, count) = self
             .metadata
-            .read_bim_cloud(&self.object_store, &bim_path, &self.skip_set)
+            .read_bim_cloud(&bim_object_path, &self.skip_set)
             .await?;
         self.metadata = metadata;
 
@@ -1980,9 +1924,9 @@ where
 /// The files will be in a directory determined by environment variable `BED_READER_DATA_DIR`.
 /// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
 #[anyinput]
-pub fn sample_bed_store_path(
+pub fn sample_bed_object_path(
     bed_path: AnyPath,
-) -> Result<(Arc<LocalFileSystem>, StorePath), Box<BedErrorPlus>> {
+) -> Result<ObjectPath<Arc<LocalFileSystem>>, Box<BedErrorPlus>> {
     use std::path::PathBuf;
 
     let mut path_list: Vec<PathBuf> = Vec::new();
@@ -1991,10 +1935,12 @@ pub fn sample_bed_store_path(
         path_list.push(file_path);
     }
 
-    let (object_store, vec) = sample_store_paths(path_list)?;
-    assert!(vec.len() == 3);
-    Ok((object_store, vec[0].clone()))
+    let mut vec = sample_object_paths(path_list)?;
+    debug_assert!(vec.len() == 3);
+    Ok(vec.swap_remove(0))
 }
+
+// cmk00 make this a type ObjectPath<Arc<LocalFileSystem>>
 
 /// Returns the local path to a sample file. If necessary, the file will be downloaded.
 ///
@@ -2002,16 +1948,17 @@ pub fn sample_bed_store_path(
 /// The file will be in a directory determined by environment variable `BED_READER_DATA_DIR`.
 /// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
 #[anyinput]
-pub fn sample_store_path(
+pub fn sample_object_path(
     path: AnyPath,
-) -> Result<(Arc<LocalFileSystem>, StorePath), Box<BedErrorPlus>> {
+) -> Result<ObjectPath<Arc<LocalFileSystem>>, Box<BedErrorPlus>> {
     let object_store = Arc::new(LocalFileSystem::new());
 
     let file_path = STATIC_FETCH_DATA
         .fetch_file(path)
         .map_err(BedErrorPlus::from)?;
     let store_path = StorePath::from_filesystem_path(file_path).map_err(BedErrorPlus::from)?;
-    Ok((object_store, store_path))
+    let object_path = ObjectPath::new(object_store, store_path);
+    Ok(object_path)
 }
 
 /// Returns the local paths to a list of files. If necessary, the files will be downloaded.
@@ -2020,17 +1967,207 @@ pub fn sample_store_path(
 /// The files will be in a directory determined by environment variable `BED_READER_DATA_DIR`.
 /// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
 #[anyinput]
-pub fn sample_store_paths(
+pub fn sample_object_paths(
     path_list: AnyIter<AnyPath>,
-) -> Result<(Arc<LocalFileSystem>, Vec<StorePath>), Box<BedErrorPlus>> {
+) -> Result<Vec<ObjectPath<Arc<LocalFileSystem>>>, Box<BedErrorPlus>> {
     let object_store = Arc::new(LocalFileSystem::new());
 
     let file_paths = STATIC_FETCH_DATA
         .fetch_files(path_list)
         .map_err(BedErrorPlus::from)?;
-    let store_paths = file_paths
+    file_paths
         .iter()
-        .map(|file_path| StorePath::from_filesystem_path(file_path).map_err(BedErrorPlus::from))
-        .collect::<Result<Vec<_>, _>>()?;
-    Ok((object_store, store_paths))
+        .map(|file_path| {
+            let path = StorePath::from_filesystem_path(file_path).map_err(BedErrorPlus::from)?;
+            Ok(ObjectPath::new(object_store.clone(), path))
+        })
+        .collect()
+}
+
+/// cmk doc
+pub trait ArcStore: Clone + Deref + Send + Sync + 'static {}
+/// cmk doc
+pub trait ArcStoreTarget: ObjectStore + Send + Sync {}
+
+impl<T> ArcStore for Arc<T> where T: ArcStoreTarget {}
+
+impl<T> ArcStoreTarget for T where T: ObjectStore {}
+// impl ArcStoreTarget for LocalFileSystem {}
+
+#[derive(Clone, Debug)]
+/// cmk doc
+pub struct ObjectPath<TArc>
+where
+    TArc: ArcStore,
+    TArc::Target: ArcStoreTarget,
+{
+    object_store: TArc,
+    path: StorePath,
+}
+
+impl<TArc> ObjectPath<TArc>
+where
+    TArc: ArcStore,
+    TArc::Target: ArcStoreTarget,
+{
+    /// cmk doc
+
+    pub fn new(object_store: TArc, path: StorePath) -> Self {
+        ObjectPath { object_store, path }
+    }
+
+    /// cmk doc
+    pub async fn get_ranges(
+        &self,
+        ranges: &[core::ops::Range<usize>],
+    ) -> Result<Vec<Bytes>, object_store::Error> {
+        self.object_store.get_ranges(&self.path, ranges).await
+    }
+
+    /// cmk doc
+    pub async fn get_opts(
+        &self,
+        get_options: GetOptions,
+    ) -> Result<GetResult, object_store::Error> {
+        self.object_store.get_opts(&self.path, get_options).await
+    }
+
+    /// cmk doc
+    pub async fn get(&self) -> Result<GetResult, object_store::Error> {
+        self.object_store.get(&self.path).await
+    }
+
+    /// cmk doc
+    pub fn set_extension(&mut self, extension: &str) -> Result<(), object_store::path::Error> {
+        let mut path_str = self.path.to_string();
+
+        // Find the last dot in the path
+        if let Some(dot_index) = path_str.rfind('.') {
+            // Remove the current extension
+            path_str.truncate(dot_index);
+        }
+
+        // Append the new extension
+        path_str.push('.');
+        path_str.push_str(extension);
+
+        // Parse the string back to StorePath
+        self.path = StorePath::parse(&path_str)?;
+        Ok(())
+    }
+}
+
+// Implementing From trait for ObjectPath to allow tuple conversions.
+impl<TArc> From<(TArc, StorePath)> for ObjectPath<TArc>
+where
+    TArc: ArcStore,
+    TArc::Target: ArcStoreTarget,
+{
+    fn from(tuple: (TArc, StorePath)) -> Self {
+        ObjectPath {
+            object_store: tuple.0,
+            path: tuple.1,
+        }
+    }
+}
+impl<TArc> From<(&TArc, &StorePath)> for ObjectPath<TArc>
+where
+    TArc: ArcStore,
+    TArc::Target: ArcStoreTarget,
+{
+    fn from(tuple: (&TArc, &StorePath)) -> Self {
+        ObjectPath {
+            object_store: tuple.0.clone(),
+            path: tuple.1.clone(),
+        }
+    }
+}
+impl<TArc> From<(TArc, &StorePath)> for ObjectPath<TArc>
+where
+    TArc: ArcStore,
+    TArc::Target: ArcStoreTarget,
+{
+    fn from(tuple: (TArc, &StorePath)) -> Self {
+        ObjectPath {
+            object_store: tuple.0,
+            path: tuple.1.clone(),
+        }
+    }
+}
+impl<TArc> From<(&TArc, StorePath)> for ObjectPath<TArc>
+where
+    TArc: ArcStore,
+    TArc::Target: ArcStoreTarget,
+{
+    fn from(tuple: (&TArc, StorePath)) -> Self {
+        ObjectPath {
+            object_store: tuple.0.clone(),
+            path: tuple.1,
+        }
+    }
+}
+impl<TArc> From<&ObjectPath<TArc>> for ObjectPath<TArc>
+where
+    TArc: ArcStore,
+    TArc::Target: ArcStoreTarget,
+{
+    fn from(ref_thing: &ObjectPath<TArc>) -> Self {
+        ref_thing.clone()
+    }
+}
+
+impl<TArc> fmt::Display for ObjectPath<TArc>
+where
+    TArc: ArcStore,
+    TArc::Target: ArcStoreTarget,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "ObjectPath: {:?}", self.path)
+    }
+}
+
+fn to_metadata_path<TArc>(
+    bed_object_path: &ObjectPath<TArc>,
+    metadata_object_path: &Option<ObjectPath<TArc>>,
+    extension: &str,
+) -> Result<ObjectPath<TArc>, Box<BedErrorPlus>>
+where
+    TArc: ArcStore,
+    TArc::Target: ArcStoreTarget,
+{
+    if let Some(metadata_object_path) = metadata_object_path {
+        Ok((*metadata_object_path).clone())
+    } else {
+        let mut meta_object_path = (*bed_object_path).clone();
+        meta_object_path
+            .set_extension(extension)
+            .map_err(BedErrorPlus::from)?;
+        Ok(meta_object_path)
+    }
+}
+
+async fn count_lines<TArc>(object_path: &ObjectPath<TArc>) -> Result<usize, Box<BedErrorPlus>>
+where
+    TArc: ArcStore,
+    TArc::Target: ArcStoreTarget,
+{
+    let stream = object_path
+        .get()
+        .await
+        .map_err(BedErrorPlus::from)?
+        .into_stream();
+
+    let new_line_stream = newline_delimited_stream(stream);
+
+    let newline_count = AtomicUsize::new(0);
+    new_line_stream
+        .try_for_each(|bytes| {
+            let count = bytecount::count(&bytes, b'\n');
+            newline_count.fetch_add(count, Ordering::SeqCst);
+            async { Ok(()) } // Return Ok(()) for each successful iteration
+        })
+        .await
+        .map_err(BedErrorPlus::from)?; // Convert the error and propagate it if present
+
+    Ok(newline_count.load(Ordering::SeqCst))
 }

@@ -5,11 +5,10 @@ use std::sync::Arc;
 use bed_reader::allclose;
 use bed_reader::assert_eq_nan;
 use bed_reader::assert_error_variant;
-use bed_reader::bed_cloud::BedCloudBuilder;
 use bed_reader::sample_bed_file;
-use bed_reader::sample_bed_store_path;
-use bed_reader::sample_store_path;
-use bed_reader::sample_store_paths;
+use bed_reader::sample_bed_object_path;
+use bed_reader::sample_object_path;
+use bed_reader::sample_object_paths;
 use bed_reader::BedCloud;
 use bed_reader::BedError;
 use bed_reader::BedErrorPlus;
@@ -19,11 +18,8 @@ use bed_reader::ReadOptions;
 use bed_reader::SliceInfo1;
 use ndarray as nd;
 use ndarray::s;
-use ndarray_rand::rand::rngs::StdRng;
-use ndarray_rand::rand_distr::Uniform;
 use object_store::local::LocalFileSystem;
 use object_store::path::Path as StorePath;
-use temp_testdir::TempDir;
 
 // cmk see https://github.com/apache/arrow-rs/tree/master/object_store
 // cmk see https://github.com/roeap/object-store-python
@@ -33,14 +29,15 @@ async fn rusty_cloud_bed0() -> Result<(), Box<BedErrorPlus>> {
     let file_path = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
     use bed_reader::Bed;
 
-    let mut bed_cloud = Bed::new(&file_path)?;
-    let val0 = bed_cloud.read::<i8>()?;
+    let mut bed = Bed::new(&file_path)?;
+    let val0 = bed.read::<i8>()?;
     println!("{val0:?}");
 
-    let store_path = StorePath::from_filesystem_path(file_path).map_err(BedErrorPlus::from)?;
+    // cmk00 Idea: Create a struct that hold object_store and path. Convert from tuple.
     let object_store = Arc::new(LocalFileSystem::new());
-
-    let mut bed_cloud = BedCloud::new(&object_store, &store_path).await?;
+    let store_path = StorePath::from_filesystem_path(file_path).map_err(BedErrorPlus::from)?;
+    // cmk00 get this working on references and without .into
+    let mut bed_cloud = BedCloud::new((object_store, store_path)).await?;
     let val = bed_cloud.read::<i8>().await?;
     println!("{val:?}");
 
@@ -53,8 +50,8 @@ async fn rusty_cloud_bed1() -> Result<(), Box<BedErrorPlus>> {
     let file_path = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
     use bed_reader::Bed;
 
-    let mut bed_cloud = Bed::new(&file_path)?;
-    let val = bed_cloud.read::<i8>()?;
+    let mut bed = Bed::new(&file_path)?;
+    let val = bed.read::<i8>()?;
     println!("{val:?}");
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     assert!(mean == -13.142); // really shouldn't do mean on data where -127 represents missing
@@ -67,13 +64,13 @@ async fn rusty_cloud_bed1() -> Result<(), Box<BedErrorPlus>> {
     let store_path = StorePath::from_filesystem_path(file_path).map_err(BedErrorPlus::from)?;
     let object_store = Arc::new(LocalFileSystem::new());
 
-    let mut bed_cloud = BedCloud::new(&object_store, &store_path).await?;
+    let mut bed_cloud = BedCloud::new((&object_store, &store_path)).await?;
     let val = bed_cloud.read::<i8>().await?;
     println!("{val:?}");
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     assert!(mean == -13.142); // really shouldn't do mean on data where -127 represents missing
 
-    let mut bed_cloud = BedCloud::new(&object_store, &store_path).await?;
+    let mut bed_cloud = BedCloud::new((object_store, store_path)).await?;
     let val = ReadOptions::builder()
         .count_a2()
         .i8()
@@ -100,9 +97,9 @@ async fn rusty_cloud_bed2() -> Result<(), Box<BedErrorPlus>> {
     println!("{mean:?}");
     assert!(mean == 1.0); // really shouldn't do mean on data where -127 represents missing
 
-    let path = StorePath::from_filesystem_path(file).map_err(BedErrorPlus::from)?;
+    let store_path = StorePath::from_filesystem_path(file).map_err(BedErrorPlus::from)?;
     let object_store = Arc::new(LocalFileSystem::new());
-    let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    let mut bed_cloud = BedCloud::new((object_store, store_path)).await?;
     let val = ReadOptions::builder()
         .iid_index(0)
         .sid_index(vec![1])
@@ -118,9 +115,9 @@ async fn rusty_cloud_bed2() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn rusty_cloud_bed3() -> Result<(), Box<BedErrorPlus>> {
-    let (object_store, path) = sample_bed_store_path("plink_sim_10s_100v_10pmiss.bed")?;
+    let object_path = sample_bed_object_path("plink_sim_10s_100v_10pmiss.bed")?;
 
-    let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    let mut bed_cloud = BedCloud::new(object_path).await?;
     let iid_bool: nd::Array1<bool> = (0..bed_cloud.iid_count().await?)
         .map(|elem| (elem % 2) != 0)
         .collect();
@@ -142,9 +139,9 @@ async fn rusty_cloud_bed3() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn rusty_cloud_bed_allele() -> Result<(), Box<BedErrorPlus>> {
-    let (object_store, path) = sample_bed_store_path("plink_sim_10s_100v_10pmiss.bed")?;
+    let object_path = sample_bed_object_path("plink_sim_10s_100v_10pmiss.bed")?;
 
-    let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    let mut bed_cloud = BedCloud::new(object_path).await?;
     let val = ReadOptions::builder()
         .count_a2()
         .i8()
@@ -160,9 +157,9 @@ async fn rusty_cloud_bed_allele() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn rusty_cloud_bed_order() -> Result<(), Box<BedErrorPlus>> {
-    let (object_store, path) = sample_bed_store_path("plink_sim_10s_100v_10pmiss.bed")?;
+    let object_path = sample_bed_object_path("plink_sim_10s_100v_10pmiss.bed")?;
 
-    let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    let mut bed_cloud = BedCloud::new(object_path).await?;
     let val = ReadOptions::builder()
         .c()
         .i8()
@@ -178,16 +175,16 @@ async fn rusty_cloud_bed_order() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn bad_header_cloud() -> Result<(), Box<BedErrorPlus>> {
-    let (object_store, path) = sample_store_path("badfile.bed")?;
-    let bed_cloud = BedCloud::builder(&object_store, &path)
+    let object_path = sample_object_path("badfile.bed")?;
+    let bed_cloud = BedCloud::builder(&object_path)
         .skip_early_check()
         .build()
         .await?;
 
-    println!("{:?}", bed_cloud.path());
+    println!("{:?}", bed_cloud.object_path());
 
     // Attempt to create a new BedCloud instance and handle the error
-    let result = BedCloud::new(&object_store, &path).await;
+    let result = BedCloud::new(&object_path).await;
     assert_error_variant!(result, BedErrorPlus::BedError(BedError::IllFormed(_)));
 
     Ok(())
@@ -195,9 +192,9 @@ async fn bad_header_cloud() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
-    let (object_store, path) = sample_bed_store_path("small.bed")?;
+    let object_path = sample_bed_object_path("small.bed")?;
 
-    let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    let mut bed_cloud = BedCloud::new(object_path).await?;
     let val = bed_cloud.read::<f64>().await?;
     assert_eq_nan(
         &val,
@@ -208,8 +205,8 @@ async fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
         ],
     );
 
-    let (object_store, path2) = sample_bed_store_path("some_missing.bed")?;
-    let mut bed_cloud2 = BedCloud::new(&object_store, &path2).await?;
+    let object_path2 = sample_bed_object_path("some_missing.bed")?;
+    let mut bed_cloud2 = BedCloud::new(object_path2.clone()).await?;
     let val2 = ReadOptions::builder()
         .f64()
         .iid_index(s![..;2])
@@ -218,7 +215,7 @@ async fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
         .await?;
     assert!(val2.dim() == (50, 10));
 
-    let mut bed_cloud3 = BedCloud::new(&object_store, &path2).await?;
+    let mut bed_cloud3 = BedCloud::new(object_path2).await?;
     println!("{:?}", bed_cloud3.iid().await?.slice(s![..5]));
     println!("{:?}", bed_cloud3.sid().await?.slice(s![..5]));
     println!(
@@ -255,8 +252,8 @@ async fn open_examples_cloud() -> Result<(), Box<BedErrorPlus>> {
     //      [ 0.  1.  2.  0.]]
     //     >>> del bed_cloud  # optional: delete bed_cloud object
 
-    let (object_store, path) = sample_bed_store_path("small.bed")?;
-    let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    let object_path = sample_bed_object_path("small.bed")?;
+    let mut bed_cloud = BedCloud::new(&object_path).await?;
 
     println!("{:?}", bed_cloud.iid().await?);
     println!("{:?}", bed_cloud.sid().await?);
@@ -280,7 +277,7 @@ async fn open_examples_cloud() -> Result<(), Box<BedErrorPlus>> {
     //      [nan]
     //      [ 2.]]
 
-    let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    let mut bed_cloud = BedCloud::new(&object_path).await?;
     println!(
         "{:?}",
         ReadOptions::builder()
@@ -302,7 +299,7 @@ async fn open_examples_cloud() -> Result<(), Box<BedErrorPlus>> {
     //     >>> print(bed_cloud.sid) # same as before
     //     ['sid1' 'sid2' 'sid3' 'sid4']
 
-    let mut bed_cloud = BedCloud::builder(&object_store, &path)
+    let mut bed_cloud = BedCloud::builder(&object_path)
         .iid(["sample1", "sample2", "sample3"])
         .build()
         .await?;
@@ -314,33 +311,21 @@ async fn open_examples_cloud() -> Result<(), Box<BedErrorPlus>> {
 
     // Do more testing of Rust
     let iid = nd::array!["sample1", "sample2", "sample3"];
-    let mut _bed_cloud = BedCloud::builder(&object_store, &path)
-        .iid(iid)
-        .build()
-        .await?;
+    let mut _bed_cloud = BedCloud::builder(&object_path).iid(iid).build().await?;
     let iid = nd::array![
         "sample1".to_string(),
         "sample2".to_string(),
         "sample3".to_string()
     ];
-    let mut _bed_cloud = BedCloud::builder(&object_store, &path)
-        .iid(iid)
-        .build()
-        .await?;
+    let mut _bed_cloud = BedCloud::builder(&object_path).iid(iid).build().await?;
     let iid = vec!["sample1", "sample2", "sample3"];
-    let mut _bed_cloud = BedCloud::builder(&object_store, &path)
-        .iid(iid)
-        .build()
-        .await?;
+    let mut _bed_cloud = BedCloud::builder(&object_path).iid(iid).build().await?;
     let iid = vec![
         "sample1".to_string(),
         "sample2".to_string(),
         "sample3".to_string(),
     ];
-    let mut _bed_cloud = BedCloud::builder(&object_store, &path)
-        .iid(iid)
-        .build()
-        .await?;
+    let mut _bed_cloud = BedCloud::builder(&object_path).iid(iid).build().await?;
 
     // Give the number of individuals (samples) and SNPs (variants) so that the .fam and
     // .bim files need never be opened.
@@ -351,7 +336,7 @@ async fn open_examples_cloud() -> Result<(), Box<BedErrorPlus>> {
     //      [ 2.  0. nan  2.]
     //      [ 0.  1.  2.  0.]]
 
-    let mut bed_cloud = BedCloud::builder(&object_store, &path)
+    let mut bed_cloud = BedCloud::builder(&object_path)
         .iid_count(3)
         .sid_count(4)
         .build()
@@ -372,7 +357,7 @@ async fn open_examples_cloud() -> Result<(), Box<BedErrorPlus>> {
     //     >>> print(bed_cloud.allele_2)   # not read and not offered
     //     None
 
-    let mut bed_cloud = BedCloud::builder(&object_store, &path)
+    let mut bed_cloud = BedCloud::builder(&object_path)
         .skip_allele_2()
         .build()
         .await?;
@@ -391,16 +376,16 @@ async fn open_examples_cloud() -> Result<(), Box<BedErrorPlus>> {
 async fn metadata_etc_cloud() -> Result<(), Box<BedErrorPlus>> {
     // Initialize BedCloud with the sample file
     let file_name = sample_bed_file("small.bed")?;
-    let path = StorePath::from_filesystem_path(file_name).map_err(BedErrorPlus::from)?;
     let object_store = Arc::new(LocalFileSystem::new());
+    let store_path = StorePath::from_filesystem_path(file_name).map_err(BedErrorPlus::from)?;
 
     // Reading sex data
-    let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    let mut bed_cloud = BedCloud::new((&object_store, &store_path)).await?;
     println!("{:?}", bed_cloud.sex().await?);
     // Expected output: [1, 2, 0], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
 
     // Reading centiMorgan position
-    let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    let mut bed_cloud = BedCloud::new((&object_store, &store_path)).await?;
     println!("{:?}", bed_cloud.cm_position().await?);
     // Expected output: [100.4, 2000.5, 4000.7, 7000.9], shape=[4], strides=[1], layout=CFcf (0xf), const ndim=1
 
@@ -409,7 +394,7 @@ async fn metadata_etc_cloud() -> Result<(), Box<BedErrorPlus>> {
     // Expected output: [1, 100, 1000, 1004], shape=[4], strides=[1], layout=CFcf (0xf), const ndim=1
 
     // Reading family ID
-    let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    let mut bed_cloud = BedCloud::new((&object_store, &store_path)).await?;
     println!("{:?}", bed_cloud.fid().await?);
     // Expected output: ["fid1", "fid1", "fid2"], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
 
@@ -427,9 +412,9 @@ async fn metadata_etc_cloud() -> Result<(), Box<BedErrorPlus>> {
 #[tokio::test]
 async fn hello_father_cloud() -> Result<(), Box<BedErrorPlus>> {
     // Initialize BedCloud with the sample file and custom father metadata
-    let (object_store, path) = sample_bed_store_path("small.bed")?;
+    let object_path = sample_bed_object_path("small.bed")?;
 
-    let mut bed_cloud = BedCloud::builder(&object_store, &path)
+    let mut bed_cloud = BedCloud::builder(object_path)
         .father(["f1", "f2", "f3"])
         .skip_mother()
         .build()
@@ -446,8 +431,8 @@ async fn hello_father_cloud() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn max_concurrent_requests() -> Result<(), Box<BedErrorPlus>> {
-    let (object_store, path) = sample_bed_store_path("plink_sim_10s_100v_10pmiss.bed")?;
-    let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    let object_path = sample_bed_object_path("plink_sim_10s_100v_10pmiss.bed")?;
+    let mut bed_cloud = BedCloud::new(object_path).await?;
 
     // Read data with specified number of threads (or equivalent parallel processing setting)
     let val = ReadOptions::builder()
@@ -465,13 +450,13 @@ async fn max_concurrent_requests() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn fam_and_bim_cloud() -> Result<(), Box<BedErrorPlus>> {
-    let (object_store, deb_maf_mib) = sample_store_paths(["small.deb", "small.maf", "small.mib"])?;
+    let mut deb_maf_mib = sample_object_paths(["small.deb", "small.maf", "small.mib"])?;
 
     // Build BedCloud with custom fam and bim paths
     // cmk should they have their own object_store?
-    let mut bed_cloud = BedCloud::builder(&object_store, &deb_maf_mib[0])
-        .fam_path(&deb_maf_mib[1])
-        .bim_path(&deb_maf_mib[2])
+    let mut bed_cloud = BedCloud::builder(deb_maf_mib.remove(0))
+        .fam_object_path(deb_maf_mib.remove(0)) // Note: indexes shift
+        .bim_object_path(deb_maf_mib.remove(0)) // Note: indexes shift
         .build()
         .await?;
 
@@ -490,8 +475,8 @@ async fn fam_and_bim_cloud() -> Result<(), Box<BedErrorPlus>> {
 async fn readme_examples_cloud() -> Result<(), Box<BedErrorPlus>> {
     // Read genomic data from a .bed_cloud file.
 
-    let (object_store, path) = sample_bed_store_path("small.bed")?;
-    let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    let object_path = sample_bed_object_path("small.bed")?;
+    let mut bed_cloud = BedCloud::new(object_path).await?;
     let val = bed_cloud.read::<f64>().await?;
     println!("{val:?}");
     // [[1.0, 0.0, NaN, 0.0],
@@ -500,8 +485,8 @@ async fn readme_examples_cloud() -> Result<(), Box<BedErrorPlus>> {
 
     // Read every second individual and SNPs (variants) from 20 to 30.
 
-    let (object_store2, path2) = sample_bed_store_path("some_missing.bed")?;
-    let mut bed_cloud2 = BedCloud::new(&object_store2, &path2).await?;
+    let object_path2 = sample_bed_object_path("some_missing.bed")?;
+    let mut bed_cloud2 = BedCloud::new(&object_path2).await?;
     let val2 = ReadOptions::<f64>::builder()
         .iid_index(s![..;2])
         .sid_index(20..30)
@@ -512,7 +497,7 @@ async fn readme_examples_cloud() -> Result<(), Box<BedErrorPlus>> {
     // List the first 5 individual (sample) ids, the first 5 SNP (variant) ids,
     // and every unique chromosome. Then, read every genomic value in chromosome 5.
 
-    let mut bed_cloud3 = BedCloud::new(&object_store2, &path2).await?;
+    let mut bed_cloud3 = BedCloud::new(object_path2).await?;
     let iid = bed_cloud3.iid().await?;
     let s = iid.slice(s![..5]);
     println!("{:?}", s);
@@ -544,7 +529,7 @@ async fn readme_examples_cloud() -> Result<(), Box<BedErrorPlus>> {
 // async fn write_docs_cloud() -> Result<(), Box<BedErrorPlus>> {
 //     // In this example, all properties are given.
 
-//     let (object_store, path) = sample_bed_store_path("small.bed")?;
+//     let object_path = sample_bed_store_path("small.bed")?;
 //     let output_folder = TempDir::default();
 
 //     let output_file = output_folder.join("small.bed");
@@ -553,7 +538,7 @@ async fn readme_examples_cloud() -> Result<(), Box<BedErrorPlus>> {
 //         [2.0, 0.0, f64::NAN, 2.0],
 //         [0.0, 1.0, 2.0, 0.0]
 //     ];
-//     WriteOptions::builder(&object_store, &path)
+//     WriteOptions::builder(&object_path)
 //         .fid(["fid1", "fid1", "fid2"])
 //         .iid(["iid1", "iid2", "iid3"])
 //         .father(["iid23", "iid23", "iid22"])
@@ -590,8 +575,8 @@ async fn readme_examples_cloud() -> Result<(), Box<BedErrorPlus>> {
 // async fn read_write_cloud() -> Result<(), Box<BedErrorPlus>> {
 //     // Read the BED file and its properties.
 
-//     let (object_store, path) = sample_bed_store_path("small.bed")?;
-//     let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+//     let object_path = sample_bed_store_path("small.bed")?;
+//     let mut bed_cloud = BedCloud::new(&object_path).await?;
 //     let val = bed_cloud.read::<f64>().await?;
 //     let metadata = bed_cloud.metadata().await?;
 //     println!("{metadata:?}");
@@ -641,9 +626,9 @@ async fn readme_examples_cloud() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn range_cloud() -> Result<(), Box<BedErrorPlus>> {
-    let (object_store, path) = sample_bed_store_path("small.bed")?;
+    let object_path = sample_bed_object_path("small.bed")?;
 
-    let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    let mut bed_cloud = BedCloud::new(object_path).await?;
     ReadOptions::builder()
         .iid_index(0..2)
         .i8()
@@ -689,8 +674,8 @@ async fn nd_slice_cloud() -> Result<(), Box<BedErrorPlus>> {
     println!("{:?}", ndarray.slice(slice)); // []
 
     // Reading BED file with various slice options
-    let (object_store, path) = sample_bed_store_path("small.bed")?;
-    let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    let object_path = sample_bed_object_path("small.bed")?;
+    let mut bed_cloud = BedCloud::new(object_path).await?;
 
     ReadOptions::builder()
         .iid_index(nd::s![0..2])
@@ -723,9 +708,9 @@ async fn nd_slice_cloud() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn skip_coverage_cloud() -> Result<(), Box<BedErrorPlus>> {
-    let (object_store, path) = sample_bed_store_path("small.bed")?;
+    let object_path = sample_bed_object_path("small.bed")?;
 
-    let mut bed_cloud = BedCloud::builder(&object_store, &path)
+    let mut bed_cloud = BedCloud::builder(object_path)
         .skip_fid()
         .skip_iid()
         .skip_father()
@@ -752,9 +737,9 @@ async fn skip_coverage_cloud() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn into_iter_cloud() -> Result<(), Box<BedErrorPlus>> {
-    let (object_store, path) = sample_bed_store_path("small.bed")?;
+    let object_path = sample_bed_object_path("small.bed")?;
 
-    let mut bed_cloud = BedCloud::builder(&object_store, &path)
+    let mut bed_cloud = BedCloud::builder(object_path)
         .fid(["sample1", "sample2", "sample3"])
         .iid(["sample1", "sample2", "sample3"])
         .father(["sample1", "sample2", "sample3"])
@@ -786,10 +771,10 @@ where
         + std::panic::RefUnwindSafe,
 {
     println!("Running {:?}", &range_thing);
-    let (object_store, path) = sample_bed_store_path("toydata.5chrom.bed")?;
+    let object_path = sample_bed_object_path("toydata.5chrom.bed")?;
 
     let result1 = catch_unwind(|| async {
-        let mut bed_cloud = BedCloud::new(&object_store, &path).await.unwrap();
+        let mut bed_cloud = BedCloud::new(object_path).await.unwrap();
         let all: Vec<isize> = (0..(bed_cloud.iid_count().await.unwrap() as isize)).collect();
         let iid_index: &[isize] = &all[range_thing.clone()];
 
@@ -810,10 +795,10 @@ async fn rt2_cloud(
     range_thing: bed_reader::Index,
 ) -> Result<Result<nd::Array2<i8>, Box<BedErrorPlus>>, Box<BedErrorPlus>> {
     println!("Running {:?}", &range_thing);
-    let (object_store, path) = sample_bed_store_path("toydata.5chrom.bed")?;
+    let object_path = sample_bed_object_path("toydata.5chrom.bed")?;
 
     let result2 = catch_unwind(|| async {
-        let mut bed_cloud = BedCloud::new(&object_store, &path).await.unwrap();
+        let mut bed_cloud = BedCloud::new(object_path).await.unwrap();
         ReadOptions::builder()
             .iid_index(range_thing)
             .i8()
@@ -842,10 +827,10 @@ async fn rt3_cloud(
     range_thing: bed_reader::Index,
 ) -> Result<Result<usize, Box<BedErrorPlus>>, Box<BedErrorPlus>> {
     println!("Running {:?}", &range_thing);
-    let (object_store, path) = sample_bed_store_path("toydata.5chrom.bed")?;
+    let object_path = sample_bed_object_path("toydata.5chrom.bed")?;
 
     let result3 = catch_unwind(|| async {
-        let mut bed_cloud = BedCloud::new(&object_store, &path).await.unwrap();
+        let mut bed_cloud = BedCloud::new(object_path).await.unwrap();
         range_thing
             .len(bed_cloud.iid_count().await.unwrap())
             .unwrap()
@@ -861,10 +846,10 @@ async fn nds1_cloud(
     range_thing: SliceInfo1,
 ) -> Result<Result<nd::Array2<i8>, Box<BedErrorPlus>>, Box<BedErrorPlus>> {
     println!("Running {:?}", &range_thing);
-    let (object_store, path) = sample_bed_store_path("toydata.5chrom.bed")?;
+    let object_path = sample_bed_object_path("toydata.5chrom.bed")?;
 
     let result1 = catch_unwind(|| async {
-        let mut bed_cloud = BedCloud::new(&object_store, &path).await.unwrap();
+        let mut bed_cloud = BedCloud::new(object_path).await.unwrap();
         let all: nd::Array1<isize> = (0..(bed_cloud.iid_count().await.unwrap() as isize)).collect();
         let iid_index = &all.slice(&range_thing);
 
@@ -1036,8 +1021,8 @@ async fn nd_slice_same_cloud() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn bool_read_cloud() -> Result<(), Box<BedErrorPlus>> {
-    let (object_store, path) = sample_bed_store_path("small.bed")?;
-    let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    let object_path = sample_bed_object_path("small.bed")?;
+    let mut bed_cloud = BedCloud::new(object_path).await?;
 
     let result = ReadOptions::builder()
         .iid_index([false, false, true, false])
@@ -1060,8 +1045,8 @@ async fn bool_read_cloud() -> Result<(), Box<BedErrorPlus>> {
 }
 #[tokio::test]
 async fn i8_etc_cloud() -> Result<(), Box<BedErrorPlus>> {
-    let (object_store, path) = sample_bed_store_path("small.bed")?;
-    let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    let object_path = sample_bed_object_path("small.bed")?;
+    let mut bed_cloud = BedCloud::new(object_path).await?;
 
     let _val = ReadOptions::builder()
         .f()
@@ -1075,8 +1060,8 @@ async fn i8_etc_cloud() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn fill_cloud() -> Result<(), Box<BedErrorPlus>> {
-    let (object_store, path) = sample_bed_store_path("small.bed")?;
-    let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    let object_path = sample_bed_object_path("small.bed")?;
+    let mut bed_cloud = BedCloud::new(object_path).await?;
 
     let read_options = ReadOptions::builder()
         .f()
@@ -1105,8 +1090,8 @@ async fn fill_cloud() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn read_options_builder_cloud() -> Result<(), Box<BedErrorPlus>> {
-    let (object_store, path) = sample_bed_store_path("small.bed")?;
-    let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    let object_path = sample_bed_object_path("small.bed")?;
+    let mut bed_cloud = BedCloud::new(object_path).await?;
 
     // Read the SNPs indexed by 2.
     let val = ReadOptions::builder()
@@ -1187,9 +1172,9 @@ async fn read_options_builder_cloud() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn bed_builder_cloud() -> Result<(), Box<BedErrorPlus>> {
-    let (object_store, path) = sample_bed_store_path("small.bed")?;
+    let object_path = sample_bed_object_path("small.bed")?;
 
-    let mut bed_cloud = BedCloud::builder(&object_store, &path).build().await?;
+    let mut bed_cloud = BedCloud::builder(&object_path).build().await?;
     println!("{:?}", bed_cloud.iid().await?);
     println!("{:?}", bed_cloud.sid().await?);
     let val = bed_cloud.read::<f64>().await?;
@@ -1203,7 +1188,7 @@ async fn bed_builder_cloud() -> Result<(), Box<BedErrorPlus>> {
         ],
     );
 
-    let mut bed_cloud = BedCloud::builder(&object_store, &path).build().await?;
+    let mut bed_cloud = BedCloud::builder(&object_path).build().await?;
     let val = ReadOptions::builder()
         .sid_index(2)
         .f64()
@@ -1212,14 +1197,14 @@ async fn bed_builder_cloud() -> Result<(), Box<BedErrorPlus>> {
 
     assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
 
-    let mut bed_cloud = BedCloud::builder(&object_store, &path)
+    let mut bed_cloud = BedCloud::builder(&object_path)
         .iid(["sample1", "sample2", "sample3"])
         .build()
         .await?;
     println!("{:?}", bed_cloud.iid().await?); // replaced
     println!("{:?}", bed_cloud.sid().await?); // same as before
 
-    let mut bed_cloud = BedCloud::builder(&object_store, &path)
+    let mut bed_cloud = BedCloud::builder(&object_path)
         .iid_count(3)
         .sid_count(4)
         .build()
@@ -1234,7 +1219,7 @@ async fn bed_builder_cloud() -> Result<(), Box<BedErrorPlus>> {
         ],
     );
 
-    let mut bed_cloud = BedCloud::builder(&object_store, &path)
+    let mut bed_cloud = BedCloud::builder(object_path)
         .skip_father()
         .skip_mother()
         .skip_sex()
@@ -1252,8 +1237,8 @@ async fn bed_builder_cloud() -> Result<(), Box<BedErrorPlus>> {
 #[tokio::test]
 #[allow(clippy::needless_borrows_for_generic_args)]
 async fn negative_indexing_cloud() -> Result<(), Box<BedErrorPlus>> {
-    let (object_store, path) = sample_bed_store_path("small.bed")?;
-    let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    let object_path = sample_bed_object_path("small.bed")?;
+    let mut bed_cloud = BedCloud::new(object_path).await?;
 
     // println!("{:?}", bed_cloud.read::<f64>().await?);
     // [[1.0, 0.0, NaN, 0.0],
@@ -1340,8 +1325,8 @@ async fn negative_indexing_cloud() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn index_doc_cloud() -> Result<(), Box<BedErrorPlus>> {
-    let (object_store, path) = sample_bed_store_path("some_missing.bed")?;
-    let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    let object_path = sample_bed_object_path("some_missing.bed")?;
+    let mut bed_cloud = BedCloud::new(object_path).await?;
 
     println!("{:?}", bed_cloud.dim().await?); // prints (100, 100)
 
@@ -1420,8 +1405,8 @@ async fn index_doc_cloud() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn cloud_index_options() -> Result<(), Box<BedErrorPlus>> {
-    let (object_store, path) = sample_bed_store_path("some_missing.bed")?;
-    let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    let object_path = sample_bed_object_path("some_missing.bed")?;
+    let mut bed_cloud = BedCloud::new(object_path).await?;
 
     #[allow(clippy::let_unit_value)]
     let index: () = ();
@@ -1670,23 +1655,23 @@ async fn cloud_index_options() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn cloud_set_metadata() -> Result<(), Box<BedErrorPlus>> {
-    let (object_store, path) = sample_bed_store_path("small.bed")?;
+    let object_path = sample_bed_object_path("small.bed")?;
     let metadata = Metadata::builder()
         .iid(["iid1", "iid2", "iid3"])
         .sid(["sid1", "sid2", "sid3", "sid4"])
         .build()?;
-    let mut bed_cloud = BedCloud::builder(&object_store, &path)
+    let mut bed_cloud = BedCloud::builder(&object_path)
         .metadata(&metadata)
         .build()
         .await?;
     let metadata2 = bed_cloud.metadata().await?;
     println!("{metadata2:?}");
 
-    let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    let mut bed_cloud = BedCloud::new(&object_path).await?;
     let metadata = bed_cloud.metadata().await?;
     println!("{metadata:?}");
 
-    let mut bed_cloud = BedCloud::builder(&object_store, &path)
+    let mut bed_cloud = BedCloud::builder(&object_path)
         .metadata(&metadata)
         .build()
         .await?;
@@ -1698,8 +1683,8 @@ async fn cloud_set_metadata() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn cloud_metadata_print() -> Result<(), Box<BedErrorPlus>> {
-    let (object_store, path) = sample_bed_store_path("small.bed")?;
-    let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    let object_path = sample_bed_object_path("small.bed")?;
+    let mut bed_cloud = BedCloud::new(object_path).await?;
 
     let fid = bed_cloud.fid().await?;
     println!("{fid:?}"); // Outputs ndarray ["fid1", "fid1", "fid2"]
@@ -1731,8 +1716,8 @@ async fn cloud_metadata_print() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn cloud_iid_index() -> Result<(), Box<BedErrorPlus>> {
-    let (object_store, path) = sample_bed_store_path("some_missing.bed")?;
-    let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    let object_path = sample_bed_object_path("some_missing.bed")?;
+    let mut bed_cloud = BedCloud::new(object_path).await?;
 
     // Read the individual at index position 3
 
@@ -1931,8 +1916,8 @@ async fn cloud_iid_index() -> Result<(), Box<BedErrorPlus>> {
 //     // Extract metadata from a file.
 //     // Create a random file with the same metadata.
 
-//     let (object_store, path) = sample_bed_store_path("small.bed")?;
-//     let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+//     let object_path = sample_bed_store_path("small.bed")?;
+//     let mut bed_cloud = BedCloud::new(&object_path).await?;
 
 //     let metadata = bed_cloud.metadata().await?;
 //     let shape = bed_cloud.dim()?;
@@ -2005,8 +1990,8 @@ async fn cloud_struct_play() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn cloud_metadata_bed() -> Result<(), Box<BedErrorPlus>> {
-    let (object_store, path) = sample_bed_store_path("small.bed")?;
-    let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    let object_path = sample_bed_object_path("small.bed")?;
+    let mut bed_cloud = BedCloud::new(object_path).await?;
     let metadata = bed_cloud.metadata().await?;
     println!("{0:?}", metadata.iid()); // Outputs Some(["iid1", "iid2", "iid3"] ...)
     println!("{0:?}", metadata.sid()); // Outputs Some(["sid1", "sid2", "sid3", "sid4"] ...)
@@ -2019,8 +2004,8 @@ async fn cloud_read_and_fill_with_options() -> Result<(), Box<BedErrorPlus>> {
     use bed_reader::{BedCloud, ReadOptions};
     use ndarray as nd;
     // Read the SNPs indexed by 2.
-    let (object_store, path) = sample_bed_store_path("small.bed")?;
-    let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    let object_path = sample_bed_object_path("small.bed")?;
+    let mut bed_cloud = BedCloud::new(object_path).await?;
 
     let read_options = ReadOptions::builder().sid_index(2).build()?;
     let mut val = nd::Array2::<f64>::default((3, 1));
@@ -2030,8 +2015,8 @@ async fn cloud_read_and_fill_with_options() -> Result<(), Box<BedErrorPlus>> {
 
     assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
 
-    let (object_store, path) = sample_bed_store_path("small.bed")?;
-    let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    let object_path = sample_bed_object_path("small.bed")?;
+    let mut bed_cloud = BedCloud::new(object_path).await?;
     let mut val = nd::Array2::<f64>::default((3, 1));
     ReadOptions::builder()
         .sid_index(2)
@@ -2045,14 +2030,14 @@ async fn cloud_read_and_fill_with_options() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn cloud_bed_builder_metadata() -> Result<(), Box<BedErrorPlus>> {
-    let (object_store, path) = sample_bed_store_path("small.bed")?;
+    let object_path = sample_bed_object_path("small.bed")?;
 
     // show that can fine errors
     let metadata = Metadata::builder()
         .iid(["i1", "i2", "i3"])
         .sid(["s1", "s2", "s3", "s4"])
         .build()?;
-    let result = BedCloud::builder(&object_store, &path)
+    let result = BedCloud::builder(&object_path)
         .fid(["f1", "f2", "f3", "f4"])
         .metadata(&metadata)
         .build()
@@ -2066,7 +2051,7 @@ async fn cloud_bed_builder_metadata() -> Result<(), Box<BedErrorPlus>> {
         .iid(["i1", "i2", "i3"])
         .sid(["s1", "s2", "s3", "s4"])
         .build()?;
-    let mut bed_cloud = BedCloud::builder(&object_store, &path)
+    let mut bed_cloud = BedCloud::builder(&object_path)
         .fid(["f1", "f2", "f3"])
         .iid(["x1", "x2", "x3"])
         .metadata(&metadata)
@@ -2077,7 +2062,7 @@ async fn cloud_bed_builder_metadata() -> Result<(), Box<BedErrorPlus>> {
     println!("{0:?}", bed_cloud.sid().await?); // Outputs ndarray ["s1", "s2", "s3", "s4"]
     println!("{0:?}", bed_cloud.chromosome().await?); // Outputs ndarray ["1", "1", "5", "Y"]
 
-    let mut bed_cloud = BedCloud::builder(&object_store, &path)
+    let mut bed_cloud = BedCloud::builder(&object_path)
         .skip_fid()
         .fid(["f1", "f2", "f3"])
         .iid(["x1", "x2", "x3"])
@@ -2139,14 +2124,12 @@ async fn cloud_bed_builder_metadata() -> Result<(), Box<BedErrorPlus>> {
 async fn cloud_metadata_read_fam_bim() -> Result<(), Box<BedErrorPlus>> {
     let skip_set = HashSet::<MetadataFields>::new();
     let metadata_empty = Metadata::new();
-    let (object_store, path) = sample_store_path("small.fam")?;
+    let object_path = sample_object_path("small.fam")?;
     let (metadata_fam, iid_count) = metadata_empty
-        .read_fam_cloud(&object_store, &path, &skip_set)
+        .read_fam_cloud(&object_path, &skip_set)
         .await?;
-    let (object_store, path) = sample_store_path("small.bim")?;
-    let (metadata_bim, sid_count) = metadata_fam
-        .read_bim_cloud(&object_store, &path, &skip_set)
-        .await?;
+    let object_path = sample_object_path("small.bim")?;
+    let (metadata_bim, sid_count) = metadata_fam.read_bim_cloud(&object_path, &skip_set).await?;
     assert_eq!(iid_count, 3);
     assert_eq!(sid_count, 4);
     println!("{0:?}", metadata_bim.iid()); // Outputs optional ndarray Some(["iid1", "iid2", "iid3"]...)
@@ -2186,8 +2169,8 @@ async fn cloud_read_options_properties() -> Result<(), Box<BedErrorPlus>> {
     assert!(read_options.is_a1_counted());
     assert_eq!(read_options.num_threads(), None);
 
-    let (object_store, path) = sample_bed_store_path("small.bed")?;
-    let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    let object_path = sample_bed_object_path("small.bed")?;
+    let mut bed_cloud = BedCloud::new(object_path).await?;
     let val = bed_cloud.read_with_options(&read_options).await?;
 
     assert_eq_nan(&val, &nd::array![[-127, 0, 1], [-127, 2, 2], [2, 0, 0]]);
@@ -2269,8 +2252,8 @@ async fn cloud_read_options_properties() -> Result<(), Box<BedErrorPlus>> {
 async fn cloud_bed_inconsistent_count() -> Result<(), Box<BedErrorPlus>> {
     // Bed: fid vs metadata
     let metadata = Metadata::builder().iid(["f1", "f2", "f3", "f4"]).build()?;
-    let (object_store, path) = sample_bed_store_path("small.bed")?;
-    let result = BedCloud::builder(&object_store, &path)
+    let object_path = sample_bed_object_path("small.bed")?;
+    let result = BedCloud::builder(&object_path)
         .fid(["f1", "f2", "f3"])
         .metadata(&metadata)
         .build()
@@ -2281,9 +2264,9 @@ async fn cloud_bed_inconsistent_count() -> Result<(), Box<BedErrorPlus>> {
     );
 
     // Bed: file vs file:
-    let (object_store, fam_path) = sample_store_path("small.fam_bad")?;
-    let mut bed_cloud = BedCloud::builder(&object_store, &path)
-        .fam_path(&fam_path)
+    let bad_fam_object_path = sample_object_path("small.fam_bad")?;
+    let mut bed_cloud = BedCloud::builder(sample_bed_object_path("small.bed")?)
+        .fam_object_path(bad_fam_object_path)
         .skip_iid()
         .skip_father()
         .skip_mother()
@@ -2298,7 +2281,7 @@ async fn cloud_bed_inconsistent_count() -> Result<(), Box<BedErrorPlus>> {
     );
 
     // Bed: fid vs iid
-    let result = BedCloud::builder(&object_store, &path)
+    let result = BedCloud::builder(&object_path)
         .fid(["f1", "f2", "f3"])
         .iid(["i1", "i2", "i3", "i4"])
         .build()
@@ -2309,7 +2292,7 @@ async fn cloud_bed_inconsistent_count() -> Result<(), Box<BedErrorPlus>> {
     );
 
     // Bed: iid vs file
-    let mut bed_cloud = BedCloud::builder(&object_store, &path)
+    let mut bed_cloud = BedCloud::builder(&object_path)
         .iid(["i1", "i2", "i3", "i4"])
         .build()
         .await?;
@@ -2362,9 +2345,8 @@ async fn cloud_metadata_inconsistent_count() -> Result<(), Box<BedErrorPlus>> {
 
     // Metadata: iid vs file
     let metadata = Metadata::builder().iid(["i1", "i2", "i3", "i4"]).build()?;
-    let (object_store, fam_path) = sample_store_path("small.fam")?;
     let result = metadata
-        .read_fam_cloud(&object_store, &fam_path, &skip_set)
+        .read_fam_cloud(&sample_object_path("small.fam")?, &skip_set)
         .await;
     assert_error_variant!(
         result,
@@ -2385,7 +2367,7 @@ async fn cloud_metadata_inconsistent_count() -> Result<(), Box<BedErrorPlus>> {
     // Metadata: file vs file:
     let metadata = Metadata::builder().build()?;
     let result = metadata
-        .read_fam_cloud(&object_store, &fam_path, &skip_set)
+        .read_fam_cloud(&sample_object_path("small.fam")?, &skip_set)
         .await;
     assert_error_variant!(
         result,
@@ -2432,10 +2414,10 @@ async fn cloud_metadata_inconsistent_count() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn cloud_parsing_metadata() -> Result<(), Box<BedErrorPlus>> {
-    let (object_store, bed_fam_bim) =
-        sample_store_paths(["small.bed", "small.fam", "small.bim_bad_positions.bim"])?;
-    let mut bed_cloud = BedCloud::builder(&object_store, &bed_fam_bim[0])
-        .bim_path(&bed_fam_bim[2])
+    let bed_fam_bim =
+        sample_object_paths(["small.bed", "small.fam", "small.bim_bad_positions.bim"])?;
+    let mut bed_cloud = BedCloud::builder(&bed_fam_bim[0])
+        .bim_object_path(&bed_fam_bim[2])
         .build()
         .await?;
     let result = bed_cloud.cm_position().await;
@@ -2447,9 +2429,9 @@ async fn cloud_parsing_metadata() -> Result<(), Box<BedErrorPlus>> {
 async fn cloud_read_fam() -> Result<(), Box<BedErrorPlus>> {
     let skip_set = HashSet::<MetadataFields>::new();
     let metadata_empty = Metadata::new();
-    let (object_store, fam_path) = sample_store_path("small.fam")?;
+    let fam_object_path = sample_object_path("small.fam")?;
     let (metadata_fam, _) = metadata_empty
-        .read_fam_cloud(&object_store, &fam_path, &skip_set)
+        .read_fam_cloud(&fam_object_path, &skip_set)
         .await?;
     // metadata_empty.read_fam("bed_reader/tests/data/small.fam", &skip_set)?;
     println!("{:?}", metadata_fam.iid()); // Outputs optional ndarray Some(["iid1", "iid2", "iid3"]...)
@@ -2458,9 +2440,9 @@ async fn cloud_read_fam() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn cloud_lib_intro() -> Result<(), Box<BedErrorPlus>> {
-    let (object_store, path) = sample_bed_store_path("some_missing.bed")?;
+    let object_path = sample_bed_object_path("some_missing.bed")?;
 
-    let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    let mut bed_cloud = BedCloud::new(object_path).await?;
     println!("{:?}", bed_cloud.iid().await?.slice(s![..5])); // Outputs ndarray: ["iid_0", "iid_1", "iid_2", "iid_3", "iid_4"]
     println!("{:?}", bed_cloud.sid().await?.slice(s![..5])); // Outputs ndarray: ["sid_0", "sid_1", "sid_2", "sid_3", "sid_4"]
     println!(

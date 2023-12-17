@@ -101,7 +101,10 @@
 mod python_module;
 mod tests;
 use anyinput::anyinput;
-pub use bed_cloud::{sample_bed_store_path, sample_store_path, sample_store_paths, BedCloud};
+use bed_cloud::ArcStore;
+use bed_cloud::ArcStoreTarget;
+use bed_cloud::ObjectPath;
+pub use bed_cloud::{sample_bed_object_path, sample_object_path, sample_object_paths, BedCloud};
 use core::fmt::Debug;
 use derive_builder::{Builder, UninitializedFieldError};
 use fetch_data::{FetchData, FetchDataError};
@@ -110,16 +113,12 @@ use futures_util::StreamExt;
 use nd::ShapeBuilder;
 use ndarray as nd;
 use object_store::delimited::newline_delimited_stream;
-use object_store::path::Path as StorePath;
-use object_store::ObjectStore;
 use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::convert::TryFrom;
 use std::fs::{self};
 use std::io::Write;
-use std::ops::{
-    Bound, Deref, Range, RangeBounds, RangeFrom, RangeInclusive, RangeTo, RangeToInclusive,
-};
+use std::ops::{Bound, Range, RangeBounds, RangeFrom, RangeInclusive, RangeTo, RangeToInclusive};
 use std::rc::Rc;
 use std::str::Utf8Error;
 use std::{
@@ -4242,8 +4241,8 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
         bed_cloud: &mut BedCloud<TArc>,
     ) -> Result<nd::Array2<TVal>, Box<BedErrorPlus>>
     where
-        TArc: Clone + Deref + Send + Sync + 'static,
-        TArc::Target: ObjectStore + Send + Sync,
+        TArc: ArcStore,
+        TArc::Target: ArcStoreTarget,
     {
         let read_options = self.build()?;
         bed_cloud.read_with_options(&read_options).await
@@ -4297,8 +4296,8 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
         val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
     ) -> Result<(), Box<BedErrorPlus>>
     where
-        TArc: Clone + Deref + Send + Sync + 'static,
-        TArc::Target: ObjectStore + Send + Sync,
+        TArc: ArcStore,
+        TArc::Target: ArcStoreTarget,
     {
         let read_options = self.build()?;
         bed_cloud
@@ -6258,13 +6257,12 @@ impl Metadata {
     /// cmk doc
     pub async fn read_fam_cloud<TArc>(
         &self,
-        object_store: &TArc,
-        path: &StorePath,
+        object_path: &ObjectPath<TArc>,
         skip_set: &HashSet<MetadataFields>,
     ) -> Result<(Metadata, usize), Box<BedErrorPlus>>
     where
-        TArc: Clone + Deref + Send + Sync + 'static,
-        TArc::Target: ObjectStore + Send + Sync,
+        TArc: ArcStore,
+        TArc::Target: ArcStoreTarget,
     {
         let mut field_vec: Vec<usize> = Vec::new();
 
@@ -6288,7 +6286,7 @@ impl Metadata {
         }
 
         let (mut vec_of_vec, count) = self
-            .read_fam_or_bim_cloud(&field_vec, true, object_store, path)
+            .read_fam_or_bim_cloud(&field_vec, true, object_path)
             .await?;
 
         let mut clone = self.clone();
@@ -6417,13 +6415,12 @@ impl Metadata {
     /// cmk doc
     pub async fn read_bim_cloud<TArc>(
         &self,
-        object_store: &TArc,
-        path: &StorePath,
+        object_path: &ObjectPath<TArc>,
         skip_set: &HashSet<MetadataFields>,
     ) -> Result<(Metadata, usize), Box<BedErrorPlus>>
     where
-        TArc: Clone + Deref + Send + Sync + 'static,
-        TArc::Target: ObjectStore + Send + Sync,
+        TArc: ArcStore,
+        TArc::Target: ArcStoreTarget,
     {
         let mut field_vec: Vec<usize> = Vec::new();
         if self.chromosome.is_none() && !skip_set.contains(&MetadataFields::Chromosome) {
@@ -6448,7 +6445,7 @@ impl Metadata {
 
         let mut clone = self.clone();
         let (mut vec_of_vec, count) = self
-            .read_fam_or_bim_cloud(&field_vec, false, object_store, path)
+            .read_fam_or_bim_cloud(&field_vec, false, object_path)
             .await?;
 
         // unwraps are safe because we pop once for every push
@@ -6535,18 +6532,16 @@ impl Metadata {
         &self,
         field_vec: &[usize],
         is_split_whitespace: bool,
-        object_store: &TArc,
-        path: &StorePath,
+        object_path: &ObjectPath<TArc>,
     ) -> Result<(Vec<Vec<String>>, usize), Box<BedErrorPlus>>
     where
-        TArc: Clone + Deref + Send + Sync + 'static,
-        TArc::Target: ObjectStore + Send + Sync,
+        TArc: ArcStore,
+        TArc::Target: ArcStoreTarget,
     {
         let mut vec_of_vec = vec![vec![]; field_vec.len()];
 
-        let stream = object_store
-            .clone()
-            .get(path)
+        let stream = object_path
+            .get()
             .await
             .map_err(BedErrorPlus::from)?
             .into_stream();
@@ -6575,9 +6570,12 @@ impl Metadata {
                 };
 
                 if fields.len() != 6 {
-                    return Err(
-                        BedError::MetadataFieldCount(6, fields.len(), path.to_string()).into(),
-                    );
+                    return Err(BedError::MetadataFieldCount(
+                        6,
+                        fields.len(),
+                        object_path.to_string(),
+                    )
+                    .into());
                 }
 
                 let mut of_interest_count = 0;
