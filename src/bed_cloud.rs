@@ -160,6 +160,7 @@ where
 
             // cmk00 define get_ranges on object_store
             let vec_bytes = object_path
+                .clone()
                 .get_ranges(&ranges)
                 .await
                 .map_err(BedErrorPlus::from)?;
@@ -173,7 +174,7 @@ where
     while let Some(result) = stream.next().await {
         let (vec_bytes, out_sid_i_vec) = result?;
         decode_bytes_into_columns(
-            vec_bytes,
+            &vec_bytes,
             out_sid_i_vec,
             iid_index,
             &i_div_4_array,
@@ -212,7 +213,7 @@ fn extract_ranges(
 
 #[inline]
 fn decode_bytes_into_columns<TVal: BedVal>(
-    vec_bytes: Vec<Bytes>,
+    bytes_slice: &[Bytes],
     out_sid_i_vec: Vec<usize>,
     iid_index: &[isize],
     i_div_4_array: &nd::prelude::ArrayBase<nd::OwnedRepr<usize>, nd::prelude::Dim<[usize; 1]>>,
@@ -220,7 +221,7 @@ fn decode_bytes_into_columns<TVal: BedVal>(
     out_val: &mut nd::prelude::ArrayBase<nd::ViewRepr<&mut TVal>, nd::prelude::Dim<[usize; 2]>>,
     from_two_bits_to_value: [TVal; 4],
 ) {
-    for (bytes, out_sid_i) in vec_bytes.into_iter().zip(out_sid_i_vec.into_iter()) {
+    for (bytes, out_sid_i) in bytes_slice.iter().zip(out_sid_i_vec.into_iter()) {
         let mut col = out_val.column_mut(out_sid_i);
         // // cmk In parallel, decompress the iid info and put it in its column
         // // cmk .par_bridge() // This seems faster that parallel zip
@@ -237,15 +238,16 @@ fn decode_bytes_into_columns<TVal: BedVal>(
     }
 }
 
-fn check_file_length<TArc>(
+fn check_file_length<TArc, I>(
     in_iid_count: usize,
     in_sid_count: usize,
     object_meta: &ObjectMeta,
-    object_path: &ObjectPath<TArc>,
+    object_path: I,
 ) -> Result<(usize, u64), Box<BedErrorPlus>>
 where
     TArc: ArcStore,
     TArc::Target: ArcStoreTarget,
+    I: Into<ObjectPath<TArc>>,
 {
     let (in_iid_count_div4, in_iid_count_div4_u64) =
         try_div_4(in_iid_count, in_sid_count, CB_HEADER_U64)?;
@@ -253,7 +255,7 @@ where
     let file_len2 = in_iid_count_div4_u64 * (in_sid_count as u64) + CB_HEADER_U64;
     if file_len != file_len2 {
         return Err(Box::new(
-            BedError::IllFormed(object_path.to_string()).into(),
+            BedError::IllFormed(object_path.into().to_string()).into(),
         ));
     }
     Ok((in_iid_count_div4, in_iid_count_div4_u64))
@@ -261,8 +263,8 @@ where
 
 #[inline]
 #[allow(clippy::too_many_arguments)]
-async fn read_no_alloc<TVal: BedVal, TArc>(
-    object_path: &ObjectPath<TArc>,
+async fn read_no_alloc<TVal: BedVal, TArc, I>(
+    object_path: I,
     iid_count: usize,
     sid_count: usize,
     is_a1_counted: bool,
@@ -277,8 +279,10 @@ async fn read_no_alloc<TVal: BedVal, TArc>(
 where
     TArc: ArcStore,
     TArc::Target: ArcStoreTarget,
+    I: Into<ObjectPath<TArc>>,
 {
-    let (object_meta, bytes) = open_and_check(object_path).await?;
+    let object_path = object_path.into();
+    let (object_meta, bytes) = open_and_check(&object_path).await?;
 
     match bytes[2] {
         0 => {
@@ -286,7 +290,7 @@ where
             let mut val_t = val.view_mut().reversed_axes();
 
             internal_read_no_alloc(
-                object_path,
+                &object_path,
                 &object_meta,
                 sid_count,
                 iid_count,
@@ -302,7 +306,7 @@ where
         }
         1 => {
             internal_read_no_alloc(
-                object_path,
+                &object_path,
                 &object_meta,
                 iid_count,
                 sid_count,
@@ -321,13 +325,13 @@ where
     Ok(())
 }
 
-async fn open_and_check<TArc>(
-    object_path: &ObjectPath<TArc>,
-) -> Result<(ObjectMeta, Bytes), Box<BedErrorPlus>>
+async fn open_and_check<TArc, I>(object_path: I) -> Result<(ObjectMeta, Bytes), Box<BedErrorPlus>>
 where
     TArc: ArcStore,
     TArc::Target: ArcStoreTarget,
+    I: Into<ObjectPath<TArc>>,
 {
+    let object_path = object_path.into();
     let get_options = GetOptions {
         range: Some(0..CB_HEADER_U64 as usize),
         ..Default::default()
@@ -355,9 +359,12 @@ where
 {
     // #[anyinput]
     // cmk00 also accept &ObjectPath
-    fn new(object_path: ObjectPath<TArc>) -> Self {
+    fn new<I>(object_path: I) -> Self
+    where
+        I: Into<ObjectPath<TArc>>,
+    {
         Self {
-            object_path: Some(object_path),
+            object_path: Some(object_path.into()),
             fam_object_path: None,
             bim_object_path: None,
 
@@ -611,8 +618,11 @@ where
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
-    pub fn fam_object_path(mut self, object_path: ObjectPath<TArc>) -> Self {
-        self.fam_object_path = Some(Some(object_path));
+    pub fn fam_object_path<I>(mut self, object_path: I) -> Self
+    where
+        I: Into<ObjectPath<TArc>>,
+    {
+        self.fam_object_path = Some(Some(object_path.into()));
         self
     }
 
@@ -2136,9 +2146,9 @@ where
     TArc::Target: ArcStoreTarget,
 {
     if let Some(metadata_object_path) = metadata_object_path {
-        Ok((*metadata_object_path).clone())
+        Ok(metadata_object_path.clone())
     } else {
-        let mut meta_object_path = (*bed_object_path).clone();
+        let mut meta_object_path = bed_object_path.clone();
         meta_object_path
             .set_extension(extension)
             .map_err(BedErrorPlus::from)?;
@@ -2146,12 +2156,14 @@ where
     }
 }
 
-async fn count_lines<TArc>(object_path: &ObjectPath<TArc>) -> Result<usize, Box<BedErrorPlus>>
+async fn count_lines<TArc, I>(object_path: I) -> Result<usize, Box<BedErrorPlus>>
 where
     TArc: ArcStore,
     TArc::Target: ArcStoreTarget,
+    I: Into<ObjectPath<TArc>>,
 {
     let stream = object_path
+        .into()
         .get()
         .await
         .map_err(BedErrorPlus::from)?

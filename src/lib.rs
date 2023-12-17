@@ -109,7 +109,7 @@ use core::fmt::Debug;
 use derive_builder::{Builder, UninitializedFieldError};
 use fetch_data::{FetchData, FetchDataError};
 use futures_util::pin_mut;
-use futures_util::StreamExt;
+use futures_util::stream::StreamExt;
 use nd::ShapeBuilder;
 use ndarray as nd;
 use object_store::delimited::newline_delimited_stream;
@@ -6255,15 +6255,17 @@ impl Metadata {
     }
 
     /// cmk doc
-    pub async fn read_fam_cloud<TArc>(
+    pub async fn read_fam_cloud<TArc, I>(
         &self,
-        object_path: &ObjectPath<TArc>,
+        object_path: I,
         skip_set: &HashSet<MetadataFields>,
     ) -> Result<(Metadata, usize), Box<BedErrorPlus>>
     where
         TArc: ArcStore,
         TArc::Target: ArcStoreTarget,
+        I: Into<ObjectPath<TArc>>,
     {
+        let object_path = object_path.into();
         let mut field_vec: Vec<usize> = Vec::new();
 
         if self.fid.is_none() && !skip_set.contains(&MetadataFields::Fid) {
@@ -6286,7 +6288,7 @@ impl Metadata {
         }
 
         let (mut vec_of_vec, count) = self
-            .read_fam_or_bim_cloud(&field_vec, true, object_path)
+            .read_fam_or_bim_cloud(&field_vec, true, &object_path)
             .await?;
 
         let mut clone = self.clone();
@@ -6413,15 +6415,17 @@ impl Metadata {
     }
 
     /// cmk doc
-    pub async fn read_bim_cloud<TArc>(
+    pub async fn read_bim_cloud<TArc, I>(
         &self,
-        object_path: &ObjectPath<TArc>,
+        object_path: I,
         skip_set: &HashSet<MetadataFields>,
     ) -> Result<(Metadata, usize), Box<BedErrorPlus>>
     where
         TArc: ArcStore,
         TArc::Target: ArcStoreTarget,
+        I: Into<ObjectPath<TArc>>,
     {
+        let object_path = object_path.into();
         let mut field_vec: Vec<usize> = Vec::new();
         if self.chromosome.is_none() && !skip_set.contains(&MetadataFields::Chromosome) {
             field_vec.push(0);
@@ -6445,7 +6449,7 @@ impl Metadata {
 
         let mut clone = self.clone();
         let (mut vec_of_vec, count) = self
-            .read_fam_or_bim_cloud(&field_vec, false, object_path)
+            .read_fam_or_bim_cloud(&field_vec, false, &object_path)
             .await?;
 
         // unwraps are safe because we pop once for every push
