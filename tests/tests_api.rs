@@ -1654,9 +1654,6 @@ where
             .i8()
             .read(&mut bed)
     });
-    if result1.is_err() {
-        return Err(BedError::PanickedThread().into());
-    }
     match result1 {
         Err(_) => Err(BedError::PanickedThread().into()),
         Ok(bed_result) => Ok(bed_result),
@@ -1676,9 +1673,6 @@ fn rt2(
             .i8()
             .read(&mut bed)
     });
-    if result2.is_err() {
-        return Err(BedError::PanickedThread().into());
-    }
     match result2 {
         Err(_) => Err(BedError::PanickedThread().into()),
         Ok(bed_result) => Ok(bed_result),
@@ -1699,9 +1693,6 @@ fn rt3(
         let mut bed = Bed::new(file_name).unwrap();
         range_thing.len(bed.iid_count().unwrap()).unwrap()
     });
-    if result3.is_err() {
-        return Err(BedError::PanickedThread().into());
-    }
     match result3 {
         Err(_) => Err(BedError::PanickedThread().into()),
         Ok(bed_result) => Ok(Ok(bed_result)),
@@ -1724,9 +1715,6 @@ fn nds1(
             .i8()
             .read(&mut bed)
     });
-    if result1.is_err() {
-        return Err(BedError::PanickedThread().into());
-    }
     match result1 {
         Err(_) => Err(BedError::PanickedThread().into()),
         Ok(bed_result) => Ok(bed_result),

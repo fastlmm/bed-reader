@@ -4290,7 +4290,21 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
         bed.read_and_fill_with_options(val, &read_options)
     }
 
-    // cmk should there be read_and_fill_cloud?
+    /// cmk docs
+    pub async fn read_and_fill_cloud<TArc>(
+        &self,
+        bed_cloud: &mut BedCloud<TArc>,
+        val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
+    ) -> Result<(), Box<BedErrorPlus>>
+    where
+        TArc: Clone + Deref + Send + Sync + 'static,
+        TArc::Target: ObjectStore + Send + Sync,
+    {
+        let read_options = self.build()?;
+        bed_cloud
+            .read_and_fill_with_options(val, &read_options)
+            .await
+    }
 
     /// Order of the output array, Fortran-style (default)
     ///
@@ -6242,7 +6256,7 @@ impl Metadata {
     }
 
     /// cmk doc
-    pub async fn read_cloud_fam<TArc>(
+    pub async fn read_fam_cloud<TArc>(
         &self,
         object_store: &TArc,
         path: &StorePath,
@@ -6274,7 +6288,7 @@ impl Metadata {
         }
 
         let (mut vec_of_vec, count) = self
-            .read_cloud_fam_or_bim(&field_vec, true, object_store, path)
+            .read_fam_or_bim_cloud(&field_vec, true, object_store, path)
             .await?;
 
         let mut clone = self.clone();
@@ -6401,7 +6415,7 @@ impl Metadata {
     }
 
     /// cmk doc
-    pub async fn read_cloud_bim<TArc>(
+    pub async fn read_bim_cloud<TArc>(
         &self,
         object_store: &TArc,
         path: &StorePath,
@@ -6434,7 +6448,7 @@ impl Metadata {
 
         let mut clone = self.clone();
         let (mut vec_of_vec, count) = self
-            .read_cloud_fam_or_bim(&field_vec, false, object_store, path)
+            .read_fam_or_bim_cloud(&field_vec, false, object_store, path)
             .await?;
 
         // unwraps are safe because we pop once for every push
@@ -6517,7 +6531,7 @@ impl Metadata {
         Ok((vec_of_vec, count))
     }
 
-    async fn read_cloud_fam_or_bim<TArc>(
+    async fn read_fam_or_bim_cloud<TArc>(
         &self,
         field_vec: &[usize],
         is_split_whitespace: bool,

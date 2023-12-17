@@ -1929,7 +1929,7 @@ where
 
         let (metadata, count) = self
             .metadata
-            .read_cloud_fam(&self.object_store, &fam_path, &self.skip_set)
+            .read_fam_cloud(&self.object_store, &fam_path, &self.skip_set)
             .await?;
         self.metadata = metadata;
 
@@ -1953,7 +1953,7 @@ where
 
         let (metadata, count) = self
             .metadata
-            .read_cloud_bim(&self.object_store, &bim_path, &self.skip_set)
+            .read_bim_cloud(&self.object_store, &bim_path, &self.skip_set)
             .await?;
         self.metadata = metadata;
 
