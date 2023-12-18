@@ -38,8 +38,8 @@ use crate::{MetadataFields, CB_HEADER_U64};
 /// use bed_reader::assert_eq_nan;
 ///
 /// # Runtime::new().unwrap().block_on(async {
-/// let (object_path) = sample_bed_store_path("small.bed")?;
-/// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+/// let object_path = sample_bed_object_path("small.bed")?;
+/// let mut bed_cloud = BedCloud::new(object_path).await?;
 /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray ["iid1", "iid2", "iid3"]
 /// let val = ReadOptions::builder().f64().read_cloud(&mut bed_cloud).await?;
 ///
@@ -421,10 +421,10 @@ where
     /// ```
     /// use ndarray as nd;
     /// use bed_reader::{BedCloud, assert_eq_nan, sample_bed_store_path};
-    /// let (object_path) = sample_bed_store_path("small.bed_cloud")?;
+    /// let object_path = sample_bed_object_path("small.bed")?;
     /// use bed_reader::ReadOptions;
     ///
-    /// let mut bed_cloud = BedCloud::builder(file_name)
+    /// let mut bed_cloud = BedCloud::builder(object_path)
     ///    .iid(["sample1", "sample2", "sample3"])
     ///    .build()?;
     /// println!("{:?}", bed_cloud.iid()?); // Outputs ndarray ["sample1", "sample2", "sample3"]
@@ -507,11 +507,11 @@ where
     /// ```
     /// use ndarray as nd;
     /// use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_store_path};
-    /// let (object_path) = sample_bed_store_path("small.bed_cloud")?;
+    /// let object_path = sample_bed_object_path("small.bed")?;
     ///
-    /// let mut bed_cloud = BedCloud::builder(file_name)
+    /// let mut bed_cloud = BedCloud::builder(object_path)
     ///    .sid(["SNP1", "SNP2", "SNP3", "SNP4"])
-    ///    .build()?;
+    ///    .build().await?;
     /// println!("{:?}", bed_cloud.sid()?); // Outputs ndarray ["SNP1", "SNP2", "SNP3", "SNP4"]
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), Box<BedErrorPlus>>(())
@@ -611,9 +611,9 @@ where
     /// ```
     /// use bed_reader::{BedCloud, ReadOptions, sample_files};
     /// let deb_maf_mib = sample_files(["small.deb", "small.maf", "small.mib"])?;
-    /// let mut bed_cloud = BedCloud::builder(&deb_maf_mib[0])
-    ///    .fam_path(&deb_maf_mib[1])
-    ///    .bim_path(&deb_maf_mib[2])
+    /// let mut bed_cloud = BedCloud::builder(deb_maf_mib[0])
+    ///    .fam_path(deb_maf_mib[1])
+    ///    .bim_path(deb_maf_mib[2])
     ///    .build()?;
     /// println!("{:?}", bed_cloud.iid()?); // Outputs ndarray ["iid1", "iid2", "iid3"]
     /// println!("{:?}", bed_cloud.sid()?); // Outputs ndarray ["sid1", "sid2", "sid3", "sid4"]
@@ -831,12 +831,12 @@ where
     /// use ndarray as nd;
     /// use bed_reader::{BedCloud, Metadata, sample_bed_store_path};
     ///
-    /// let (object_path) = sample_bed_store_path("small.bed_cloud")?;
+    /// let object_path = sample_bed_object_path("small.bed")?;
     /// let metadata = Metadata::builder()
     ///     .iid(["i1", "i2", "i3"])
     ///     .sid(["s1", "s2", "s3", "s4"])
     ///     .build()?;
-    /// let mut bed_cloud = BedCloud::builder(file_name)
+    /// let mut bed_cloud = BedCloud::builder(object_path)
     ///     .fid(["f1", "f2", "f3"])
     ///     .iid(["x1", "x2", "x3"])
     ///     .metadata(&metadata)
@@ -895,7 +895,7 @@ where
     /// use ndarray as nd;
     /// use bed_reader::{BedCloud, assert_eq_nan, sample_bed_store_path};
     ///
-    /// let (object_path) = sample_bed_store_path("small.bed")?;
+    /// let object_path = sample_bed_object_path("small.bed")?;
     /// let mut bed_cloud = Bed::builder(file_name).build()?;
     /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray ["iid1", "iid2", "iid3"]
     /// println!("{:?}", bed.sid()?); // Outputs ndarray ["snp1", "snp2", "snp3", "snp4"]
@@ -917,7 +917,7 @@ where
     /// ```
     /// # use ndarray as nd;
     /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_store_path};
-    /// # let (object_path) = sample_bed_store_path("small.bed")?;
+    /// # let object_path = sample_bed_object_path("small.bed")?;
     /// let mut bed_cloud = Bed::builder(file_name)
     ///    .iid(["sample1", "sample2", "sample3"])
     ///    .build()?;
@@ -930,7 +930,7 @@ where
     /// ```
     /// # use ndarray as nd;
     /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_store_path};
-    /// # let (object_path) = sample_bed_store_path("small.bed")?;
+    /// # let object_path = sample_bed_object_path("small.bed")?;
     /// let mut bed_cloud = Bed::builder(file_name).iid_count(3).sid_count(4).build()?;
     /// let val = bed.read::<f64>()?;
     ///
@@ -949,7 +949,7 @@ where
     /// ```
     /// # use ndarray as nd;
     /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_store_path};
-    /// # let (object_path) = sample_bed_store_path("small.bed")?;
+    /// # let object_path = sample_bed_object_path("small.bed")?;
     /// let mut bed_cloud = Bed::builder(file_name)
     ///     .skip_father()
     ///     .skip_mother()
@@ -995,8 +995,8 @@ where
     /// use bed_reader::{BedCloud, assert_eq_nan, sample_bed_store_path};
     ///
     /// # Runtime::new().unwrap().block_on(async {
-    /// let (object_path) = sample_bed_store_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    /// let object_path = sample_bed_object_path("small.bed")?;
+    /// let mut bed_cloud = BedCloud::new(object_path).await?;
     /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray: ["iid1", "iid2", "iid3"]
     /// println!("{:?}", bed_cloud.sid().await?); // Outputs ndarray: ["sid1", "sid2", "sid3", "sid4"]
     /// let val = bed_cloud.read::<f64>().await?;
@@ -1019,9 +1019,9 @@ where
     /// # use ndarray as nd;
     /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_store_path};
     /// # Runtime::new().unwrap().block_on(async {
-    /// # let (object_path) = sample_bed_store_path("small.bed")?;
+    /// # let object_path = sample_bed_object_path("small.bed")?;
     ///
-    /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    /// let mut bed_cloud = BedCloud::new(object_path).await?;
     /// let val = ReadOptions::builder().sid_index(2).f64().read_cloud(&mut bed_cloud).await?;
     ///
     /// assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
@@ -1051,8 +1051,8 @@ where
     /// use ndarray as nd;
     /// use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_store_path};
     ///
-    /// let (object_path) = sample_bed_store_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    /// let object_path = sample_bed_object_path("small.bed")?;
+    /// let mut bed_cloud = BedCloud::new(object_path).await?;
     /// let iid_count = bed.iid_count()?;
     ///
     /// assert!(iid_count == 3);
@@ -1083,8 +1083,8 @@ where
     /// use ndarray as nd;
     /// use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_store_path};
     ///
-    /// let (object_path) = sample_bed_store_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    /// let object_path = sample_bed_object_path("small.bed")?;
+    /// let mut bed_cloud = BedCloud::new(object_path).await?;
     /// let sid_count = bed.sid_count()?;
     ///
     /// assert!(sid_count == 4);
@@ -1116,8 +1116,8 @@ where
     /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let (object_path) = sample_bed_store_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    /// let object_path = sample_bed_object_path("small.bed")?;
+    /// let mut bed_cloud = BedCloud::new(object_path).await?;
     /// let dim = bed.dim()?;
     ///
     /// assert!(dim == (3,4));
@@ -1141,8 +1141,8 @@ where
     /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let (object_path) = sample_bed_store_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    /// let object_path = sample_bed_object_path("small.bed")?;
+    /// let mut bed_cloud = BedCloud::new(object_path).await?;
     /// let fid = bed.fid()?;
     /// println!("{fid:?}"); // Outputs ndarray ["fid1", "fid1", "fid2"]
     /// # use bed_reader::BedErrorPlus;
@@ -1167,8 +1167,8 @@ where
     /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let (object_path) = sample_bed_store_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    /// let object_path = sample_bed_object_path("small.bed")?;
+    /// let mut bed_cloud = BedCloud::new(object_path).await?;
     /// let iid = bed_cloud.iid().await?;    ///
     /// println!("{iid:?}"); // Outputs ndarray ["iid1", "iid2", "iid3"]
     /// # use bed_reader::BedErrorPlus;
@@ -1193,8 +1193,8 @@ where
     /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let (object_path) = sample_bed_store_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    /// let object_path = sample_bed_object_path("small.bed")?;
+    /// let mut bed_cloud = BedCloud::new(object_path).await?;
     /// let father = bed.father()?;
     /// println!("{father:?}"); // Outputs ndarray ["iid23", "iid23", "iid22"]
     /// # use bed_reader::BedErrorPlus;
@@ -1223,8 +1223,8 @@ where
     /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let (object_path) = sample_bed_store_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    /// let object_path = sample_bed_object_path("small.bed")?;
+    /// let mut bed_cloud = BedCloud::new(object_path).await?;
     /// let mother = bed.mother()?;
     /// println!("{mother:?}"); // Outputs ndarray ["iid34", "iid34", "iid33"]
     /// # use bed_reader::BedErrorPlus;
@@ -1255,8 +1255,8 @@ where
     /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let (object_path) = sample_bed_store_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    /// let object_path = sample_bed_object_path("small.bed")?;
+    /// let mut bed_cloud = BedCloud::new(object_path).await?;
     /// let sex = bed.sex()?;
     /// println!("{sex:?}"); // Outputs ndarray [1, 2, 0]
     /// # use bed_reader::BedErrorPlus;
@@ -1281,8 +1281,8 @@ where
     /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let (object_path) = sample_bed_store_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    /// let object_path = sample_bed_object_path("small.bed")?;
+    /// let mut bed_cloud = BedCloud::new(object_path).await?;
     /// let pheno = bed.pheno()?;
     /// println!("{pheno:?}"); // Outputs ndarray ["red", "red", "blue"]
     /// # use bed_reader::BedErrorPlus;
@@ -1311,8 +1311,8 @@ where
     /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let (object_path) = sample_bed_store_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    /// let object_path = sample_bed_object_path("small.bed")?;
+    /// let mut bed_cloud = BedCloud::new(object_path).await?;
     /// let chromosome = bed.chromosome()?;
     /// println!("{chromosome:?}"); // Outputs ndarray ["1", "1", "5", "Y"]
     /// # use bed_reader::BedErrorPlus;
@@ -1341,8 +1341,8 @@ where
     /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let (object_path) = sample_bed_store_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    /// let object_path = sample_bed_object_path("small.bed")?;
+    /// let mut bed_cloud = BedCloud::new(object_path).await?;
     /// let sid = bed.sid()?;
     /// println!("{sid:?}"); // Outputs ndarray "sid1", "sid2", "sid3", "sid4"]
     /// # use bed_reader::BedErrorPlus;
@@ -1367,8 +1367,8 @@ where
     /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let (object_path) = sample_bed_store_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    /// let object_path = sample_bed_object_path("small.bed")?;
+    /// let mut bed_cloud = BedCloud::new(object_path).await?;
     /// let cm_position = bed.cm_position()?;
     /// println!("{cm_position:?}"); // Outputs ndarray [100.4, 2000.5, 4000.7, 7000.9]
     /// # use bed_reader::BedErrorPlus;
@@ -1397,8 +1397,8 @@ where
     /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let (object_path) = sample_bed_store_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    /// let object_path = sample_bed_object_path("small.bed")?;
+    /// let mut bed_cloud = BedCloud::new(object_path).await?;
     /// let bp_position = bed.bp_position()?;
     /// println!("{bp_position:?}"); // Outputs ndarray [1, 100, 1000, 1004]
     /// # use bed_reader::BedErrorPlus;
@@ -1429,11 +1429,11 @@ where
     /// # let rt = Runtime::new().unwrap();
     /// # rt.block_on(async {
     ///
-    /// let (object_path) = sample_bed_store_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    /// let object_path = sample_bed_object_path("small.bed")?;
+    /// let mut bed_cloud = BedCloud::new(object_path).await?;
     /// let allele_1 = bed_cloud.allele_1().await?;
     /// println!("{allele_1:?}"); // Outputs ndarray ["A", "T", "A", "T"]
-    /// # let (object_path) = sample_bed_store_path("small.bed")?;
+    /// # let object_path = sample_bed_object_path("small.bed")?;
     /// # let rt = Runtime::new().unwrap();
     /// # rt.block_on(async {
     pub async fn allele_1(&mut self) -> Result<&nd::Array1<String>, Box<BedErrorPlus>> {
@@ -1460,8 +1460,8 @@ where
     /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
     /// use bed_reader::assert_eq_nan;
     /// # Runtime::new().unwrap().block_on(async {    ///
-    /// let (object_path) = sample_bed_store_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    /// let object_path = sample_bed_object_path("small.bed")?;
+    /// let mut bed_cloud = BedCloud::new(object_path).await?;
     /// let allele_2 = bed_cloud.allele_2().await?;
     /// println!("{allele_2:?}"); // Outputs ndarray ["A", "C", "C", "G"]
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
@@ -1488,8 +1488,8 @@ where
     /// use ndarray as nd;
     /// use bed_reader::{BedCloud, sample_bed_store_path};
     ///
-    /// let (object_path) = sample_bed_store_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    /// let object_path = sample_bed_object_path("small.bed")?;
+    /// let mut bed_cloud = BedCloud::new(object_path).await?;
     /// let metadata = bed.metadata()?;
     /// println!("{0:?}", metadata.iid()); // Outputs Some(["iid1", "iid2", "iid3"] ...)
     /// println!("{0:?}", metadata.sid()); // Outputs Some(["sid1", "sid2", "sid3", "sid4"] ...)
@@ -1549,8 +1549,8 @@ where
     /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let (object_path) = sample_bed_store_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    /// let object_path = sample_bed_object_path("small.bed")?;
+    /// let mut bed_cloud = BedCloud::new(object_path).await?;
     /// let val = bed.read::<f64>()?;
     ///
     /// assert_eq_nan(
@@ -1600,8 +1600,8 @@ where
     /// use bed_reader::assert_eq_nan;
     ///
     /// // Read the SNPs indexed by 2.
-    /// let (object_path) = sample_bed_store_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    /// let object_path = sample_bed_object_path("small.bed")?;
+    /// let mut bed_cloud = BedCloud::new(object_path).await?;
     /// let read_options = ReadOptions::builder().sid_index(2).build()?;
     /// let mut val = nd::Array2::<f64>::default((3, 1));
     /// bed.read_and_fill_with_options(&mut val.view_mut(), &read_options)?;
@@ -1667,8 +1667,8 @@ where
     /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// let (object_path) = sample_bed_store_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    /// let object_path = sample_bed_object_path("small.bed")?;
+    /// let mut bed_cloud = BedCloud::new(object_path).await?;
     /// let mut val = nd::Array2::<i8>::default(bed.dim()?);
     /// bed.read_and_fill(&mut val.view_mut())?;
     ///
@@ -1707,8 +1707,8 @@ where
     /// use bed_reader::assert_eq_nan;
     ///
     /// // Read the SNPs indexed by 2.
-    /// let (object_path) = sample_bed_store_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(&object_store, &path).await?;
+    /// let object_path = sample_bed_object_path("small.bed")?;
+    /// let mut bed_cloud = BedCloud::new(object_path).await?;
     /// let read_options = ReadOptions::builder().sid_index(2).f64().build()?;
     /// let val = bed.read_with_options(&read_options)?;
     ///

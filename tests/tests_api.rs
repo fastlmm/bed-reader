@@ -647,9 +647,14 @@ fn into_iter() -> Result<(), Box<BedErrorPlus>> {
     Ok(())
 }
 
+#[allow(clippy::reversed_empty_ranges)]
 #[test]
 fn range_same() -> Result<(), Box<BedErrorPlus>> {
-    #[allow(clippy::reversed_empty_ranges)]
+    let a = rt1(3..0);
+    println!("{:?}", a);
+    let b = rt23((3..0).into());
+    println!("{:?}", b);
+
     assert_same_result(rt1(3..0), rt23((3..0).into()));
     assert_same_result(rt1(1000..), rt23((1000..).into()));
 
