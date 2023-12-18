@@ -2367,8 +2367,9 @@ async fn cloud_metadata_inconsistent_count() -> Result<(), Box<BedErrorPlus>> {
     // Metadata: file vs file:
     let metadata = Metadata::builder().build()?;
     let result = metadata
-        .read_fam_cloud(&sample_object_path("small.fam")?, &skip_set)
+        .read_fam_cloud(&sample_object_path("small.fam_bad")?, &skip_set)
         .await;
+    println!("{0:?}", result);
     assert_error_variant!(
         result,
         BedErrorPlus::BedError(BedError::MetadataFieldCount(_, _, _))
@@ -2455,6 +2456,31 @@ async fn cloud_lib_intro() -> Result<(), Box<BedErrorPlus>> {
         .f64()
         .read_cloud(&mut bed_cloud)
         .await?;
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn read_index_quick_cloud() -> Result<(), Box<BedErrorPlus>> {
+    use bed_reader::Bed;
+
+    let read_options = ReadOptions::builder()
+        // .iid_index([-1, -2])
+        .sid_index(-1)
+        .f64()
+        .build()?;
+
+    let path = sample_bed_file("small.bed")?;
+    let mut bed = Bed::new(path)?;
+    let val0 = bed.read_with_options(&read_options)?;
+    println!("0: {:?}", &val0);
+
+    let object_path = sample_bed_object_path("small.bed")?;
+    let mut bed_cloud = BedCloud::new(object_path).await?;
+    let val1 = bed_cloud.read_with_options(&read_options).await?;
+    println!("1: {:?}", &val1);
+
+    assert_eq_nan(&val0, &val1);
 
     Ok(())
 }

@@ -101,7 +101,7 @@ fn convert_negative_sid_index(
     if (0..=upper_sid_count).contains(&in_sid_i_signed) {
         Ok(in_sid_i_signed as u64)
     } else if (lower_sid_count..=-1).contains(&in_sid_i_signed) {
-        Ok((upper_sid_count - (-in_sid_i_signed)) as u64)
+        Ok((in_sid_i_signed - lower_sid_count) as u64) // cmk not sure about overflow
     } else {
         Err(Box::new(BedErrorPlus::BedError(BedError::SidIndexTooBig(
             in_sid_i_signed,
