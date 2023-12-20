@@ -24,9 +24,9 @@ use crate::{
 };
 use crate::{MetadataFields, CB_HEADER_U64};
 
-/// Represents a PLINK .bed file that is open for reading genotype data and metadata.
+/// Represents a PLINK .bed file in the cloud that is open for reading genotype data and metadata.
 ///
-/// Construct with [`Bed::new`](struct.Bed.html#method.new) or [`Bed::builder`](struct.Bed.html#method.builder).
+/// Construct with [`BedCloud::new`](struct.BedCloud.html#method.new) or [`BedCloud::builder`](struct.BedCloud.html#method.builder).
 ///
 /// # Example
 ///
@@ -64,12 +64,10 @@ where
     #[builder(setter(custom))]
     object_path: ObjectPath<TArcStore>,
 
-    // cmk do we want to cache the ObjectMeta?
     #[builder(setter(custom))]
     #[builder(default = "None")]
     fam_object_path: Option<ObjectPath<TArcStore>>,
 
-    // // cmk needed? combine with path?
     #[builder(setter(custom))]
     #[builder(default = "None")]
     bim_object_path: Option<ObjectPath<TArcStore>>,
@@ -591,22 +589,41 @@ where
         self
     }
 
-    /// Don't check the header of the .bed_cloud file until and unless the file is actually read.
+    /// Don't check the header of the .bed file until and unless the file is actually read.
     ///
-    /// By default, when a [`BedCloud`](struct.BedCloud.html) struct is created, the .bed_cloud
+    /// By default, when a [`BedCloud`](struct.BedCloud.html) struct is created, the .bed
     /// file header is checked. This stops that early check.
+    /// ```
+    /// # Runtime::new().unwrap().block_on(async {
+    /// # use ndarray as nd;
+    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_object_path};
+    /// # let object_path = sample_bed_object_path("small.bed")?;
+    /// let mut bed_cloud = BedCloud::builder(&object_path).skip_early_check().build().await?;
+    /// let val = bed_cloud.read::<f64>().await?;
+    ///
+    /// assert_eq_nan(
+    ///     &val,
+    ///     &nd::array![
+    ///         [1.0, 0.0, f64::NAN, 0.0],
+    ///         [2.0, 0.0, f64::NAN, 2.0],
+    ///         [0.0, 1.0, 2.0, 0.0]
+    ///     ],
+    /// );
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
+    /// ```
     pub fn skip_early_check(mut self) -> Self {
         self.is_checked_early = Some(false);
         self
     }
 
-    /// Set the path to the .fam file.
+    /// Set the cloud location of the .fam file.
     ///
     /// If not set, the .fam file will be assumed
-    /// to have the same name as the .bed_cloud file, but with the extension .fam.
+    /// to have the same location as the .bed file, but with the extension .fam.
     ///
     /// # Example:
-    /// Read .bed_cloud, .fam, and .bim files with non-standard names.
+    /// Read .bed, .fam, and .bim files with non-standard names.
     /// ```
     /// use bed_reader::{BedCloud, ReadOptions, sample_object_paths};
     /// # Runtime::new().unwrap().block_on(async {
@@ -628,13 +645,13 @@ where
         self
     }
 
-    /// Set the path to the .bim file.
+    /// Set the cloud location of the .bim file.
     ///
     /// If not set, the .bim file will be assumed
-    /// to have the same name as the .bed_cloud file, but with the extension .bim.
+    /// to have the same location as the .bed file, but with the extension .bim.
     ///
     /// # Example:
-    /// Read .bed_cloud, .fam, and .bim files with non-standard names.
+    /// Read .bed, .fam, and .bim files with non-standard names.
     /// ```
     /// # Runtime::new().unwrap().block_on(async {
     /// use bed_reader::{BedCloud, ReadOptions, sample_object_paths};
@@ -868,19 +885,16 @@ where
     TArcStore: ArcStore,
     TArcStore::Target: ArcStoreTarget,
 {
-    /// Attempts to open a PLINK .bed file for reading. Supports options.
+    /// Attempts to open a PLINK .bed file in the cloud for reading. Supports options.
     ///
-    /// > Also see [`Bed::new`](struct.Bed.html#method.new), which does not support options.
+    /// > Also see [`BedCloud::new`](struct.BedCloud.html#method.new), which does not support options.
     ///
-    /// The options, [listed here](struct.BedBuilder.html#implementations), can:
-    ///  * set the path of the .fam and/or .bim file
+    /// The options, [listed here](struct.BedCloudBuilder.html#implementations), can:
+    ///  * set the cloud location of the .fam and/or .bim file
     ///  * override some metadata, for example, replace the individual ids.
     ///  * set the number of individuals (samples) or SNPs (variants)
     ///  * control checking the validity of the .bed file's header
     ///  * skip reading selected metadata
-    ///
-    /// Note that this method is a lazy about holding files, so unlike `std::fs::File::open(&path)`, it
-    /// will not necessarily lock the file(s).
     ///
     /// # Errors
     /// By default, this method will return an error if the file is missing or its header
@@ -889,9 +903,9 @@ where
     /// for all possible errors.
     ///
     /// # Examples
-    /// List individual (sample) [`iid`](struct.Bed.html#method.iid) and
-    /// SNP (variant) [`sid`](struct.Bed.html#method.sid),
-    /// then [`read`](struct.Bed.html#method.read) the whole file.
+    /// List individual (sample) [`iid`](struct.BedCloud.html#method.iid) and
+    /// SNP (variant) [`sid`](struct.BedCloud.html#method.sid),
+    /// then [`read`](struct.BedCloud.html#method.read) the whole file.
     ///
     /// ```
     /// use ndarray as nd;
@@ -916,7 +930,7 @@ where
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
     ///
-    /// Replace [`iid`](struct.Bed.html#method.iid).
+    /// Replace [`iid`](struct.BedCloud.html#method.iid).
     /// ```
     /// # Runtime::new().unwrap().block_on(async {
     /// # use ndarray as nd;
@@ -930,13 +944,19 @@ where
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
     /// Give the number of individuals (samples) and SNPs (variants) so that the .fam and
-    /// .bim files need never be opened.
+    /// .bim files need never be opened. Use `.skip_early_check()` to avoid opening the
+    /// .bed before the first read.
     /// ```
     /// # Runtime::new().unwrap().block_on(async {
     /// # use ndarray as nd;
     /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_object_path};
     /// # let object_path = sample_bed_object_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::builder(object_path).iid_count(3).sid_count(4).build().await?;
+    /// let mut bed_cloud = BedCloud::builder(&object_path)
+    ///     .iid_count(3)
+    ///     .sid_count(4)
+    ///     .skip_early_check()
+    ///     .build()
+    ///     .await?;
     /// let val = bed_cloud.read::<f64>().await?;
     ///
     /// assert_eq_nan(
@@ -978,12 +998,10 @@ where
         BedCloudBuilder::new(object_path)
     }
 
-    /// Attempts to open a PLINK .bed file for reading. Does not support options.
+    /// Attempts to open a PLINK .bed file in the cloud for reading. Does not support options.
     ///
-    /// > Also see [`Bed::builder`](struct.Bed.html#method.builder), which does support options.
-    ///
-    /// Note that this method is a lazy about holding files, so unlike `std::fs::File::open(&path)`, it
-    /// will not necessarily lock the file(s).
+    /// > Also see [`BedCloud::builder`](struct.BedCloud.html#method.builder), which does support options,
+    /// > including [`skip_early_check`](struct.BedCloudBuilder.html#method.skip_early_check).
     ///
     /// # Errors
     /// By default, this method will return an error if the file is missing or its header
@@ -991,9 +1009,9 @@ where
     /// for all possible errors.
     ///
     /// # Examples
-    /// List individual (sample) [`iid`](struct.Bed.html#method.iid) and
-    /// SNP (variant) [`sid`](struct.Bed.html#method.sid),
-    /// then [`read`](struct.Bed.html#method.read) the whole file.
+    /// List individual (sample) [`iid`](struct.BedCloud.html#method.iid) and
+    /// SNP (variant) [`sid`](struct.BedCloud.html#method.sid),
+    /// then [`read`](struct.BedCloud.html#method.read) the whole file.
     ///
     /// ```
     /// use ndarray as nd;
@@ -1047,8 +1065,8 @@ where
     /// by opening the .fam file and quickly counting the number
     /// of lines. Once found, the number will be remembered.
     /// The file read can be avoided by setting the
-    /// number with [`BedBuilder::iid_count`](struct.BedBuilder.html#method.iid_count)
-    /// or, for example, [`BedBuilder::iid`](struct.BedBuilder.html#method.iid).
+    /// number with [`BedCloudBuilder::iid_count`](struct.BedCloudBuilder.html#method.iid_count)
+    /// or, for example, [`BedCloudBuilder::iid`](struct.BedCloudBuilder.html#method.iid).
     ///
     /// # Example:
     /// ```
@@ -1080,8 +1098,8 @@ where
     /// by opening the .bim file and quickly counting the number
     /// of lines. Once found, the number will be remembered.
     /// The file read can be avoided by setting the
-    /// number with [`BedBuilder::sid_count`](struct.BedBuilder.html#method.sid_count)
-    /// or, for example, [`BedBuilder::sid`](struct.BedBuilder.html#method.sid).
+    /// number with [`BedCloudBuilder::sid_count`](struct.BedCloudBuilder.html#method.sid_count)
+    /// or, for example, [`BedCloudBuilder::sid`](struct.BedCloudBuilder.html#method.sid).
     ///
     /// # Example:
     /// ```
@@ -1113,8 +1131,8 @@ where
     /// by opening the .fam and .bim files and quickly counting the number
     /// of lines. Once found, the numbers will be remembered.
     /// The file read can be avoided by setting the
-    /// number with [`BedBuilder::iid_count`](struct.BedBuilder.html#method.iid_count)
-    /// and [`BedBuilder::sid_count`](struct.BedBuilder.html#method.sid_count).
+    /// number with [`BedCloudBuilder::iid_count`](struct.BedCloudBuilder.html#method.iid_count)
+    /// and [`BedCloudBuilder::sid_count`](struct.BedCloudBuilder.html#method.sid_count).
     ///
     /// # Example:
     /// ```
@@ -1140,7 +1158,7 @@ where
     /// by reading the .fam file. Once found, this ndarray
     /// and other information in the .fam file will be remembered.
     /// The file read can be avoided by setting the
-    /// array with [`BedBuilder::fid`](struct.BedBuilder.html#method.fid).
+    /// array with [`BedCloudBuilder::fid`](struct.BedCloudBuilder.html#method.fid).
     ///
     /// # Example:
     /// ```
@@ -1167,7 +1185,7 @@ where
     /// by reading the .fam file. Once found, this ndarray
     /// and other information in the .fam file will be remembered.
     /// The file read can be avoided by setting the
-    /// array with [`BedBuilder::iid`](struct.BedBuilder.html#method.iid).
+    /// array with [`BedCloudBuilder::iid`](struct.BedCloudBuilder.html#method.iid).
     ///
     /// # Example:
     /// ```
@@ -1194,7 +1212,7 @@ where
     /// by reading the .fam file. Once found, this ndarray
     /// and other information in the .fam file will be remembered.
     /// The file read can be avoided by setting the
-    /// array with [`BedBuilder::father`](struct.BedBuilder.html#method.father).
+    /// array with [`BedCloudBuilder::father`](struct.BedCloudBuilder.html#method.father).
     ///
     /// # Example:
     /// ```
@@ -1225,7 +1243,7 @@ where
     /// by reading the .fam file. Once found, this ndarray
     /// and other information in the .fam file will be remembered.
     /// The file read can be avoided by setting the
-    /// array with [`BedBuilder::mother`](struct.BedBuilder.html#method.mother).
+    /// array with [`BedCloudBuilder::mother`](struct.BedCloudBuilder.html#method.mother).
     ///
     /// # Example:
     /// ```
@@ -1258,7 +1276,7 @@ where
     /// by reading the .fam file. Once found, this ndarray
     /// and other information in the .fam file will be remembered.
     /// The file read can be avoided by setting the
-    /// array with [`BedBuilder::sex`](struct.BedBuilder.html#method.sex).
+    /// array with [`BedCloudBuilder::sex`](struct.BedCloudBuilder.html#method.sex).
     ///
     /// # Example:
     /// ```
@@ -1285,7 +1303,7 @@ where
     /// by reading the .fam file. Once found, this ndarray
     /// and other information in the .fam file will be remembered.
     /// The file read can be avoided by setting the
-    /// array with [`BedBuilder::pheno`](struct.BedBuilder.html#method.pheno).
+    /// array with [`BedCloudBuilder::pheno`](struct.BedCloudBuilder.html#method.pheno).
     ///
     /// # Example:
     /// ```
@@ -1316,7 +1334,7 @@ where
     /// by reading the .bim file. Once found, this ndarray
     /// and other information in the .bim file will be remembered.
     /// The file read can be avoided by setting the
-    /// array with [`BedBuilder::chromosome`](struct.BedBuilder.html#method.chromosome).
+    /// array with [`BedCloudBuilder::chromosome`](struct.BedCloudBuilder.html#method.chromosome).
     ///
     /// # Example:
     /// ```
@@ -1347,7 +1365,7 @@ where
     /// by reading the .bim file. Once found, this ndarray
     /// and other information in the .bim file will be remembered.
     /// The file read can be avoided by setting the
-    /// array with [`BedBuilder::sid`](struct.BedBuilder.html#method.sid).
+    /// array with [`BedCloudBuilder::sid`](struct.BedCloudBuilder.html#method.sid).
     ///
     /// # Example:
     /// ```
@@ -1374,7 +1392,7 @@ where
     /// by reading the .bim file. Once found, this ndarray
     /// and other information in the .bim file will be remembered.
     /// The file read can be avoided by setting the
-    /// array with [`BedBuilder::cm_position`](struct.BedBuilder.html#method.cm_position).
+    /// array with [`BedCloudBuilder::cm_position`](struct.BedCloudBuilder.html#method.cm_position).
     ///
     /// # Example:
     /// ```
@@ -1405,7 +1423,7 @@ where
     /// by reading the .bim file. Once found, this ndarray
     /// and other information in the .bim file will be remembered.
     /// The file read can be avoided by setting the
-    /// array with [`BedBuilder::bp_position`](struct.BedBuilder.html#method.bp_position).
+    /// array with [`BedCloudBuilder::bp_position`](struct.BedCloudBuilder.html#method.bp_position).
     ///
     /// # Example:
     /// ```
@@ -1436,7 +1454,7 @@ where
     /// by reading the .bim file. Once found, this ndarray
     /// and other information in the .bim file will be remembered.
     /// The file read can be avoided by setting the
-    /// array with [`BedBuilder::allele_1`](struct.BedBuilder.html#method.allele_1).
+    /// array with [`BedCloudBuilder::allele_1`](struct.BedCloudBuilder.html#method.allele_1).
     ///
     /// # Example:
     /// ```
@@ -1468,7 +1486,7 @@ where
     /// by reading the .bim file. Once found, this ndarray
     /// and other information in the .bim file will be remembered.
     /// The file read can be avoided by setting the
-    /// array with [`BedBuilder::allele_2`](struct.BedBuilder.html#method.allele_2).
+    /// array with [`BedCloudBuilder::allele_2`](struct.BedCloudBuilder.html#method.allele_2).
     ///
     /// # Example:
     /// ```
@@ -1498,7 +1516,7 @@ where
     ///
     /// This returns a struct with 12 fields. Each field is a ndarray.
     /// The struct will always be new, but the 12 ndarrays will be
-    /// shared with this [`Bed`](struct.Bed.html).
+    /// shared with this [`Bed`](struct.BedCloud.html).
     ///
     /// If the needed, the metadata will be read from the .fam and/or .bim files.
     /// ```
@@ -1519,15 +1537,14 @@ where
         Ok(self.metadata.clone())
     }
 
-    /// cmk doc
-    // Return the object_path of the .bed file.
+    /// Return the object_path of the .bed file.
     pub fn object_path(&self) -> &ObjectPath<TArcStore> {
         &self.object_path
     }
 
-    /// Return the path of the .fam file.
+    /// Return the cloud location of the .fam file.
     pub fn fam_object_path(&mut self) -> Result<ObjectPath<TArcStore>, Box<BedErrorPlus>> {
-        // We need to clone the path because self might mutate later
+        // We need to clone the object_path because self might mutate later
         if let Some(fam_object_path) = &self.fam_object_path {
             Ok(fam_object_path.clone())
         } else {
@@ -1538,9 +1555,9 @@ where
         }
     }
 
-    /// Return the path of the .bim file.
+    /// Return the cloud location of the .bim file.
     pub fn bim_object_path(&mut self) -> Result<ObjectPath<TArcStore>, Box<BedErrorPlus>> {
-        // We need to clone the path because self might mutate later
+        // We need to clone the object_path because self might mutate later
         if let Some(bim_object_path) = &self.bim_object_path {
             Ok(bim_object_path.clone())
         } else {
@@ -1813,7 +1830,7 @@ where
     ///     .sid(["sid1", "sid2", "sid3", "sid4"])
     ///     .build(3,4)?;
     ///
-    /// Bed::write_with_options(&val, &write_options)?;
+    /// BedCloud::write_with_options(&val, &write_options)?;
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
@@ -2073,7 +2090,7 @@ where
     pub fn set_extension(&mut self, extension: &str) -> Result<(), object_store::path::Error> {
         let mut path_str = self.path.to_string();
 
-        // Find the last dot in the path
+        // Find the last dot in the object path
         if let Some(dot_index) = path_str.rfind('.') {
             // Remove the current extension
             path_str.truncate(dot_index);

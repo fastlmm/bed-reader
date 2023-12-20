@@ -3958,11 +3958,65 @@ pub struct ReadOptions<TVal: BedVal> {
     #[builder(default, setter(strip_option))]
     num_threads: Option<usize>,
 
-    /// cmk docs
+    /// Maximum number of concurrent async requests (defaults to 10) --
+    /// Used by `BedCloud`.
+    ///
+    /// cmk Can also be set with an environment variable.
+    /// See [Environment Variables](index.html#environment-variables).
+    ///
+    /// In this example, we read using only request at a time.
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_object_path};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// # Runtime::new().unwrap().block_on(async {
+    /// let object_path = sample_bed_object_path("small.bed")?;
+    /// let mut bed_cloud = BedCloud::new(object_path).await?;
+    /// let val = ReadOptions::builder().max_concurrent_requests(1).i8().read_cloud(&mut bed_cloud).await?;
+    ///
+    /// assert_eq_nan(
+    ///     &val,
+    ///     &nd::array![
+    ///         [1, 0, -127, 0],
+    ///         [2, 0, -127, 2],
+    ///         [0, 1, 2, 0]
+    ///     ],
+    /// );
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
+    /// ```
     #[builder(default, setter(strip_option))]
     max_concurrent_requests: Option<usize>,
 
-    /// cmk docs
+    /// Maximum chunk size of async requests (defaults to 8_000_000 bytes) --
+    /// Used by `BedCloud`.
+    ///
+    /// cmk Can also be set with an environment variable.
+    /// See [Environment Variables](index.html#environment-variables).
+    ///
+    /// In this example, we read using only 1_000_000 bytes per request.
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_object_path};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// # Runtime::new().unwrap().block_on(async {
+    /// let object_path = sample_bed_object_path("small.bed")?;
+    /// let mut bed_cloud = BedCloud::new(object_path).await?;
+    /// let val = ReadOptions::builder().max_chunk_size(1_000_000).i8().read_cloud(&mut bed_cloud).await?;
+    ///
+    /// assert_eq_nan(
+    ///     &val,
+    ///     &nd::array![
+    ///         [1, 0, -127, 0],
+    ///         [2, 0, -127, 2],
+    ///         [0, 1, 2, 0]
+    ///     ],
+    /// );
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
+    /// ```
     #[builder(default, setter(strip_option))]
     max_chunk_size: Option<usize>,
 }

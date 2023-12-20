@@ -15,3 +15,6 @@ pytest --doctest-modules bed_reader\_open_bed.py
 
 # create a local *.whl
 maturin build --release
+
+# show docs
+cargo doc --open

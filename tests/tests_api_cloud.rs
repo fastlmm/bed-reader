@@ -338,6 +338,7 @@ async fn open_examples_cloud() -> Result<(), Box<BedErrorPlus>> {
     let mut bed_cloud = BedCloud::builder(&object_path)
         .iid_count(3)
         .sid_count(4)
+        .skip_early_check()
         .build()
         .await?;
     println!("{:?}", bed_cloud.read::<f64>().await?);
@@ -472,7 +473,7 @@ async fn fam_and_bim_cloud() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn readme_examples_cloud() -> Result<(), Box<BedErrorPlus>> {
-    // Read genomic data from a .bed_cloud file.
+    // Read genomic data from a .bed file.
 
     let object_path = sample_bed_object_path("small.bed")?;
     let mut bed_cloud = BedCloud::new(object_path).await?;
