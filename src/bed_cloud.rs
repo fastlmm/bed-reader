@@ -13,7 +13,6 @@ use object_store::ObjectStore;
 use object_store::{GetOptions, GetResult, ObjectMeta};
 use std::cmp::max;
 use std::collections::HashSet;
-use std::ops::Deref;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
@@ -55,22 +54,21 @@ use crate::{MetadataFields, CB_HEADER_U64};
 /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
 /// ```
 #[derive(Clone, Debug, Builder)]
-#[builder(build_fn(private, name = "build_no_file_check", error = "BedErrorPlus"))]
-pub struct BedCloud<TArcStore>
+#[builder(build_fn(skip))]
+pub struct BedCloud<TObjectStore>
 where
-    TArcStore: ArcStore,
-    TArcStore::Target: ArcStoreTarget,
+    TObjectStore: ObjectStore,
 {
     #[builder(setter(custom))]
-    object_path: ObjectPath<TArcStore>,
+    object_path: ObjectPath<TObjectStore>,
 
     #[builder(setter(custom))]
     #[builder(default = "None")]
-    fam_object_path: Option<ObjectPath<TArcStore>>,
+    fam_object_path: Option<ObjectPath<TObjectStore>>,
 
     #[builder(setter(custom))]
     #[builder(default = "None")]
-    bim_object_path: Option<ObjectPath<TArcStore>>,
+    bim_object_path: Option<ObjectPath<TObjectStore>>,
 
     #[builder(setter(custom))]
     #[builder(default = "true")]
@@ -89,6 +87,62 @@ where
 
     #[builder(setter(custom))]
     skip_set: HashSet<MetadataFields>,
+}
+
+// We need to define our own build_no_file_check
+// because otherwise derive_builder (needlessly) requires ObjectStore: Clone
+impl<TObjectStore> BedCloudBuilder<TObjectStore>
+where
+    TObjectStore: ObjectStore,
+{
+    fn build_no_file_check(&self) -> Result<BedCloud<TObjectStore>, Box<BedErrorPlus>> {
+        Ok(BedCloud {
+            object_path: match self.object_path {
+                Some(ref value) => Clone::clone(value),
+                None => {
+                    return Result::Err(Into::into(
+                        ::derive_builder::UninitializedFieldError::from("object_path"),
+                    ));
+                }
+            },
+            fam_object_path: match self.fam_object_path {
+                Some(ref value) => Clone::clone(value),
+                None => None,
+            },
+            bim_object_path: match self.bim_object_path {
+                Some(ref value) => Clone::clone(value),
+                None => None,
+            },
+            is_checked_early: match self.is_checked_early {
+                Some(ref value) => Clone::clone(value),
+                None => true,
+            },
+            iid_count: match self.iid_count {
+                Some(ref value) => Clone::clone(value),
+                None => None,
+            },
+            sid_count: match self.sid_count {
+                Some(ref value) => Clone::clone(value),
+                None => None,
+            },
+            metadata: match self.metadata {
+                Some(ref value) => Clone::clone(value),
+                None => {
+                    return Result::Err(Into::into(
+                        ::derive_builder::UninitializedFieldError::from("metadata"),
+                    ));
+                }
+            },
+            skip_set: match self.skip_set {
+                Some(ref value) => Clone::clone(value),
+                None => {
+                    return Result::Err(Into::into(
+                        ::derive_builder::UninitializedFieldError::from("skip_set"),
+                    ));
+                }
+            },
+        })
+    }
 }
 
 fn convert_negative_sid_index(
@@ -111,8 +165,8 @@ fn convert_negative_sid_index(
 // cmk we should turn sid_index into a slice of ranges.
 
 #[allow(clippy::too_many_arguments)]
-async fn internal_read_no_alloc<TVal: BedVal, TArcStore>(
-    object_path: &ObjectPath<TArcStore>,
+async fn internal_read_no_alloc<TVal: BedVal, TObjectStore>(
+    object_path: &ObjectPath<TObjectStore>,
     object_meta: &ObjectMeta,
     in_iid_count: usize,
     in_sid_count: usize,
@@ -125,8 +179,8 @@ async fn internal_read_no_alloc<TVal: BedVal, TArcStore>(
     out_val: &mut nd::ArrayViewMut2<'_, TVal>,
 ) -> Result<(), Box<BedErrorPlus>>
 where
-    TArcStore: ArcStore,
-    TArcStore::Target: ArcStoreTarget,
+    // cmk00 TObjectStore: ArcStore,
+    TObjectStore: ObjectStore,
 {
     // compute numbers outside of the loop
     let (in_iid_count_div4, in_iid_count_div4_u64) =
@@ -234,16 +288,16 @@ fn decode_bytes_into_columns<TVal: BedVal>(
     }
 }
 
-fn check_file_length<TArcStore, I>(
+fn check_file_length<TObjectStore, I>(
     in_iid_count: usize,
     in_sid_count: usize,
     object_meta: &ObjectMeta,
     object_path: I,
 ) -> Result<(usize, u64), Box<BedErrorPlus>>
 where
-    TArcStore: ArcStore,
-    TArcStore::Target: ArcStoreTarget,
-    I: Into<ObjectPath<TArcStore>>,
+    // cmk00 TObjectStore: ArcStore,
+    TObjectStore: ObjectStore,
+    I: Into<ObjectPath<TObjectStore>>,
 {
     let (in_iid_count_div4, in_iid_count_div4_u64) =
         try_div_4(in_iid_count, in_sid_count, CB_HEADER_U64)?;
@@ -259,7 +313,7 @@ where
 
 #[inline]
 #[allow(clippy::too_many_arguments)]
-async fn read_no_alloc<TVal: BedVal, TArcStore, I>(
+async fn read_no_alloc<TVal: BedVal, TObjectStore, I>(
     object_path: I,
     iid_count: usize,
     sid_count: usize,
@@ -273,9 +327,9 @@ async fn read_no_alloc<TVal: BedVal, TArcStore, I>(
     val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
 ) -> Result<(), Box<BedErrorPlus>>
 where
-    TArcStore: ArcStore,
-    TArcStore::Target: ArcStoreTarget,
-    I: Into<ObjectPath<TArcStore>>,
+    // cmk00 TObjectStore: ArcStore,
+    TObjectStore: ObjectStore,
+    I: Into<ObjectPath<TObjectStore>>,
 {
     let object_path = object_path.into();
     let (object_meta, bytes) = open_and_check(&object_path).await?;
@@ -321,13 +375,13 @@ where
     Ok(())
 }
 
-async fn open_and_check<TArcStore, I>(
+async fn open_and_check<TObjectStore, I>(
     object_path: I,
 ) -> Result<(ObjectMeta, Bytes), Box<BedErrorPlus>>
 where
-    TArcStore: ArcStore,
-    TArcStore::Target: ArcStoreTarget,
-    I: Into<ObjectPath<TArcStore>>,
+    // cmk00 TObjectStore: ArcStore,
+    TObjectStore: ObjectStore,
+    I: Into<ObjectPath<TObjectStore>>,
 {
     let object_path = object_path.into();
     let get_options = GetOptions {
@@ -350,15 +404,15 @@ where
     Ok((object_meta, bytes))
 }
 
-impl<TArcStore> BedCloudBuilder<TArcStore>
+impl<TObjectStore> BedCloudBuilder<TObjectStore>
 where
-    TArcStore: ArcStore,
-    TArcStore::Target: ArcStoreTarget,
+    // cmk00 TObjectStore: ArcStore,
+    TObjectStore: ObjectStore,
 {
     // #[anyinput]
     fn new<I>(object_path: I) -> Self
     where
-        I: Into<ObjectPath<TArcStore>>,
+        I: Into<ObjectPath<TObjectStore>>,
     {
         Self {
             object_path: Some(object_path.into()),
@@ -377,7 +431,7 @@ where
     /// Create [`BedCloud`](struct.BedCloud.html) from the builder.
     ///
     /// > See [`BedCloud::builder`](struct.BedCloud.html#method.builder) for more details and examples.
-    pub async fn build(&self) -> Result<BedCloud<TArcStore>, Box<BedErrorPlus>> {
+    pub async fn build(&self) -> Result<BedCloud<TObjectStore>, Box<BedErrorPlus>> {
         let mut bed_cloud = self.build_no_file_check()?;
 
         // cmk is this unwrap OK?
@@ -639,7 +693,7 @@ where
     /// ```
     pub fn fam_object_path<I>(mut self, object_path: I) -> Self
     where
-        I: Into<ObjectPath<TArcStore>>,
+        I: Into<ObjectPath<TObjectStore>>,
     {
         self.fam_object_path = Some(Some(object_path.into()));
         self
@@ -668,7 +722,7 @@ where
     // #[anyinput]
     pub fn bim_object_path<I>(mut self, object_path: I) -> Self
     where
-        I: Into<ObjectPath<TArcStore>>,
+        I: Into<ObjectPath<TObjectStore>>,
     {
         let object_path = object_path.into();
         self.bim_object_path = Some(Some(object_path));
@@ -880,10 +934,10 @@ where
     }
 }
 
-impl<TArcStore> BedCloud<TArcStore>
+impl<TObjectStore> BedCloud<TObjectStore>
 where
-    TArcStore: ArcStore,
-    TArcStore::Target: ArcStoreTarget,
+    // cmk00 TObjectStore: ArcStore,
+    TObjectStore: ObjectStore,
 {
     /// Attempts to open a PLINK .bed file in the cloud for reading. Supports options.
     ///
@@ -990,9 +1044,9 @@ where
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
     ///
-    pub fn builder<I>(object_path: I) -> BedCloudBuilder<TArcStore>
+    pub fn builder<I>(object_path: I) -> BedCloudBuilder<TObjectStore>
     where
-        I: Into<ObjectPath<TArcStore>>,
+        I: Into<ObjectPath<TObjectStore>>,
     {
         let object_path = object_path.into();
         BedCloudBuilder::new(object_path)
@@ -1053,7 +1107,7 @@ where
     /// ```
     pub async fn new<I>(object_path: I) -> Result<Self, Box<BedErrorPlus>>
     where
-        I: Into<ObjectPath<TArcStore>>,
+        I: Into<ObjectPath<TObjectStore>>,
     {
         let object_path = object_path.into();
         BedCloud::builder(object_path).build().await
@@ -1538,12 +1592,12 @@ where
     }
 
     /// Return the object_path of the .bed file.
-    pub fn object_path(&self) -> &ObjectPath<TArcStore> {
+    pub fn object_path(&self) -> &ObjectPath<TObjectStore> {
         &self.object_path
     }
 
     /// Return the cloud location of the .fam file.
-    pub fn fam_object_path(&mut self) -> Result<ObjectPath<TArcStore>, Box<BedErrorPlus>> {
+    pub fn fam_object_path(&mut self) -> Result<ObjectPath<TObjectStore>, Box<BedErrorPlus>> {
         // We need to clone the object_path because self might mutate later
         if let Some(fam_object_path) = &self.fam_object_path {
             Ok(fam_object_path.clone())
@@ -1556,7 +1610,7 @@ where
     }
 
     /// Return the cloud location of the .bim file.
-    pub fn bim_object_path(&mut self) -> Result<ObjectPath<TArcStore>, Box<BedErrorPlus>> {
+    pub fn bim_object_path(&mut self) -> Result<ObjectPath<TObjectStore>, Box<BedErrorPlus>> {
         // We need to clone the object_path because self might mutate later
         if let Some(bim_object_path) = &self.bim_object_path {
             Ok(bim_object_path.clone())
@@ -1979,7 +2033,7 @@ where
 #[anyinput]
 pub fn sample_bed_object_path(
     bed_path: AnyPath,
-) -> Result<ObjectPath<Arc<LocalFileSystem>>, Box<BedErrorPlus>> {
+) -> Result<ObjectPath<LocalFileSystem>, Box<BedErrorPlus>> {
     use std::path::PathBuf;
 
     let mut path_list: Vec<PathBuf> = Vec::new();
@@ -2001,9 +2055,7 @@ pub fn sample_bed_object_path(
 /// The file will be in a directory determined by environment variable `BED_READER_DATA_DIR`.
 /// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
 #[anyinput]
-pub fn sample_object_path(
-    path: AnyPath,
-) -> Result<ObjectPath<Arc<LocalFileSystem>>, Box<BedErrorPlus>> {
+pub fn sample_object_path(path: AnyPath) -> Result<ObjectPath<LocalFileSystem>, Box<BedErrorPlus>> {
     let object_store = Arc::new(LocalFileSystem::new());
 
     let file_path = STATIC_FETCH_DATA
@@ -2024,7 +2076,7 @@ pub fn sample_object_path(
 #[anyinput]
 pub fn sample_object_paths(
     path_list: AnyIter<AnyPath>,
-) -> Result<Vec<ObjectPath<Arc<LocalFileSystem>>>, Box<BedErrorPlus>> {
+) -> Result<Vec<ObjectPath<LocalFileSystem>>, Box<BedErrorPlus>> {
     let object_store = Arc::new(LocalFileSystem::new());
 
     let file_paths = STATIC_FETCH_DATA
@@ -2039,35 +2091,35 @@ pub fn sample_object_paths(
         .collect()
 }
 
+#[derive(Debug)]
 /// cmk doc
-pub trait ArcStore: Clone + Deref + Send + Sync + 'static {}
-/// cmk doc
-pub trait ArcStoreTarget: ObjectStore + Send + Sync {}
-
-impl<T> ArcStore for Arc<T> where T: ArcStoreTarget {}
-
-impl<T> ArcStoreTarget for T where T: ObjectStore {}
-// impl ArcStoreTarget for LocalFileSystem {}
-
-#[derive(Clone, Debug)]
-/// cmk doc
-pub struct ObjectPath<TArcStore>
+pub struct ObjectPath<TObjectStore>
 where
-    TArcStore: ArcStore,
-    TArcStore::Target: ArcStoreTarget,
+    TObjectStore: ObjectStore,
 {
-    object_store: TArcStore,
+    object_store: Arc<TObjectStore>,
     path: StorePath,
 }
 
-impl<TArcStore> ObjectPath<TArcStore>
+impl<TObjectStore> Clone for ObjectPath<TObjectStore>
 where
-    TArcStore: ArcStore,
-    TArcStore::Target: ArcStoreTarget,
+    TObjectStore: ObjectStore,
+{
+    fn clone(&self) -> Self {
+        ObjectPath {
+            object_store: self.object_store.clone(),
+            path: self.path.clone(),
+        }
+    }
+}
+
+impl<TObjectStore> ObjectPath<TObjectStore>
+where
+    TObjectStore: ObjectStore,
 {
     /// cmk doc
 
-    pub fn new(object_store: TArcStore, path: StorePath) -> Self {
+    pub fn new(object_store: Arc<TObjectStore>, path: StorePath) -> Self {
         ObjectPath { object_store, path }
     }
 
@@ -2112,83 +2164,84 @@ where
     }
 }
 
+// cmk00 should be make them pass in an Arc or can we do that?
 // Implementing From trait for ObjectPath to allow tuple conversions.
-impl<TArcStore> From<(TArcStore, StorePath)> for ObjectPath<TArcStore>
+impl<TObjectStore> From<(Arc<TObjectStore>, StorePath)> for ObjectPath<TObjectStore>
 where
-    TArcStore: ArcStore,
-    TArcStore::Target: ArcStoreTarget,
+    // cmk00 TObjectStore: ArcStore,
+    TObjectStore: ObjectStore,
 {
-    fn from(tuple: (TArcStore, StorePath)) -> Self {
+    fn from(tuple: (Arc<TObjectStore>, StorePath)) -> Self {
         ObjectPath {
             object_store: tuple.0,
             path: tuple.1,
         }
     }
 }
-impl<TArcStore> From<(&TArcStore, &StorePath)> for ObjectPath<TArcStore>
+impl<TObjectStore> From<(&Arc<TObjectStore>, &StorePath)> for ObjectPath<TObjectStore>
 where
-    TArcStore: ArcStore,
-    TArcStore::Target: ArcStoreTarget,
+    // cmk00 TObjectStore: ArcStore,
+    TObjectStore: ObjectStore,
 {
-    fn from(tuple: (&TArcStore, &StorePath)) -> Self {
+    fn from(tuple: (&Arc<TObjectStore>, &StorePath)) -> Self {
         ObjectPath {
             object_store: tuple.0.clone(),
             path: tuple.1.clone(),
         }
     }
 }
-impl<TArcStore> From<(TArcStore, &StorePath)> for ObjectPath<TArcStore>
+impl<TObjectStore> From<(Arc<TObjectStore>, &StorePath)> for ObjectPath<TObjectStore>
 where
-    TArcStore: ArcStore,
-    TArcStore::Target: ArcStoreTarget,
+    // cmk00 TObjectStore: ArcStore,
+    TObjectStore: ObjectStore,
 {
-    fn from(tuple: (TArcStore, &StorePath)) -> Self {
+    fn from(tuple: (Arc<TObjectStore>, &StorePath)) -> Self {
         ObjectPath {
             object_store: tuple.0,
             path: tuple.1.clone(),
         }
     }
 }
-impl<TArcStore> From<(&TArcStore, StorePath)> for ObjectPath<TArcStore>
+impl<TObjectStore> From<(&Arc<TObjectStore>, StorePath)> for ObjectPath<TObjectStore>
 where
-    TArcStore: ArcStore,
-    TArcStore::Target: ArcStoreTarget,
+    // cmk00 TObjectStore: ArcStore,
+    TObjectStore: ObjectStore,
 {
-    fn from(tuple: (&TArcStore, StorePath)) -> Self {
+    fn from(tuple: (&Arc<TObjectStore>, StorePath)) -> Self {
         ObjectPath {
             object_store: tuple.0.clone(),
             path: tuple.1,
         }
     }
 }
-impl<TArcStore> From<&ObjectPath<TArcStore>> for ObjectPath<TArcStore>
+impl<TObjectStore> From<&ObjectPath<TObjectStore>> for ObjectPath<TObjectStore>
 where
-    TArcStore: ArcStore,
-    TArcStore::Target: ArcStoreTarget,
+    // cmk00 TObjectStore: ArcStore,
+    TObjectStore: ObjectStore,
 {
-    fn from(ref_thing: &ObjectPath<TArcStore>) -> Self {
+    fn from(ref_thing: &ObjectPath<TObjectStore>) -> Self {
         ref_thing.clone()
     }
 }
 
-impl<TArcStore> fmt::Display for ObjectPath<TArcStore>
+impl<TObjectStore> fmt::Display for ObjectPath<TObjectStore>
 where
-    TArcStore: ArcStore,
-    TArcStore::Target: ArcStoreTarget,
+    // cmk00 TObjectStore: ArcStore,
+    TObjectStore: ObjectStore,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "ObjectPath: {:?}", self.path)
     }
 }
 
-fn to_metadata_path<TArcStore>(
-    bed_object_path: &ObjectPath<TArcStore>,
-    metadata_object_path: &Option<ObjectPath<TArcStore>>,
+fn to_metadata_path<TObjectStore>(
+    bed_object_path: &ObjectPath<TObjectStore>,
+    metadata_object_path: &Option<ObjectPath<TObjectStore>>,
     extension: &str,
-) -> Result<ObjectPath<TArcStore>, Box<BedErrorPlus>>
+) -> Result<ObjectPath<TObjectStore>, Box<BedErrorPlus>>
 where
-    TArcStore: ArcStore,
-    TArcStore::Target: ArcStoreTarget,
+    // cmk00 TObjectStore: ArcStore,
+    TObjectStore: ObjectStore,
 {
     if let Some(metadata_object_path) = metadata_object_path {
         Ok(metadata_object_path.clone())
@@ -2201,11 +2254,11 @@ where
     }
 }
 
-async fn count_lines<TArcStore, I>(object_path: I) -> Result<usize, Box<BedErrorPlus>>
+async fn count_lines<TObjectStore, I>(object_path: I) -> Result<usize, Box<BedErrorPlus>>
 where
-    TArcStore: ArcStore,
-    TArcStore::Target: ArcStoreTarget,
-    I: Into<ObjectPath<TArcStore>>,
+    // cmk00 TObjectStore: ArcStore,
+    TObjectStore: ObjectStore,
+    I: Into<ObjectPath<TObjectStore>>,
 {
     let stream = object_path
         .into()

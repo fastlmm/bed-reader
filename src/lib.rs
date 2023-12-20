@@ -101,8 +101,6 @@
 mod python_module;
 mod tests;
 use anyinput::anyinput;
-use bed_cloud::ArcStore;
-use bed_cloud::ArcStoreTarget;
 use bed_cloud::ObjectPath;
 pub use bed_cloud::{sample_bed_object_path, sample_object_path, sample_object_paths, BedCloud};
 use core::fmt::Debug;
@@ -113,6 +111,7 @@ use futures_util::stream::StreamExt;
 use nd::ShapeBuilder;
 use ndarray as nd;
 use object_store::delimited::newline_delimited_stream;
+use object_store::ObjectStore;
 use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::convert::TryFrom;
@@ -4290,13 +4289,12 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     }
 
     /// cmk
-    pub async fn read_cloud<TArcStore>(
+    pub async fn read_cloud<TObjectStore>(
         &self,
-        bed_cloud: &mut BedCloud<TArcStore>,
+        bed_cloud: &mut BedCloud<TObjectStore>,
     ) -> Result<nd::Array2<TVal>, Box<BedErrorPlus>>
     where
-        TArcStore: ArcStore,
-        TArcStore::Target: ArcStoreTarget,
+        TObjectStore: ObjectStore,
     {
         let read_options = self.build()?;
         bed_cloud.read_with_options(&read_options).await
@@ -4376,14 +4374,13 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```    
-    pub async fn read_and_fill_cloud<TArcStore>(
+    pub async fn read_and_fill_cloud<TObjectStore>(
         &self,
-        bed_cloud: &mut BedCloud<TArcStore>,
+        bed_cloud: &mut BedCloud<TObjectStore>,
         val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
     ) -> Result<(), Box<BedErrorPlus>>
     where
-        TArcStore: ArcStore,
-        TArcStore::Target: ArcStoreTarget,
+        TObjectStore: ObjectStore,
     {
         let read_options = self.build()?;
         bed_cloud
@@ -6356,9 +6353,9 @@ impl Metadata {
     /// let skip_set = HashSet::<MetadataFields>::new();
     /// let metadata_empty = Metadata::new();
     /// let (metadata_fam, iid_count) =
-    ///     metadata_empty.read_fam_cloud(sample_object_path("small.fam")?, &skip_set)?;
+    ///     metadata_empty.read_fam_cloud(sample_object_path("small.fam")?, &skip_set).await?;
     /// let (metadata_bim, sid_count) =
-    ///     metadata_fam.read_bim_cloud(sample_object_path("small.bim")?, &skip_set)?;
+    ///     metadata_fam.read_bim_cloud(sample_object_path("small.bim")?, &skip_set).await?;
     /// assert_eq!(iid_count, 3);
     /// assert_eq!(sid_count, 4);
     /// println!("{0:?}", metadata_fam.iid()); // Outputs optional ndarray Some(["iid1", "iid2", "iid3"]...)
@@ -6367,15 +6364,14 @@ impl Metadata {
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
-    pub async fn read_fam_cloud<TArcStore, I>(
+    pub async fn read_fam_cloud<TObjectStore, I>(
         &self,
         object_path: I,
         skip_set: &HashSet<MetadataFields>,
     ) -> Result<(Metadata, usize), Box<BedErrorPlus>>
     where
-        TArcStore: ArcStore,
-        TArcStore::Target: ArcStoreTarget,
-        I: Into<ObjectPath<TArcStore>>,
+        TObjectStore: ObjectStore,
+        I: Into<ObjectPath<TObjectStore>>,
     {
         let object_path = object_path.into();
         let mut field_vec: Vec<usize> = Vec::new();
@@ -6542,9 +6538,9 @@ impl Metadata {
     /// let skip_set = HashSet::<MetadataFields>::new();
     /// let metadata_empty = Metadata::new();
     /// let (metadata_fam, iid_count) =
-    ///     metadata_empty.read_fam_cloud(sample_object_path("small.fam")?, &skip_set)?;
+    ///     metadata_empty.read_fam_cloud(sample_object_path("small.fam")?, &skip_set).await?;
     /// let (metadata_bim, sid_count) =
-    ///     metadata_fam.read_bim_cloud(sample_object_path("small.bim")?, &skip_set)?;
+    ///     metadata_fam.read_bim_cloud(sample_object_path("small.bim")?, &skip_set).await?;
     /// assert_eq!(iid_count, 3);
     /// assert_eq!(sid_count, 4);
     /// println!("{0:?}", metadata_fam.iid()); // Outputs optional ndarray Some(["iid1", "iid2", "iid3"]...)
@@ -6553,15 +6549,15 @@ impl Metadata {
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
-    pub async fn read_bim_cloud<TArcStore, I>(
+    pub async fn read_bim_cloud<TObjectStore, I>(
         &self,
         object_path: I,
         skip_set: &HashSet<MetadataFields>,
     ) -> Result<(Metadata, usize), Box<BedErrorPlus>>
     where
-        TArcStore: ArcStore,
-        TArcStore::Target: ArcStoreTarget,
-        I: Into<ObjectPath<TArcStore>>,
+        TObjectStore: ObjectStore,
+
+        I: Into<ObjectPath<TObjectStore>>,
     {
         let object_path = object_path.into();
         let mut field_vec: Vec<usize> = Vec::new();
@@ -6670,15 +6666,14 @@ impl Metadata {
         Ok((vec_of_vec, count))
     }
 
-    async fn read_fam_or_bim_cloud<TArcStore>(
+    async fn read_fam_or_bim_cloud<TObjectStore>(
         &self,
         field_vec: &[usize],
         is_split_whitespace: bool,
-        object_path: &ObjectPath<TArcStore>,
+        object_path: &ObjectPath<TObjectStore>,
     ) -> Result<(Vec<Vec<String>>, usize), Box<BedErrorPlus>>
     where
-        TArcStore: ArcStore,
-        TArcStore::Target: ArcStoreTarget,
+        TObjectStore: ObjectStore,
     {
         let mut vec_of_vec = vec![vec![]; field_vec.len()];
 
