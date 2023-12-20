@@ -1968,8 +1968,10 @@ where
     }
 }
 
-/// Returns the local path to a sample .bed file. If necessary, the file will be downloaded.
+/// Returns the cloud location of a sample .bed file.
 ///
+/// Behind the scenes, the "cloud location" will actually be local.
+/// If necessary, the file will be downloaded.
 /// The .fam and .bim files will also be downloaded, if they are not already present.
 /// SHA256 hashes are used to verify that the files are correct.
 /// The files will be in a directory determined by environment variable `BED_READER_DATA_DIR`.
@@ -1991,8 +1993,10 @@ pub fn sample_bed_object_path(
     Ok(vec.swap_remove(0))
 }
 
-/// Returns the local path to a sample file. If necessary, the file will be downloaded.
+/// Returns the cloud location of a sample file.
 ///
+/// Behind the scenes, the "cloud location" will actually be local.
+/// If necessary, the file will be downloaded.
 /// A SHA256 hash is used to verify that the file is correct.
 /// The file will be in a directory determined by environment variable `BED_READER_DATA_DIR`.
 /// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
@@ -2010,8 +2014,10 @@ pub fn sample_object_path(
     Ok(object_path)
 }
 
-/// Returns the local paths to a list of files. If necessary, the files will be downloaded.
+/// Returns the cloud locations of a list of files.
 ///
+/// Behind the scenes, the "cloud location" will actually be local.
+/// If necessary, the file will be downloaded.
 /// SHA256 hashes are used to verify that the files are correct.
 /// The files will be in a directory determined by environment variable `BED_READER_DATA_DIR`.
 /// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.

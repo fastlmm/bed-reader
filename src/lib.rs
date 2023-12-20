@@ -4302,7 +4302,7 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
         bed_cloud.read_with_options(&read_options).await
     }
 
-    /// Read genotype data with options, into a preallocated array.
+    /// Read genotype data into a preallocated array.
     ///
     /// > Also see [`Bed::read_and_fill`](struct.Bed.html#method.read_and_fill) and
     /// > [`Bed::read_and_fill_with_options`](struct.Bed.html#method.read_and_fill_with_options).
@@ -4343,7 +4343,39 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
         bed.read_and_fill_with_options(val, &read_options)
     }
 
-    /// cmk docs
+    /// Read genotype data from the cloud into a preallocated array.
+    ///
+    /// > Also see [`BedCloud::read_and_fill`](struct.BedCloud.html#method.read_and_fill) and
+    /// > [`BedCloud::read_and_fill_with_options`](struct.BedCloud.html#method.read_and_fill_with_options).
+    ///
+    /// Note that options [`ReadOptions::f`](struct.ReadOptions.html#method.f),
+    /// [`ReadOptions::c`](struct.ReadOptions.html#method.c), and [`ReadOptions::is_f`](struct.ReadOptionsBuilder.html#method.is_f)
+    /// are ignored. Instead, the order of the preallocated array is used.
+    ///
+    /// # Errors
+    /// See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
+    /// for all possible errors.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_object_path};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// # Runtime::new().unwrap().block_on(async {
+    /// // Read the SNPs indexed by 2.
+    /// let object_path = sample_bed_object_path("small.bed")?;
+    /// let mut bed_cloud = BedCloud::new(object_path).await?;
+    /// let mut val = nd::Array2::<f64>::default((3, 1));
+    /// ReadOptions::builder()
+    ///     .sid_index(2)
+    ///     .read_and_fill_cloud(&mut bed_cloud, &mut val.view_mut()).await?;
+    ///
+    /// assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
+    /// ```    
     pub async fn read_and_fill_cloud<TArcStore>(
         &self,
         bed_cloud: &mut BedCloud<TArcStore>,
@@ -6308,7 +6340,33 @@ impl Metadata {
         Ok((clone, count))
     }
 
-    /// cmk doc
+    /// Create a new [`Metadata`](struct.Metadata.html) by filling in empty
+    /// fields with a .fam file in the cloud.
+    ///
+    /// # Example
+    ///
+    /// Read .fam and .bim information into a [`Metadata`](struct.Metadata.html).
+    /// Do not skip any fields.
+    /// ```
+    /// use ndarray as nd;
+    /// use std::collections::HashSet;
+    /// use bed_reader::{Metadata, MetadataFields, sample_object_path};
+    ///
+    /// # Runtime::new().unwrap().block_on(async {
+    /// let skip_set = HashSet::<MetadataFields>::new();
+    /// let metadata_empty = Metadata::new();
+    /// let (metadata_fam, iid_count) =
+    ///     metadata_empty.read_fam_cloud(sample_object_path("small.fam")?, &skip_set)?;
+    /// let (metadata_bim, sid_count) =
+    ///     metadata_fam.read_bim_cloud(sample_object_path("small.bim")?, &skip_set)?;
+    /// assert_eq!(iid_count, 3);
+    /// assert_eq!(sid_count, 4);
+    /// println!("{0:?}", metadata_fam.iid()); // Outputs optional ndarray Some(["iid1", "iid2", "iid3"]...)
+    /// println!("{0:?}", metadata_bim.sid()); // Outputs optional ndarray Some(["sid1", "sid2", "sid3", "sid4"]...)
+    /// println!("{0:?}", metadata_bim.chromosome()); // Outputs optional ndarray Some(["1", "1", "5", "Y"]...)
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
+    /// ```
     pub async fn read_fam_cloud<TArcStore, I>(
         &self,
         object_path: I,
@@ -6468,7 +6526,33 @@ impl Metadata {
         Ok((clone, count))
     }
 
-    /// cmk doc
+    /// Create a new [`Metadata`](struct.Metadata.html) by filling in empty
+    /// fields with a .bim file in the cloud.
+    ///
+    /// # Example
+    ///
+    /// Read .fam and .bim information into a [`Metadata`](struct.Metadata.html).
+    /// Do not skip any fields.
+    /// ```
+    /// use ndarray as nd;
+    /// use std::collections::HashSet;
+    /// use bed_reader::{Metadata, MetadataFields, sample_object_path};
+    ///
+    /// # Runtime::new().unwrap().block_on(async {
+    /// let skip_set = HashSet::<MetadataFields>::new();
+    /// let metadata_empty = Metadata::new();
+    /// let (metadata_fam, iid_count) =
+    ///     metadata_empty.read_fam_cloud(sample_object_path("small.fam")?, &skip_set)?;
+    /// let (metadata_bim, sid_count) =
+    ///     metadata_fam.read_bim_cloud(sample_object_path("small.bim")?, &skip_set)?;
+    /// assert_eq!(iid_count, 3);
+    /// assert_eq!(sid_count, 4);
+    /// println!("{0:?}", metadata_fam.iid()); // Outputs optional ndarray Some(["iid1", "iid2", "iid3"]...)
+    /// println!("{0:?}", metadata_bim.sid()); // Outputs optional ndarray Some(["sid1", "sid2", "sid3", "sid4"]...)
+    /// println!("{0:?}", metadata_bim.chromosome()); // Outputs optional ndarray Some(["1", "1", "5", "Y"]...)
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
+    /// ```
     pub async fn read_bim_cloud<TArcStore, I>(
         &self,
         object_path: I,
