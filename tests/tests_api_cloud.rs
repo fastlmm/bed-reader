@@ -32,10 +32,10 @@ async fn rusty_cloud_bed0() -> Result<(), Box<BedErrorPlus>> {
     let val0 = bed.read::<i8>()?;
     println!("{val0:?}");
 
-    // cmk00 Idea: Create a struct that hold object_store and path. Convert from tuple.
     let object_store = Arc::new(LocalFileSystem::new());
+    let file_path = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
     let store_path = StorePath::from_filesystem_path(file_path).map_err(BedErrorPlus::from)?;
-    // cmk00 get this working on references and without .into
+
     let mut bed_cloud = BedCloud::new((object_store, store_path)).await?;
     let val = bed_cloud.read::<i8>().await?;
     println!("{val:?}");

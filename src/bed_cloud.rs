@@ -34,7 +34,7 @@ use crate::{MetadataFields, CB_HEADER_U64};
 /// and all the genotype data.
 /// ```
 /// use ndarray as nd;
-/// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
+/// use bed_reader::{BedCloud, ReadOptions, sample_bed_object_path};
 /// use bed_reader::assert_eq_nan;
 ///
 /// # Runtime::new().unwrap().block_on(async {
@@ -158,9 +158,7 @@ where
         async move {
             let (ranges, out_sid_i_vec) = result?;
 
-            // cmk00 define get_ranges on object_store
             let vec_bytes = object_path
-                .clone()
                 .get_ranges(&ranges)
                 .await
                 .map_err(BedErrorPlus::from)?;
@@ -360,7 +358,6 @@ where
     TArcStore::Target: ArcStoreTarget,
 {
     // #[anyinput]
-    // cmk00 also accept &ObjectPath
     fn new<I>(object_path: I) -> Self
     where
         I: Into<ObjectPath<TArcStore>>,
@@ -419,17 +416,18 @@ where
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to give different values.
     /// ```
+    /// # Runtime::new().unwrap().block_on(async {
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, assert_eq_nan, sample_bed_store_path};
+    /// use bed_reader::{BedCloud, assert_eq_nan, sample_bed_object_path};
     /// let object_path = sample_bed_object_path("small.bed")?;
     /// use bed_reader::ReadOptions;
     ///
     /// let mut bed_cloud = BedCloud::builder(object_path)
     ///    .iid(["sample1", "sample2", "sample3"])
-    ///    .build()?;
-    /// println!("{:?}", bed_cloud.iid()?); // Outputs ndarray ["sample1", "sample2", "sample3"]
-    /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), Box<BedErrorPlus>>(())
+    ///    .build().await?;
+    /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray ["sample1", "sample2", "sample3"]
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
     #[anyinput]
     pub fn iid(mut self, iid: AnyIter<AnyString>) -> Self {
@@ -505,16 +503,17 @@ where
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
     /// ```
+    /// # Runtime::new().unwrap().block_on(async {
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_store_path};
+    /// use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_object_path};
     /// let object_path = sample_bed_object_path("small.bed")?;
     ///
     /// let mut bed_cloud = BedCloud::builder(object_path)
     ///    .sid(["SNP1", "SNP2", "SNP3", "SNP4"])
     ///    .build().await?;
-    /// println!("{:?}", bed_cloud.sid()?); // Outputs ndarray ["SNP1", "SNP2", "SNP3", "SNP4"]
-    /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// println!("{:?}", bed_cloud.sid().await?); // Outputs ndarray ["SNP1", "SNP2", "SNP3", "SNP4"]
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
     #[anyinput]
     pub fn sid(mut self, sid: AnyIter<AnyString>) -> Self {
@@ -609,16 +608,17 @@ where
     /// # Example:
     /// Read .bed_cloud, .fam, and .bim files with non-standard names.
     /// ```
-    /// use bed_reader::{BedCloud, ReadOptions, sample_files};
-    /// let deb_maf_mib = sample_files(["small.deb", "small.maf", "small.mib"])?;
-    /// let mut bed_cloud = BedCloud::builder(deb_maf_mib[0])
-    ///    .fam_path(deb_maf_mib[1])
-    ///    .bim_path(deb_maf_mib[2])
-    ///    .build()?;
-    /// println!("{:?}", bed_cloud.iid()?); // Outputs ndarray ["iid1", "iid2", "iid3"]
-    /// println!("{:?}", bed_cloud.sid()?); // Outputs ndarray ["sid1", "sid2", "sid3", "sid4"]
-    /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// use bed_reader::{BedCloud, ReadOptions, sample_object_paths};
+    /// # Runtime::new().unwrap().block_on(async {
+    /// let deb_maf_mib = sample_object_paths(["small.deb", "small.maf", "small.mib"])?;
+    /// let mut bed_cloud = BedCloud::builder(&deb_maf_mib[0])
+    ///    .fam_object_path(&deb_maf_mib[1])
+    ///    .bim_object_path(&deb_maf_mib[2])
+    ///    .build().await?;
+    /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray ["iid1", "iid2", "iid3"]
+    /// println!("{:?}", bed_cloud.sid().await?); // Outputs ndarray ["sid1", "sid2", "sid3", "sid4"]
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
     pub fn fam_object_path<I>(mut self, object_path: I) -> Self
     where
@@ -636,16 +636,17 @@ where
     /// # Example:
     /// Read .bed_cloud, .fam, and .bim files with non-standard names.
     /// ```
-    /// use bed_reader::{BedCloud, ReadOptions, sample_files};
-    /// let deb_maf_mib = sample_files(["small.deb", "small.maf", "small.mib"])?;
+    /// # Runtime::new().unwrap().block_on(async {
+    /// use bed_reader::{BedCloud, ReadOptions, sample_object_paths};
+    /// let deb_maf_mib = sample_object_paths(["small.deb", "small.maf", "small.mib"])?;
     /// let mut bed_cloud = BedCloud::builder(&deb_maf_mib[0])
-    ///    .fam_path(&deb_maf_mib[1])
-    ///    .bim_path(&deb_maf_mib[2])
-    ///    .build()?;
-    /// println!("{:?}", bed_cloud.iid()?); // Outputs ndarray ["iid1", "iid2", "iid3"]
-    /// println!("{:?}", bed_cloud.sid()?); // Outputs ndarray ["sid1", "sid2", "sid3", "sid4"]
-    /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), Box<BedErrorPlus>>(())
+    ///    .fam_object_path(&deb_maf_mib[1])
+    ///    .bim_object_path(&deb_maf_mib[2])
+    ///    .build().await?;
+    /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray ["iid1", "iid2", "iid3"]
+    /// println!("{:?}", bed_cloud.sid().await?); // Outputs ndarray ["sid1", "sid2", "sid3", "sid4"]
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
     // #[anyinput]
     pub fn bim_object_path<I>(mut self, object_path: I) -> Self
@@ -829,8 +830,9 @@ where
     /// it is read from the *.bim file.
     ///```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, Metadata, sample_bed_store_path};
+    /// use bed_reader::{BedCloud, Metadata, sample_bed_object_path};
     ///
+    /// # Runtime::new().unwrap().block_on(async {
     /// let object_path = sample_bed_object_path("small.bed")?;
     /// let metadata = Metadata::builder()
     ///     .iid(["i1", "i2", "i3"])
@@ -840,13 +842,13 @@ where
     ///     .fid(["f1", "f2", "f3"])
     ///     .iid(["x1", "x2", "x3"])
     ///     .metadata(&metadata)
-    ///     .build()?;
-    /// println!("{0:?}", bed_cloud.fid()?);  // Outputs ndarray ["f1", "f2", "f3"]
-    /// println!("{0:?}", bed_cloud.iid()?);  // Outputs ndarray ["i1", "i2", "i3"]
-    /// println!("{0:?}", bed_cloud.sid()?);  // Outputs ndarray ["s1", "s2", "s3", "s4"]
-    /// println!("{0:?}", bed_cloud.chromosome()?);  // Outputs ndarray ["1", "1", "5", "Y"]
-    /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), Box<BedErrorPlus>>(())
+    ///     .build().await?;
+    /// println!("{0:?}", bed_cloud.fid().await?);  // Outputs ndarray ["f1", "f2", "f3"]
+    /// println!("{0:?}", bed_cloud.iid().await?);  // Outputs ndarray ["i1", "i2", "i3"]
+    /// println!("{0:?}", bed_cloud.sid().await?);  // Outputs ndarray ["s1", "s2", "s3", "s4"]
+    /// println!("{0:?}", bed_cloud.chromosome().await?);  // Outputs ndarray ["1", "1", "5", "Y"]
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
     pub fn metadata(mut self, metadata: &Metadata) -> Self {
         self.metadata = Some(
@@ -893,13 +895,14 @@ where
     ///
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, assert_eq_nan, sample_bed_store_path};
+    /// use bed_reader::{BedCloud, assert_eq_nan, sample_bed_object_path};
     ///
+    /// # Runtime::new().unwrap().block_on(async {
     /// let object_path = sample_bed_object_path("small.bed")?;
-    /// let mut bed_cloud = Bed::builder(file_name).build()?;
+    /// let mut bed_cloud = BedCloud::builder(object_path).build().await?;
     /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray ["iid1", "iid2", "iid3"]
-    /// println!("{:?}", bed.sid()?); // Outputs ndarray ["snp1", "snp2", "snp3", "snp4"]
-    /// let val = bed.read::<f64>()?;
+    /// println!("{:?}", bed_cloud.sid().await?); // Outputs ndarray ["snp1", "snp2", "snp3", "snp4"]
+    /// let val = bed_cloud.read::<f64>().await?;
     ///
     /// assert_eq_nan(
     ///     &val,
@@ -909,30 +912,32 @@ where
     ///         [0.0, 1.0, 2.0, 0.0]
     ///     ],
     /// );
-    /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
     ///
     /// Replace [`iid`](struct.Bed.html#method.iid).
     /// ```
+    /// # Runtime::new().unwrap().block_on(async {
     /// # use ndarray as nd;
-    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_store_path};
+    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_object_path};
     /// # let object_path = sample_bed_object_path("small.bed")?;
-    /// let mut bed_cloud = Bed::builder(file_name)
+    /// let mut bed_cloud = BedCloud::builder(object_path)
     ///    .iid(["sample1", "sample2", "sample3"])
-    ///    .build()?;
+    ///    .build().await?;
     /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray ["sample1", "sample2", "sample3"]
-    /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
     /// Give the number of individuals (samples) and SNPs (variants) so that the .fam and
     /// .bim files need never be opened.
     /// ```
+    /// # Runtime::new().unwrap().block_on(async {
     /// # use ndarray as nd;
-    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_store_path};
+    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_object_path};
     /// # let object_path = sample_bed_object_path("small.bed")?;
-    /// let mut bed_cloud = Bed::builder(file_name).iid_count(3).sid_count(4).build()?;
-    /// let val = bed.read::<f64>()?;
+    /// let mut bed_cloud = BedCloud::builder(object_path).iid_count(3).sid_count(4).build().await?;
+    /// let val = bed_cloud.read::<f64>().await?;
     ///
     /// assert_eq_nan(
     ///     &val,
@@ -942,29 +947,29 @@ where
     ///         [0.0, 1.0, 2.0, 0.0]
     ///     ],
     /// );
-    /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
     /// Mark some properties as "don’t read or offer".
     /// ```
+    /// # Runtime::new().unwrap().block_on(async {
     /// # use ndarray as nd;
-    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_store_path};
+    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_object_path};
     /// # let object_path = sample_bed_object_path("small.bed")?;
-    /// let mut bed_cloud = Bed::builder(file_name)
+    /// let mut bed_cloud = BedCloud::builder(object_path)
     ///     .skip_father()
     ///     .skip_mother()
     ///     .skip_sex()
     ///     .skip_pheno()
     ///     .skip_allele_1()
     ///     .skip_allele_2()
-    ///     .build()?;
+    ///     .build().await?;
     /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray ["iid1", "iid2", "iid3"]
-    /// bed.allele_2().expect_err("Can't be read");
-    /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// bed_cloud.allele_2().await.expect_err("Can't be read");
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
     ///
-    // cmk00 also accept &ObjectPath
     pub fn builder<I>(object_path: I) -> BedCloudBuilder<TArcStore>
     where
         I: Into<ObjectPath<TArcStore>>,
@@ -992,7 +997,7 @@ where
     ///
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, assert_eq_nan, sample_bed_store_path};
+    /// use bed_reader::{BedCloud, assert_eq_nan, sample_bed_object_path};
     ///
     /// # Runtime::new().unwrap().block_on(async {
     /// let object_path = sample_bed_object_path("small.bed")?;
@@ -1017,7 +1022,7 @@ where
     /// at index position 2.
     /// ```
     /// # use ndarray as nd;
-    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_store_path};
+    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_object_path};
     /// # Runtime::new().unwrap().block_on(async {
     /// # let object_path = sample_bed_object_path("small.bed")?;
     ///
@@ -1028,7 +1033,6 @@ where
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
-    // cmk00 also accept &ObjectPath
     pub async fn new<I>(object_path: I) -> Result<Self, Box<BedErrorPlus>>
     where
         I: Into<ObjectPath<TArcStore>>,
@@ -1049,15 +1053,16 @@ where
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_store_path};
+    /// use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_object_path};
     ///
+    /// # Runtime::new().unwrap().block_on(async {
     /// let object_path = sample_bed_object_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(object_path).await?;
-    /// let iid_count = bed.iid_count()?;
+    /// let iid_count = bed_cloud.iid_count().await?;
     ///
     /// assert!(iid_count == 3);
-    /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     pub async fn iid_count(&mut self) -> Result<usize, Box<BedErrorPlus>> {
         if let Some(iid_count) = self.iid_count {
             Ok(iid_count)
@@ -1081,15 +1086,16 @@ where
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_store_path};
+    /// use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_object_path};
     ///
+    /// # Runtime::new().unwrap().block_on(async {
     /// let object_path = sample_bed_object_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(object_path).await?;
-    /// let sid_count = bed.sid_count()?;
+    /// let sid_count = bed_cloud.sid_count().await?;
     ///
     /// assert!(sid_count == 4);
-    /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     pub async fn sid_count(&mut self) -> Result<usize, Box<BedErrorPlus>> {
         if let Some(sid_count) = self.sid_count {
             Ok(sid_count)
@@ -1113,16 +1119,17 @@ where
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_object_path};
     /// use bed_reader::assert_eq_nan;
     ///
+    /// # Runtime::new().unwrap().block_on(async {
     /// let object_path = sample_bed_object_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(object_path).await?;
-    /// let dim = bed.dim()?;
+    /// let dim = bed_cloud.dim().await?;
     ///
     /// assert!(dim == (3,4));
-    /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     pub async fn dim(&mut self) -> Result<(usize, usize), Box<BedErrorPlus>> {
         Ok((self.iid_count().await?, self.sid_count().await?))
     }
@@ -1138,15 +1145,16 @@ where
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_object_path};
     /// use bed_reader::assert_eq_nan;
     ///
+    /// # Runtime::new().unwrap().block_on(async {
     /// let object_path = sample_bed_object_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(object_path).await?;
-    /// let fid = bed.fid()?;
+    /// let fid = bed_cloud.fid().await?;
     /// println!("{fid:?}"); // Outputs ndarray ["fid1", "fid1", "fid2"]
-    /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     pub async fn fid(&mut self) -> Result<&nd::Array1<String>, Box<BedErrorPlus>> {
         self.unlazy_fam::<String>(self.metadata.fid.is_none(), MetadataFields::Fid, "fid")
             .await?;
@@ -1164,15 +1172,16 @@ where
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_object_path};
     /// use bed_reader::assert_eq_nan;
     ///
+    /// # Runtime::new().unwrap().block_on(async {
     /// let object_path = sample_bed_object_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(object_path).await?;
     /// let iid = bed_cloud.iid().await?;    ///
     /// println!("{iid:?}"); // Outputs ndarray ["iid1", "iid2", "iid3"]
-    /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     pub async fn iid(&mut self) -> Result<&nd::Array1<String>, Box<BedErrorPlus>> {
         self.unlazy_fam::<String>(self.metadata.iid.is_none(), MetadataFields::Iid, "iid")
             .await?;
@@ -1190,15 +1199,16 @@ where
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_object_path};
     /// use bed_reader::assert_eq_nan;
     ///
+    /// # Runtime::new().unwrap().block_on(async {
     /// let object_path = sample_bed_object_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(object_path).await?;
-    /// let father = bed.father()?;
+    /// let father = bed_cloud.father().await?;
     /// println!("{father:?}"); // Outputs ndarray ["iid23", "iid23", "iid22"]
-    /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), Box<BedErrorPlus>>(())    
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     pub async fn father(&mut self) -> Result<&nd::Array1<String>, Box<BedErrorPlus>> {
         self.unlazy_fam::<String>(
             self.metadata.father.is_none(),
@@ -1220,15 +1230,16 @@ where
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_object_path};
     /// use bed_reader::assert_eq_nan;
     ///
+    /// # Runtime::new().unwrap().block_on(async {
     /// let object_path = sample_bed_object_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(object_path).await?;
-    /// let mother = bed.mother()?;
+    /// let mother = bed_cloud.mother().await?;
     /// println!("{mother:?}"); // Outputs ndarray ["iid34", "iid34", "iid33"]
-    /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     pub async fn mother(&mut self) -> Result<&nd::Array1<String>, Box<BedErrorPlus>> {
         self.unlazy_fam::<String>(
             self.metadata.mother.is_none(),
@@ -1252,15 +1263,16 @@ where
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_object_path};
     /// use bed_reader::assert_eq_nan;
     ///
+    /// # Runtime::new().unwrap().block_on(async {
     /// let object_path = sample_bed_object_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(object_path).await?;
-    /// let sex = bed.sex()?;
+    /// let sex = bed_cloud.sex().await?;
     /// println!("{sex:?}"); // Outputs ndarray [1, 2, 0]
-    /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     pub async fn sex(&mut self) -> Result<&nd::Array1<i32>, Box<BedErrorPlus>> {
         self.unlazy_fam::<String>(self.metadata.sex.is_none(), MetadataFields::Sex, "sex")
             .await?;
@@ -1278,15 +1290,16 @@ where
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_object_path};
     /// use bed_reader::assert_eq_nan;
     ///
+    /// # Runtime::new().unwrap().block_on(async {
     /// let object_path = sample_bed_object_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(object_path).await?;
-    /// let pheno = bed.pheno()?;
+    /// let pheno = bed_cloud.pheno().await?;
     /// println!("{pheno:?}"); // Outputs ndarray ["red", "red", "blue"]
-    /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     pub async fn pheno(&mut self) -> Result<&nd::Array1<String>, Box<BedErrorPlus>> {
         self.unlazy_fam::<String>(
             self.metadata.pheno.is_none(),
@@ -1308,15 +1321,16 @@ where
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_object_path};
     /// use bed_reader::assert_eq_nan;
     ///
+    /// # Runtime::new().unwrap().block_on(async {
     /// let object_path = sample_bed_object_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(object_path).await?;
-    /// let chromosome = bed.chromosome()?;
+    /// let chromosome = bed_cloud.chromosome().await?;
     /// println!("{chromosome:?}"); // Outputs ndarray ["1", "1", "5", "Y"]
-    /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     pub async fn chromosome(&mut self) -> Result<&nd::Array1<String>, Box<BedErrorPlus>> {
         self.unlazy_bim::<String>(
             self.metadata.chromosome.is_none(),
@@ -1338,15 +1352,16 @@ where
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_object_path};
     /// use bed_reader::assert_eq_nan;
     ///
+    /// # Runtime::new().unwrap().block_on(async {
     /// let object_path = sample_bed_object_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(object_path).await?;
-    /// let sid = bed.sid()?;
+    /// let sid = bed_cloud.sid().await?;
     /// println!("{sid:?}"); // Outputs ndarray "sid1", "sid2", "sid3", "sid4"]
-    /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     pub async fn sid(&mut self) -> Result<&nd::Array1<String>, Box<BedErrorPlus>> {
         self.unlazy_bim::<String>(self.metadata.sid.is_none(), MetadataFields::Sid, "sid")
             .await?;
@@ -1364,15 +1379,16 @@ where
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_object_path};
     /// use bed_reader::assert_eq_nan;
     ///
+    /// # Runtime::new().unwrap().block_on(async {
     /// let object_path = sample_bed_object_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(object_path).await?;
-    /// let cm_position = bed.cm_position()?;
+    /// let cm_position = bed_cloud.cm_position().await?;
     /// println!("{cm_position:?}"); // Outputs ndarray [100.4, 2000.5, 4000.7, 7000.9]
-    /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     pub async fn cm_position(&mut self) -> Result<&nd::Array1<f32>, Box<BedErrorPlus>> {
         self.unlazy_bim::<String>(
             self.metadata.cm_position.is_none(),
@@ -1394,15 +1410,16 @@ where
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_object_path};
     /// use bed_reader::assert_eq_nan;
     ///
+    /// # Runtime::new().unwrap().block_on(async {
     /// let object_path = sample_bed_object_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(object_path).await?;
-    /// let bp_position = bed.bp_position()?;
+    /// let bp_position = bed_cloud.bp_position().await?;
     /// println!("{bp_position:?}"); // Outputs ndarray [1, 100, 1000, 1004]
-    /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     pub async fn bp_position(&mut self) -> Result<&nd::Array1<i32>, Box<BedErrorPlus>> {
         self.unlazy_bim::<String>(
             self.metadata.bp_position.is_none(),
@@ -1424,18 +1441,17 @@ where
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_object_path};
     /// use bed_reader::assert_eq_nan;
-    /// # let rt = Runtime::new().unwrap();
-    /// # rt.block_on(async {
+    /// # Runtime::new().unwrap().block_on(async {
     ///
     /// let object_path = sample_bed_object_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(object_path).await?;
     /// let allele_1 = bed_cloud.allele_1().await?;
     /// println!("{allele_1:?}"); // Outputs ndarray ["A", "T", "A", "T"]
     /// # let object_path = sample_bed_object_path("small.bed")?;
-    /// # let rt = Runtime::new().unwrap();
-    /// # rt.block_on(async {
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     pub async fn allele_1(&mut self) -> Result<&nd::Array1<String>, Box<BedErrorPlus>> {
         self.unlazy_bim::<String>(
             self.metadata.allele_1.is_none(),
@@ -1457,9 +1473,10 @@ where
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_object_path};
     /// use bed_reader::assert_eq_nan;
-    /// # Runtime::new().unwrap().block_on(async {    ///
+    /// # Runtime::new().unwrap().block_on(async {
+    ///
     /// let object_path = sample_bed_object_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(object_path).await?;
     /// let allele_2 = bed_cloud.allele_2().await?;
@@ -1486,15 +1503,16 @@ where
     /// If the needed, the metadata will be read from the .fam and/or .bim files.
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, sample_bed_store_path};
+    /// use bed_reader::{BedCloud, sample_bed_object_path};
     ///
+    /// # Runtime::new().unwrap().block_on(async {
     /// let object_path = sample_bed_object_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(object_path).await?;
-    /// let metadata = bed.metadata()?;
+    /// let metadata = bed_cloud.metadata().await?;
     /// println!("{0:?}", metadata.iid()); // Outputs Some(["iid1", "iid2", "iid3"] ...)
     /// println!("{0:?}", metadata.sid()); // Outputs Some(["sid1", "sid2", "sid3", "sid4"] ...)
-    /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     pub async fn metadata(&mut self) -> Result<Metadata, Box<BedErrorPlus>> {
         self.fam().await?;
         self.bim().await?;
@@ -1546,12 +1564,13 @@ where
     ///
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_object_path};
     /// use bed_reader::assert_eq_nan;
     ///
+    /// # Runtime::new().unwrap().block_on(async {
     /// let object_path = sample_bed_object_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(object_path).await?;
-    /// let val = bed.read::<f64>()?;
+    /// let val = bed_cloud.read::<f64>().await?;
     ///
     /// assert_eq_nan(
     ///     &val,
@@ -1563,7 +1582,7 @@ where
     /// );
     ///
     /// // Your output array can be f32, f64, or i8
-    /// let val = bed.read::<i8>()?;
+    /// let val = bed_cloud.read::<i8>().await?;
     /// assert_eq_nan(
     ///     &val,
     ///     &nd::array![
@@ -1572,8 +1591,8 @@ where
     ///         [0, 1, 2, 0]
     ///     ],
     /// );
-    /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```    
     pub async fn read<TVal: BedVal>(&mut self) -> Result<nd::Array2<TVal>, Box<BedErrorPlus>> {
         let read_options = ReadOptions::<TVal>::builder().build()?;
@@ -1596,19 +1615,20 @@ where
     ///
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_object_path};
     /// use bed_reader::assert_eq_nan;
     ///
+    /// # Runtime::new().unwrap().block_on(async {
     /// // Read the SNPs indexed by 2.
     /// let object_path = sample_bed_object_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(object_path).await?;
     /// let read_options = ReadOptions::builder().sid_index(2).build()?;
     /// let mut val = nd::Array2::<f64>::default((3, 1));
-    /// bed.read_and_fill_with_options(&mut val.view_mut(), &read_options)?;
+    /// bed_cloud.read_and_fill_with_options(&mut val.view_mut(), &read_options).await?;
     ///
     /// assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
-    /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```  
     pub async fn read_and_fill_with_options<TVal: BedVal>(
         &mut self,
@@ -1664,13 +1684,14 @@ where
     ///
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_object_path};
     /// use bed_reader::assert_eq_nan;
     ///
+    /// # Runtime::new().unwrap().block_on(async {
     /// let object_path = sample_bed_object_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(object_path).await?;
-    /// let mut val = nd::Array2::<i8>::default(bed.dim()?);
-    /// bed.read_and_fill(&mut val.view_mut())?;
+    /// let mut val = nd::Array2::<i8>::default(bed_cloud.dim().await?);
+    /// bed_cloud.read_and_fill(&mut val.view_mut()).await?;
     ///
     /// assert_eq_nan(
     ///     &val,
@@ -1680,8 +1701,8 @@ where
     ///         [0, 1, 2, 0]
     ///     ],
     /// );
-    /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
     pub async fn read_and_fill<TVal: BedVal>(
         &mut self,
@@ -1703,18 +1724,19 @@ where
     ///
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_store_path};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_object_path};
     /// use bed_reader::assert_eq_nan;
     ///
+    /// # Runtime::new().unwrap().block_on(async {
     /// // Read the SNPs indexed by 2.
     /// let object_path = sample_bed_object_path("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(object_path).await?;
     /// let read_options = ReadOptions::builder().sid_index(2).f64().build()?;
-    /// let val = bed.read_with_options(&read_options)?;
+    /// let val = bed_cloud.read_with_options(&read_options).await?;
     ///
     /// assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
-    /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```  
     pub async fn read_with_options<TVal: BedVal>(
         &mut self,
@@ -1743,7 +1765,7 @@ where
     ///
     /// # Example
     /// In this example, write genotype data using default metadata.
-    /// ```
+    /// ```ignore // cmk
     /// use ndarray as nd;
     /// use bed_reader::{BedCloud, WriteOptions};
     ///
@@ -1751,12 +1773,12 @@ where
     /// let output_file = output_folder.join("small.bed");
     ///
     /// let val = nd::array![[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]];
-    /// Bed::write(&val, &output_file)?;
+    /// BedCloud::write(&val, &output_file)?;
     ///
     /// // If we then read the new file and list the chromosome property,
     /// // it is an array of zeros, the default chromosome value.
-    /// let mut bed2 = Bed::new(&output_file)?;
-    /// println!("{:?}", bed2.chromosome()?); // Outputs ndarray ["0", "0", "0", "0"]
+    /// let mut bed_cloud2 = BedCloud::new(&output_file)?;
+    /// println!("{:?}", bed_cloud2.chromosome().await?); // Outputs ndarray ["0", "0", "0", "0"]
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
@@ -1774,7 +1796,7 @@ where
     /// > a [`WriteOptions`](struct.WriteOptionsBuilder.html) and writes to file in one step.
     ///
     /// # Example
-    /// ```
+    /// ```ignore // cmk
     /// use ndarray as nd;
     /// use bed_reader::{BedCloud, WriteOptions};
     ///
@@ -1832,17 +1854,17 @@ where
     //     )?;
 
     //     if !write_options.skip_fam() {
-    //         if let Err(e) = write_options.metadata.write_fam(write_options.fam_path()) {
+    //         if let Err(e) = write_options.metadata.write_fam(write_options.fam_object_path()) {
     //             // Clean up the file
-    //             let _ = fs::remove_file(&write_options.fam_path);
+    //             let _ = fs::remove_file(&write_options.fam_object_path);
     //             return Err(e);
     //         }
     //     }
 
     //     if !write_options.skip_bim() {
-    //         if let Err(e) = write_options.metadata.write_bim(write_options.bim_path()) {
+    //         if let Err(e) = write_options.metadata.write_bim(write_options.bim_object_path()) {
     //             // Clean up the file
-    //             let _ = fs::remove_file(&write_options.bim_path);
+    //             let _ = fs::remove_file(&write_options.bim_object_path);
     //             return Err(e);
     //         }
     //     }
@@ -1951,8 +1973,6 @@ pub fn sample_bed_object_path(
     debug_assert!(vec.len() == 3);
     Ok(vec.swap_remove(0))
 }
-
-// cmk00 make this a type ObjectPath<Arc<LocalFileSystem>>
 
 /// Returns the local path to a sample file. If necessary, the file will be downloaded.
 ///
