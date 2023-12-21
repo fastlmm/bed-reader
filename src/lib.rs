@@ -101,7 +101,7 @@
 mod python_module;
 mod tests;
 use anyinput::anyinput;
-use bed_cloud::ObjectPath;
+pub use bed_cloud::ObjectPath;
 pub use bed_cloud::{sample_bed_object_path, sample_object_path, sample_object_paths, BedCloud};
 use core::fmt::Debug;
 use derive_builder::{Builder, UninitializedFieldError};
@@ -142,7 +142,7 @@ use std::ops::AddAssign;
 use std::ops::{Div, Sub};
 use thiserror::Error;
 use tokio::task::JoinError;
-/// cmk docks
+/// cmk docs
 pub mod bed_cloud;
 
 const BED_FILE_MAGIC1: u8 = 0x6C; // 0b01101100 or 'l' (lowercase 'L')
@@ -4288,7 +4288,34 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
         bed.read_with_options(&read_options)
     }
 
-    /// cmk
+    /// Read genotype data from the cloud.
+    ///
+    /// > Also see
+    /// > [`BedCloud::read_with_options`](struct.BedCloud.html#method.read_with_options).
+    ///
+    /// # Errors
+    /// See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
+    /// for all possible errors.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_object_path};
+    /// use bed_reader::assert_eq_nan;
+    ///
+    /// # Runtime::new().unwrap().block_on(async {
+    /// // Read the SNPs indexed by 2.
+    /// let object_path = sample_bed_object_path("small.bed")?;
+    /// let mut bed_cloud = BedCloud::new(object_path).await?;
+    /// let mut val = ReadOptions::builder()
+    ///     .sid_index(2)
+    ///     .read_cloud(&mut bed_cloud).await?;
+    ///
+    /// assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
+    /// ```    
     pub async fn read_cloud<TObjectStore>(
         &self,
         bed_cloud: &mut BedCloud<TObjectStore>,
@@ -6677,11 +6704,7 @@ impl Metadata {
     {
         let mut vec_of_vec = vec![vec![]; field_vec.len()];
 
-        let stream = object_path
-            .get()
-            .await
-            .map_err(BedErrorPlus::from)?
-            .into_stream();
+        let stream = object_path.get().await?.into_stream();
 
         let new_line_stream = newline_delimited_stream(stream);
         pin_mut!(new_line_stream);

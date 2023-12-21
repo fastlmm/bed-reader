@@ -162,7 +162,6 @@ fn convert_negative_sid_index(
 }
 
 // cmk somehow we must only compile is size(usize) is 64 bits.
-// cmk we should turn sid_index into a slice of ranges.
 
 #[allow(clippy::too_many_arguments)]
 async fn internal_read_no_alloc<TVal: BedVal, TObjectStore>(
@@ -179,7 +178,6 @@ async fn internal_read_no_alloc<TVal: BedVal, TObjectStore>(
     out_val: &mut nd::ArrayViewMut2<'_, TVal>,
 ) -> Result<(), Box<BedErrorPlus>>
 where
-    // cmk00 TObjectStore: ArcStore,
     TObjectStore: ObjectStore,
 {
     // compute numbers outside of the loop
@@ -210,10 +208,7 @@ where
         async move {
             let (ranges, out_sid_i_vec) = result?;
 
-            let vec_bytes = object_path
-                .get_ranges(&ranges)
-                .await
-                .map_err(BedErrorPlus::from)?;
+            let vec_bytes = object_path.get_ranges(&ranges).await?;
 
             Result::<_, Box<BedErrorPlus>>::Ok((vec_bytes, out_sid_i_vec))
         }
@@ -295,7 +290,6 @@ fn check_file_length<TObjectStore, I>(
     object_path: I,
 ) -> Result<(usize, u64), Box<BedErrorPlus>>
 where
-    // cmk00 TObjectStore: ArcStore,
     TObjectStore: ObjectStore,
     I: Into<ObjectPath<TObjectStore>>,
 {
@@ -327,7 +321,6 @@ async fn read_no_alloc<TVal: BedVal, TObjectStore, I>(
     val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
 ) -> Result<(), Box<BedErrorPlus>>
 where
-    // cmk00 TObjectStore: ArcStore,
     TObjectStore: ObjectStore,
     I: Into<ObjectPath<TObjectStore>>,
 {
@@ -379,7 +372,6 @@ async fn open_and_check<TObjectStore, I>(
     object_path: I,
 ) -> Result<(ObjectMeta, Bytes), Box<BedErrorPlus>>
 where
-    // cmk00 TObjectStore: ArcStore,
     TObjectStore: ObjectStore,
     I: Into<ObjectPath<TObjectStore>>,
 {
@@ -388,10 +380,7 @@ where
         range: Some(0..CB_HEADER_U64 as usize),
         ..Default::default()
     };
-    let get_result = object_path
-        .get_opts(get_options)
-        .await
-        .map_err(BedErrorPlus::from)?;
+    let get_result = object_path.get_opts(get_options).await?;
 
     let object_meta = get_result.meta.clone(); // cmk good idea?
     let bytes = get_result.bytes().await.map_err(BedErrorPlus::from)?;
@@ -406,7 +395,6 @@ where
 
 impl<TObjectStore> BedCloudBuilder<TObjectStore>
 where
-    // cmk00 TObjectStore: ArcStore,
     TObjectStore: ObjectStore,
 {
     // #[anyinput]
@@ -936,7 +924,6 @@ where
 
 impl<TObjectStore> BedCloud<TObjectStore>
 where
-    // cmk00 TObjectStore: ArcStore,
     TObjectStore: ObjectStore,
 {
     /// Attempts to open a PLINK .bed file in the cloud for reading. Supports options.
@@ -2092,7 +2079,69 @@ pub fn sample_object_paths(
 }
 
 #[derive(Debug)]
-/// cmk doc
+/// The location of a file in the cloud.
+///
+/// The location is made up of of two parts, an `Arc`-wrapped [`ObjectStore`] and a [`StorePath`].
+/// The [`ObjectStore`] is a file server, for example, AWS S3, Azure, the local file system, etc.
+/// The [`StorePath`] is the path to the file on the file server.
+///
+///
+/// [`ObjectStore`]: object_store::ObjectStore
+/// [`StorePath`]: object_store::path::Path
+///
+/// # Examples
+///
+/// You can create an `ObjectPath` from a tuple -- with or without any references.
+/// ```
+/// use std::sync::Arc;
+/// use object_store::{local::LocalFileSystem, path::Path as StorePath};
+/// use bed_reader::{ObjectPath, BedErrorPlus, sample_bed_file};
+///
+/// # Runtime::new().unwrap().block_on(async {
+/// let object_store = Arc::new(LocalFileSystem::new()); // Arc-wrapped ObjectStore
+/// let file_path = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?; // regular Rust PathBuf
+/// let store_path = StorePath::from_filesystem_path(&file_path).map_err(BedErrorPlus::from)?; // StorePath
+///
+/// let object_path0  = ObjectPath::<_>::from(&(&object_store, &store_path)); // ObjectPath from references
+/// let object_path1: ObjectPath<_> = (object_store, store_path).into(); // ObjectPath from owned values
+///
+/// assert_eq!(object_path0.size().await?, object_path1.size().await?);
+/// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+/// # use {tokio::runtime::Runtime};
+/// ```
+///
+/// You can skip `Arc`-wrapping, but then the [`ObjectStore`] must be owned.
+/// ```
+/// # use std::sync::Arc;
+/// # use object_store::{local::LocalFileSystem, path::Path as StorePath};
+/// # use bed_reader::{ObjectPath, BedErrorPlus, sample_bed_file};
+/// # Runtime::new().unwrap().block_on(async {
+/// let object_store = LocalFileSystem::new(); // ObjectStore
+/// let file_path = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?; // regular Rust PathBuf
+/// let store_path = StorePath::from_filesystem_path(&file_path).map_err(BedErrorPlus::from)?; // StorePath
+///
+/// let object_path: ObjectPath<_> = (object_store, &store_path).into(); // ObjectPath from owned object_store
+/// assert_eq!(object_path.size().await?, 303);
+/// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+/// # use {tokio::runtime::Runtime};
+/// ```
+///
+/// Alternatively, you can use [`ObjectPath::new`](struct.ObjectPath.html#method.new), but both parts must be owned
+/// and the [`ObjectStore`] must be `Arc`-wrapped.
+/// ```
+/// # use std::sync::Arc;
+/// # use object_store::{local::LocalFileSystem, path::Path as StorePath};
+/// # use bed_reader::{ObjectPath, BedErrorPlus, sample_bed_file};
+/// # Runtime::new().unwrap().block_on(async {
+/// let object_store = Arc::new(LocalFileSystem::new()); // Arc-wrapped ObjectStore
+/// let file_path = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?; // regular Rust PathBuf
+/// let store_path = StorePath::from_filesystem_path(&file_path).map_err(BedErrorPlus::from)?; // StorePath
+///
+/// let object_path: ObjectPath<_> = ObjectPath::new(object_store, store_path); // ObjectPath from owned values
+/// assert_eq!(object_path.size().await?, 303);
+/// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+/// # use {tokio::runtime::Runtime};
+/// ```
 pub struct ObjectPath<TObjectStore>
 where
     TObjectStore: ObjectStore,
@@ -2117,35 +2166,93 @@ impl<TObjectStore> ObjectPath<TObjectStore>
 where
     TObjectStore: ObjectStore,
 {
-    /// cmk doc
+    /// Create a new [`ObjectPath`] from an `Arc`-wrapped [`ObjectStore`] and a [`StorePath`].
+    ///
+    /// Both parts must be owned, but see [`ObjectPath`] for examples of creating from a tuple with references.
+    ///
+    /// # Example
+    /// ```
+    /// use std::sync::Arc;
+    /// use object_store::{local::LocalFileSystem, path::Path as StorePath};
+    /// use bed_reader::{ObjectPath, BedErrorPlus, sample_bed_file};
+    /// # Runtime::new().unwrap().block_on(async {
+    /// let object_store = Arc::new(LocalFileSystem::new()); // Arc-wrapped ObjectStore
+    /// let file_path = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?; // regular Rust PathBuf
+    /// let store_path = StorePath::from_filesystem_path(&file_path).map_err(BedErrorPlus::from)?; // StorePath
+    ///
+    /// let object_path: ObjectPath<_> = ObjectPath::new(object_store, store_path); // ObjectPath from owned values
+    /// assert_eq!(object_path.size().await?, 303);
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime};
+    /// ```
 
     pub fn new(object_store: Arc<TObjectStore>, path: StorePath) -> Self {
         ObjectPath { object_store, path }
     }
 
-    /// cmk doc
+    /// Return the size of a file stored in the cloud.
+    ///
+    /// # Example
+    /// ```
+    /// use bed_reader::{sample_bed_object_path};
+    ///
+    /// # Runtime::new().unwrap().block_on(async {
+    /// let mut object_path = sample_bed_object_path("plink_sim_10s_100v_10pmiss.bed")?;
+    /// assert_eq!(object_path.size().await?, 303);
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
+    /// ```
+    pub async fn size(&self) -> Result<usize, Box<BedErrorPlus>> {
+        let get_result = self.get().await?;
+        let object_meta = &get_result.meta; // cmk good idea?
+        Ok(object_meta.size)
+    }
+
+    /// Return the bytes that are stored at the specified location in the given byte ranges
     pub async fn get_ranges(
         &self,
         ranges: &[core::ops::Range<usize>],
-    ) -> Result<Vec<Bytes>, object_store::Error> {
-        self.object_store.get_ranges(&self.path, ranges).await
+    ) -> Result<Vec<Bytes>, Box<BedErrorPlus>> {
+        self.object_store
+            .get_ranges(&self.path, ranges)
+            .await
+            .map_err(|e| Box::new(BedErrorPlus::from(e)))
     }
 
-    /// cmk doc
-    pub async fn get_opts(
-        &self,
-        get_options: GetOptions,
-    ) -> Result<GetResult, object_store::Error> {
-        self.object_store.get_opts(&self.path, get_options).await
+    /// Perform a get request with options
+    pub async fn get_opts(&self, get_options: GetOptions) -> Result<GetResult, Box<BedErrorPlus>> {
+        self.object_store
+            .get_opts(&self.path, get_options)
+            .await
+            .map_err(|e| Box::new(BedErrorPlus::from(e)))
     }
 
-    /// cmk doc
-    pub async fn get(&self) -> Result<GetResult, object_store::Error> {
-        self.object_store.get(&self.path).await
+    /// Return the bytes that are stored at the specified location.
+    pub async fn get(&self) -> Result<GetResult, Box<BedErrorPlus>> {
+        self.object_store
+            .get(&self.path)
+            .await
+            .map_err(|e| Box::new(BedErrorPlus::from(e)))
     }
 
-    /// cmk doc
-    pub fn set_extension(&mut self, extension: &str) -> Result<(), object_store::path::Error> {
+    /// Updates the [`ObjectPath`] to have the given extension.
+    ///
+    /// It removes the current extension, if any.
+    /// It appends the given extension, if any.
+    ///
+    /// # Example
+    /// ```
+    /// use bed_reader::{sample_bed_object_path};
+    ///
+    /// # Runtime::new().unwrap().block_on(async {
+    /// let mut object_path = sample_bed_object_path("plink_sim_10s_100v_10pmiss.bed")?;
+    /// assert_eq!(object_path.size().await?, 303);
+    /// object_path.set_extension("fam")?;
+    /// assert_eq!(object_path.size().await?, 130);
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
+    /// ```
+    pub fn set_extension(&mut self, extension: &str) -> Result<(), Box<BedErrorPlus>> {
         let mut path_str = self.path.to_string();
 
         // Find the last dot in the object path
@@ -2154,21 +2261,21 @@ where
             path_str.truncate(dot_index);
         }
 
-        // Append the new extension
-        path_str.push('.');
-        path_str.push_str(extension);
+        if !extension.is_empty() {
+            // Append the new extension
+            path_str.push('.');
+            path_str.push_str(extension);
+        }
 
         // Parse the string back to StorePath
-        self.path = StorePath::parse(&path_str)?;
+        self.path = StorePath::parse(&path_str).map_err(BedErrorPlus::from)?;
         Ok(())
     }
 }
 
-// cmk00 should be make them pass in an Arc or can we do that?
 // Implementing From trait for ObjectPath to allow tuple conversions.
 impl<TObjectStore> From<(Arc<TObjectStore>, StorePath)> for ObjectPath<TObjectStore>
 where
-    // cmk00 TObjectStore: ArcStore,
     TObjectStore: ObjectStore,
 {
     fn from(tuple: (Arc<TObjectStore>, StorePath)) -> Self {
@@ -2180,7 +2287,6 @@ where
 }
 impl<TObjectStore> From<(&Arc<TObjectStore>, &StorePath)> for ObjectPath<TObjectStore>
 where
-    // cmk00 TObjectStore: ArcStore,
     TObjectStore: ObjectStore,
 {
     fn from(tuple: (&Arc<TObjectStore>, &StorePath)) -> Self {
@@ -2192,7 +2298,6 @@ where
 }
 impl<TObjectStore> From<(Arc<TObjectStore>, &StorePath)> for ObjectPath<TObjectStore>
 where
-    // cmk00 TObjectStore: ArcStore,
     TObjectStore: ObjectStore,
 {
     fn from(tuple: (Arc<TObjectStore>, &StorePath)) -> Self {
@@ -2204,7 +2309,6 @@ where
 }
 impl<TObjectStore> From<(&Arc<TObjectStore>, StorePath)> for ObjectPath<TObjectStore>
 where
-    // cmk00 TObjectStore: ArcStore,
     TObjectStore: ObjectStore,
 {
     fn from(tuple: (&Arc<TObjectStore>, StorePath)) -> Self {
@@ -2214,9 +2318,77 @@ where
         }
     }
 }
+
+impl<TObjectStore> From<&(Arc<TObjectStore>, StorePath)> for ObjectPath<TObjectStore>
+where
+    TObjectStore: ObjectStore,
+{
+    fn from(tuple: &(Arc<TObjectStore>, StorePath)) -> Self {
+        ObjectPath {
+            object_store: tuple.0.clone(),
+            path: tuple.1.clone(),
+        }
+    }
+}
+impl<TObjectStore> From<&(&Arc<TObjectStore>, &StorePath)> for ObjectPath<TObjectStore>
+where
+    TObjectStore: ObjectStore,
+{
+    fn from(tuple: &(&Arc<TObjectStore>, &StorePath)) -> Self {
+        ObjectPath {
+            object_store: tuple.0.clone(),
+            path: tuple.1.clone(),
+        }
+    }
+}
+impl<TObjectStore> From<&(Arc<TObjectStore>, &StorePath)> for ObjectPath<TObjectStore>
+where
+    TObjectStore: ObjectStore,
+{
+    fn from(tuple: &(Arc<TObjectStore>, &StorePath)) -> Self {
+        ObjectPath {
+            object_store: tuple.0.clone(),
+            path: tuple.1.clone(),
+        }
+    }
+}
+impl<TObjectStore> From<&(&Arc<TObjectStore>, StorePath)> for ObjectPath<TObjectStore>
+where
+    TObjectStore: ObjectStore,
+{
+    fn from(tuple: &(&Arc<TObjectStore>, StorePath)) -> Self {
+        ObjectPath {
+            object_store: tuple.0.clone(),
+            path: tuple.1.clone(),
+        }
+    }
+}
+
+// Implementing From trait for ObjectPath to allow tuple conversions.
+impl<TObjectStore> From<(TObjectStore, StorePath)> for ObjectPath<TObjectStore>
+where
+    TObjectStore: ObjectStore,
+{
+    fn from(tuple: (TObjectStore, StorePath)) -> Self {
+        ObjectPath {
+            object_store: Arc::new(tuple.0),
+            path: tuple.1,
+        }
+    }
+}
+impl<TObjectStore> From<(TObjectStore, &StorePath)> for ObjectPath<TObjectStore>
+where
+    TObjectStore: ObjectStore,
+{
+    fn from(tuple: (TObjectStore, &StorePath)) -> Self {
+        ObjectPath {
+            object_store: Arc::new(tuple.0),
+            path: tuple.1.clone(),
+        }
+    }
+}
 impl<TObjectStore> From<&ObjectPath<TObjectStore>> for ObjectPath<TObjectStore>
 where
-    // cmk00 TObjectStore: ArcStore,
     TObjectStore: ObjectStore,
 {
     fn from(ref_thing: &ObjectPath<TObjectStore>) -> Self {
@@ -2226,7 +2398,6 @@ where
 
 impl<TObjectStore> fmt::Display for ObjectPath<TObjectStore>
 where
-    // cmk00 TObjectStore: ArcStore,
     TObjectStore: ObjectStore,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -2240,32 +2411,23 @@ fn to_metadata_path<TObjectStore>(
     extension: &str,
 ) -> Result<ObjectPath<TObjectStore>, Box<BedErrorPlus>>
 where
-    // cmk00 TObjectStore: ArcStore,
     TObjectStore: ObjectStore,
 {
     if let Some(metadata_object_path) = metadata_object_path {
         Ok(metadata_object_path.clone())
     } else {
         let mut meta_object_path = bed_object_path.clone();
-        meta_object_path
-            .set_extension(extension)
-            .map_err(BedErrorPlus::from)?;
+        meta_object_path.set_extension(extension)?;
         Ok(meta_object_path)
     }
 }
 
 async fn count_lines<TObjectStore, I>(object_path: I) -> Result<usize, Box<BedErrorPlus>>
 where
-    // cmk00 TObjectStore: ArcStore,
     TObjectStore: ObjectStore,
     I: Into<ObjectPath<TObjectStore>>,
 {
-    let stream = object_path
-        .into()
-        .get()
-        .await
-        .map_err(BedErrorPlus::from)?
-        .into_stream();
+    let stream = object_path.into().get().await?.into_stream();
 
     let new_line_stream = newline_delimited_stream(stream);
 

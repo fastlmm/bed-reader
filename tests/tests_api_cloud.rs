@@ -13,6 +13,7 @@ use bed_reader::BedError;
 use bed_reader::BedErrorPlus;
 use bed_reader::Metadata;
 use bed_reader::MetadataFields;
+use bed_reader::ObjectPath;
 use bed_reader::ReadOptions;
 use bed_reader::SliceInfo1;
 use ndarray as nd;
@@ -406,7 +407,7 @@ async fn metadata_etc_cloud() -> Result<(), Box<BedErrorPlus>> {
     println!("{:?}", bed_cloud.mother().await?);
     // Expected output: ["iid34", "iid34", "iid33"], shape=[3], strides=[1], layout=CFcf (0xf), const ndim=1
 
-    Ok(()) // cmk make other tests end like this
+    Ok(())
 }
 
 #[tokio::test]
@@ -2495,5 +2496,62 @@ async fn read_index_quick_cloud() -> Result<(), Box<BedErrorPlus>> {
 
     assert_eq_nan(&val0, &val1);
 
+    Ok(())
+}
+
+#[tokio::test]
+async fn object_path() -> Result<(), Box<BedErrorPlus>> {
+    let file_path = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
+
+    // From a tuple of (object_store, store_path) or (object_store, &store_path)
+    let object_store = LocalFileSystem::new();
+    let store_path = StorePath::from_filesystem_path(&file_path).map_err(BedErrorPlus::from)?;
+    let _object_path: ObjectPath<_> = (object_store, &store_path).into();
+
+    let object_store = LocalFileSystem::new();
+    let _object_path: ObjectPath<_> = (object_store, store_path).into();
+
+    // From a tuple of (Arc::new(object_store), store_path), (&Arc::new(object_store), store_path)
+    //         (Arc::new(object_store), &store_path), or (&Arc::new(object_store), &store_path)
+    //   or &(Arc::new(object_store), store_path), etc.
+    let object_store = Arc::new(LocalFileSystem::new());
+    let store_path = StorePath::from_filesystem_path(&file_path).map_err(BedErrorPlus::from)?;
+    let _object_path: ObjectPath<_> = (object_store, store_path).into();
+
+    let object_store = Arc::new(LocalFileSystem::new());
+    let store_path = StorePath::from_filesystem_path(&file_path).map_err(BedErrorPlus::from)?;
+    let _object_path: ObjectPath<_> = (&object_store, store_path).into();
+    let object_store = Arc::new(LocalFileSystem::new());
+    let store_path = StorePath::from_filesystem_path(&file_path).map_err(BedErrorPlus::from)?;
+    let _object_path: ObjectPath<_> = (object_store, &store_path).into();
+    let object_store = Arc::new(LocalFileSystem::new());
+    let store_path = StorePath::from_filesystem_path(&file_path).map_err(BedErrorPlus::from)?;
+    let _object_path: ObjectPath<_> = (&object_store, &store_path).into();
+    let object_store = Arc::new(LocalFileSystem::new());
+    let store_path = StorePath::from_filesystem_path(&file_path).map_err(BedErrorPlus::from)?;
+    let _object_path: ObjectPath<_> = (&(object_store, store_path)).into();
+    let object_store = Arc::new(LocalFileSystem::new());
+    let store_path = StorePath::from_filesystem_path(&file_path).map_err(BedErrorPlus::from)?;
+    let _object_path: ObjectPath<_> = (&(&object_store, store_path)).into();
+    let object_store = Arc::new(LocalFileSystem::new());
+    let store_path = StorePath::from_filesystem_path(&file_path).map_err(BedErrorPlus::from)?;
+    let _object_path: ObjectPath<_> = (&(object_store, &store_path)).into();
+    let object_store = Arc::new(LocalFileSystem::new());
+    let store_path = StorePath::from_filesystem_path(&file_path).map_err(BedErrorPlus::from)?;
+    let _object_path: ObjectPath<_> = (&(&object_store, &store_path)).into();
+
+    let object_store = Arc::new(LocalFileSystem::new());
+    let store_path = StorePath::from_filesystem_path(&file_path).map_err(BedErrorPlus::from)?;
+    let _object_path = ObjectPath::new(object_store, store_path);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn object_path_extension() -> Result<(), Box<BedErrorPlus>> {
+    let mut object_path = sample_bed_object_path("plink_sim_10s_100v_10pmiss.bed")?;
+    assert_eq!(object_path.size().await?, 303);
+    object_path.set_extension("fam")?;
+    assert_eq!(object_path.size().await?, 130);
     Ok(())
 }
