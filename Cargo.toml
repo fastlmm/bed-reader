@@ -53,7 +53,7 @@ base16ct = { version = "0.2.0", features = ["alloc"] }
 ctor = "0.2.0"
 anyinput = { version = "0.1.6", features = ["ndarray"] }
 fetch-data = "0.1.6"
-object_store = "0.8.0"
+object_store = { version = "0.8.0", features = ["aws"] }
 tokio = { version = "1.35.0", features = ["full"] }
 anyhow = "1.0.75"
 futures-util = "0.3.29"
@@ -64,6 +64,8 @@ bytes = "1.5.0"
 [dev-dependencies]
 ndarray-rand = "0.14.0"
 anyhow = "1.0.75"
+rusoto_credential = "0.44.0"
+
 
 [build-dependencies]
 pyo3-build-config = "0.20.0"

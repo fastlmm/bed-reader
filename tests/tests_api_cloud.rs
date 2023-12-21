@@ -18,6 +18,7 @@ use bed_reader::ReadOptions;
 use bed_reader::SliceInfo1;
 use ndarray as nd;
 use ndarray::s;
+use object_store::aws::AmazonS3Builder;
 use object_store::local::LocalFileSystem;
 use object_store::path::Path as StorePath;
 
@@ -2552,5 +2553,24 @@ async fn object_path_extension() -> Result<(), Box<BedErrorPlus>> {
     assert_eq!(object_path.size().await?, 303);
     object_path.set_extension("fam")?;
     assert_eq!(object_path.size().await?, 130);
+    Ok(())
+}
+
+#[tokio::test]
+async fn s3() -> Result<(), Box<BedErrorPlus>> {
+    use rusoto_credential::{ProfileProvider, ProvideAwsCredentials};
+    let credentials = ProfileProvider::new().unwrap().credentials().await.unwrap();
+
+    let s3 = AmazonS3Builder::new()
+        .with_region("us-west-2")
+        .with_bucket_name("bedreader")
+        .with_access_key_id(credentials.aws_access_key_id())
+        .with_secret_access_key(credentials.aws_secret_access_key())
+        .build()
+        .unwrap(); // cmk unwrap
+
+    let store_path: StorePath = "/v1/toydata.5chrom.bed".into();
+    let object_path = ObjectPath::from((s3, store_path));
+    assert_eq!(object_path.size().await?, 1_250_003);
     Ok(())
 }
