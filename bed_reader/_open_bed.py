@@ -13,7 +13,7 @@ try:
 except ImportError:
     sparse = None
 
-from .bed_reader import read_f32, read_f64, read_i8  # type: ignore
+from .bed_reader import read_f32, read_f64, read_i8, read_cloud_i8  # type: ignore
 
 
 # https://stackoverflow.com/questions/845058/how-to-get-line-count-of-a-large-file-cheaply-in-python

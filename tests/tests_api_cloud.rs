@@ -2558,6 +2558,7 @@ async fn object_path_extension() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn s3() -> Result<(), Box<BedErrorPlus>> {
+    // cmk too many unwraps
     use rusoto_credential::{ProfileProvider, ProvideAwsCredentials};
     let credentials = ProfileProvider::new().unwrap().credentials().await.unwrap();
 
@@ -2569,7 +2570,8 @@ async fn s3() -> Result<(), Box<BedErrorPlus>> {
         .build()
         .unwrap(); // cmk unwrap
 
-    let store_path: StorePath = "/v1/toydata.5chrom.bed".into();
+    // cmk should we accept a string as a Path?
+    let store_path = StorePath::parse("/v1/toydata.5chrom.bed").unwrap();
     let object_path = ObjectPath::from((s3, store_path));
     assert_eq!(object_path.size().await?, 1_250_003);
     Ok(())

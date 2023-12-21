@@ -149,6 +149,46 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
+    #[pyo3(name = "read_cloud_i8")]
+    #[allow(clippy::too_many_arguments)]
+    async fn read_cloud_i8(
+        // filename: &str,
+        iid_count: usize,
+        sid_count: usize,
+        is_a1_counted: bool,
+        iid_index: &PyArray1<isize>,
+        sid_index: &PyArray1<isize>,
+        val: &PyArray2<i8>,
+        max_concurrent_requests: usize,
+        max_chunk_size: usize,
+        num_threads: usize,
+    ) -> Result<(), PyErr> {
+        let iid_index = iid_index.readonly();
+        let sid_index = sid_index.readonly();
+        let ii = &iid_index.as_slice()?;
+        let si = &sid_index.as_slice()?;
+
+        let mut val = unsafe { val.as_array_mut() };
+
+        let mut bed_cloud = BedCloud::builder((,))
+            .skip_check_header()
+            .iid_count(iid_count)
+            .sid_count(sid_count)
+            .build().await?;
+
+        ReadOptions::builder()
+            .iid_index(*ii)
+            .sid_index(*si)
+            .is_a1_counted(is_a1_counted)
+            .max_concurrent_requests(max_concurrent_requests)
+            .max_chunk_size(max_chunk_size)
+            .num_threads(num_threads)
+            .read_and_fill_cloud(&mut bed_cloud, &mut val.view_mut())?;
+
+        Ok(())
+    }
+
+    #[pyfn(m)]
     #[pyo3(name = "write_f64")]
     fn write_f64(
         filename: &str,

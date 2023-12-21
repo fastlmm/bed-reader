@@ -19,6 +19,7 @@ from .bed_reader import (
     read_f32,
     read_f64,
     read_i8,
+    read_cloud_i8,
     standardize_f32,
     standardize_f64,
     subset_f32_f32,
