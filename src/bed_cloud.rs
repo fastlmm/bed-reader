@@ -10,7 +10,7 @@ use object_store::delimited::newline_delimited_stream;
 use object_store::local::LocalFileSystem;
 use object_store::path::Path as StorePath;
 use object_store::ObjectStore;
-use object_store::{GetOptions, GetResult, ObjectMeta};
+use object_store::{GetOptions, GetResult};
 use std::cmp::max;
 use std::collections::HashSet;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -166,7 +166,7 @@ fn convert_negative_sid_index(
 #[allow(clippy::too_many_arguments)]
 async fn internal_read_no_alloc<TVal: BedVal, TObjectStore>(
     object_path: &ObjectPath<TObjectStore>,
-    object_meta: &ObjectMeta,
+    size: usize,
     in_iid_count: usize,
     in_sid_count: usize,
     is_a1_counted: bool,
@@ -182,7 +182,7 @@ where
 {
     // compute numbers outside of the loop
     let (in_iid_count_div4, in_iid_count_div4_u64) =
-        check_file_length(in_iid_count, in_sid_count, object_meta, object_path)?;
+        check_file_length(in_iid_count, in_sid_count, size, object_path)?;
     let (i_div_4_array, i_mod_4_times_2_array) =
         check_and_precompute_iid_index(in_iid_count, iid_index)?;
     let chunk_size = max(1, max_chunk_size / in_iid_count_div4);
@@ -286,7 +286,7 @@ fn decode_bytes_into_columns<TVal: BedVal>(
 fn check_file_length<TObjectStore, I>(
     in_iid_count: usize,
     in_sid_count: usize,
-    object_meta: &ObjectMeta,
+    size: usize,
     object_path: I,
 ) -> Result<(usize, u64), Box<BedErrorPlus>>
 where
@@ -295,7 +295,7 @@ where
 {
     let (in_iid_count_div4, in_iid_count_div4_u64) =
         try_div_4(in_iid_count, in_sid_count, CB_HEADER_U64)?;
-    let file_len = object_meta.size as u64;
+    let file_len = size as u64;
     let file_len2 = in_iid_count_div4_u64 * (in_sid_count as u64) + CB_HEADER_U64;
     if file_len != file_len2 {
         return Err(Box::new(
@@ -325,7 +325,7 @@ where
     I: Into<ObjectPath<TObjectStore>>,
 {
     let object_path = object_path.into();
-    let (object_meta, bytes) = open_and_check(&object_path).await?;
+    let (size, bytes) = open_and_check(&object_path).await?;
 
     match bytes[2] {
         0 => {
@@ -334,7 +334,7 @@ where
 
             internal_read_no_alloc(
                 &object_path,
-                &object_meta,
+                size,
                 sid_count,
                 iid_count,
                 is_a1_counted,
@@ -350,7 +350,7 @@ where
         1 => {
             internal_read_no_alloc(
                 &object_path,
-                &object_meta,
+                size,
                 iid_count,
                 sid_count,
                 is_a1_counted,
@@ -370,7 +370,7 @@ where
 
 async fn open_and_check<TObjectStore, I>(
     object_path: I,
-) -> Result<(ObjectMeta, Bytes), Box<BedErrorPlus>>
+) -> Result<(usize, Bytes), Box<BedErrorPlus>>
 where
     TObjectStore: ObjectStore,
     I: Into<ObjectPath<TObjectStore>>,
@@ -382,7 +382,8 @@ where
     };
     let get_result = object_path.get_opts(get_options).await?;
 
-    let object_meta = get_result.meta.clone(); // cmk good idea?
+    let size: usize = get_result.meta.size;
+
     let bytes = get_result.bytes().await.map_err(BedErrorPlus::from)?;
 
     if (BED_FILE_MAGIC1 != bytes[0]) || (BED_FILE_MAGIC2 != bytes[1]) {
@@ -390,7 +391,7 @@ where
             BedError::IllFormed(object_path.to_string()).into(),
         ));
     }
-    Ok((object_meta, bytes))
+    Ok((size, bytes))
 }
 
 impl<TObjectStore> BedCloudBuilder<TObjectStore>
@@ -422,10 +423,10 @@ where
     pub async fn build(&self) -> Result<BedCloud<TObjectStore>, Box<BedErrorPlus>> {
         let mut bed_cloud = self.build_no_file_check()?;
 
-        // cmk is this unwrap OK?
+        // Unwrap is allowed becaue we can't construct BedCloudBuilder without object_path
         if bed_cloud.is_checked_early {
             let object_path = self.object_path.as_ref().unwrap().clone();
-            open_and_check(&object_path).await?;
+            open_and_check(object_path).await?;
         }
 
         (bed_cloud.iid_count, bed_cloud.sid_count) = bed_cloud

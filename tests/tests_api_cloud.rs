@@ -454,7 +454,6 @@ async fn fam_and_bim_cloud() -> Result<(), Box<BedErrorPlus>> {
     let mut deb_maf_mib = sample_object_paths(["small.deb", "small.maf", "small.mib"])?;
 
     // Build BedCloud with custom fam and bim paths
-    // cmk should they have their own object_store?
     let mut bed_cloud = BedCloud::builder(deb_maf_mib.remove(0))
         .fam_object_path(deb_maf_mib.remove(0)) // Note: indexes shift
         .bim_object_path(deb_maf_mib.remove(0)) // Note: indexes shift

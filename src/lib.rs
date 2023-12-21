@@ -142,8 +142,7 @@ use std::ops::AddAssign;
 use std::ops::{Div, Sub};
 use thiserror::Error;
 use tokio::task::JoinError;
-/// cmk docs
-pub mod bed_cloud;
+mod bed_cloud;
 
 const BED_FILE_MAGIC1: u8 = 0x6C; // 0b01101100 or 'l' (lowercase 'L')
 const BED_FILE_MAGIC2: u8 = 0x1B; // 0b00011011 or <esc>
