@@ -150,58 +150,58 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         Ok(())
     }
 
-    #[allow(unused_variables)]
-    // #[pyfn(m)]
-    // #[pyo3(name = "read_cloud_i8")]
-    #[pyfunction]
-    #[allow(clippy::too_many_arguments)]
-    fn read_cloud_i8(
-        py: Python,
-        // cmk currently only supports LocalFileSystem "cloud" storage
-        filename: &str,
-        iid_count: usize,
-        sid_count: usize,
-        is_a1_counted: bool,
-        iid_index: &PyArray1<isize>,
-        sid_index: &PyArray1<isize>,
-        val: &PyArray2<i8>,
-        max_concurrent_requests: usize,
-        max_chunk_size: usize,
-        num_threads: usize,
-    ) -> Result<PyObject, PyErr> {
-        todo!("CMK");
-        // let iid_index = iid_index.readonly();
-        // let sid_index = sid_index.readonly();
-        // let ii = &iid_index.as_slice()?;
-        // let si = &sid_index.as_slice()?;
+    // #[allow(unused_variables)]
+    // // #[pyfn(m)]
+    // // #[pyo3(name = "read_cloud_i8")]
+    // #[pyfunction]
+    // #[allow(clippy::too_many_arguments)]
+    // fn read_cloud_i8(
+    //     py: Python,
+    //     // cmk currently only supports LocalFileSystem "cloud" storage
+    //     filename: &str,
+    //     iid_count: usize,
+    //     sid_count: usize,
+    //     is_a1_counted: bool,
+    //     iid_index: &PyArray1<isize>,
+    //     sid_index: &PyArray1<isize>,
+    //     val: &PyArray2<i8>,
+    //     max_concurrent_requests: usize,
+    //     max_chunk_size: usize,
+    //     num_threads: usize,
+    // ) -> Result<PyObject, PyErr> {
+    //     todo!("CMK");
+    //     // let iid_index = iid_index.readonly();
+    //     // let sid_index = sid_index.readonly();
+    //     // let ii = &iid_index.as_slice()?;
+    //     // let si = &sid_index.as_slice()?;
 
-        // let mut val = unsafe { val.as_array_mut() };
+    //     // let mut val = unsafe { val.as_array_mut() };
 
-        // // cmk hack
+    //     // // cmk hack
 
-        // let store_path: StorePath = filename.into();
-        // Ok(future_into_py(py, async move {
-        //     let mut bed_cloud = BedCloud::builder((LocalFileSystem::new(), store_path))
-        //         .skip_early_check()
-        //         .iid_count(iid_count)
-        //         .sid_count(sid_count)
-        //         .build()
-        //         .await?;
+    //     // let store_path: StorePath = filename.into();
+    //     // Ok(future_into_py(py, async move {
+    //     //     let mut bed_cloud = BedCloud::builder((LocalFileSystem::new(), store_path))
+    //     //         .skip_early_check()
+    //     //         .iid_count(iid_count)
+    //     //         .sid_count(sid_count)
+    //     //         .build()
+    //     //         .await?;
 
-        //     ReadOptions::builder()
-        //         .iid_index(*ii)
-        //         .sid_index(*si)
-        //         .is_a1_counted(is_a1_counted)
-        //         .max_concurrent_requests(max_concurrent_requests)
-        //         .max_chunk_size(max_chunk_size)
-        //         .num_threads(num_threads)
-        //         .read_and_fill_cloud(&mut bed_cloud, &mut val.view_mut())
-        //         .await?;
+    //     //     ReadOptions::builder()
+    //     //         .iid_index(*ii)
+    //     //         .sid_index(*si)
+    //     //         .is_a1_counted(is_a1_counted)
+    //     //         .max_concurrent_requests(max_concurrent_requests)
+    //     //         .max_chunk_size(max_chunk_size)
+    //     //         .num_threads(num_threads)
+    //     //         .read_and_fill_cloud(&mut bed_cloud, &mut val.view_mut())
+    //     //         .await?;
 
-        //     Ok(())
-        // })?
-        // .into())
-    }
+    //     //     Ok(())
+    //     // })?
+    //     // .into())
+    // }
 
     #[pyfn(m)]
     #[pyo3(name = "write_f64")]
@@ -582,10 +582,10 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         Ok(())
     }
 
-    fn bed_reader(_py: Python, m: &PyModule) -> PyResult<()> {
-        m.add_function(wrap_pyfunction!(read_cloud_i8, m)?)?;
-        Ok(())
-    }
+    // fn bed_reader(_py: Python, m: &PyModule) -> PyResult<()> {
+    //     m.add_function(wrap_pyfunction!(read_cloud_i8, m)?)?;
+    //     Ok(())
+    // }
 
     Ok(())
 }

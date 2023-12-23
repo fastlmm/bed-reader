@@ -9,15 +9,16 @@ import pytest
 from bed_reader import open_bed_cloud
 
 
-def test_cloud_read1(shared_datadir):
+@pytest.mark.asyncio
+async def test_cloud_read1(shared_datadir):
     import math
 
     file = shared_datadir / "plink_sim_10s_100v_10pmiss.bed"
-    with await open_bed_cloud(file) as bed_cloud:
-        assert await bed_cloud.iid_count == 10
-        assert await bed_cloud.fid[-1] == "0"
-        assert await bed_cloud.iid[-1] == "9"
-        assert await bed_cloud.shape == (10, 100)
+    with open_bed_cloud(file) as bed_cloud:
+        assert bed_cloud.iid_count == 10
+        assert bed_cloud.fid[-1] == "0"
+        assert bed_cloud.iid[-1] == "9"
+        assert bed_cloud.shape == (10, 100)
 
         val = bed_cloud.read(dtype="int8")
         # really shouldn't do mean on data where -127 represents missing

@@ -8,6 +8,7 @@
 from bed_reader._open_bed import get_num_threads, open_bed
 from bed_reader._sample_data import sample_file, tmp_path
 from bed_reader._to_bed import to_bed
+from bed_reader._open_bed_cloud import open_bed_cloud
 
 from .bed_reader import (
     file_aat_piece_f32_orderf,
@@ -19,7 +20,7 @@ from .bed_reader import (
     read_f32,
     read_f64,
     read_i8,
-    read_cloud_i8,
+    # cmk read_cloud_i8,
     standardize_f32,
     standardize_f64,
     subset_f32_f32,

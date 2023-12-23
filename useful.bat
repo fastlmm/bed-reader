@@ -1,3 +1,7 @@
+# test async in python:
+pytest bed_reader\tests\test_open_bed_cloud.py -k read1
+
+
 pip# test Rust
 cargo test
 

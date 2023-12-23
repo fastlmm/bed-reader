@@ -1,8 +1,8 @@
 import logging
-# cmk import multiprocessing
+import multiprocessing
 import os
-# cmk from dataclasses import dataclass
-# cmk from itertools import repeat, takewhile
+from dataclasses import dataclass
+from itertools import repeat, takewhile
 from pathlib import Path
 from typing import Any, List, Mapping, Optional, Union
 
@@ -13,8 +13,71 @@ try:
 except ImportError:
     sparse = None
 
-from .bed_reader import read_cloud_i8  # type: ignore
-from bed_reader._open_bed import _meta_meta, _read_csv, _rawincount, _delimiters, get_num_threads, _count_name
+from .bed_reader import read_f32, read_f64, read_i8  # type: ignore
+
+
+# https://stackoverflow.com/questions/845058/how-to-get-line-count-of-a-large-file-cheaply-in-python
+def _rawincount(filepath):
+    with open(filepath, "rb") as f:
+        bufgen = takewhile(lambda x: x, (f.raw.read(1024 * 1024) for _ in repeat(None)))
+        return sum(buf.count(b"\n") for buf in bufgen)
+
+
+@dataclass
+class _MetaMeta:
+    suffix: str
+    column: int
+    dtype: type
+    missing_value: object
+    fill_sequence: object
+
+
+def _all_same(key, length, missing, dtype):
+    if np.issubdtype(dtype, np.str_):
+        dtype = f"<U{len(missing)}"
+    return np.full(length, missing, dtype=dtype)
+
+
+def _sequence(key, length, missing, dtype):
+    if np.issubdtype(dtype, np.str_):
+        longest = len(f"{key}{length}")
+        dtype = f"<U{longest}"
+    return np.fromiter(
+        (f"{key}{i + 1}" for i in range(length)), dtype=dtype, count=length
+    )
+
+
+_delimiters = {"fam": r"\s+", "bim": "\t"}
+_count_name = {"fam": "iid_count", "bim": "sid_count"}
+
+
+_meta_meta = {
+    # https://stackoverflow.com/questions/41921255/staticmethod-object-is-not-callable
+    "fid": _MetaMeta("fam", 0, np.str_, "0", _all_same),
+    "iid": _MetaMeta("fam", 1, np.str_, None, _sequence),
+    "father": _MetaMeta("fam", 2, np.str_, "0", _all_same),
+    "mother": _MetaMeta("fam", 3, np.str_, "0", _all_same),
+    "sex": _MetaMeta("fam", 4, np.int32, 0, _all_same),
+    "pheno": _MetaMeta("fam", 5, np.str_, "0", _all_same),
+    "chromosome": _MetaMeta("bim", 0, np.str_, "0", _all_same),
+    "sid": _MetaMeta("bim", 1, np.str_, None, _sequence),
+    "cm_position": _MetaMeta("bim", 2, np.float32, 0, _all_same),
+    "bp_position": _MetaMeta("bim", 3, np.int32, 0, _all_same),
+    "allele_1": _MetaMeta("bim", 4, np.str_, "A1", _all_same),
+    "allele_2": _MetaMeta("bim", 5, np.str_, "A2", _all_same),
+}
+
+
+def get_num_threads(num_threads=None):
+    if num_threads is not None:
+        return num_threads
+    if "PST_NUM_THREADS" in os.environ:
+        return int(os.environ["PST_NUM_THREADS"])
+    if "NUM_THREADS" in os.environ:
+        return int(os.environ["NUM_THREADS"])
+    if "MKL_NUM_THREADS" in os.environ:
+        return int(os.environ["MKL_NUM_THREADS"])
+    return multiprocessing.cpu_count()
 
 
 class open_bed_cloud:
@@ -73,8 +136,8 @@ class open_bed_cloud:
 
     Returns
     -------
-    open_bed
-        an open_bed object
+    open_bed_cloud
+        an open_bed_cloud object
 
     Examples
     --------
@@ -84,10 +147,10 @@ class open_bed_cloud:
 
     .. doctest::
 
-        >>> from bed_reader import open_bed, sample_file
+        >>> from bed_reader import open_bed_cloud, sample_file
         >>>
         >>> file_name = sample_file("small.bed")
-        >>> bed = open_bed(file_name)
+        >>> bed = open_bed_cloud(file_name)
         >>> print(bed.iid)
         ['iid1' 'iid2' 'iid3']
         >>> print(bed.sid)
@@ -104,7 +167,7 @@ class open_bed_cloud:
     .. doctest::
 
         >>> import numpy as np
-        >>> with open_bed(file_name) as bed:
+        >>> with open_bed_cloud(file_name) as bed:
         ...     print(bed.read(np.s_[:,2]))
         [[nan]
          [nan]
@@ -113,7 +176,7 @@ class open_bed_cloud:
     Replace :attr:`iid`.
 
 
-        >>> bed = open_bed(file_name, properties={"iid":["sample1","sample2","sample3"]})
+        >>> bed = open_bed_cloud(file_name, properties={"iid":["sample1","sample2","sample3"]})
         >>> print(bed.iid) # replaced
         ['sample1' 'sample2' 'sample3']
         >>> print(bed.sid) # same as before
@@ -122,7 +185,7 @@ class open_bed_cloud:
     Give the number of individuals (samples) and SNPs (variants) so that the .fam and
     .bim files need never be opened.
 
-        >>> with open_bed(file_name, iid_count=3, sid_count=4) as bed:
+        >>> with open_bed_cloud(file_name, iid_count=3, sid_count=4) as bed:
         ...     print(bed.read())
         [[ 1.  0. nan  0.]
          [ 2.  0. nan  2.]
@@ -130,7 +193,7 @@ class open_bed_cloud:
 
     Mark some properties as "don’t read or offer".
 
-        >>> bed = open_bed(file_name, properties={
+        >>> bed = open_bed_cloud(file_name, properties={
         ...    "father" : None, "mother" : None, "sex" : None, "pheno" : None,
         ...    "allele_1" : None, "allele_2":None })
         >>> print(bed.iid)        # read from file
@@ -142,7 +205,7 @@ class open_bed_cloud:
 
     """
 
-    async def __init__(
+    def __init__(
         self,
         filepath: Union[str, Path],
         iid_count: Optional[int] = None,
@@ -150,10 +213,11 @@ class open_bed_cloud:
         properties: Mapping[str, List[Any]] = {},
         count_A1: bool = True,
         num_threads: Optional[int] = None,
-        skip_format_check: bool = False,
         fam_filepath: Union[str, Path] = None,
         bim_filepath: Union[str, Path] = None,
     ):
+        skip_format_check = True
+
         self.filepath = Path(filepath)
         self.count_A1 = count_A1
         self._num_threads = num_threads
@@ -175,21 +239,51 @@ class open_bed_cloud:
         self._iid_range = None
         self._sid_range = None
 
+    @classmethod
+    async def create(
+        filepath: Union[str, Path],
+        iid_count: Optional[int] = None,
+        sid_count: Optional[int] = None,
+        properties: Mapping[str, List[Any]] = {},
+        count_A1: bool = True,
+        skip_format_check: bool = False,
+        num_threads: Optional[int] = None,
+        fam_filepath: Union[str, Path] = None,
+        bim_filepath: Union[str, Path] = None,
+    ):
+        self = open_bed_cloud(
+            filepath,
+            iid_count=iid_count,
+            sid_count=sid_count,
+            properties=properties,
+            count_A1=count_A1,
+            num_threads=num_threads,
+            fam_filepath=fam_filepath,
+            bim_filepath=bim_filepath,
+        )
+        self.skip_format_check = skip_format_check
         if not self.skip_format_check:
             with open(self.filepath, "rb") as filepointer:
                 self._check_file(filepointer)
 
-    async def read(
+    async def __aenter__(self):
+        # Setup or additional operations when entering the context
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        # Cleanup or close operations when exiting the context
+        pass
+
+    def read(
         self,
         index: Optional[Any] = None,
         dtype: Optional[Union[type, str]] = "float32",
         order: Optional[str] = "F",
-        max_concurrent_requests=None,
-        max_chunk_size=None,
+        force_python_only: Optional[bool] = False,
         num_threads=None,
     ) -> np.ndarray:
         """
-        Read genotype information from a cloud location. // cmk update docs
+        Read genotype information.
 
         Parameters
         ----------
@@ -207,11 +301,14 @@ class open_bed_cloud:
         order : {'F','C'}, optional
             The desired memory layout for the returned array.
             Defaults to ``F`` (Fortran order, which is SNP-major).
+        force_python_only: bool, optional
+            If False (default), uses the faster Rust code; otherwise it uses the slower
+            pure Python code.
 
         num_threads: None or int, optional
             The number of threads with which to read data. Defaults to all available
             processors.
-            Can also be set with :class:`open_bed` or these
+            Can also be set with :class:`open_bed_cloud` or these
             environment variables (listed in priority order):
             'PST_NUM_THREADS', 'NUM_THREADS', 'MKL_NUM_THREADS'.
 
@@ -234,10 +331,10 @@ class open_bed_cloud:
 
         .. doctest::
 
-            >>> from bed_reader import open_bed, sample_file
+            >>> from bed_reader import open_bed_cloud, sample_file
             >>>
             >>> file_name = sample_file("small.bed")
-            >>> with open_bed(file_name) as bed:
+            >>> with open_bed_cloud(file_name) as bed:
             ...     print(bed.read())
             [[ 1.  0. nan  0.]
              [ 2.  0. nan  2.]
@@ -252,7 +349,7 @@ class open_bed_cloud:
         .. doctest::
 
             >>> import numpy as np
-            >>> bed = open_bed(file_name)
+            >>> bed = open_bed_cloud(file_name)
             >>> print(bed.read(np.s_[:,2]))  # read the SNPs indexed by 2.
             [[nan]
              [nan]
@@ -316,35 +413,92 @@ class open_bed_cloud:
             self._sid_range[sid_index_or_slice_etc], dtype="intp"
         )
 
-        num_threads = get_num_threads(
-            self._num_threads if num_threads is None else num_threads
-        )
+        if not force_python_only:
+            num_threads = get_num_threads(
+                self._num_threads if num_threads is None else num_threads
+            )
 
-        val = np.zeros((len(iid_index), len(sid_index)), order=order, dtype=dtype)
+            val = np.zeros((len(iid_index), len(sid_index)), order=order, dtype=dtype)
 
-        if self.iid_count > 0 and self.sid_count > 0:
-            if dtype == np.int8:
-                reader = read_cloud_i8
-            # elif dtype == np.float64:
-            #     reader = read_f64
-            # elif dtype == np.float32:
-            #     reader = read_f32
-            else:
-                raise ValueError(
-                    f"dtype '{val.dtype}' not known, only "
-                    + "'int8', 'float32', and 'float64' are allowed."
+            if self.iid_count > 0 and self.sid_count > 0:
+                if dtype == np.int8:
+                    reader = read_i8
+                elif dtype == np.float64:
+                    reader = read_f64
+                elif dtype == np.float32:
+                    reader = read_f32
+                else:
+                    raise ValueError(
+                        f"dtype '{val.dtype}' not known, only "
+                        + "'int8', 'float32', and 'float64' are allowed."
+                    )
+
+                reader(
+                    str(self.filepath),
+                    iid_count=self.iid_count,
+                    sid_count=self.sid_count,
+                    is_a1_counted=self.count_A1,
+                    iid_index=iid_index,
+                    sid_index=sid_index,
+                    val=val,
+                    num_threads=num_threads,
                 )
 
-            await reader(
-                str(self.filepath),
-                iid_count=self.iid_count,
-                sid_count=self.sid_count,
-                is_a1_counted=self.count_A1,
-                iid_index=iid_index,
-                sid_index=sid_index,
-                val=val,
-                num_threads=num_threads,
-            )
+        else:
+            if not self.count_A1:
+                byteZero = 0
+                byteThree = 2
+            else:
+                byteZero = 2
+                byteThree = 0
+            if dtype == np.int8:
+                missing = -127
+            else:
+                missing = np.nan
+            # An earlier version of this code had a way to read consecutive SNPs of code
+            # in one read. May want
+            # to add that ability back to the code.
+            # Also, note that reading with python will often result in
+            # non-contiguous memory
+            # logging.warn("using pure python plink parser (might be much slower!!)")
+            val = np.zeros(
+                ((int(np.ceil(0.25 * self.iid_count)) * 4), len(sid_index)),
+                order=order,
+                dtype=dtype,
+            )  # allocate it a little big
+
+            nbyte = int(np.ceil(0.25 * self.iid_count))
+            with open(self.filepath, "rb") as filepointer:
+                for SNPsIndex, bimIndex in enumerate(sid_index):
+                    startbit = int(np.ceil(0.25 * self.iid_count) * bimIndex + 3)
+                    filepointer.seek(startbit)
+                    bytes = np.array(bytearray(filepointer.read(nbyte))).reshape(
+                        (int(np.ceil(0.25 * self.iid_count)), 1), order="F"
+                    )
+
+                    val[3::4, SNPsIndex : SNPsIndex + 1] = byteZero
+                    val[3::4, SNPsIndex : SNPsIndex + 1][bytes >= 64] = missing
+                    val[3::4, SNPsIndex : SNPsIndex + 1][bytes >= 128] = 1
+                    val[3::4, SNPsIndex : SNPsIndex + 1][bytes >= 192] = byteThree
+                    bytes = np.mod(bytes, 64)
+                    val[2::4, SNPsIndex : SNPsIndex + 1] = byteZero
+                    val[2::4, SNPsIndex : SNPsIndex + 1][bytes >= 16] = missing
+                    val[2::4, SNPsIndex : SNPsIndex + 1][bytes >= 32] = 1
+                    val[2::4, SNPsIndex : SNPsIndex + 1][bytes >= 48] = byteThree
+                    bytes = np.mod(bytes, 16)
+                    val[1::4, SNPsIndex : SNPsIndex + 1] = byteZero
+                    val[1::4, SNPsIndex : SNPsIndex + 1][bytes >= 4] = missing
+                    val[1::4, SNPsIndex : SNPsIndex + 1][bytes >= 8] = 1
+                    val[1::4, SNPsIndex : SNPsIndex + 1][bytes >= 12] = byteThree
+                    bytes = np.mod(bytes, 4)
+                    val[0::4, SNPsIndex : SNPsIndex + 1] = byteZero
+                    val[0::4, SNPsIndex : SNPsIndex + 1][bytes >= 1] = missing
+                    val[0::4, SNPsIndex : SNPsIndex + 1][bytes >= 2] = 1
+                    val[0::4, SNPsIndex : SNPsIndex + 1][bytes >= 3] = byteThree
+                val = val[iid_index, :]  # reorder or trim any extra allocation
+                assert val.dtype == np.dtype(dtype)  # real assert
+                if not open_bed_cloud._array_properties_are_ok(val, order):
+                    val = val.copy(order=order)
 
         return val
 
@@ -352,7 +506,7 @@ class open_bed_cloud:
         return f"{self.__class__.__name__}('{self.filepath}',...)"
 
     @property
-    async def fid(self) -> np.ndarray:
+    def fid(self) -> np.ndarray:
         """
         Family id of each individual (sample).
 
@@ -371,10 +525,10 @@ class open_bed_cloud:
 
         .. doctest::
 
-            >>> from bed_reader import open_bed, sample_file
+            >>> from bed_reader import open_bed_cloud, sample_file
             >>>
             >>> file_name = sample_file("small.bed")
-            >>> with open_bed(file_name) as bed:
+            >>> with open_bed_cloud(file_name) as bed:
             ...     print(bed.fid)
             ['fid1' 'fid1' 'fid2']
 
@@ -383,7 +537,7 @@ class open_bed_cloud:
         return self.property_item("fid")
 
     @property
-    async def iid(self) -> np.ndarray:
+    def iid(self) -> np.ndarray:
         """
         Individual id of each individual (sample).
 
@@ -400,10 +554,10 @@ class open_bed_cloud:
 
         .. doctest::
 
-            >>> from bed_reader import open_bed, sample_file
+            >>> from bed_reader import open_bed_cloud, sample_file
             >>>
             >>> file_name = sample_file("small.bed")
-            >>> with open_bed(file_name) as bed:
+            >>> with open_bed_cloud(file_name) as bed:
             ...     print(bed.iid)
             ['iid1' 'iid2' 'iid3']
 
@@ -411,7 +565,7 @@ class open_bed_cloud:
         return self.property_item("iid")
 
     @property
-    async def father(self) -> np.ndarray:
+    def father(self) -> np.ndarray:
         """
         Father id of each individual (sample).
 
@@ -430,10 +584,10 @@ class open_bed_cloud:
 
         .. doctest::
 
-            >>> from bed_reader import open_bed, sample_file
+            >>> from bed_reader import open_bed_cloud, sample_file
             >>>
             >>> file_name = sample_file("small.bed")
-            >>> with open_bed(file_name) as bed:
+            >>> with open_bed_cloud(file_name) as bed:
             ...     print(bed.father)
             ['iid23' 'iid23' 'iid22']
 
@@ -441,7 +595,7 @@ class open_bed_cloud:
         return self.property_item("father")
 
     @property
-    async def mother(self) -> np.ndarray:
+    def mother(self) -> np.ndarray:
         """
         Mother id of each individual (sample).
 
@@ -460,10 +614,10 @@ class open_bed_cloud:
 
         .. doctest::
 
-            >>> from bed_reader import open_bed, sample_file
+            >>> from bed_reader import open_bed_cloud, sample_file
             >>>
             >>> file_name = sample_file("small.bed")
-            >>> with open_bed(file_name) as bed:
+            >>> with open_bed_cloud(file_name) as bed:
             ...     print(bed.mother)
             ['iid34' 'iid34' 'iid33']
 
@@ -471,7 +625,7 @@ class open_bed_cloud:
         return self.property_item("mother")
 
     @property
-    async def sex(self) -> np.ndarray:
+    def sex(self) -> np.ndarray:
         """
         Sex of each individual (sample).
 
@@ -489,10 +643,10 @@ class open_bed_cloud:
         -------
         .. doctest::
 
-            >>> from bed_reader import open_bed, sample_file
+            >>> from bed_reader import open_bed_cloud, sample_file
             >>>
             >>> file_name = sample_file("small.bed")
-            >>> with open_bed(file_name) as bed:
+            >>> with open_bed_cloud(file_name) as bed:
             ...     print(bed.sex)
             [1 2 0]
 
@@ -500,7 +654,7 @@ class open_bed_cloud:
         return self.property_item("sex")
 
     @property
-    async def pheno(self) -> np.ndarray:
+    def pheno(self) -> np.ndarray:
         """
         A phenotype for each individual (sample)
         (seldom used).
@@ -520,10 +674,10 @@ class open_bed_cloud:
 
         .. doctest::
 
-            >>> from bed_reader import open_bed, sample_file
+            >>> from bed_reader import open_bed_cloud, sample_file
             >>>
             >>> file_name = sample_file("small.bed")
-            >>> with open_bed(file_name) as bed:
+            >>> with open_bed_cloud(file_name) as bed:
             ...     print(bed.pheno)
             ['red' 'red' 'blue']
 
@@ -531,7 +685,7 @@ class open_bed_cloud:
         return self.property_item("pheno")
 
     @property
-    async def properties(self) -> Mapping[str, np.array]:
+    def properties(self) -> Mapping[str, np.array]:
         """
         All the properties returned as a dictionary.
 
@@ -557,10 +711,10 @@ class open_bed_cloud:
 
         .. doctest::
 
-            >>> from bed_reader import open_bed, sample_file
+            >>> from bed_reader import open_bed_cloud, sample_file
             >>>
             >>> file_name = sample_file("small.bed")
-            >>> with open_bed(file_name) as bed:
+            >>> with open_bed_cloud(file_name) as bed:
             ...     print(len(bed.properties)) #length of dict
             12
 
@@ -569,7 +723,7 @@ class open_bed_cloud:
             self.property_item(key)
         return self.properties_dict
 
-    async def property_item(self, name: str) -> np.ndarray:
+    def property_item(self, name: str) -> np.ndarray:
         """
         Retrieve one property by name.
 
@@ -593,10 +747,10 @@ class open_bed_cloud:
 
         .. doctest::
 
-            >>> from bed_reader import open_bed, sample_file
+            >>> from bed_reader import open_bed_cloud, sample_file
             >>>
             >>> file_name = sample_file("small.bed")
-            >>> with open_bed(file_name) as bed:
+            >>> with open_bed_cloud(file_name) as bed:
             ...     print(bed.property_item('chromosome'))
             ['1' '1' '5' 'Y']
 
@@ -607,7 +761,7 @@ class open_bed_cloud:
         return self.properties_dict[name]
 
     @property
-    async def chromosome(self) -> np.ndarray:
+    def chromosome(self) -> np.ndarray:
         """
         Chromosome of each SNP (variant)
 
@@ -626,10 +780,10 @@ class open_bed_cloud:
 
         .. doctest::
 
-            >>> from bed_reader import open_bed, sample_file
+            >>> from bed_reader import open_bed_cloud, sample_file
             >>>
             >>> file_name = sample_file("small.bed")
-            >>> with open_bed(file_name) as bed:
+            >>> with open_bed_cloud(file_name) as bed:
             ...     print(bed.chromosome)
             ['1' '1' '5' 'Y']
 
@@ -637,7 +791,7 @@ class open_bed_cloud:
         return self.property_item("chromosome")
 
     @property
-    async def sid(self) -> np.ndarray:
+    def sid(self) -> np.ndarray:
         """
         SNP id of each SNP (variant).
 
@@ -654,10 +808,10 @@ class open_bed_cloud:
 
         .. doctest::
 
-            >>> from bed_reader import open_bed, sample_file
+            >>> from bed_reader import open_bed_cloud, sample_file
             >>>
             >>> file_name = sample_file("small.bed")
-            >>> with open_bed(file_name) as bed:
+            >>> with open_bed_cloud(file_name) as bed:
             ...     print(bed.sid)
             ['sid1' 'sid2' 'sid3' 'sid4']
 
@@ -665,7 +819,7 @@ class open_bed_cloud:
         return self.property_item("sid")
 
     @property
-    async def cm_position(self) -> np.ndarray:
+    def cm_position(self) -> np.ndarray:
         """
         Centimorgan position of each SNP (variant).
 
@@ -684,10 +838,10 @@ class open_bed_cloud:
 
         .. doctest::
 
-            >>> from bed_reader import open_bed, sample_file
+            >>> from bed_reader import open_bed_cloud, sample_file
             >>>
             >>> file_name = sample_file("small.bed")
-            >>> with open_bed(file_name) as bed:
+            >>> with open_bed_cloud(file_name) as bed:
             ...     print(bed.cm_position)
             [ 100.4 2000.5 4000.7 7000.9]
 
@@ -695,7 +849,7 @@ class open_bed_cloud:
         return self.property_item("cm_position")
 
     @property
-    async def bp_position(self) -> np.ndarray:
+    def bp_position(self) -> np.ndarray:
         """
         Base-pair position of each SNP (variant).
 
@@ -714,10 +868,10 @@ class open_bed_cloud:
 
         .. doctest::
 
-            >>> from bed_reader import open_bed, sample_file
+            >>> from bed_reader import open_bed_cloud, sample_file
             >>>
             >>> file_name = sample_file("small.bed")
-            >>> with open_bed(file_name) as bed:
+            >>> with open_bed_cloud(file_name) as bed:
             ...     print(bed.bp_position)
             [   1  100 1000 1004]
 
@@ -725,7 +879,7 @@ class open_bed_cloud:
         return self.property_item("bp_position")
 
     @property
-    async def allele_1(self) -> np.ndarray:
+    def allele_1(self) -> np.ndarray:
         """
         First allele of each SNP (variant).
 
@@ -742,10 +896,10 @@ class open_bed_cloud:
 
         .. doctest::
 
-            >>> from bed_reader import open_bed, sample_file
+            >>> from bed_reader import open_bed_cloud, sample_file
             >>>
             >>> file_name = sample_file("small.bed")
-            >>> with open_bed(file_name) as bed:
+            >>> with open_bed_cloud(file_name) as bed:
             ...     print(bed.allele_1)
             ['A' 'T' 'A' 'T']
 
@@ -753,7 +907,7 @@ class open_bed_cloud:
         return self.property_item("allele_1")
 
     @property
-    async def allele_2(self) -> np.ndarray:
+    def allele_2(self) -> np.ndarray:
         """
         Second allele of each SNP (variant),
 
@@ -770,10 +924,10 @@ class open_bed_cloud:
 
         .. doctest::
 
-            >>> from bed_reader import open_bed, sample_file
+            >>> from bed_reader import open_bed_cloud, sample_file
             >>>
             >>> file_name = sample_file("small.bed")
-            >>> with open_bed(file_name) as bed:
+            >>> with open_bed_cloud(file_name) as bed:
             ...     print(bed.allele_2)
             ['A' 'C' 'C' 'G']
 
@@ -781,7 +935,7 @@ class open_bed_cloud:
         return self.property_item("allele_2")
 
     @property
-    async def iid_count(self) -> np.ndarray:
+    def iid_count(self) -> np.ndarray:
         """
         Number of individuals (samples).
 
@@ -798,10 +952,10 @@ class open_bed_cloud:
 
         .. doctest::
 
-            >>> from bed_reader import open_bed, sample_file
+            >>> from bed_reader import open_bed_cloud, sample_file
             >>>
             >>> file_name = sample_file("small.bed")
-            >>> with open_bed(file_name) as bed:
+            >>> with open_bed_cloud(file_name) as bed:
             ...     print(bed.iid_count)
             3
 
@@ -809,7 +963,7 @@ class open_bed_cloud:
         return self._count("fam")
 
     @property
-    async def sid_count(self) -> np.ndarray:
+    def sid_count(self) -> np.ndarray:
         """
         Number of SNPs (variants).
 
@@ -826,10 +980,10 @@ class open_bed_cloud:
 
         .. doctest::
 
-            >>> from bed_reader import open_bed, sample_file
+            >>> from bed_reader import open_bed_cloud, sample_file
             >>>
             >>> file_name = sample_file("small.bed")
-            >>> with open_bed(file_name) as bed:
+            >>> with open_bed_cloud(file_name) as bed:
             ...     print(bed.sid_count)
             4
 
@@ -843,7 +997,7 @@ class open_bed_cloud:
             assert suffix == "bim"  # real assert
             return self._bim_filepath
 
-    async def _count(self, suffix):
+    def _count(self, suffix):
         count = self._counts[suffix]
         if count is None:
             count = _rawincount(self._property_filepath(suffix))
@@ -851,7 +1005,7 @@ class open_bed_cloud:
         return count
 
     @staticmethod
-    async def _check_file(filepointer):
+    def _check_file(filepointer):
         mode = filepointer.read(2)
         if mode != b"l\x1b":
             raise ValueError("Not a valid .bed file")
@@ -877,7 +1031,7 @@ class open_bed_cloud:
             return val.flags["C_CONTIGUOUS"]
 
     @property
-    async def shape(self):
+    def shape(self):
         """
         Number of individuals (samples) and SNPs (variants).
 
@@ -894,10 +1048,10 @@ class open_bed_cloud:
 
         .. doctest::
 
-            >>> from bed_reader import open_bed, sample_file
+            >>> from bed_reader import open_bed_cloud, sample_file
             >>>
             >>> file_name = sample_file("small.bed")
-            >>> with open_bed(file_name) as bed:
+            >>> with open_bed_cloud(file_name) as bed:
             ...     print(bed.shape)
             (3, 4)
 
@@ -924,29 +1078,29 @@ class open_bed_cloud:
             pass
         return index
 
-    # @staticmethod
-    # def _write_fam_or_bim(base_filepath, properties, suffix, property_filepath):
-    #     assert suffix in {"fam", "bim"}, "real assert"
+    @staticmethod
+    def _write_fam_or_bim(base_filepath, properties, suffix, property_filepath):
+        assert suffix in {"fam", "bim"}, "real assert"
 
-    #     filepath = (
-    #         Path(property_filepath)
-    #         if property_filepath is not None
-    #         else base_filepath.parent / (base_filepath.stem + "." + suffix)
-    #     )
+        filepath = (
+            Path(property_filepath)
+            if property_filepath is not None
+            else base_filepath.parent / (base_filepath.stem + "." + suffix)
+        )
 
-    #     fam_bim_list = []
-    #     for key, mm in _meta_meta.items():
-    #         if mm.suffix == suffix:
-    #             assert len(fam_bim_list) == mm.column, "real assert"
-    #             fam_bim_list.append(properties[key])
+        fam_bim_list = []
+        for key, mm in _meta_meta.items():
+            if mm.suffix == suffix:
+                assert len(fam_bim_list) == mm.column, "real assert"
+                fam_bim_list.append(properties[key])
 
-    #     sep = " " if suffix == "fam" else "\t"
+        sep = " " if suffix == "fam" else "\t"
 
-    #     with open(filepath, "w") as filepointer:
-    #         for index in range(len(fam_bim_list[0])):
-    #             filepointer.write(
-    #                 sep.join(str(seq[index]) for seq in fam_bim_list) + "\n"
-    #             )
+        with open(filepath, "w") as filepointer:
+            for index in range(len(fam_bim_list[0])):
+                filepointer.write(
+                    sep.join(str(seq[index]) for seq in fam_bim_list) + "\n"
+                )
 
     @staticmethod
     def _fix_up_properties_array(input, dtype, missing_value, key):
@@ -1011,7 +1165,7 @@ class open_bed_cloud:
             properties_dict[key] = output
         return properties_dict, count_dict
 
-    async def _read_fam_or_bim(self, suffix):
+    def _read_fam_or_bim(self, suffix):
         property_filepath = self._property_filepath(suffix)
 
         logging.info("Loading {0} file {1}".format(suffix, property_filepath))
@@ -1060,303 +1214,368 @@ class open_bed_cloud:
                     output = np.array(output, dtype=mm.dtype)
             self.properties_dict[key] = output
 
-    # def read_sparse(
-    #     self,
-    #     index: Optional[Any] = None,
-    #     dtype: Optional[Union[type, str]] = "float32",
-    #     batch_size: Optional[int] = None,
-    #     format: Optional[str] = "csc",
-    #     num_threads=None,
-    # ) -> (Union[sparse.csc_matrix, sparse.csr_matrix]) if sparse is not None else None:
-    #     """
-    #     Read genotype information into a :mod:`scipy.sparse` matrix. Sparse matrices
-    #     may be useful when the data is mostly zeros.
+    def read_sparse(
+        self,
+        index: Optional[Any] = None,
+        dtype: Optional[Union[type, str]] = "float32",
+        batch_size: Optional[int] = None,
+        format: Optional[str] = "csc",
+        num_threads=None,
+    ) -> (Union[sparse.csc_matrix, sparse.csr_matrix]) if sparse is not None else None:
+        """
+        Read genotype information into a :mod:`scipy.sparse` matrix. Sparse matrices
+        may be useful when the data is mostly zeros.
 
-    #     .. note::
-    #         This method requires :mod:`scipy`. Install `scipy` with:
+        .. note::
+            This method requires :mod:`scipy`. Install `scipy` with:
 
-    #         .. code-block:: bash
+            .. code-block:: bash
 
-    #             pip install --upgrade bed-reader[sparse]
+                pip install --upgrade bed-reader[sparse]
 
-    #     Parameters
-    #     ----------
-    #     index:
-    #         An optional expression specifying the individuals (samples) and SNPs
-    #         (variants) to read. (See examples, below).
-    #         Defaults to ``None``, meaning read all.
+        Parameters
+        ----------
+        index:
+            An optional expression specifying the individuals (samples) and SNPs
+            (variants) to read. (See examples, below).
+            Defaults to ``None``, meaning read all.
 
-    #         (If index is a tuple, the first component indexes the individuals and the
-    #         second indexes
-    #         the SNPs. If it is not a tuple and not None, it indexes SNPs.)
+            (If index is a tuple, the first component indexes the individuals and the
+            second indexes
+            the SNPs. If it is not a tuple and not None, it indexes SNPs.)
 
-    #     dtype: {'float32' (default), 'float64', 'int8'}, optional
-    #         The desired data-type for the returned array.
-    #     batch_size: None or int, optional
-    #         Number of dense columns or rows to read at a time, internally.
-    #         Defaults to round(sqrt(total-number-of-columns-or-rows-to-read)).
-    #     format : {'csc','csr'}, optional
-    #         The desired format of the sparse matrix.
-    #         Defaults to ``csc`` (Compressed Sparse Column, which is SNP-major).
-    #     num_threads: None or int, optional
-    #         The number of threads with which to read data. Defaults to all available
-    #         processors.
-    #         Can also be set with :class:`open_bed` or these
-    #         environment variables (listed in priority order):
-    #         'PST_NUM_THREADS', 'NUM_THREADS', 'MKL_NUM_THREADS'.
+        dtype: {'float32' (default), 'float64', 'int8'}, optional
+            The desired data-type for the returned array.
+        batch_size: None or int, optional
+            Number of dense columns or rows to read at a time, internally.
+            Defaults to round(sqrt(total-number-of-columns-or-rows-to-read)).
+        format : {'csc','csr'}, optional
+            The desired format of the sparse matrix.
+            Defaults to ``csc`` (Compressed Sparse Column, which is SNP-major).
+        num_threads: None or int, optional
+            The number of threads with which to read data. Defaults to all available
+            processors.
+            Can also be set with :class:`open_bed_cloud` or these
+            environment variables (listed in priority order):
+            'PST_NUM_THREADS', 'NUM_THREADS', 'MKL_NUM_THREADS'.
 
-    #     Returns
-    #     -------
-    #     a :class:`scipy.sparse.csc_matrix` (default) or :class:`scipy.sparse.csr_matrix`
-    #     Rows represent individuals (samples). Columns represent SNPs (variants).
-    #     For ``dtype`` 'float32' and 'float64', NaN indicates missing values.
-    #     For 'int8', -127 indicates missing values.
-    #     The memory used by the final sparse matrix is approximately:
-    #        # of non-zero values * (4 bytes + 1 byte (for int8))
-    #     For example, consider reading 1000 individuals (samples) x 50,000 SNPs (variants)
-    #     into csc format where the data is 97% sparse.
-    #     The memory used will be about 7.5 MB (1000 x 50,000 x 3% x 5 bytes).
-    #     This is 15% of the 50 MB needed by a dense matrix.
+        Returns
+        -------
+        a :class:`scipy.sparse.csc_matrix` (default) or :class:`scipy.sparse.csr_matrix`
 
-    #     Internally, the function reads the data via small dense matrices.
-    #     For this example, by default, the function will read 1000 individuals x 224 SNPs
-    #     (because 224 * 224 is about 50,000).
-    #     The memory used by the small dense matrix is 1000 x 244 x 1 byte (for int8) = 0.224 MB.
+        Rows represent individuals (samples). Columns represent SNPs (variants).
 
-    #     You can set `batch_size`. Larger values will be faster.
-    #     Smaller values will use less memory.
+        For ``dtype`` 'float32' and 'float64', NaN indicates missing values.
+        For 'int8', -127 indicates missing values.
 
-    #     For this example, we might want to set the `batch_size` to 5000. Then,
-    #     the memory used by the small dense matrix
-    #     would be 1000 x 5000 x 1 byte (for int8) = 5 MB,
-    #     similar to the 7.5 MB needed for the final sparse matrix.
 
-    #     Examples
-    #     --------
+        The memory used by the final sparse matrix is approximately:
 
-    #     Read all data in a .bed file into a :class:`scipy.sparse.csc_matrix`.
-    #     The file has 10 individuals (samples) by 20 SNPs (variants).
-    #     All but eight values are 0.
+           # of non-zero values * (4 bytes + 1 byte (for int8))
 
-    #     .. doctest::
+        For example, consider reading 1000 individuals (samples) x 50,000 SNPs (variants)
+        into csc format where the data is 97% sparse.
+        The memory used will be about 7.5 MB (1000 x 50,000 x 3% x 5 bytes).
+        This is 15% of the 50 MB needed by a dense matrix.
 
-    #         >>> # pip install bed-reader[samples,sparse]  # if needed
-    #         >>> from bed_reader import open_bed, sample_file
-    #         >>>
-    #         >>> file_name = sample_file("sparse.bed")
-    #         >>> with open_bed(file_name) as bed:
-    #         ...     print(bed.shape)
-    #         ...     val_sparse = bed.read_sparse(dtype="int8")
-    #         ...     print(val_sparse) # doctest:+NORMALIZE_WHITESPACE
-    #         (10, 20)
-    #             (8, 4)  1
-    #             (8, 5)	2
-    #             (0, 8)	2
-    #             (4, 9)	1
-    #             (7, 9)	1
-    #             (5, 11)	1
-    #             (2, 12)	1
-    #             (3, 12)	1
+        Internally, the function reads the data via small dense matrices.
+        For this example, by default, the function will read 1000 individuals x 224 SNPs
+        (because 224 * 224 is about 50,000).
+        The memory used by the small dense matrix is 1000 x 244 x 1 byte (for int8) = 0.224 MB.
 
-    #     To read selected individuals (samples) and/or SNPs (variants), set each part of
-    #     a :data:`numpy.s_` to an `int`, a list of `int`, a slice expression, or
-    #     a list of `bool`.
-    #     Negative integers count from the end of the list.
+        You can set `batch_size`. Larger values will be faster.
+        Smaller values will use less memory.
 
-    #     .. doctest::
+        For this example, we might want to set the `batch_size` to 5000. Then,
+        the memory used by the small dense matrix
+        would be 1000 x 5000 x 1 byte (for int8) = 5 MB,
+        similar to the 7.5 MB needed for the final sparse matrix.
 
-    #         >>> import numpy as np
-    #         >>> bed = open_bed(file_name)
-    #         >>> print(bed.read_sparse(np.s_[:,5], dtype="int8"))  # read the SNPs indexed by 5. # doctest:+NORMALIZE_WHITESPACE
-    #         (8, 0)    2
-    #         >>> # read the SNPs indexed by 5, 4, and 0
-    #         >>> print(bed.read_sparse(np.s_[:,[5,4,0]], dtype="int8")) # doctest:+NORMALIZE_WHITESPACE
-    #         (8, 0)	2
-    #         (8, 1)	1
-    #         >>> # read SNPs from 1 (inclusive) to 11 (exclusive)
-    #         >>> print(bed.read_sparse(np.s_[:,1:11], dtype="int8")) # doctest:+NORMALIZE_WHITESPACE
-    #         (8, 3)	1
-    #         (8, 4)	2
-    #         (0, 7)	2
-    #         (4, 8)	1
-    #         (7, 8)	1
-    #         >>> print(np.unique(bed.chromosome)) # print unique chrom values
-    #         ['1' '5' 'Y']
-    #         >>> # read all SNPs in chrom 5
-    #         >>> print(bed.read_sparse(np.s_[:,bed.chromosome=='5'], dtype="int8")) # doctest:+NORMALIZE_WHITESPACE
-    #         (8, 0)	1
-    #         (8, 1)	2
-    #         (0, 4)	2
-    #         (4, 5)	1
-    #         (7, 5)	1
-    #         (5, 7)	1
-    #         (2, 8)	1
-    #         (3, 8)	1
-    #         >>> # Read 1st individual (across all SNPs)
-    #         >>> print(bed.read_sparse(np.s_[0,:], dtype="int8")) # doctest:+NORMALIZE_WHITESPACE
-    #         (0, 8)	2
-    #         >>> print(bed.read_sparse(np.s_[::2,:], dtype="int8")) # Read every 2nd individual # doctest:+NORMALIZE_WHITESPACE
-    #         (4, 4)    1
-    #         (4, 5)    2
-    #         (0, 8)    2
-    #         (2, 9)    1
-    #         (1, 12)   1
-    #         >>> # read last and 2nd-to-last individuals and the 15th-from-the-last SNP
-    #         >>> print(bed.read_sparse(np.s_[[-1,-2],-15], dtype="int8")) # doctest:+NORMALIZE_WHITESPACE
-    #         (1, 0)	2
+        Examples
+        --------
 
-    #     """
-    #     if sparse is None:
-    #         raise ImportError(
-    #             "The function read_sparse() requires scipy. "
-    #             + "Install it with 'pip install --upgrade bed-reader[sparse]'."
-    #         )
-    #     iid_index_or_slice_etc, sid_index_or_slice_etc = self._split_index(index)
+        Read all data in a .bed file into a :class:`scipy.sparse.csc_matrix`.
+        The file has 10 individuals (samples) by 20 SNPs (variants).
+        All but eight values are 0.
 
-    #     dtype = np.dtype(dtype)
+        .. doctest::
 
-    #     # Similar code in read().
-    #     # Later happy with _iid_range and _sid_range or could it be done with
-    #     # allocation them?
-    #     if self._iid_range is None:
-    #         self._iid_range = np.arange(self.iid_count, dtype="intp")
-    #     if self._sid_range is None:
-    #         self._sid_range = np.arange(self.sid_count, dtype="intp")
+            >>> # pip install bed-reader[samples,sparse]  # if needed
+            >>> from bed_reader import open_bed_cloud, sample_file
+            >>>
+            >>> file_name = sample_file("sparse.bed")
+            >>> with open_bed_cloud(file_name) as bed:
+            ...     print(bed.shape)
+            ...     val_sparse = bed.read_sparse(dtype="int8")
+            ...     print(val_sparse) # doctest:+NORMALIZE_WHITESPACE
+            (10, 20)
+                (8, 4)  1
+                (8, 5)	2
+                (0, 8)	2
+                (4, 9)	1
+                (7, 9)	1
+                (5, 11)	1
+                (2, 12)	1
+                (3, 12)	1
 
-    #     iid_index = np.ascontiguousarray(
-    #         self._iid_range[iid_index_or_slice_etc],
-    #         dtype="intp",
-    #     )
-    #     sid_index = np.ascontiguousarray(
-    #         self._sid_range[sid_index_or_slice_etc], dtype="intp"
-    #     )
+        To read selected individuals (samples) and/or SNPs (variants), set each part of
+        a :data:`numpy.s_` to an `int`, a list of `int`, a slice expression, or
+        a list of `bool`.
+        Negative integers count from the end of the list.
 
-    #     if (
-    #         len(iid_index) > np.iinfo(np.int32).max
-    #         or len(sid_index) > np.iinfo(np.int32).max
-    #     ):
-    #         raise ValueError(
-    #             "Too (many Individuals or SNPs (variants) requested. Maximum is {np.iinfo(np.int32).max}."
-    #         )
+        .. doctest::
 
-    #     if batch_size is None:
-    #         batch_size = round(np.sqrt(len(sid_index)))
+            >>> import numpy as np
+            >>> bed = open_bed_cloud(file_name)
+            >>> print(bed.read_sparse(np.s_[:,5], dtype="int8"))  # read the SNPs indexed by 5. # doctest:+NORMALIZE_WHITESPACE
+            (8, 0)    2
+            >>> # read the SNPs indexed by 5, 4, and 0
+            >>> print(bed.read_sparse(np.s_[:,[5,4,0]], dtype="int8")) # doctest:+NORMALIZE_WHITESPACE
+            (8, 0)	2
+            (8, 1)	1
+            >>> # read SNPs from 1 (inclusive) to 11 (exclusive)
+            >>> print(bed.read_sparse(np.s_[:,1:11], dtype="int8")) # doctest:+NORMALIZE_WHITESPACE
+            (8, 3)	1
+            (8, 4)	2
+            (0, 7)	2
+            (4, 8)	1
+            (7, 8)	1
+            >>> print(np.unique(bed.chromosome)) # print unique chrom values
+            ['1' '5' 'Y']
+            >>> # read all SNPs in chrom 5
+            >>> print(bed.read_sparse(np.s_[:,bed.chromosome=='5'], dtype="int8")) # doctest:+NORMALIZE_WHITESPACE
+            (8, 0)	1
+            (8, 1)	2
+            (0, 4)	2
+            (4, 5)	1
+            (7, 5)	1
+            (5, 7)	1
+            (2, 8)	1
+            (3, 8)	1
+            >>> # Read 1st individual (across all SNPs)
+            >>> print(bed.read_sparse(np.s_[0,:], dtype="int8")) # doctest:+NORMALIZE_WHITESPACE
+            (0, 8)	2
+            >>> print(bed.read_sparse(np.s_[::2,:], dtype="int8")) # Read every 2nd individual # doctest:+NORMALIZE_WHITESPACE
+            (4, 4)    1
+            (4, 5)    2
+            (0, 8)    2
+            (2, 9)    1
+            (1, 12)   1
+            >>> # read last and 2nd-to-last individuals and the 15th-from-the-last SNP
+            >>> print(bed.read_sparse(np.s_[[-1,-2],-15], dtype="int8")) # doctest:+NORMALIZE_WHITESPACE
+            (1, 0)	2
 
-    #     num_threads = get_num_threads(
-    #         self._num_threads if num_threads is None else num_threads
-    #     )
+        """
+        if sparse is None:
+            raise ImportError(
+                "The function read_sparse() requires scipy. "
+                + "Install it with 'pip install --upgrade bed-reader[sparse]'."
+            )
+        iid_index_or_slice_etc, sid_index_or_slice_etc = self._split_index(index)
 
-    #     if format == "csc":
-    #         order = "F"
-    #         indptr = np.zeros(len(sid_index) + 1, dtype=np.int32)
-    #     elif format == "csr":
-    #         order = "C"
-    #         indptr = np.zeros(len(iid_index) + 1, dtype=np.int32)
-    #     else:
-    #         raise ValueError(f"format '{format}' not known. Expected 'csc' or 'csr'.")
+        dtype = np.dtype(dtype)
 
-    #     # We init data and indices with zero element arrays to set their dtype.
-    #     data = [np.empty(0, dtype=dtype)]
-    #     indices = [np.empty(0, dtype=np.int32)]
+        # Similar code in read().
+        # Later happy with _iid_range and _sid_range or could it be done with
+        # allocation them?
+        if self._iid_range is None:
+            self._iid_range = np.arange(self.iid_count, dtype="intp")
+        if self._sid_range is None:
+            self._sid_range = np.arange(self.sid_count, dtype="intp")
 
-    #     if self.iid_count > 0 and self.sid_count > 0:
-    #         if dtype == np.int8:
-    #             reader = read_i8
-    #         elif dtype == np.float64:
-    #             reader = read_f64
-    #         elif dtype == np.float32:
-    #             reader = read_f32
-    #         else:
-    #             raise ValueError(
-    #                 f"dtype '{dtype}' not known, only "
-    #                 + "'int8', 'float32', and 'float64' are allowed."
-    #             )
+        iid_index = np.ascontiguousarray(
+            self._iid_range[iid_index_or_slice_etc],
+            dtype="intp",
+        )
+        sid_index = np.ascontiguousarray(
+            self._sid_range[sid_index_or_slice_etc], dtype="intp"
+        )
 
-    #         if format == "csc":
-    #             val = np.zeros((len(iid_index), batch_size), order=order, dtype=dtype)
-    #             for batch_start in range(0, len(sid_index), batch_size):
-    #                 batch_end = batch_start + batch_size
-    #                 if batch_end > len(sid_index):
-    #                     batch_end = len(sid_index)
-    #                     del val
-    #                     val = np.zeros(
-    #                         (len(iid_index), batch_end - batch_start),
-    #                         order=order,
-    #                         dtype=dtype,
-    #                     )
-    #                 batch_slice = np.s_[batch_start:batch_end]
-    #                 batch_index = sid_index[batch_slice]
+        if (
+            len(iid_index) > np.iinfo(np.int32).max
+            or len(sid_index) > np.iinfo(np.int32).max
+        ):
+            raise ValueError(
+                "Too (many Individuals or SNPs (variants) requested. Maximum is {np.iinfo(np.int32).max}."
+            )
 
-    #                 reader(
-    #                     str(self.filepath),
-    #                     iid_count=self.iid_count,
-    #                     sid_count=self.sid_count,
-    #                     is_a1_counted=self.count_A1,
-    #                     iid_index=iid_index,
-    #                     sid_index=batch_index,
-    #                     val=val,
-    #                     num_threads=num_threads,
-    #                 )
+        if batch_size is None:
+            batch_size = round(np.sqrt(len(sid_index)))
 
-    #                 self.sparsify(
-    #                     val, order, iid_index, batch_slice, data, indices, indptr
-    #                 )
-    #         else:
-    #             assert format == "csr"  # real assert
-    #             val = np.zeros((batch_size, len(sid_index)), order=order, dtype=dtype)
-    #             for batch_start in range(0, len(iid_index), batch_size):
-    #                 batch_end = batch_start + batch_size
-    #                 if batch_end > len(iid_index):
-    #                     batch_end = len(iid_index)
-    #                     del val
-    #                     val = np.zeros(
-    #                         (batch_end - batch_start, len(sid_index)),
-    #                         order=order,
-    #                         dtype=dtype,
-    #                     )
+        num_threads = get_num_threads(
+            self._num_threads if num_threads is None else num_threads
+        )
 
-    #                 batch_slice = np.s_[batch_start:batch_end]
-    #                 batch_index = iid_index[batch_slice]
+        if format == "csc":
+            order = "F"
+            indptr = np.zeros(len(sid_index) + 1, dtype=np.int32)
+        elif format == "csr":
+            order = "C"
+            indptr = np.zeros(len(iid_index) + 1, dtype=np.int32)
+        else:
+            raise ValueError(f"format '{format}' not known. Expected 'csc' or 'csr'.")
 
-    #                 reader(
-    #                     str(self.filepath),
-    #                     iid_count=self.iid_count,
-    #                     sid_count=self.sid_count,
-    #                     is_a1_counted=self.count_A1,
-    #                     iid_index=batch_index,
-    #                     sid_index=sid_index,
-    #                     val=val,
-    #                     num_threads=num_threads,
-    #                 )
+        # We init data and indices with zero element arrays to set their dtype.
+        data = [np.empty(0, dtype=dtype)]
+        indices = [np.empty(0, dtype=np.int32)]
 
-    #                 self.sparsify(
-    #                     val, order, sid_index, batch_slice, data, indices, indptr
-    #                 )
+        if self.iid_count > 0 and self.sid_count > 0:
+            if dtype == np.int8:
+                reader = read_i8
+            elif dtype == np.float64:
+                reader = read_f64
+            elif dtype == np.float32:
+                reader = read_f32
+            else:
+                raise ValueError(
+                    f"dtype '{dtype}' not known, only "
+                    + "'int8', 'float32', and 'float64' are allowed."
+                )
 
-    #     data = np.concatenate(data)
-    #     indices = np.concatenate(indices)
+            if format == "csc":
+                val = np.zeros((len(iid_index), batch_size), order=order, dtype=dtype)
+                for batch_start in range(0, len(sid_index), batch_size):
+                    batch_end = batch_start + batch_size
+                    if batch_end > len(sid_index):
+                        batch_end = len(sid_index)
+                        del val
+                        val = np.zeros(
+                            (len(iid_index), batch_end - batch_start),
+                            order=order,
+                            dtype=dtype,
+                        )
+                    batch_slice = np.s_[batch_start:batch_end]
+                    batch_index = sid_index[batch_slice]
 
-    #     if format == "csc":
-    #         return sparse.csc_matrix(
-    #             (data, indices, indptr), (len(iid_index), len(sid_index))
-    #         )
-    #     else:
-    #         assert format == "csr"  # real assert
-    #         return sparse.csr_matrix(
-    #             (data, indices, indptr), (len(iid_index), len(sid_index))
-    #         )
+                    reader(
+                        str(self.filepath),
+                        iid_count=self.iid_count,
+                        sid_count=self.sid_count,
+                        is_a1_counted=self.count_A1,
+                        iid_index=iid_index,
+                        sid_index=batch_index,
+                        val=val,
+                        num_threads=num_threads,
+                    )
 
-    # def sparsify(self, val, order, minor_index, batch_slice, data, indices, indptr):
-    #     flatten = np.ravel(val, order=order)
-    #     nz_indices = np.flatnonzero(flatten).astype(np.int32)
-    #     column_indexes = nz_indices // len(minor_index)
-    #     counts = np.bincount(
-    #         column_indexes, minlength=batch_slice.stop - batch_slice.start
-    #     ).astype(np.int32)
-    #     counts_with_initial = np.r_[
-    #         indptr[batch_slice.start : batch_slice.start + 1], counts
-    #     ]
+                    self.sparsify(
+                        val, order, iid_index, batch_slice, data, indices, indptr
+                    )
+            else:
+                assert format == "csr"  # real assert
+                val = np.zeros((batch_size, len(sid_index)), order=order, dtype=dtype)
+                for batch_start in range(0, len(iid_index), batch_size):
+                    batch_end = batch_start + batch_size
+                    if batch_end > len(iid_index):
+                        batch_end = len(iid_index)
+                        del val
+                        val = np.zeros(
+                            (batch_end - batch_start, len(sid_index)),
+                            order=order,
+                            dtype=dtype,
+                        )
 
-    #     data.append(flatten[nz_indices])
-    #     indices.append(np.mod(nz_indices, len(minor_index)))
-    #     indptr[1:][batch_slice] = np.cumsum(counts_with_initial)[1:]
+                    batch_slice = np.s_[batch_start:batch_end]
+                    batch_index = iid_index[batch_slice]
+
+                    reader(
+                        str(self.filepath),
+                        iid_count=self.iid_count,
+                        sid_count=self.sid_count,
+                        is_a1_counted=self.count_A1,
+                        iid_index=batch_index,
+                        sid_index=sid_index,
+                        val=val,
+                        num_threads=num_threads,
+                    )
+
+                    self.sparsify(
+                        val, order, sid_index, batch_slice, data, indices, indptr
+                    )
+
+        data = np.concatenate(data)
+        indices = np.concatenate(indices)
+
+        if format == "csc":
+            return sparse.csc_matrix(
+                (data, indices, indptr), (len(iid_index), len(sid_index))
+            )
+        else:
+            assert format == "csr"  # real assert
+            return sparse.csr_matrix(
+                (data, indices, indptr), (len(iid_index), len(sid_index))
+            )
+
+    def sparsify(self, val, order, minor_index, batch_slice, data, indices, indptr):
+        flatten = np.ravel(val, order=order)
+        nz_indices = np.flatnonzero(flatten).astype(np.int32)
+        column_indexes = nz_indices // len(minor_index)
+        counts = np.bincount(
+            column_indexes, minlength=batch_slice.stop - batch_slice.start
+        ).astype(np.int32)
+        counts_with_initial = np.r_[
+            indptr[batch_slice.start : batch_slice.start + 1], counts
+        ]
+
+        data.append(flatten[nz_indices])
+        indices.append(np.mod(nz_indices, len(minor_index)))
+        indptr[1:][batch_slice] = np.cumsum(counts_with_initial)[1:]
+
+
+def _read_csv(filepath, delimiter=None, dtype=None, usecols=None):
+    # Prepare the usecols by ensuring it is a list of indices
+    usecols_indices = list(usecols)
+    transposed = np.loadtxt(
+        filepath,
+        dtype=np.str_,
+        delimiter=delimiter,
+        usecols=usecols_indices,
+        unpack=True,
+    )
+    if transposed.ndim == 1:
+        transposed = transposed.reshape(-1, 1)
+    row_count = transposed.shape[1]  # because unpack=True
+
+    # Convert column lists to numpy arrays with the specified dtype
+    columns = []
+    for output_index, input_index in enumerate(usecols_indices):
+        col = transposed[output_index]
+        # Find the dtype for this column
+        col_dtype = dtype.get(input_index, np.str_)
+        # Convert the column list to a numpy array with the specified dtype
+        columns.append(_convert_to_dtype(col, col_dtype))
+
+    return columns, row_count
+
+
+def _convert_to_dtype(str_arr, dtype):
+    assert dtype in [np.str_, np.float32, np.int32]  # real assert
+
+    if dtype == np.str_:
+        return str_arr
+
+    try:
+        new_arr = str_arr.astype(dtype)
+    except ValueError as e:
+        if dtype == np.float32:
+            raise e
+        # for backwards compatibility, see if intermediate float helps int conversion
+        try:
+            assert dtype == np.int32  # real assert
+            float_arr = str_arr.astype(np.float32)
+        except ValueError:
+            raise e
+        new_arr = float_arr.astype(np.int32)
+        if not np.array_equal(new_arr, float_arr):
+            raise ValueError(
+                f"invalid literal for int: '{str_arr[np.where(new_arr != float_arr)][:1]}')"
+            )
+    return new_arr
+
+
+if __name__ == "__main__":
+    import pytest
+
+    logging.basicConfig(level=logging.INFO)
+
+    pytest.main(["--doctest-modules", __file__])
