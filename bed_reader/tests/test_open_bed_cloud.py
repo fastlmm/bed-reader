@@ -17,7 +17,7 @@ async def test_cloud_read1(shared_datadir):
     print(type(file), file)
     async with await open_bed_cloud.create(file) as bed_cloud:
         assert await bed_cloud.iid_count() == 10
-        # assert bed_cloud.fid[-1] == "0"
+        assert (await bed_cloud.fid())[-1] == "0"
         # assert bed_cloud.iid[-1] == "9"
         # assert bed_cloud.shape == (10, 100)
 

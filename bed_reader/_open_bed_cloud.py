@@ -508,8 +508,7 @@ class open_bed_cloud:
     def __str__(self) -> str:
         return f"{self.__class__.__name__}('{self.filepath}',...)"
 
-    @property
-    def fid(self) -> np.ndarray:
+    async def fid(self) -> np.ndarray:
         """
         Family id of each individual (sample).
 
