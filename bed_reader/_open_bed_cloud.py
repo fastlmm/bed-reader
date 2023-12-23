@@ -241,6 +241,7 @@ class open_bed_cloud:
 
     @classmethod
     async def create(
+        cls,
         filepath: Union[str, Path],
         iid_count: Optional[int] = None,
         sid_count: Optional[int] = None,
@@ -251,6 +252,7 @@ class open_bed_cloud:
         fam_filepath: Union[str, Path] = None,
         bim_filepath: Union[str, Path] = None,
     ):
+        print(type(filepath), filepath)
         self = open_bed_cloud(
             filepath,
             iid_count=iid_count,
@@ -265,6 +267,7 @@ class open_bed_cloud:
         if not self.skip_format_check:
             with open(self.filepath, "rb") as filepointer:
                 self._check_file(filepointer)
+        return self
 
     async def __aenter__(self):
         # Setup or additional operations when entering the context
@@ -934,8 +937,8 @@ class open_bed_cloud:
         """
         return self.property_item("allele_2")
 
-    @property
-    def iid_count(self) -> np.ndarray:
+    # @property  # remove
+    async def iid_count(self) -> np.ndarray:
         """
         Number of individuals (samples).
 
@@ -960,7 +963,7 @@ class open_bed_cloud:
             3
 
         """
-        return self._count("fam")
+        return await self._count("fam")
 
     @property
     def sid_count(self) -> np.ndarray:
@@ -997,7 +1000,7 @@ class open_bed_cloud:
             assert suffix == "bim"  # real assert
             return self._bim_filepath
 
-    def _count(self, suffix):
+    async def _count(self, suffix):
         count = self._counts[suffix]
         if count is None:
             count = _rawincount(self._property_filepath(suffix))

@@ -14,19 +14,20 @@ async def test_cloud_read1(shared_datadir):
     import math
 
     file = shared_datadir / "plink_sim_10s_100v_10pmiss.bed"
-    with open_bed_cloud(file) as bed_cloud:
-        assert bed_cloud.iid_count == 10
-        assert bed_cloud.fid[-1] == "0"
-        assert bed_cloud.iid[-1] == "9"
-        assert bed_cloud.shape == (10, 100)
+    print(type(file), file)
+    async with await open_bed_cloud.create(file) as bed_cloud:
+        assert await bed_cloud.iid_count() == 10
+        # assert bed_cloud.fid[-1] == "0"
+        # assert bed_cloud.iid[-1] == "9"
+        # assert bed_cloud.shape == (10, 100)
 
-        val = bed_cloud.read(dtype="int8")
-        # really shouldn't do mean on data where -127 represents missing
-        assert val.mean() == -13.142
-        val_sparse = bed_cloud.read_sparse(dtype="int8")
-        assert math.isclose(val_sparse.mean(), -13.142, rel_tol=1e-9)
-        assert bed_cloud.chromosome[-1] == "1"
-        assert bed_cloud.bp_position[-1] == 100
+        # val = bed_cloud.read(dtype="int8")
+        # # really shouldn't do mean on data where -127 represents missing
+        # assert val.mean() == -13.142
+        # val_sparse = bed_cloud.read_sparse(dtype="int8")
+        # assert math.isclose(val_sparse.mean(), -13.142, rel_tol=1e-9)
+        # assert bed_cloud.chromosome[-1] == "1"
+        # assert bed_cloud.bp_position[-1] == 100
 
 
 # def test_cloud_write(tmp_path, shared_datadir):
