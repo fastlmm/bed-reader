@@ -762,8 +762,8 @@ class open_bed_cloud:
             self._read_fam_or_bim(suffix=mm.suffix)
         return self.properties_dict[name]
 
-    @property
-    def chromosome(self) -> np.ndarray:
+    # @property
+    async def chromosome(self) -> np.ndarray:
         """
         Chromosome of each SNP (variant)
 
@@ -850,8 +850,8 @@ class open_bed_cloud:
         """
         return self.property_item("cm_position")
 
-    @property
-    def bp_position(self) -> np.ndarray:
+    # @property
+    async def bp_position(self) -> np.ndarray:
         """
         Base-pair position of each SNP (variant).
 
