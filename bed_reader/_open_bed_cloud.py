@@ -566,8 +566,8 @@ class open_bed_cloud:
         """
         return self.property_item("iid")
 
-    @property
-    def father(self) -> np.ndarray:
+    # @property
+    async def father(self) -> np.ndarray:
         """
         Father id of each individual (sample).
 
@@ -596,8 +596,8 @@ class open_bed_cloud:
         """
         return self.property_item("father")
 
-    @property
-    def mother(self) -> np.ndarray:
+    # @property
+    async def mother(self) -> np.ndarray:
         """
         Mother id of each individual (sample).
 
@@ -626,8 +626,8 @@ class open_bed_cloud:
         """
         return self.property_item("mother")
 
-    @property
-    def sex(self) -> np.ndarray:
+    # @property
+    async def sex(self) -> np.ndarray:
         """
         Sex of each individual (sample).
 
@@ -655,8 +655,8 @@ class open_bed_cloud:
         """
         return self.property_item("sex")
 
-    @property
-    def pheno(self) -> np.ndarray:
+    # @property
+    async def pheno(self) -> np.ndarray:
         """
         A phenotype for each individual (sample)
         (seldom used).
@@ -820,8 +820,8 @@ class open_bed_cloud:
         """
         return self.property_item("sid")
 
-    @property
-    def cm_position(self) -> np.ndarray:
+    # @property
+    async def cm_position(self) -> np.ndarray:
         """
         Centimorgan position of each SNP (variant).
 
@@ -880,8 +880,8 @@ class open_bed_cloud:
         """
         return self.property_item("bp_position")
 
-    @property
-    def allele_1(self) -> np.ndarray:
+    # @property
+    async def allele_1(self) -> np.ndarray:
         """
         First allele of each SNP (variant).
 
@@ -908,8 +908,8 @@ class open_bed_cloud:
         """
         return self.property_item("allele_1")
 
-    @property
-    def allele_2(self) -> np.ndarray:
+    # @property
+    async def allele_2(self) -> np.ndarray:
         """
         Second allele of each SNP (variant),
 

@@ -63,7 +63,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let ii = &iid_index.as_slice()?;
         let si = &sid_index.as_slice()?;
 
-        let mut val = unsafe { val.as_array_mut() };
+        let mut val = val.readwrite();
+        let mut val = val.as_array_mut();
 
         let mut bed = Bed::builder(filename)
             .iid_count(iid_count)
@@ -98,7 +99,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let ii = &iid_index.as_slice()?;
         let si = &sid_index.as_slice()?;
 
-        let mut val = unsafe { val.as_array_mut() };
+        let mut val = val.readwrite();
+        let mut val = val.as_array_mut();
 
         let mut bed = Bed::builder(filename)
             .iid_count(iid_count)
@@ -133,7 +135,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let ii = &iid_index.as_slice()?;
         let si = &sid_index.as_slice()?;
 
-        let mut val = unsafe { val.as_array_mut() };
+        let mut val = val.readwrite();
+        let mut val = val.as_array_mut();
 
         let mut bed = Bed::builder(filename)
             .iid_count(iid_count)
@@ -175,7 +178,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     //     // let ii = &iid_index.as_slice()?;
     //     // let si = &sid_index.as_slice()?;
 
-    //     // let mut val = unsafe { val.as_array_mut() };
+    //      // let mut val = val.readwrite();
+    //     // let mut val = val.as_array_mut();
 
     //     // // cmk hack
 
@@ -211,7 +215,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         val: &PyArray2<f64>,
         num_threads: usize,
     ) -> Result<(), PyErr> {
-        let val = unsafe { val.as_array() };
+        let mut val = val.readwrite();
+        let mut val = val.as_array_mut();
 
         WriteOptions::builder(filename)
             .is_a1_counted(is_a1_counted)
@@ -231,7 +236,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         val: &PyArray2<f32>,
         num_threads: usize,
     ) -> Result<(), PyErr> {
-        let val = unsafe { val.as_array() };
+        let mut val = val.readwrite();
+        let mut val = val.as_array_mut();
 
         WriteOptions::builder(filename)
             .is_a1_counted(is_a1_counted)
@@ -251,7 +257,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         val: &PyArray2<i8>,
         num_threads: usize,
     ) -> Result<(), PyErr> {
-        let val = unsafe { val.as_array() };
+        let mut val = val.readwrite();
+        let mut val = val.as_array_mut();
 
         WriteOptions::builder(filename)
             .is_a1_counted(is_a1_counted)
@@ -274,8 +281,11 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     ) -> Result<(), PyErr> {
         let iid_index = iid_index.readonly();
         let sid_index = sid_index.readonly();
-        let val_in = unsafe { val_in.as_array() };
-        let mut val_out = unsafe { val_out.as_array_mut() };
+
+        let val_in = val_in.readwrite();
+        let val_in = val_in.as_array();
+        let mut val_out = val_out.readwrite();
+        let mut val_out = val_out.as_array_mut();
 
         let ii = &iid_index.as_slice()?;
         let si = &sid_index.as_slice()?;
@@ -297,8 +307,11 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     ) -> Result<(), PyErr> {
         let iid_index = iid_index.readonly();
         let sid_index = sid_index.readonly();
-        let val_in = unsafe { val_in.as_array() };
-        let mut val_out = unsafe { val_out.as_array_mut() };
+
+        let val_in = val_in.readwrite();
+        let val_in = val_in.as_array();
+        let mut val_out = val_out.readwrite();
+        let mut val_out = val_out.as_array_mut();
 
         let ii = &iid_index.as_slice()?;
         let si = &sid_index.as_slice()?;
@@ -320,8 +333,11 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     ) -> Result<(), PyErr> {
         let iid_index = iid_index.readonly();
         let sid_index = sid_index.readonly();
-        let val_in = unsafe { val_in.as_array() };
-        let mut val_out = unsafe { val_out.as_array_mut() };
+
+        let val_in = val_in.readwrite();
+        let val_in = val_in.as_array();
+        let mut val_out = val_out.readwrite();
+        let mut val_out = val_out.as_array_mut();
 
         let ii = &iid_index.as_slice()?;
         let si = &sid_index.as_slice()?;
@@ -345,8 +361,10 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         stats: &PyArray2<f32>,
         num_threads: usize,
     ) -> Result<(), PyErr> {
-        let mut val = unsafe { val.as_array_mut() };
-        let mut stats = unsafe { stats.as_array_mut() };
+        let mut val = val.readwrite();
+        let mut val = val.as_array_mut();
+        let mut stats = stats.readwrite();
+        let mut stats = stats.as_array_mut();
         let dist = create_dist(beta_not_unit_variance, beta_a, beta_b);
         create_pool(num_threads)?.install(|| {
             impute_and_zero_mean_snps(
@@ -381,8 +399,10 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         stats: &PyArray2<f64>,
         num_threads: usize,
     ) -> Result<(), PyErr> {
-        let mut val = unsafe { val.as_array_mut() };
-        let mut stats = unsafe { stats.as_array_mut() };
+        let mut val = val.readwrite();
+        let mut val = val.as_array_mut();
+        let mut stats = stats.readwrite();
+        let mut stats = stats.as_array_mut();
         let dist = create_dist(beta_not_unit_variance, beta_a, beta_b);
 
         create_pool(num_threads)?.install(|| {
@@ -410,7 +430,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         num_threads: usize,
         log_frequency: usize,
     ) -> Result<(), PyErr> {
-        let mut ata_piece = unsafe { ata_piece.as_array_mut() };
+        let mut ata_piece = ata_piece.readwrite();
+        let mut ata_piece = ata_piece.as_array_mut();
 
         create_pool(num_threads)?.install(|| {
             file_ata_piece(
@@ -441,7 +462,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         num_threads: usize,
         log_frequency: usize,
     ) -> Result<(), PyErr> {
-        let mut ata_piece = unsafe { ata_piece.as_array_mut() };
+        let mut ata_piece = ata_piece.readwrite();
+        let mut ata_piece = ata_piece.as_array_mut();
 
         create_pool(num_threads)?.install(|| {
             file_ata_piece(
@@ -471,7 +493,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         num_threads: usize,
         log_frequency: usize,
     ) -> Result<(), PyErr> {
-        let mut ata_piece = unsafe { ata_piece.as_array_mut() };
+        let mut ata_piece = ata_piece.readwrite();
+        let mut ata_piece = ata_piece.as_array_mut();
 
         create_pool(num_threads)?.install(|| {
             _file_ata_piece_internal(
@@ -501,7 +524,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         num_threads: usize,
         log_frequency: usize,
     ) -> Result<(), PyErr> {
-        let mut aat_piece = unsafe { aat_piece.as_array_mut() };
+        let mut aat_piece = aat_piece.readwrite();
+        let mut aat_piece = aat_piece.as_array_mut();
 
         create_pool(num_threads)?.install(|| {
             file_aat_piece(
@@ -532,7 +556,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         num_threads: usize,
         log_frequency: usize,
     ) -> Result<(), PyErr> {
-        let mut aat_piece = unsafe { aat_piece.as_array_mut() };
+        let mut aat_piece = aat_piece.readwrite();
+        let mut aat_piece = aat_piece.as_array_mut();
 
         create_pool(num_threads)?.install(|| {
             file_aat_piece(
@@ -563,9 +588,12 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         num_threads: usize,
         log_frequency: usize,
     ) -> Result<(), PyErr> {
-        let mut b1 = unsafe { b1.as_array_mut() };
-        let mut aatb = unsafe { aatb.as_array_mut() };
-        let mut atb = unsafe { atb.as_array_mut() };
+        let mut b1 = b1.readwrite();
+        let mut b1 = b1.as_array_mut();
+        let mut aatb = aatb.readwrite();
+        let mut aatb = aatb.as_array_mut();
+        let mut atb = atb.readwrite();
+        let mut atb = atb.as_array_mut();
 
         create_pool(num_threads)?.install(|| {
             file_b_less_aatbx(

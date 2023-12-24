@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from bed_reader import open_bed_cloud
+from bed_reader import open_bed_cloud, to_bed
 
 
 @pytest.mark.asyncio
@@ -28,54 +28,54 @@ async def test_cloud_read1(shared_datadir):
         assert (await bed_cloud.bp_position())[-1] == 100
 
 
-# def test_cloud_write(tmp_path, shared_datadir):
-#     in_file = shared_datadir / "plink_sim_10s_100v_10pmiss.bed"
-#     out_file = tmp_path / "out.bed"
-#     with open_bed_cloud(in_file) as bed:
-#         val0 = bed.read()
-#         properties0 = {
-#             "fid": bed.fid,
-#             "iid": bed.iid,
-#             "sid": bed.sid,
-#             "chromosome": bed.chromosome,
-#             "cm_position": bed.cm_position,
-#             "bp_position": bed.bp_position,
-#         }
-#         to_bed(out_file, val0, properties=properties0)
-#         with open_bed_cloud(out_file) as bed1:
-#             assert np.allclose(val0, bed1.read(), equal_nan=True)
-#             val_sparse = bed1.read_sparse()
-#             assert np.allclose(val0, val_sparse.toarray(), equal_nan=True)
-#             assert np.array_equal(bed.fid, properties0["fid"])
-#             assert np.array_equal(bed.iid, properties0["iid"])
-#             assert np.array_equal(bed.sid, properties0["sid"])
-#             assert np.issubdtype(bed.sid.dtype, np.str_)
-#             assert np.array_equal(bed.chromosome, properties0["chromosome"])
-#             assert np.allclose(bed.cm_position, properties0["cm_position"])
-#             assert np.allclose(bed.bp_position, properties0["bp_position"])
+@pytest.mark.asyncio
+async def test_cloud_write(tmp_path, shared_datadir):
+    in_file = shared_datadir / "plink_sim_10s_100v_10pmiss.bed"
+    out_file = tmp_path / "out.bed"
+    async with await open_bed_cloud.create(in_file) as bed_cloud:
+        val0 = await bed_cloud.read()
+        properties0 = {
+            "fid": await bed_cloud.fid(),
+            "iid": await bed_cloud.iid(),
+            "sid": await bed_cloud.sid(),
+            "chromosome": await bed_cloud.chromosome(),
+            "cm_position": await bed_cloud.cm_position(),
+            "bp_position": await bed_cloud.bp_position(),
+        }
+        # cmk write
+        to_bed(out_file, val0, properties=properties0)
+        async with await open_bed_cloud.create(out_file) as bed_cloud_1:
+            assert np.allclose(val0, await bed_cloud_1.read(), equal_nan=True)
+            assert np.array_equal(await bed_cloud_1.fid(), properties0["fid"])
+            assert np.array_equal(await bed_cloud_1.iid(), properties0["iid"])
+            assert np.array_equal(await bed_cloud_1.sid(), properties0["sid"])
+            assert np.issubdtype((await bed_cloud_1.sid()).dtype, np.str_)
+            assert np.array_equal(await bed_cloud_1.chromosome(), properties0["chromosome"])
+            assert np.allclose(await bed_cloud_1.cm_position(), properties0["cm_position"])
+            assert np.allclose(await bed_cloud_1.bp_position(), properties0["bp_position"])
 
-#     val_float = val0.astype("float")
-#     val_float[0, 0] = 0.5
+    # val_float = val0.astype("float")
+    # val_float[0, 0] = 0.5
 
-#     for force_python_only in [False, True]:
-#         with pytest.raises(ValueError):
-#             to_bed(
-#                 out_file,
-#                 val_float,
-#                 properties=properties0,
-#                 force_python_only=force_python_only,
-#             )
-#     val0[np.isnan(val0)] = 0  # set any nan to 0
-#     val_int8 = val0.astype("int8")
-#     val_int8[0, 0] = -1
-#     for force_python_only in [False, True]:
-#         with pytest.raises(ValueError):
-#             to_bed(
-#                 out_file,
-#                 val_int8,
-#                 properties=properties0,
-#                 force_python_only=force_python_only,
-#             )
+    # for force_python_only in [False, True]:
+    #     with pytest.raises(ValueError):
+    #         to_bed(
+    #             out_file,
+    #             val_float,
+    #             properties=properties0,
+    #             force_python_only=force_python_only,
+    #         )
+    # val0[np.isnan(val0)] = 0  # set any nan to 0
+    # val_int8 = val0.astype("int8")
+    # val_int8[0, 0] = -1
+    # for force_python_only in [False, True]:
+    #     with pytest.raises(ValueError):
+    #         to_bed(
+    #             out_file,
+    #             val_int8,
+    #             properties=properties0,
+    #             force_python_only=force_python_only,
+    #         )
 
 
 def test_cloud_overrides(shared_datadir):
