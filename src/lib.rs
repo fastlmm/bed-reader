@@ -3743,7 +3743,8 @@ impl From<()> for Index {
 /// for a list of expressions for selecting individuals (sample)
 /// and SNPs (variants).
 #[derive(Debug, Clone, Builder)]
-#[builder(build_fn(error = "BedErrorPlus"))]
+// cmk should this be Box<BedErrorPlus>?
+#[builder(build_fn(error = "Box<BedErrorPlus>"))]
 pub struct ReadOptions<TVal: BedVal> {
     /// Value to use for missing values (defaults to -127 or NaN)
     ///

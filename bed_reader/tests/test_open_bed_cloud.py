@@ -11,7 +11,6 @@ from bed_reader import open_bed_cloud, to_bed
 
 @pytest.mark.asyncio
 async def test_cloud_read1(shared_datadir):
-    import math
 
     file = shared_datadir / "plink_sim_10s_100v_10pmiss.bed"
     print(type(file), file)

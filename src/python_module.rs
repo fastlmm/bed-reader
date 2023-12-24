@@ -1,20 +1,25 @@
 #![cfg(feature = "extension-module")]
+use std::time::Duration;
+
+use num_traits::sign;
 use numpy::{PyArray1, PyArray2, PyArray3};
-// cmk use object_store::{local::LocalFileSystem, path::Path as StorePath};
+use object_store::{local::LocalFileSystem, path::Path as StorePath};
+use pyo3::Py;
 
 use pyo3::{
     exceptions::PyIOError,
     exceptions::PyIndexError,
     exceptions::PyValueError,
     prelude::{pymodule, PyModule, PyResult, Python},
-    pyfunction, wrap_pyfunction, PyErr, PyObject,
+    pyfunction, PyAny, PyErr, PyObject,
 };
+use tokio::time::sleep;
 // CMK use pyo3_asyncio::tokio::future_into_py;
 
 use crate::{
     BedError, BedErrorPlus, Dist, _file_ata_piece_internal, create_pool, file_aat_piece,
     file_ata_piece, file_b_less_aatbx, impute_and_zero_mean_snps, matrix_subset_no_alloc,
-    read_into_f32, read_into_f64, Bed, ReadOptions, WriteOptions,
+    read_into_f32, read_into_f64, Bed, BedCloud, ReadOptions, WriteOptions,
 };
 
 #[pymodule]
@@ -46,7 +51,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
-    #[pyo3(name = "read_f64")]
     #[allow(clippy::too_many_arguments)]
     fn read_f64(
         filename: &str,
@@ -82,7 +86,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
-    #[pyo3(name = "read_f32")]
     #[allow(clippy::too_many_arguments)]
     fn read_f32(
         filename: &str,
@@ -118,7 +121,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
-    #[pyo3(name = "read_i8")]
     #[allow(clippy::too_many_arguments)]
     fn read_i8(
         filename: &str,
@@ -153,10 +155,73 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         Ok(())
     }
 
+    #[allow(unused_variables)]
+    #[pyfn(m)]
+    #[allow(clippy::too_many_arguments)]
+    fn read_cloud_i8<'a>(
+        py: Python<'a>,
+        //     // cmk currently only supports LocalFileSystem "cloud" storage
+        filename: &'a str,
+        iid_count: usize,
+        sid_count: usize,
+        is_a1_counted: bool,
+        iid_index: &PyArray1<isize>,
+        sid_index: &PyArray1<isize>,
+        val: Py<PyArray2<i8>>, //     py: Python,
+        // val: &PyArray2<i8>,
+        max_concurrent_requests: usize,
+        max_chunk_size: usize,
+        num_threads: usize,
+        //
+    ) -> PyResult<&'a PyAny> {
+        let iid_index = iid_index.readonly();
+        let sid_index = sid_index.readonly();
+        let ii = &iid_index.as_slice()?;
+        let si = &sid_index.as_slice()?;
+
+        let store_path: StorePath = filename.into();
+        let mut bed_cloud = BedCloud::builder((LocalFileSystem::new(), store_path))
+            .skip_early_check()
+            .iid_count(iid_count)
+            .sid_count(sid_count)
+            .build_no_check()?;
+        let bed_cloud = bed_cloud;
+
+        let read_options = ReadOptions::<i8>::builder()
+            .iid_index(*ii)
+            .sid_index(*si)
+            .is_a1_counted(is_a1_counted)
+            .max_concurrent_requests(max_concurrent_requests)
+            .max_chunk_size(max_chunk_size)
+            .num_threads(num_threads)
+            .build()?;
+
+        pyo3_asyncio::tokio::future_into_py(py, async move {
+            Python::with_gil(|py| {
+                let val = val.as_ref(py);
+                let mut val = val.readwrite();
+                let mut val = val.as_array_mut();
+
+                let f = bed_cloud.read_and_fill_with_options_no_mut(
+                    iid_count,
+                    sid_count,
+                    &mut val.view_mut(),
+                    &read_options,
+                );
+                f
+                // let r = f.await;
+                // r?;
+                // Ok(())
+            });
+
+            // sleep(Duration::from_secs(1)).await;
+
+            Ok(())
+        })
+    }
+
     // #[allow(unused_variables)]
-    // // #[pyfn(m)]
-    // // #[pyo3(name = "read_cloud_i8")]
-    // #[pyfunction]
+    // #[pyfn(m)]
     // #[allow(clippy::too_many_arguments)]
     // fn read_cloud_i8(
     //     py: Python,
@@ -171,44 +236,46 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     //     max_concurrent_requests: usize,
     //     max_chunk_size: usize,
     //     num_threads: usize,
-    // ) -> Result<PyObject, PyErr> {
-    //     todo!("CMK");
-    //     // let iid_index = iid_index.readonly();
-    //     // let sid_index = sid_index.readonly();
-    //     // let ii = &iid_index.as_slice()?;
-    //     // let si = &sid_index.as_slice()?;
+    // ) -> Result<(), PyErr> {
+    //     let iid_index = iid_index.readonly();
+    //     let sid_index = sid_index.readonly();
+    //     let ii = &iid_index.as_slice()?;
+    //     let si = &sid_index.as_slice()?;
 
-    //      // let mut val = val.readwrite();
-    //     // let mut val = val.as_array_mut();
+    //     let store_path: StorePath = filename.into();
+    //     let mut bed_cloud = BedCloud::builder((LocalFileSystem::new(), store_path))
+    //         .skip_early_check()
+    //         .iid_count(iid_count)
+    //         .sid_count(sid_count)
+    //         .build_no_check()?;
 
-    //     // // cmk hack
+    //     let read_options = ReadOptions::<i8>::builder()
+    //         .iid_index(*ii)
+    //         .sid_index(*si)
+    //         .is_a1_counted(is_a1_counted)
+    //         .max_concurrent_requests(max_concurrent_requests)
+    //         .max_chunk_size(max_chunk_size)
+    //         .num_threads(num_threads)
+    //         .build()?;
 
-    //     // let store_path: StorePath = filename.into();
-    //     // Ok(future_into_py(py, async move {
-    //     //     let mut bed_cloud = BedCloud::builder((LocalFileSystem::new(), store_path))
-    //     //         .skip_early_check()
-    //     //         .iid_count(iid_count)
-    //     //         .sid_count(sid_count)
-    //     //         .build()
-    //     //         .await?;
+    //     pyo3_asyncio::tokio::future_into_py(py, async move {
+    //         let times5 = Python::with_gil(|py| {
+    //             let val = val.as_ref(py);
+    //             let mut val = val.readwrite();
+    //             let mut val = val.as_array_mut();
 
-    //     //     ReadOptions::builder()
-    //     //         .iid_index(*ii)
-    //     //         .sid_index(*si)
-    //     //         .is_a1_counted(is_a1_counted)
-    //     //         .max_concurrent_requests(max_concurrent_requests)
-    //     //         .max_chunk_size(max_chunk_size)
-    //     //         .num_threads(num_threads)
-    //     //         .read_and_fill_cloud(&mut bed_cloud, &mut val.view_mut())
-    //     //         .await?;
+    //             val.fill(0.0);
+    //             let times5 = val.dim().0 * 5;
+    //             times5
+    //         });
 
-    //     //     Ok(())
-    //     // })?
-    //     // .into())
+    //         sleep(Duration::from_secs(1)).await;
+
+    //         Ok(times5)
+    //     })
     // }
 
     #[pyfn(m)]
-    #[pyo3(name = "write_f64")]
     fn write_f64(
         filename: &str,
         is_a1_counted: bool,
@@ -229,7 +296,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
-    #[pyo3(name = "write_f32")]
     fn write_f32(
         filename: &str,
         is_a1_counted: bool,
@@ -250,7 +316,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
-    #[pyo3(name = "write_i8")]
     fn write_i8(
         filename: &str,
         is_a1_counted: bool,
@@ -271,7 +336,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
-    #[pyo3(name = "subset_f64_f64")]
     fn subset_f64_f64(
         val_in: &PyArray3<f64>,
         iid_index: &PyArray1<usize>,
@@ -297,7 +361,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
-    #[pyo3(name = "subset_f32_f64")]
     fn subset_f32_f64(
         val_in: &PyArray3<f32>,
         iid_index: &PyArray1<usize>,
@@ -323,7 +386,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
-    #[pyo3(name = "subset_f32_f32")]
     fn subset_f32_f32(
         val_in: &PyArray3<f32>,
         iid_index: &PyArray1<usize>,
@@ -349,7 +411,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
-    #[pyo3(name = "standardize_f32")]
     #[allow(clippy::too_many_arguments)]
     fn standardize_f32(
         val: &PyArray2<f32>,
@@ -387,7 +448,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
-    #[pyo3(name = "standardize_f64")]
     #[allow(clippy::too_many_arguments)]
     fn standardize_f64(
         val: &PyArray2<f64>,
@@ -418,7 +478,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
-    #[pyo3(name = "file_ata_piece_f32_orderf")]
     #[allow(clippy::too_many_arguments)]
     fn file_ata_piece_f32_orderf(
         filename: &str,
@@ -450,7 +509,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
-    #[pyo3(name = "file_ata_piece_f64_orderf")]
     #[allow(clippy::too_many_arguments)]
     fn file_ata_piece_f64_orderf(
         filename: &str,
@@ -483,7 +541,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     // Old version of function for backwards compatibility
     #[pyfn(m)]
-    #[pyo3(name = "file_dot_piece")]
     fn file_dot_piece(
         filename: &str,
         offset: u64,
@@ -512,7 +569,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
-    #[pyo3(name = "file_aat_piece_f32_orderf")]
     #[allow(clippy::too_many_arguments)]
     fn file_aat_piece_f32_orderf(
         filename: &str,
@@ -544,7 +600,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
-    #[pyo3(name = "file_aat_piece_f64_orderf")]
     #[allow(clippy::too_many_arguments)]
     fn file_aat_piece_f64_orderf(
         filename: &str,

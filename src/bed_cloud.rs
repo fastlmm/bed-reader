@@ -436,6 +436,20 @@ where
         Ok(bed_cloud)
     }
 
+    /// cmk update docs
+    /// Create [`BedCloud`](struct.BedCloud.html) from the builder.
+    ///
+    /// > See [`BedCloud::builder`](struct.BedCloud.html#method.builder) for more details and examples.
+    pub fn build_no_check(&self) -> Result<BedCloud<TObjectStore>, Box<BedErrorPlus>> {
+        let mut bed_cloud = self.build_no_file_check()?;
+
+        (bed_cloud.iid_count, bed_cloud.sid_count) = bed_cloud
+            .metadata
+            .check_counts(bed_cloud.iid_count, bed_cloud.sid_count)?;
+
+        Ok(bed_cloud)
+    }
+
     // https://stackoverflow.com/questions/38183551/concisely-initializing-a-vector-of-strings
     // https://stackoverflow.com/questions/65250496/how-to-convert-intoiteratoritem-asrefstr-to-iteratoritem-str-in-rust
 
@@ -1190,6 +1204,7 @@ where
     /// assert!(dim == (3,4));
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
+    // cmk call these at the same time?
     pub async fn dim(&mut self) -> Result<(usize, usize), Box<BedErrorPlus>> {
         Ok((self.iid_count().await?, self.sid_count().await?))
     }
@@ -1697,6 +1712,52 @@ where
         // must do these one-at-a-time because they mutate self to cache the results
         let iid_count = self.iid_count().await?;
         let sid_count = self.sid_count().await?;
+
+        let max_concurrent_requests =
+            compute_max_concurrent_requests(read_options.max_concurrent_requests)?;
+
+        let max_chunk_size = compute_max_chunk_size(read_options.max_chunk_size)?;
+
+        // If we already have a Vec<isize>, reference it. If we don't, create one and reference it.
+        let iid_hold = Hold::new(&read_options.iid_index, iid_count)?;
+        let iid_index = iid_hold.as_ref();
+        let sid_hold = Hold::new(&read_options.sid_index, sid_count)?;
+        let sid_index = sid_hold.as_ref();
+
+        let dim = val.dim();
+        if dim != (iid_index.len(), sid_index.len()) {
+            return Err(Box::new(
+                BedError::InvalidShape(iid_index.len(), sid_index.len(), dim.0, dim.1).into(),
+            ));
+        }
+
+        read_no_alloc(
+            &self.object_path,
+            iid_count,
+            sid_count,
+            read_options.is_a1_counted,
+            iid_index,
+            sid_index,
+            read_options.missing_value,
+            max_concurrent_requests,
+            max_chunk_size,
+            &mut val.view_mut(),
+        )
+        .await
+    }
+
+    /// cmk doc
+    // have read_and_fill_with_options call this
+    pub async fn read_and_fill_with_options_no_mut<TVal: BedVal>(
+        &self,
+        iid_count: usize,
+        sid_count: usize,
+        val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.,
+        read_options: &ReadOptions<TVal>,
+    ) -> Result<(), Box<BedErrorPlus>> {
+        // // must do these one-at-a-time because they mutate self to cache the results
+        // let iid_count = self.iid_count().await?;
+        // let sid_count = self.sid_count().await?;
 
         let max_concurrent_requests =
             compute_max_concurrent_requests(read_options.max_concurrent_requests)?;
