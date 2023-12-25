@@ -1573,7 +1573,7 @@ where
     ///
     /// This returns a struct with 12 fields. Each field is a ndarray.
     /// The struct will always be new, but the 12 ndarrays will be
-    /// shared with this [`Bed`](struct.BedCloud.html).
+    /// shared with this [`BedCloud`](struct.BedCloud.html).
     ///
     /// If the needed, the metadata will be read from the .fam and/or .bim files.
     /// ```

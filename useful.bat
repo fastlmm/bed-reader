@@ -1,5 +1,6 @@
 # test async in python:
 pytest bed_reader\tests\test_open_bed_cloud.py -k read1
+pytest bed_reader\tests\test_open_bed.py -k test_zero_files
 
 
 pip# test Rust

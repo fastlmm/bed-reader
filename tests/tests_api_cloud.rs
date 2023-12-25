@@ -2015,7 +2015,7 @@ async fn cloud_metadata_bed() -> Result<(), Box<BedErrorPlus>> {
 #[tokio::test]
 async fn cloud_read_and_fill_with_options() -> Result<(), Box<BedErrorPlus>> {
     use bed_reader::assert_eq_nan;
-    use bed_reader::{BedCloud, ReadOptions};
+    use bed_reader::ReadOptions;
     use ndarray as nd;
     // Read the SNPs indexed by 2.
     let object_path = sample_bed_object_path("small.bed")?;
@@ -2556,6 +2556,7 @@ async fn object_path_extension() -> Result<(), Box<BedErrorPlus>> {
     Ok(())
 }
 
+// cmk requires aws credentials
 #[tokio::test]
 async fn s3() -> Result<(), Box<BedErrorPlus>> {
     // cmk too many unwraps
@@ -2574,5 +2575,20 @@ async fn s3() -> Result<(), Box<BedErrorPlus>> {
     let store_path = StorePath::parse("/v1/toydata.5chrom.bed").unwrap();
     let object_path = ObjectPath::from((s3, store_path));
     assert_eq!(object_path.size().await?, 1_250_003);
+    Ok(())
+}
+
+// 'C:\\Users\\carlk\\AppData\\Local\\bed_reader\\bed_reader\\Cache\\small.bed'
+
+#[tokio::test]
+async fn windows_cloud() -> Result<(), Box<BedErrorPlus>> {
+    let object_store = Arc::new(LocalFileSystem::new());
+    let file_name = "C:\\Users\\carlk\\AppData\\Local\\bed_reader\\bed_reader\\Cache\\small.bed";
+    let store_path = StorePath::from_filesystem_path(file_name).map_err(BedErrorPlus::from)?;
+
+    let mut bed_cloud = BedCloud::new((object_store, store_path)).await?;
+    let val = bed_cloud.read::<i8>().await?;
+    println!("{val:?}");
+
     Ok(())
 }

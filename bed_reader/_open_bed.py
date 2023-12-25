@@ -13,7 +13,7 @@ try:
 except ImportError:
     sparse = None
 
-from .bed_reader import read_f32, read_f64, read_i8  # type: ignore
+from .bed_reader import read_f32, read_f64, read_i8, read_cloud_i8  # type: ignore
 
 
 # https://stackoverflow.com/questions/845058/how-to-get-line-count-of-a-large-file-cheaply-in-python
@@ -390,7 +390,8 @@ class open_bed:
 
             if self.iid_count > 0 and self.sid_count > 0:
                 if dtype == np.int8:
-                    reader = read_i8
+                    # cmk000
+                    reader = read_cloud_i8
                 elif dtype == np.float64:
                     reader = read_f64
                 elif dtype == np.float32:
@@ -402,7 +403,8 @@ class open_bed:
                     )
 
                 reader(
-                    str(self.filepath),
+                    # cmk000
+                    str(self.filepath.as_posix()),
                     iid_count=self.iid_count,
                     sid_count=self.sid_count,
                     is_a1_counted=self.count_A1,
