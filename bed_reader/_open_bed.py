@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from itertools import repeat, takewhile
 from pathlib import Path
 from typing import Any, List, Mapping, Optional, Union
+from object_store import ObjectStore
 
 import numpy as np
 
@@ -216,7 +217,10 @@ class open_bed:
         skip_format_check: bool = False,
         fam_filepath: Union[str, Path] = None,
         bim_filepath: Union[str, Path] = None,
+        # cmk need docs
+        object_store: Optional[ObjectStore] = None,
     ):
+        # cmk need to read the .fam and .bim files and check file from cloud if requested
         self.filepath = Path(filepath)
         self.count_A1 = count_A1
         self._num_threads = num_threads
