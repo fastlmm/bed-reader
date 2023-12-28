@@ -21,6 +21,8 @@ use ndarray::s;
 use object_store::aws::AmazonS3Builder;
 use object_store::local::LocalFileSystem;
 use object_store::path::Path as StorePath;
+use object_store::ObjectStore;
+use url::Url;
 
 // cmk see https://github.com/apache/arrow-rs/tree/master/object_store
 // cmk see https://github.com/roeap/object-store-python
@@ -2578,17 +2580,41 @@ async fn s3() -> Result<(), Box<BedErrorPlus>> {
     Ok(())
 }
 
-// 'C:\\Users\\carlk\\AppData\\Local\\bed_reader\\bed_reader\\Cache\\small.bed'
+#[cfg(test)]
+fn pathbuf_to_file_url(path: impl AsRef<std::path::Path>) -> Result<Url, url::ParseError> {
+    let path = path.as_ref();
+    // For Windows, manually construct the file URL
+    if cfg!(windows) {
+        let path_str = path.to_string_lossy();
+        let url_str = format!("file:///{}", path_str.replace('\\', "/"));
+        Url::parse(&url_str)
+    } else {
+        // For Unix-like systems, use the `from_file_path` method
+        Url::from_file_path(path).map_err(|_| url::ParseError::IdnaError)
+    }
+}
 
 #[tokio::test]
-async fn windows_cloud() -> Result<(), Box<BedErrorPlus>> {
-    let object_store = Arc::new(LocalFileSystem::new());
-    let file_name = "C:\\Users\\carlk\\AppData\\Local\\bed_reader\\bed_reader\\Cache\\small.bed";
-    let store_path = StorePath::from_filesystem_path(file_name).map_err(BedErrorPlus::from)?;
+async fn dyn_cloud() -> Result<(), Box<BedErrorPlus>> {
+    let file_name = sample_bed_file("small.bed")?;
+    let url = pathbuf_to_file_url(file_name).unwrap();
+    let iid_count = 3;
+    let sid_count = 4;
+    let (object_store, store_path) = object_store::parse_url(&url).unwrap();
+    let object_path: ObjectPath<Box<dyn ObjectStore>> = (object_store, store_path).into();
 
-    let mut bed_cloud = BedCloud::new((object_store, store_path)).await?;
+    let mut bed_cloud = BedCloud::builder(object_path)
+        .iid_count(iid_count)
+        .sid_count(sid_count)
+        .build()
+        .await?;
     let val = bed_cloud.read::<i8>().await?;
     println!("{val:?}");
+
+    assert_eq_nan(
+        &val,
+        &nd::array![[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]],
+    );
 
     Ok(())
 }
