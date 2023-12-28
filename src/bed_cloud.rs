@@ -13,6 +13,7 @@ use object_store::ObjectStore;
 use object_store::{GetOptions, GetResult};
 use std::cmp::max;
 use std::collections::HashSet;
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
@@ -151,8 +152,10 @@ fn convert_negative_sid_index(
     lower_sid_count: isize,
 ) -> Result<u64, Box<BedErrorPlus>> {
     if (0..=upper_sid_count).contains(&in_sid_i_signed) {
+        #[allow(clippy::cast_sign_loss)]
         Ok(in_sid_i_signed as u64)
     } else if (lower_sid_count..=-1).contains(&in_sid_i_signed) {
+        #[allow(clippy::cast_sign_loss)]
         Ok((in_sid_i_signed - lower_sid_count) as u64) // cmk not sure about overflow
     } else {
         Err(Box::new(BedErrorPlus::BedError(BedError::SidIndexTooBig(
@@ -164,6 +167,7 @@ fn convert_negative_sid_index(
 // cmk somehow we must only compile is size(usize) is 64 bits.
 
 #[allow(clippy::too_many_arguments)]
+#[allow(clippy::similar_names)]
 async fn internal_read_no_alloc<TVal: BedVal, TObjectStore>(
     object_path: &ObjectPath<TObjectStore>,
     size: usize,
@@ -283,6 +287,7 @@ fn decode_bytes_into_columns<TVal: BedVal>(
     }
 }
 
+#[allow(clippy::similar_names)]
 fn check_file_length<TObjectStore, I>(
     in_iid_count: usize,
     in_sid_count: usize,
@@ -307,6 +312,7 @@ where
 
 #[inline]
 #[allow(clippy::too_many_arguments)]
+#[allow(clippy::similar_names)]
 async fn read_no_alloc<TVal: BedVal, TObjectStore, I>(
     object_path: I,
     iid_count: usize,
@@ -361,7 +367,7 @@ where
                 max_chunk_size,
                 val,
             )
-            .await?
+            .await?;
         }
         _ => return Err(Box::new(BedError::BadMode(object_path.to_string()).into())),
     };
@@ -1594,7 +1600,8 @@ where
         Ok(self.metadata.clone())
     }
 
-    /// Return the object_path of the .bed file.
+    /// Return the `ObjectPath` of the .bed file.
+    #[must_use]
     pub fn object_path(&self) -> &ObjectPath<TObjectStore> {
         &self.object_path
     }
@@ -1704,6 +1711,7 @@ where
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```  
+    #[allow(clippy::similar_names)]
     pub async fn read_and_fill_with_options<TVal: BedVal>(
         &mut self,
         val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.,
@@ -2002,7 +2010,7 @@ where
             return Err(BedError::CannotUseSkippedMetadata(name.to_string()).into());
         }
         if is_none {
-            self.fam().await?
+            self.fam().await?;
         }
         Ok(())
     }
@@ -2017,7 +2025,7 @@ where
             return Err(BedError::CannotUseSkippedMetadata(name.to_string()).into());
         }
         if is_none {
-            self.bim().await?
+            self.bim().await?;
         }
         Ok(())
     }
@@ -2083,10 +2091,8 @@ where
 pub fn sample_bed_object_path(
     bed_path: AnyPath,
 ) -> Result<ObjectPath<LocalFileSystem>, Box<BedErrorPlus>> {
-    use std::path::PathBuf;
-
     let mut path_list: Vec<PathBuf> = Vec::new();
-    for ext in ["bed", "bim", "fam"].iter() {
+    for ext in &["bed", "bim", "fam"] {
         let file_path = bed_path.with_extension(ext);
         path_list.push(file_path);
     }

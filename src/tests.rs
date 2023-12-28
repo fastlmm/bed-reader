@@ -74,7 +74,7 @@ use temp_testdir::TempDir;
 fn best_int8() {
     let filename = sample_bed_file("some_missing.bed").unwrap();
 
-    for output_order_is_f in [true, false].iter() {
+    for output_order_is_f in &[true, false] {
         let mut bed = Bed::new(&filename).unwrap();
         let val = ReadOptions::builder()
             .is_f(*output_order_is_f)
@@ -113,7 +113,7 @@ fn read_test() {
     let val: nd::Array2<i8> = bed.read().unwrap();
     let val_f64 = val.mapv(|elem| elem as f64);
     let mean_ = val_f64.mean().unwrap();
-    assert!(mean_ == -13.142); // really shouldn't do mean on data where -127 represents missing
+    assert!((mean_ - -13.142).abs() < 1e-8); // really shouldn't do mean on data where -127 represents missing
 
     let mut bed2 = Bed::new(sample_bed_file("small_too_short.bed").unwrap()).unwrap();
     let result = bed2.read::<i8>();
@@ -265,7 +265,7 @@ fn index() {
 }
 
 #[test]
-fn writer() -> Result<(), Box<BedErrorPlus>> {
+fn writer() {
     let path = sample_bed_file("some_missing.bed").unwrap();
 
     let mut bed = Bed::new(&path).unwrap();
@@ -276,7 +276,7 @@ fn writer() -> Result<(), Box<BedErrorPlus>> {
 
     Bed::write(&val, &path2).unwrap();
 
-    for ext in ["fam", "bim"].iter() {
+    for ext in &["fam", "bim"] {
         let from = path.with_extension(ext);
         let to = path2.with_extension(ext);
         std::fs::copy(from, to).unwrap();
@@ -294,7 +294,7 @@ fn writer() -> Result<(), Box<BedErrorPlus>> {
 
     Bed::write(&val, &path2).unwrap();
 
-    for ext in ["fam", "bim"].iter() {
+    for ext in &["fam", "bim"] {
         let from = path.with_extension(ext);
         let to = path2.with_extension(ext);
         std::fs::copy(from, to).unwrap();
@@ -320,8 +320,6 @@ fn writer() -> Result<(), Box<BedErrorPlus>> {
     let val: nd::Array2<i8> = nd::Array2::zeros((3, 0));
     let path = output_folder.join("rust_bed_reader_writer_testf64_3_0.bed");
     Bed::write(&val, &path).unwrap();
-
-    Ok(())
 }
 
 #[test]
@@ -377,14 +375,14 @@ fn subset1() {
     assert_error_variant!(
         result,
         BedErrorPlus::BedError(BedError::SubsetMismatch(_, _, _, _))
-    )
+    );
 }
 
 #[test]
 fn fill_in() {
     let filename = sample_bed_file("some_missing.bed").unwrap();
 
-    for output_is_orderf_ptr in [false, true].iter() {
+    for output_is_orderf_ptr in &[false, true] {
         let mut bed = Bed::builder(&filename).build().unwrap();
         let mut val = ReadOptions::builder()
             .is_f(*output_is_orderf_ptr)
@@ -396,18 +394,18 @@ fn fill_in() {
 
         impute_and_zero_mean_snps(
             &mut val.view_mut(),
-            Dist::Unit,
+            &Dist::Unit,
             true,
             false,
             &mut stats.view_mut(),
         )
         .unwrap();
-        assert!((val[(0, 0)] - 0.16783627165933704).abs() < 1e-8);
+        assert!((val[(0, 0)] - 0.167_836_271_659_337_04).abs() < 1e-8);
 
         nd::Array2::fill(&mut val, f64::NAN);
         let result = impute_and_zero_mean_snps(
             &mut val.view_mut(),
-            Dist::Unit,
+            &Dist::Unit,
             true,
             false,
             &mut stats.view_mut(),
@@ -422,7 +420,7 @@ fn fill_in() {
             .unwrap();
         let result = impute_and_zero_mean_snps(
             &mut val.view_mut(),
-            Dist::Beta { a: -10.0, b: 0.0 },
+            &Dist::Beta { a: -10.0, b: 0.0 },
             true,
             false,
             &mut stats.view_mut(),
@@ -435,7 +433,7 @@ fn fill_in() {
         nd::Array2::fill(&mut val, 3.0);
         let result = impute_and_zero_mean_snps(
             &mut val.view_mut(),
-            Dist::Beta { a: 0.5, b: 0.5 },
+            &Dist::Beta { a: 0.5, b: 0.5 },
             true,
             false,
             &mut stats.view_mut(),
@@ -445,7 +443,7 @@ fn fill_in() {
         nd::Array2::fill(&mut val, 1.0);
         impute_and_zero_mean_snps(
             &mut val.view_mut(),
-            Dist::Beta { a: 0.5, b: 0.5 },
+            &Dist::Beta { a: 0.5, b: 0.5 },
             true,
             false,
             &mut stats.view_mut(),
@@ -456,7 +454,7 @@ fn fill_in() {
 
 #[test]
 fn standardize_unit() {
-    for output_is_orderf_ptr in [true, false].iter() {
+    for output_is_orderf_ptr in &[true, false] {
         let mut bed = Bed::new(sample_bed_file("toydata.5chrom.bed").unwrap()).unwrap();
         let mut val = ReadOptions::builder()
             .count_a2()
@@ -467,14 +465,14 @@ fn standardize_unit() {
         let mut stats = nd::Array2::<f64>::zeros((val.dim().1, 2));
         impute_and_zero_mean_snps(
             &mut val.view_mut(),
-            Dist::Unit,
+            &Dist::Unit,
             true,
             false,
             &mut stats.view_mut(),
         )
         .unwrap();
 
-        assert!((val[(0, 0)] - -0.3050261832617668).abs() < 1e-8);
+        assert!((val[(0, 0)] - -0.305_026_183_261_766_8).abs() < 1e-8);
     }
 }
 
@@ -482,22 +480,22 @@ fn standardize_unit() {
 fn div_4() {
     match try_div_4(0, 16, 0u8) {
         Ok(tup) => assert_eq!(tup, (0usize, 0u8)),
-        Err(_) => panic!("test failure"),
+        Err(err) => panic!("test failure: {err:?}"),
     };
 
     match try_div_4(1, 16, 0u8) {
         Ok(tup) => assert_eq!(tup, (1usize, 1u8)),
-        Err(_) => panic!("test failure"),
+        Err(err) => panic!("test failure: {err:?}"),
     };
 
     match try_div_4(4, 16, 0u8) {
         Ok(tup) => assert_eq!(tup, (1usize, 1u8)),
-        Err(_) => panic!("test failure"),
+        Err(err) => panic!("test failure: {err:?}"),
     };
 
     match try_div_4(5, 16, 0u8) {
         Ok(tup) => assert_eq!(tup, (2usize, 2u8)),
-        Err(_) => panic!("test failure"),
+        Err(err) => panic!("test failure: {err:?}"),
     };
 
     assert_error_variant!(
@@ -512,7 +510,7 @@ fn div_4() {
 
     match try_div_4(25 * 4, 10, 5u8) {
         Ok(tup) => assert_eq!(tup, (25usize, 25u8)),
-        Err(_) => panic!("test failure"),
+        Err(err) => panic!("test failure: {err:?}"),
     };
 
     assert_error_variant!(
@@ -533,7 +531,7 @@ fn div_4() {
 
 #[test]
 fn standardize_beta() {
-    for output_is_orderf_ptr in [true, false].iter() {
+    for output_is_orderf_ptr in &[true, false] {
         let mut bed = Bed::new(sample_bed_file("toydata.5chrom.bed").unwrap()).unwrap();
         let mut val = ReadOptions::builder()
             .count_a2()
@@ -544,14 +542,14 @@ fn standardize_beta() {
         let mut stats = nd::Array2::<f64>::zeros((val.dim().1, 2));
         impute_and_zero_mean_snps(
             &mut val.view_mut(),
-            Dist::Beta { a: 1.0, b: 25.0 },
+            &Dist::Beta { a: 1.0, b: 25.0 },
             true,
             false,
             &mut stats.view_mut(),
         )
         .unwrap();
 
-        assert!((val[(0, 0)] - -0.000031887380905091765).abs() < 1e-8);
+        assert!((val[(0, 0)] - -0.000_031_887_380_905_091_765).abs() < 1e-8);
     }
 }
 
@@ -764,7 +762,7 @@ fn file_ata(
                 start: sid_start,
                 end: sid_start + sid_range_len,
             },
-            ata_piece,
+            &ata_piece,
             val,
         );
     }
@@ -772,7 +770,11 @@ fn file_ata(
 }
 
 #[cfg(test)]
-fn insert_piece(sid_range: Range<usize>, piece: nd::Array2<f64>, val: &mut nd::ArrayViewMut2<f64>) {
+fn insert_piece(
+    sid_range: Range<usize>,
+    piece: &nd::Array2<f64>,
+    val: &mut nd::ArrayViewMut2<f64>,
+) {
     for range_index in sid_range.clone() {
         for j in range_index - sid_range.start..piece.dim().0 {
             // this is the inner loop, so pre-computing indexes would speed it up
@@ -805,10 +807,10 @@ fn file_b_less_aatbx_medium() {
     .unwrap();
 
     println!("{:?}", atb[(1, 1)]);
-    assert!(abs(atb[(1, 1)] - 499.00749503747534) < 1e-11);
+    assert!(abs(atb[(1, 1)] - 499.007_495_037_475_34) < 1e-11);
 
     println!("{:?}", aatb[(1, 1)]);
-    assert!(abs(aatb[(1, 1)] - -597.6363313483225) < 1e-11);
+    assert!(abs(aatb[(1, 1)] - -597.636_331_348_322_5) < 1e-11);
 }
 
 #[test]
@@ -883,7 +885,7 @@ fn file_aat(
 
 #[test]
 fn test_allclose() -> Result<(), Box<BedErrorPlus>> {
-    let val1 = nd::arr2(&[[1.0, 2.000000000001], [3.0, NAN]]);
+    let val1 = nd::arr2(&[[1.0, 2.000_000_000_001], [3.0, NAN]]);
     let val2 = nd::arr2(&[[1.0, 2.0], [3.0, NAN]]);
     assert!(allclose(&val1.view(), &val2.view(), 1e-08, true));
 
@@ -903,7 +905,7 @@ fn test_allclose() -> Result<(), Box<BedErrorPlus>> {
 }
 
 #[cfg(test)]
-fn expected_len(index: Index, count: usize, len: usize) -> Result<(), Box<BedErrorPlus>> {
+fn expected_len(index: &Index, count: usize, len: usize) -> Result<(), Box<BedErrorPlus>> {
     assert!(index.to_vec(count)?.len() == len);
     assert!(index.len(count)? == len);
     assert!(index.is_empty(count)? == (len == 0));
@@ -913,37 +915,37 @@ fn expected_len(index: Index, count: usize, len: usize) -> Result<(), Box<BedErr
 
 #[test]
 fn index_len_is_empty() -> Result<(), Box<BedErrorPlus>> {
-    expected_len(s![0..0;-2].into(), 0, 0)?;
-    expected_len(s![0..;-2].into(), 4, 2)?;
+    expected_len(&s![0..0;-2].into(), 0, 0)?;
+    expected_len(&s![0..;-2].into(), 4, 2)?;
 
-    expected_len(Index::All, 0, 0)?;
-    expected_len(Index::All, 2, 2)?;
+    expected_len(&Index::All, 0, 0)?;
+    expected_len(&Index::All, 2, 2)?;
 
-    expected_len((-1).into(), 2, 1)?;
+    expected_len(&(-1).into(), 2, 1)?;
 
-    expected_len((vec![] as Vec<isize>).into(), 0, 0)?;
-    expected_len(vec![2, -1].into(), 4, 2)?;
+    expected_len(&(vec![] as Vec<isize>).into(), 0, 0)?;
+    expected_len(&vec![2, -1].into(), 4, 2)?;
 
-    expected_len((nd::array![] as nd::Array1<isize>).into(), 0, 0)?;
-    expected_len(nd::array![2, -1].into(), 4, 2)?;
+    expected_len(&(nd::array![] as nd::Array1<isize>).into(), 0, 0)?;
+    expected_len(&nd::array![2, -1].into(), 4, 2)?;
 
     let empty_isize = nd::array![] as nd::Array1<isize>;
-    expected_len((empty_isize.view()).into(), 0, 0)?;
-    expected_len((&(empty_isize.view())).into(), 0, 0)?;
-    expected_len((&nd::array![2, -1].view()).into(), 4, 2)?;
-    expected_len((nd::array![2, -1].view()).into(), 4, 2)?;
+    expected_len(&(empty_isize.view()).into(), 0, 0)?;
+    expected_len(&(&(empty_isize.view())).into(), 0, 0)?;
+    expected_len(&(&nd::array![2, -1].view()).into(), 4, 2)?;
+    expected_len(&(nd::array![2, -1].view()).into(), 4, 2)?;
 
-    expected_len((vec![] as Vec<bool>).into(), 0, 0)?;
-    expected_len(vec![false, false, true, true].into(), 4, 2)?;
+    expected_len(&(vec![] as Vec<bool>).into(), 0, 0)?;
+    expected_len(&vec![false, false, true, true].into(), 4, 2)?;
 
     let empty_bool = nd::array![] as nd::Array1<bool>;
-    expected_len((empty_bool.view()).into(), 0, 0)?;
-    expected_len((&empty_bool.view()).into(), 0, 0)?;
-    expected_len((nd::array![] as nd::Array1<bool>).into(), 0, 0)?;
-    expected_len(nd::array![false, false, true, true].into(), 4, 2)?;
+    expected_len(&(empty_bool.view()).into(), 0, 0)?;
+    expected_len(&(&empty_bool.view()).into(), 0, 0)?;
+    expected_len(&(nd::array![] as nd::Array1<bool>).into(), 0, 0)?;
+    expected_len(&nd::array![false, false, true, true].into(), 4, 2)?;
 
-    expected_len((0..).into(), 0, 0)?;
-    expected_len((0..).into(), 2, 2)?;
+    expected_len(&(0..).into(), 0, 0)?;
+    expected_len(&(0..).into(), 2, 2)?;
     Ok(())
 }
 

@@ -21,6 +21,7 @@ use crate::{
 };
 
 #[pymodule]
+#[allow(clippy::too_many_lines, clippy::items_after_statements)]
 fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     // See User's guide: https://pyo3.rs/v0.15.1/
     // mutable example (no return) see https://github.com/PyO3/rust-numpy
@@ -33,13 +34,13 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     impl std::convert::From<Box<BedErrorPlus>> for PyErr {
         fn from(err: Box<BedErrorPlus>) -> PyErr {
             match *err {
-                BedErrorPlus::BedError(BedError::IidIndexTooBig(_))
-                | BedErrorPlus::BedError(BedError::SidIndexTooBig(_))
-                | BedErrorPlus::BedError(BedError::IndexMismatch(_, _, _, _))
-                | BedErrorPlus::BedError(BedError::IndexesTooBigForFiles(_, _))
-                | BedErrorPlus::BedError(BedError::SubsetMismatch(_, _, _, _)) => {
-                    PyIndexError::new_err(err.to_string())
-                }
+                BedErrorPlus::BedError(
+                    BedError::IidIndexTooBig(_)
+                    | BedError::SidIndexTooBig(_)
+                    | BedError::IndexMismatch(_, _, _, _)
+                    | BedError::IndexesTooBigForFiles(_, _)
+                    | BedError::SubsetMismatch(_, _, _, _),
+                ) => PyIndexError::new_err(err.to_string()),
 
                 BedErrorPlus::IOError(_) => PyIOError::new_err(err.to_string()),
 
@@ -173,7 +174,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let mut val = val.readwrite();
         let mut val = val.as_array_mut();
 
-        let rt = runtime::Runtime::new().unwrap();
+        let rt = runtime::Runtime::new().unwrap(); // cmk unwrap?
 
         let url = Url::parse(url).unwrap(); // cmk return a BedReader URL parse error
         let (object_store, store_path): (Box<dyn ObjectStore>, StorePath) =
@@ -474,7 +475,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         create_pool(num_threads)?.install(|| {
             impute_and_zero_mean_snps(
                 &mut val.view_mut(),
-                dist,
+                &dist,
                 apply_in_place,
                 use_stats,
                 &mut stats.view_mut(),
@@ -512,7 +513,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         create_pool(num_threads)?.install(|| {
             impute_and_zero_mean_snps(
                 &mut val.view_mut(),
-                dist,
+                &dist,
                 apply_in_place,
                 use_stats,
                 &mut stats.view_mut(),

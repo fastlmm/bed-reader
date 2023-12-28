@@ -1,4 +1,15 @@
 #![warn(missing_docs)]
+// cmk decide which of these to use
+#![warn(clippy::pedantic)]
+#![allow(
+    clippy::missing_panics_doc,
+    clippy::missing_errors_doc,
+    clippy::similar_names,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::cast_sign_loss,
+    clippy::cast_lossless
+)]
 // Inspired by C++ version by Chris Widmer and Carl Kadie
 
 // See: https://towardsdatascience.com/nine-rules-for-writing-python-extensions-in-rust-d35ea3a4ec29?sk=f8d808d5f414154fdb811e4137011437
@@ -453,16 +464,18 @@ impl From<FetchDataError> for Box<BedErrorPlus> {
 }
 
 #[anyinput]
-fn open_and_check(path: AnyPath) -> Result<(BufReader<File>, Vec<u8>), Box<BedErrorPlus>> {
+fn open_and_check(
+    path: AnyPath,
+) -> Result<(BufReader<File>, [u8; CB_HEADER_USIZE]), Box<BedErrorPlus>> {
     let mut buf_reader = BufReader::new(File::open(path)?);
-    let mut bytes_vector: Vec<u8> = vec![0; CB_HEADER_USIZE];
-    buf_reader.read_exact(&mut bytes_vector)?;
-    if (BED_FILE_MAGIC1 != bytes_vector[0]) || (BED_FILE_MAGIC2 != bytes_vector[1]) {
+    let mut bytes_array: [u8; CB_HEADER_USIZE] = [0; CB_HEADER_USIZE];
+    buf_reader.read_exact(&mut bytes_array)?;
+    if (BED_FILE_MAGIC1 != bytes_array[0]) || (BED_FILE_MAGIC2 != bytes_array[1]) {
         return Err(Box::new(
             BedError::IllFormed(path_ref_to_string(path)).into(),
         ));
     }
-    Ok((buf_reader, bytes_vector))
+    Ok((buf_reader, bytes_array))
 }
 
 trait Max {
@@ -517,23 +530,16 @@ fn try_div_4<T: Max + TryFrom<usize> + Sub<Output = T> + Div<Output = T> + Ord>(
     } else {
         0
     };
-    let in_iid_count_div4_t = match T::try_from(in_iid_count_div4) {
-        Ok(v) => v,
-        Err(_) => {
-            return Err(Box::new(
-                BedError::IndexesTooBigForFiles(in_iid_count, in_sid_count).into(),
-            ))
-        }
+    let Ok(in_iid_count_div4_t) = T::try_from(in_iid_count_div4) else {
+        return Err(Box::new(
+            BedError::IndexesTooBigForFiles(in_iid_count, in_sid_count).into(),
+        ));
     };
-    let in_sid_count_t = match T::try_from(in_sid_count) {
-        Ok(v) => v,
-        Err(_) => {
-            return Err(Box::new(
-                BedError::IndexesTooBigForFiles(in_iid_count, in_sid_count).into(),
-            ))
-        }
+    let Ok(in_sid_count_t) = T::try_from(in_sid_count) else {
+        return Err(Box::new(
+            BedError::IndexesTooBigForFiles(in_iid_count, in_sid_count).into(),
+        ));
     };
-
     let m: T = Max::max(); // Don't know how to move this into the next line.
     if in_sid_count > 0 && (m - cb_header) / in_sid_count_t < in_iid_count_div4_t {
         return Err(Box::new(
@@ -808,7 +814,7 @@ fn impute_and_zero_mean_snps<
     T: Default + Copy + Debug + Sync + Send + Sync + Float + ToPrimitive + FromPrimitive,
 >(
     val: &mut nd::ArrayViewMut2<'_, T>,
-    dist: Dist,
+    dist: &Dist,
     apply_in_place: bool,
     use_stats: bool,
     stats: &mut nd::ArrayViewMut2<'_, T>,
@@ -825,7 +831,7 @@ fn impute_and_zero_mean_snps<
                     apply_in_place,
                     use_stats,
                     &mut stats_row,
-                    &dist,
+                    dist,
                     two,
                 )
             });
@@ -854,9 +860,7 @@ fn find_factor<
 ) -> Result<T, BedError> {
     if let Dist::Beta { a, b } = dist {
         // Try to create a beta dist
-        let beta_dist = if let Ok(beta_dist) = Beta::new(*a, *b) {
-            beta_dist
-        } else {
+        let Ok(beta_dist) = Beta::new(*a, *b) else {
             return Err(BedError::CannotCreateBetaDist(*a, *b));
         };
 
@@ -960,7 +964,7 @@ fn _process_all_iids<
     apply_in_place: bool,
     use_stats: bool,
     stats: &mut nd::ArrayViewMut2<'_, T>,
-    dist: Dist,
+    dist: &Dist,
     two: T,
 ) -> Result<(), Box<BedErrorPlus>> {
     let sid_count = val.dim().1;
@@ -1030,7 +1034,7 @@ fn _process_all_iids<
             .zip(&mut factor_array)
             .par_bridge()
             .try_for_each(|(stats_row, factor_ptr)| {
-                match find_factor(&dist, stats_row[0], stats_row[1]) {
+                match find_factor(dist, stats_row[0], stats_row[1]) {
                     Err(e) => Err(e),
                     Ok(factor) => {
                         *factor_ptr = factor;
@@ -1073,10 +1077,7 @@ fn file_b_less_aatbx(
 
     let (a_sid_count, b_sid_count) = atb.dim();
     if log_frequency > 0 {
-        println!(
-            "file_b_less_aatbx: iid_count={}, {}x{} output",
-            iid_count, a_sid_count, b_sid_count
-        );
+        println!("file_b_less_aatbx: iid_count={iid_count}, {a_sid_count}x{b_sid_count} output");
     };
 
     // Open the file and move to the starting sid
@@ -1087,8 +1088,7 @@ fn file_b_less_aatbx(
     for (a_sid_index, mut atb_row) in atb.axis_iter_mut(nd::Axis(0)).enumerate() {
         if log_frequency > 0 && a_sid_index % log_frequency == 0 {
             println!(
-                "   working on train_sid_index={} of {} (iid_count={}, b_sid_count={})",
-                a_sid_index, a_sid_count, iid_count, b_sid_count
+                "   working on train_sid_index={a_sid_index} of {a_sid_count} (iid_count={iid_count}, b_sid_count={b_sid_count})"
             );
         }
 
@@ -1227,10 +1227,7 @@ fn _file_ata_piece_internal<T: Float + Send + Sync + Sync + AddAssign>(
 ) -> Result<(), Box<BedErrorPlus>> {
     let (nrows, ncols) = ata_piece.dim();
     if log_frequency > 0 {
-        println!(
-            "file_ata_piece: col_start={}, {}x{} output",
-            col_start, nrows, ncols
-        );
+        println!("file_ata_piece: col_start={col_start}, {nrows}x{ncols} output");
     };
 
     // Open the file and move to the starting col
@@ -1244,7 +1241,7 @@ fn _file_ata_piece_internal<T: Float + Send + Sync + Sync + AddAssign>(
 
     for (col_rel_index, mut ata_row) in ata_piece.axis_iter_mut(nd::Axis(0)).enumerate() {
         if log_frequency > 0 && col_rel_index % log_frequency == 0 {
-            println!("   working on {} of {}", col_rel_index, nrows);
+            println!("   working on {col_rel_index} of {nrows}");
         }
 
         // Read next col and save if in range
@@ -1312,10 +1309,7 @@ fn file_aat_piece<T: Float + Sync + Send + Sync + AddAssign>(
     let (nrows, ncols) = aat_piece.dim();
 
     if log_frequency > 0 {
-        println!(
-            "file_aat_piece: row_start={}, {}x{} output",
-            row_start, nrows, ncols
-        );
+        println!("file_aat_piece: row_start={row_start}, {nrows}x{ncols} output");
     };
 
     if (row_start >= row_count)
@@ -1336,7 +1330,7 @@ fn file_aat_piece<T: Float + Sync + Send + Sync + AddAssign>(
 
     for col_index in 0..col_count {
         if log_frequency > 0 && col_index % log_frequency == 0 {
-            println!("   working on {} of {}", col_index, col_count);
+            println!("   working on {col_index} of {col_count}");
         }
 
         // Read next col
@@ -1583,6 +1577,7 @@ impl BedBuilder {
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to give different values.
     #[anyinput]
+    #[must_use]
     pub fn fid(mut self, fid: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_fid(fid);
@@ -1608,6 +1603,7 @@ impl BedBuilder {
     /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     #[anyinput]
+    #[must_use]
     pub fn iid(mut self, iid: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_iid(iid);
@@ -1620,6 +1616,7 @@ impl BedBuilder {
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to gi&ve different values.
     #[anyinput]
+    #[must_use]
     pub fn father(mut self, father: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_father(father);
@@ -1632,6 +1629,7 @@ impl BedBuilder {
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to give different values.
     #[anyinput]
+    #[must_use]
     pub fn mother(mut self, mother: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_mother(mother);
@@ -1644,6 +1642,7 @@ impl BedBuilder {
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to give different values.
     #[anyinput]
+    #[must_use]
     pub fn sex(mut self, sex: AnyIter<i32>) -> Self {
         // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_sex(sex);
@@ -1657,6 +1656,7 @@ impl BedBuilder {
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to give different values.
     #[anyinput]
+    #[must_use]
     pub fn pheno(mut self, pheno: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_pheno(pheno);
@@ -1669,6 +1669,7 @@ impl BedBuilder {
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
     #[anyinput]
+    #[must_use]
     pub fn chromosome(mut self, chromosome: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_chromosome(chromosome);
@@ -1693,6 +1694,7 @@ impl BedBuilder {
     /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     #[anyinput]
+    #[must_use]
     pub fn sid(mut self, sid: AnyIter<AnyString>) -> Self {
         self.metadata.as_mut().unwrap().set_sid(sid);
         self
@@ -1704,6 +1706,7 @@ impl BedBuilder {
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
     #[anyinput]
+    #[must_use]
     pub fn cm_position(mut self, cm_position: AnyIter<f32>) -> Self {
         // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_cm_position(cm_position);
@@ -1716,6 +1719,7 @@ impl BedBuilder {
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
     #[anyinput]
+    #[must_use]
     pub fn bp_position(mut self, bp_position: AnyIter<i32>) -> Self {
         // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_bp_position(bp_position);
@@ -1728,6 +1732,7 @@ impl BedBuilder {
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
     #[anyinput]
+    #[must_use]
     pub fn allele_1(mut self, allele_1: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_allele_1(allele_1);
@@ -1740,6 +1745,7 @@ impl BedBuilder {
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
     #[anyinput]
+    #[must_use]
     pub fn allele_2(mut self, allele_2: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because BedBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_allele_2(allele_2);
@@ -1752,6 +1758,7 @@ impl BedBuilder {
     /// and remembered
     /// by opening the .fam file and quickly counting the number
     /// of lines. Providing the number thus avoids a file read.
+    #[must_use]
     pub fn iid_count(mut self, count: usize) -> Self {
         self.iid_count = Some(Some(count));
         self
@@ -1763,6 +1770,7 @@ impl BedBuilder {
     /// and remembered
     /// by opening the .bim file and quickly counting the number
     /// of lines. Providing the number thus avoids a file read.
+    #[must_use]
     pub fn sid_count(mut self, count: usize) -> Self {
         self.sid_count = Some(Some(count));
         self
@@ -1772,6 +1780,7 @@ impl BedBuilder {
     ///
     /// By default, when a [`Bed`](struct.Bed.html) struct is created, the .bed
     /// file header is checked. This stops that early check.
+    #[must_use]
     pub fn skip_early_check(mut self) -> Self {
         self.is_checked_early = Some(false);
         self
@@ -1797,6 +1806,7 @@ impl BedBuilder {
     /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     #[anyinput]
+    #[must_use]
     pub fn fam_path(mut self, path: AnyPath) -> Self {
         self.fam_path = Some(Some(path.to_owned()));
         self
@@ -1821,6 +1831,7 @@ impl BedBuilder {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
+    #[must_use]
     #[anyinput]
     pub fn bim_path(mut self, path: AnyPath) -> Self {
         self.bim_path = Some(Some(path.to_owned()));
@@ -1832,6 +1843,7 @@ impl BedBuilder {
     /// By default, when the .fam is read, the fid (the family id) is recorded.
     /// This stops that recording. This is useful if the fid is not needed.
     /// Asking for the fid after skipping it results in an error.    
+    #[must_use]
     pub fn skip_fid(mut self) -> Self {
         // Unwrap will always work because BedBuilder starting with some skip_set
         self.skip_set.as_mut().unwrap().insert(MetadataFields::Fid);
@@ -1843,6 +1855,7 @@ impl BedBuilder {
     /// By default, when the .fam is read, the iid (the individual id) is recorded.
     /// This stops that recording. This is useful if the iid is not needed.
     /// Asking for the iid after skipping it results in an error.
+    #[must_use]
     pub fn skip_iid(mut self) -> Self {
         // Unwrap will always work because BedBuilder starting with some skip_set
         self.skip_set.as_mut().unwrap().insert(MetadataFields::Iid);
@@ -1854,6 +1867,7 @@ impl BedBuilder {
     /// By default, when the .fam is read, the father id is recorded.
     /// This stops that recording. This is useful if the father id is not needed.
     /// Asking for the father id after skipping it results in an error.    
+    #[must_use]
     pub fn skip_father(mut self) -> Self {
         // Unwrap will always work because BedBuilder starting with some skip_set
         self.skip_set
@@ -1868,6 +1882,7 @@ impl BedBuilder {
     /// By default, when the .fam is read, the mother id is recorded.
     /// This stops that recording. This is useful if the mother id is not needed.
     /// Asking for the mother id after skipping it results in an error.    
+    #[must_use]
     pub fn skip_mother(mut self) -> Self {
         // Unwrap will always work because BedBuilder starting with some skip_set
         self.skip_set
@@ -1882,6 +1897,7 @@ impl BedBuilder {
     /// By default, when the .fam is read, the sex is recorded.
     /// This stops that recording. This is useful if sex is not needed.
     /// Asking for sex after skipping it results in an error.    
+    #[must_use]
     pub fn skip_sex(mut self) -> Self {
         // Unwrap will always work because BedBuilder starting with some skip_set
         self.skip_set.as_mut().unwrap().insert(MetadataFields::Sex);
@@ -1897,6 +1913,7 @@ impl BedBuilder {
     /// This stops that recording. This is useful if this phenotype
     /// information is not needed.
     /// Asking for the phenotype after skipping it results in an error.    
+    #[must_use]
     pub fn skip_pheno(mut self) -> Self {
         // Unwrap will always work because BedBuilder starting with some skip_set
         self.skip_set
@@ -1911,6 +1928,7 @@ impl BedBuilder {
     /// By default, when the .bim is read, the chromosome is recorded.
     /// This stops that recording. This is useful if the chromosome is not needed.
     /// Asking for the chromosome after skipping it results in an error.    
+    #[must_use]
     pub fn skip_chromosome(mut self) -> Self {
         // Unwrap will always work because BedBuilder starting with some skip_set
         self.skip_set
@@ -1925,6 +1943,7 @@ impl BedBuilder {
     /// By default, when the .bim is read, the sid (SNP id) is recorded.
     /// This stops that recording. This is useful if the sid is not needed.
     /// Asking for the sid after skipping it results in an error.    
+    #[must_use]
     pub fn skip_sid(mut self) -> Self {
         // Unwrap will always work because BedBuilder starting with some skip_set
         self.skip_set.as_mut().unwrap().insert(MetadataFields::Sid);
@@ -1936,6 +1955,7 @@ impl BedBuilder {
     /// By default, when the .bim is read, the cm position is recorded.
     /// This stops that recording. This is useful if the cm position is not needed.
     /// Asking for the cm position after skipping it results in an error.    
+    #[must_use]
     pub fn skip_cm_position(mut self) -> Self {
         // Unwrap will always work because BedBuilder starting with some skip_set
         self.skip_set
@@ -1950,6 +1970,7 @@ impl BedBuilder {
     /// By default, when the .bim is read, the bp position is recorded.
     /// This stops that recording. This is useful if the bp position is not needed.
     /// Asking for the cp position after skipping it results in an error.    
+    #[must_use]
     pub fn skip_bp_position(mut self) -> Self {
         // Unwrap will always work because BedBuilder starting with some skip_set
         self.skip_set
@@ -1964,6 +1985,7 @@ impl BedBuilder {
     /// By default, when the .bim is read, allele 1 is recorded.
     /// This stops that recording. This is useful if allele 1 is not needed.
     /// Asking for allele 1 after skipping it results in an error.    
+    #[must_use]
     pub fn skip_allele_1(mut self) -> Self {
         // Unwrap will always work because BedBuilder starting with some skip_set
         self.skip_set
@@ -1978,6 +2000,7 @@ impl BedBuilder {
     /// By default, when the .bim is read, allele 2 is recorded.
     /// This stops that recording. This is useful if allele 2 is not needed.
     /// Asking for allele 2 after skipping it results in an error.    
+    #[must_use]
     pub fn skip_allele_2(mut self) -> Self {
         // Unwrap will always work because BedBuilder starting with some skip_set
         self.skip_set
@@ -2018,6 +2041,7 @@ impl BedBuilder {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
+    #[must_use]
     pub fn metadata(mut self, metadata: &Metadata) -> Self {
         self.metadata = Some(
             Metadata::builder()
@@ -2655,6 +2679,7 @@ impl Bed {
     }
 
     /// Return the path of the .bed file.
+    #[must_use]
     pub fn path(&self) -> &Path {
         &self.path
     }
@@ -3002,7 +3027,7 @@ impl Bed {
             return Err(BedError::CannotUseSkippedMetadata(name.to_string()).into());
         }
         if is_none {
-            self.fam()?
+            self.fam()?;
         }
         Ok(())
     }
@@ -3017,7 +3042,7 @@ impl Bed {
             return Err(BedError::CannotUseSkippedMetadata(name.to_string()).into());
         }
         if is_none {
-            self.bim()?
+            self.bim()?;
         }
         Ok(())
     }
@@ -3103,6 +3128,7 @@ fn compute_num_threads(option_num_threads: Option<usize>) -> Result<usize, Box<B
     Ok(num_threads)
 }
 
+#[allow(clippy::unnecessary_wraps)]
 fn compute_max_concurrent_requests(
     option_max_concurrent_requests: Option<usize>,
 ) -> Result<usize, Box<BedErrorPlus>> {
@@ -3119,6 +3145,7 @@ fn compute_max_concurrent_requests(
     Ok(max_concurrent_requests)
 }
 
+#[allow(clippy::unnecessary_wraps)]
 fn compute_max_chunk_size(
     option_max_chunk_size: Option<usize>,
 ) -> Result<usize, Box<BedErrorPlus>> {
@@ -3144,7 +3171,7 @@ impl Index {
         let count_signed = count as isize;
         match self {
             Index::All => Ok((0..count_signed).collect()),
-            Index::Vec(vec) => Ok(vec.to_vec()),
+            Index::Vec(vec) => Ok(vec.clone()),
             Index::NDArrayBool(nd_array_bool) => {
                 if nd_array_bool.len() != count {
                     return Err(
@@ -3182,6 +3209,7 @@ impl Index {
     }
 }
 
+#[allow(clippy::doc_markdown)]
 /// Type alias for 1-D slices of NDArrays.
 pub type SliceInfo1 =
     nd::SliceInfo<[nd::SliceInfoElem; 1], nd::Dim<[usize; 1]>, nd::Dim<[usize; 1]>>;
@@ -3443,9 +3471,8 @@ impl RangeNdSlice {
                     let start3 = start as usize;
                     if start3 > count {
                         return Err(BedError::StartGreaterThanCount(start3, count).into());
-                    } else {
-                        start3
                     }
+                    start3
                 } else {
                     let start3 = (-start) as usize;
                     if start3 > count {
@@ -3459,9 +3486,8 @@ impl RangeNdSlice {
                         let end3 = end as usize;
                         if end3 > count {
                             return Err(BedError::EndGreaterThanCount(end3, count).into());
-                        } else {
-                            end3
                         }
+                        end3
                     } else {
                         let end3 = (-end) as usize;
                         if end3 > count {
@@ -3726,7 +3752,7 @@ impl From<Vec<bool>> for Index {
 }
 
 impl From<()> for Index {
-    fn from(_: ()) -> Index {
+    fn from((): ()) -> Index {
         Index::All
     }
 }
@@ -3737,7 +3763,7 @@ impl From<()> for Index {
 ///
 /// Construct with [`ReadOptions::builder`](struct.ReadOptions.html#method.builder).
 ///
-/// See the [Table of ReadOptions](index.html#readoptions)
+/// See the [Table of `ReadOptions`](index.html#readoptions)
 /// for a list of the supported options.
 /// See the [Table of Index Expressions](index.html#index-expressions)
 /// for a list of expressions for selecting individuals (sample)
@@ -4026,7 +4052,7 @@ impl<TVal: BedVal> ReadOptions<TVal> {
     /// > Also see [`Bed::read`](struct.Bed.html#method.read) (read without options).
     /// > To fill a preallocated ndarray, see [`ReadOptionsBuilder::read_and_fill`](struct.ReadOptionsBuilder.html#method.read_and_fill).
     ///
-    /// See the [Table of ReadOptions](index.html#readoptions)
+    /// See the [Table of `ReadOptions`](index.html#readoptions)
     /// for a list of the supported options.
     /// See the [Table of Index Expressions](index.html#index-expressions)
     /// for a list of expressions for selecting individuals (sample)
@@ -4135,6 +4161,7 @@ impl<TVal: BedVal> ReadOptions<TVal> {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
+    #[must_use]
     pub fn builder() -> ReadOptionsBuilder<TVal> {
         ReadOptionsBuilder::default()
     }
@@ -5288,6 +5315,7 @@ where
     /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
     ///
     #[anyinput]
+    #[must_use]
     pub fn fid(mut self, fid: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_fid(fid);
@@ -5301,6 +5329,7 @@ where
     /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
     ///
     #[anyinput]
+    #[must_use]
     pub fn iid(mut self, iid: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_iid(iid);
@@ -5314,6 +5343,7 @@ where
     /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
     ///
     #[anyinput]
+    #[must_use]
     pub fn father(mut self, father: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_father(father);
@@ -5327,6 +5357,7 @@ where
     /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
     ///
     #[anyinput]
+    #[must_use]
     pub fn mother(mut self, mother: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_mother(mother);
@@ -5337,6 +5368,7 @@ where
     ///
     /// 0 is unknown (default), 1 is male, 2 is female
     #[anyinput]
+    #[must_use]
     pub fn sex(mut self, sex: AnyIter<i32>) -> Self {
         // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_sex(sex);
@@ -5350,6 +5382,7 @@ where
     /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
     ///
     #[anyinput]
+    #[must_use]
     pub fn pheno(mut self, pheno: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_pheno(pheno);
@@ -5360,6 +5393,7 @@ where
     ///
     /// Defaults to zeros.
     #[anyinput]
+    #[must_use]
     pub fn chromosome(mut self, chromosome: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_chromosome(chromosome);
@@ -5373,6 +5407,7 @@ where
     /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
     ///
     #[anyinput]
+    #[must_use]
     pub fn sid(mut self, sid: AnyIter<AnyString>) -> Self {
         self.metadata.as_mut().unwrap().set_sid(sid);
         self
@@ -5382,6 +5417,7 @@ where
     ///
     /// Defaults to zeros.
     #[anyinput]
+    #[must_use]
     pub fn cm_position(mut self, cm_position: AnyIter<f32>) -> Self {
         // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_cm_position(cm_position);
@@ -5395,6 +5431,7 @@ where
     /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
     ///
     #[anyinput]
+    #[must_use]
     pub fn bp_position(mut self, bp_position: AnyIter<i32>) -> Self {
         // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_bp_position(bp_position);
@@ -5408,6 +5445,7 @@ where
     /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
     ///
     #[anyinput]
+    #[must_use]
     pub fn allele_1(mut self, allele_1: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_allele_1(allele_1);
@@ -5421,6 +5459,7 @@ where
     /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
     ///
     #[anyinput]
+    #[must_use]
     pub fn allele_2(mut self, allele_2: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because WriteOptionsBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_allele_2(allele_2);
@@ -5457,6 +5496,7 @@ where
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
+    #[must_use]
     pub fn metadata(mut self, metadata: &Metadata) -> Self {
         self.metadata = Some(
             Metadata::builder()
@@ -5490,6 +5530,7 @@ where
     /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     #[anyinput]
+    #[must_use]
     pub fn fam_path(mut self, path: AnyPath) -> Self {
         self.fam_path = Some(path.to_owned());
         self
@@ -5517,6 +5558,7 @@ where
     /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     #[anyinput]
+    #[must_use]
     pub fn bim_path(mut self, path: AnyPath) -> Self {
         self.bim_path = Some(path.to_owned());
         self
@@ -5689,9 +5731,7 @@ where
         iid_count: usize,
         sid_count: usize,
     ) -> Result<WriteOptions<TVal>, Box<BedErrorPlus>> {
-        let path = if let Some(path) = self.path.as_ref() {
-            path
-        } else {
+        let Some(path) = self.path.as_ref() else {
             return Err(UninitializedFieldError::new("path").into());
         };
 
@@ -5868,6 +5908,7 @@ pub fn allclose<
 
 impl WriteOptionsBuilder<i8> {
     /// The input ndarray will be i8.
+    #[must_use]
     pub fn i8(self) -> Self {
         self
     }
@@ -5875,6 +5916,7 @@ impl WriteOptionsBuilder<i8> {
 
 impl WriteOptionsBuilder<f32> {
     /// The input ndarray will be f32.
+    #[must_use]
     pub fn f32(self) -> Self {
         self
     }
@@ -5882,6 +5924,7 @@ impl WriteOptionsBuilder<f32> {
 
 impl WriteOptionsBuilder<f64> {
     /// The input ndarray will be f64.
+    #[must_use]
     pub fn f64(self) -> Self {
         self
     }
@@ -6186,6 +6229,7 @@ impl Metadata {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
+    #[must_use]
     pub fn builder() -> MetadataBuilder {
         MetadataBuilder::default()
     }
@@ -6193,12 +6237,14 @@ impl Metadata {
     /// Create an empty [`Metadata`](struct.Metadata.html).
     ///
     /// > See [`Metadata::builder()`](struct.Metadata.html#method.builder)
+    #[must_use]
     pub fn new() -> Metadata {
         // Unwrap always works because an empty metadata builder always works.
         Metadata::builder().build().unwrap()
     }
 
     /// Optional family id of each of individual (sample)
+    #[must_use]
     pub fn fid(&self) -> Option<&nd::Array1<String>> {
         option_rc_as_ref(&self.fid)
     }
@@ -6214,31 +6260,37 @@ impl Metadata {
     /// println!("{0:?}", metadata.sid()); // Outputs None
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), Box<BedErrorPlus>>(())    
+    #[must_use]
     pub fn iid(&self) -> Option<&nd::Array1<String>> {
         option_rc_as_ref(&self.iid)
     }
 
     /// Optional father id of each of individual (sample)
+    #[must_use]
     pub fn father(&self) -> Option<&nd::Array1<String>> {
         option_rc_as_ref(&self.father)
     }
 
     /// Optional mother id of each of individual (sample)
+    #[must_use]
     pub fn mother(&self) -> Option<&nd::Array1<String>> {
         option_rc_as_ref(&self.mother)
     }
 
     /// Optional sex each of individual (sample)
+    #[must_use]
     pub fn sex(&self) -> Option<&nd::Array1<i32>> {
         option_rc_as_ref(&self.sex)
     }
 
     /// Optional phenotype for each individual (seldom used)
+    #[must_use]
     pub fn pheno(&self) -> Option<&nd::Array1<String>> {
         option_rc_as_ref(&self.pheno)
     }
 
     /// Optional chromosome of each SNP (variant)
+    #[must_use]
     pub fn chromosome(&self) -> Option<&nd::Array1<String>> {
         option_rc_as_ref(&self.chromosome)
     }
@@ -6254,26 +6306,31 @@ impl Metadata {
     /// println!("{0:?}", metadata.sid()); // Outputs None
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), Box<BedErrorPlus>>(())    
+    #[must_use]
     pub fn sid(&self) -> Option<&nd::Array1<String>> {
         option_rc_as_ref(&self.sid)
     }
 
     /// Optional centimorgan position of each SNP (variant)
+    #[must_use]
     pub fn cm_position(&self) -> Option<&nd::Array1<f32>> {
         option_rc_as_ref(&self.cm_position)
     }
 
     /// Optional base-pair position of each SNP (variant)
+    #[must_use]
     pub fn bp_position(&self) -> Option<&nd::Array1<i32>> {
         option_rc_as_ref(&self.bp_position)
     }
 
     /// Optional first allele of each SNP (variant)
+    #[must_use]
     pub fn allele_1(&self) -> Option<&nd::Array1<String>> {
         option_rc_as_ref(&self.allele_1)
     }
 
     /// Optional second allele of each SNP (variant)
+    #[must_use]
     pub fn allele_2(&self) -> Option<&nd::Array1<String>> {
         option_rc_as_ref(&self.allele_2)
     }
@@ -6330,7 +6387,7 @@ impl Metadata {
             field_vec.push(5);
         }
 
-        let (mut vec_of_vec, count) = self.read_fam_or_bim(&field_vec, true, path)?;
+        let (mut vec_of_vec, count) = Metadata::read_fam_or_bim(&field_vec, true, path)?;
 
         let mut clone = self.clone();
 
@@ -6511,7 +6568,7 @@ impl Metadata {
         }
 
         let mut clone = self.clone();
-        let (mut vec_of_vec, count) = self.read_fam_or_bim(&field_vec, false, path)?;
+        let (mut vec_of_vec, count) = Metadata::read_fam_or_bim(&field_vec, false, path)?;
 
         // unwraps are safe because we pop once for every push
         if clone.allele_2.is_none() && !skip_set.contains(&MetadataFields::Allele2) {
@@ -6651,7 +6708,6 @@ impl Metadata {
 
     #[anyinput]
     fn read_fam_or_bim(
-        &self,
         field_vec: &[usize],
         is_split_whitespace: bool,
         path: AnyPath,
@@ -6684,7 +6740,7 @@ impl Metadata {
             let mut of_interest_count = 0;
             for (field_index, field) in fields.iter().enumerate() {
                 if field_vec.contains(&field_index) {
-                    vec_of_vec[of_interest_count].push(field.to_string());
+                    vec_of_vec[of_interest_count].push((*field).to_string());
                     of_interest_count += 1;
                 }
             }
@@ -6741,7 +6797,7 @@ impl Metadata {
                 let mut of_interest_count = 0;
                 for (field_index, field) in fields.iter().enumerate() {
                     if field_vec.contains(&field_index) {
-                        vec_of_vec[of_interest_count].push(field.to_string());
+                        vec_of_vec[of_interest_count].push((*field).to_string());
                         of_interest_count += 1;
                     }
                 }
@@ -7024,6 +7080,7 @@ impl Metadata {
     }
 }
 
+#[allow(clippy::option_option)]
 fn set_field<T>(
     field1: &Option<Rc<nd::Array1<T>>>,
     field2: &mut Option<Option<Rc<nd::Array1<T>>>>,
@@ -7105,7 +7162,7 @@ static STATIC_FETCH_DATA: FetchData = FetchData::new(
 #[anyinput]
 pub fn sample_bed_file(bed_path: AnyPath) -> Result<PathBuf, Box<BedErrorPlus>> {
     let mut path_list: Vec<PathBuf> = Vec::new();
-    for ext in ["bed", "bim", "fam"].iter() {
+    for ext in &["bed", "bim", "fam"] {
         let file_path = bed_path.with_extension(ext);
         path_list.push(file_path);
     }
