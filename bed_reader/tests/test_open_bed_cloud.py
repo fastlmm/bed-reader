@@ -6,7 +6,6 @@
 # import numpy as np
 # import pytest
 
-from object_store import ObjectStore
 from bed_reader import open_bed
 
 
@@ -14,10 +13,10 @@ def test_cloud_read1(shared_datadir):
     import math
 
     file = shared_datadir / "plink_sim_10s_100v_10pmiss.bed"
-    object_store = ObjectStore("file://")
+    file = "file:///" + str(file.as_posix())
     # cmk cmk next up, need to see if this is right and need to pass it to Rust
 
-    with open_bed(file, object_store=object_store) as bed:
+    with open_bed(file) as bed:
         assert bed.iid_count == 10
         assert bed.fid[-1] == "0"
         assert bed.iid[-1] == "9"

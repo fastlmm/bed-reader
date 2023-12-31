@@ -786,7 +786,7 @@ def test_fam_bim_filepath(shared_datadir, tmp_path):
     )
     assert output_file.exists() and fam_file.exists() and bim_file.exists()
 
-    with open_bed(output_file, fam_filepath=fam_file, bim_filepath=bim_file) as deb:
+    with open_bed(output_file, fam_location=fam_file, bim_location=bim_file) as deb:
         val2 = deb.read()
         assert np.allclose(val, val2, equal_nan=True)
         val_sparse = deb.read_sparse()

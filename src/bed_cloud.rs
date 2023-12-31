@@ -2214,8 +2214,10 @@ pub struct ObjectPath<TObjectStore>
 where
     TObjectStore: ObjectStore,
 {
-    object_store: Arc<TObjectStore>,
-    path: StorePath,
+    /// cmk doc
+    pub object_store: Arc<TObjectStore>,
+    /// cmk doc
+    pub path: StorePath,
 }
 
 impl<TObjectStore> Clone for ObjectPath<TObjectStore>
