@@ -172,6 +172,25 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         Ok(())
     }
 
+
+    #[pyfn(m)]
+    #[allow(clippy::too_many_arguments)]
+    fn check_file_cloud(
+        url: &str,
+    ) -> Result<(), PyErr> {
+        let rt = runtime::Runtime::new().unwrap(); // cmk unwrap?
+
+        let url = Url::parse(url).unwrap(); // cmk return a BedReader URL parse error
+        let (object_store, store_path): (Box<dyn ObjectStore>, StorePath) =
+            object_store::parse_url(&url).unwrap(); // cmk return a BedReader URL parse error
+        let object_path: ObjectPath<Box<dyn ObjectStore>> = (object_store, store_path).into();
+
+        rt.block_on(async {
+            BedCloud::builder(object_path).build().await?;
+            Ok(())
+        })
+    }    
+
     #[pyfn(m)]
     #[allow(clippy::too_many_arguments)]
     fn read_cloud_i8(
@@ -218,125 +237,97 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         })
     }
 
-    // #[allow(unused_variables)]
-    // #[pyfn(m)]
-    // #[allow(clippy::too_many_arguments)]
-    // fn read_cloud_i8<'a>(
-    //     py: Python<'a>,
-    //     //     // cmk currently only supports LocalFileSystem "cloud" storage
-    //     filename: &'a str,
-    //     iid_count: usize,
-    //     sid_count: usize,
-    //     is_a1_counted: bool,
-    //     iid_index: &PyArray1<isize>,
-    //     sid_index: &PyArray1<isize>,
-    //     val: Py<PyArray2<i8>>, //     py: Python,
-    //     // val: &PyArray2<i8>,
-    //     max_concurrent_requests: usize,
-    //     max_chunk_size: usize,
-    //     num_threads: usize,
-    //     //
-    // ) -> PyResult<&'a PyAny> {
-    //     let iid_index = iid_index.readonly();
-    //     let sid_index = sid_index.readonly();
-    //     let ii = &iid_index.as_slice()?;
-    //     let si = &sid_index.as_slice()?;
+    #[pyfn(m)]
+    #[allow(clippy::too_many_arguments)]
+    fn read_cloud_f32(
+        url: &str,
+        iid_count: usize,
+        sid_count: usize,
+        is_a1_counted: bool,
+        iid_index: &PyArray1<isize>,
+        sid_index: &PyArray1<isize>,
+        val: &PyArray2<f32>,
+        num_threads: usize,
+    ) -> Result<(), PyErr> {
+        let iid_index = iid_index.readonly();
+        let sid_index = sid_index.readonly();
+        let ii = &iid_index.as_slice()?;
+        let si = &sid_index.as_slice()?;
 
-    //     let store_path: StorePath = filename.into();
-    //     let mut bed_cloud = BedCloud::builder((LocalFileSystem::new(), store_path))
-    //         .skip_early_check()
-    //         .iid_count(iid_count)
-    //         .sid_count(sid_count)
-    //         .build_no_check()?;
-    //     let bed_cloud = bed_cloud;
+        let mut val = val.readwrite();
+        let mut val = val.as_array_mut();
 
-    //     let read_options = ReadOptions::<i8>::builder()
-    //         .iid_index(*ii)
-    //         .sid_index(*si)
-    //         .is_a1_counted(is_a1_counted)
-    //         .max_concurrent_requests(max_concurrent_requests)
-    //         .max_chunk_size(max_chunk_size)
-    //         .num_threads(num_threads)
-    //         .build()?;
+        let rt = runtime::Runtime::new().unwrap(); // cmk unwrap?
 
-    //     pyo3_asyncio::tokio::future_into_py(py, async move {
-    //         Python::with_gil(|py| {
-    //             let val = val.as_ref(py);
-    //             let mut val = val.readwrite();
-    //             let mut val = val.as_array_mut();
+        let url = Url::parse(url).unwrap(); // cmk return a BedReader URL parse error
+        let (object_store, store_path): (Box<dyn ObjectStore>, StorePath) =
+            object_store::parse_url(&url).unwrap(); // cmk return a BedReader URL parse error
+        let object_path: ObjectPath<Box<dyn ObjectStore>> = (object_store, store_path).into();
 
-    //             let f = bed_cloud.read_and_fill_with_options_no_mut(
-    //                 iid_count,
-    //                 sid_count,
-    //                 &mut val.view_mut(),
-    //                 &read_options,
-    //             );
-    //             f
-    //             // let r = f.await;
-    //             // r?;
-    //             // Ok(())
-    //         });
+        rt.block_on(async {
+            let mut bed_cloud = BedCloud::builder(object_path)
+                .iid_count(iid_count)
+                .sid_count(sid_count)
+                .build()
+                .await?;
 
-    //         // sleep(Duration::from_secs(1)).await;
+            ReadOptions::builder()
+                .iid_index(*ii)
+                .sid_index(*si)
+                .is_a1_counted(is_a1_counted)
+                .num_threads(num_threads)
+                .read_and_fill_cloud(&mut bed_cloud, &mut val.view_mut())
+                .await?;
 
-    //         Ok(())
-    //     })
-    // }
+            Ok(())
+        })
+    }
 
-    // #[allow(unused_variables)]
-    // #[pyfn(m)]
-    // #[allow(clippy::too_many_arguments)]
-    // fn read_cloud_i8(
-    //     py: Python,
-    //     // cmk currently only supports LocalFileSystem "cloud" storage
-    //     filename: &str,
-    //     iid_count: usize,
-    //     sid_count: usize,
-    //     is_a1_counted: bool,
-    //     iid_index: &PyArray1<isize>,
-    //     sid_index: &PyArray1<isize>,
-    //     val: &PyArray2<i8>,
-    //     max_concurrent_requests: usize,
-    //     max_chunk_size: usize,
-    //     num_threads: usize,
-    // ) -> Result<(), PyErr> {
-    //     let iid_index = iid_index.readonly();
-    //     let sid_index = sid_index.readonly();
-    //     let ii = &iid_index.as_slice()?;
-    //     let si = &sid_index.as_slice()?;
+    #[pyfn(m)]
+    #[allow(clippy::too_many_arguments)]
+    fn read_cloud_f64(
+        url: &str,
+        iid_count: usize,
+        sid_count: usize,
+        is_a1_counted: bool,
+        iid_index: &PyArray1<isize>,
+        sid_index: &PyArray1<isize>,
+        val: &PyArray2<f64>,
+        num_threads: usize,
+    ) -> Result<(), PyErr> {
+        let iid_index = iid_index.readonly();
+        let sid_index = sid_index.readonly();
+        let ii = &iid_index.as_slice()?;
+        let si = &sid_index.as_slice()?;
 
-    //     let store_path: StorePath = filename.into();
-    //     let mut bed_cloud = BedCloud::builder((LocalFileSystem::new(), store_path))
-    //         .skip_early_check()
-    //         .iid_count(iid_count)
-    //         .sid_count(sid_count)
-    //         .build_no_check()?;
+        let mut val = val.readwrite();
+        let mut val = val.as_array_mut();
 
-    //     let read_options = ReadOptions::<i8>::builder()
-    //         .iid_index(*ii)
-    //         .sid_index(*si)
-    //         .is_a1_counted(is_a1_counted)
-    //         .max_concurrent_requests(max_concurrent_requests)
-    //         .max_chunk_size(max_chunk_size)
-    //         .num_threads(num_threads)
-    //         .build()?;
+        let rt = runtime::Runtime::new().unwrap(); // cmk unwrap?
 
-    //     pyo3_asyncio::tokio::future_into_py(py, async move {
-    //         let times5 = Python::with_gil(|py| {
-    //             let val = val.as_ref(py);
-    //             let mut val = val.readwrite();
-    //             let mut val = val.as_array_mut();
+        let url = Url::parse(url).unwrap(); // cmk return a BedReader URL parse error
+        let (object_store, store_path): (Box<dyn ObjectStore>, StorePath) =
+            object_store::parse_url(&url).unwrap(); // cmk return a BedReader URL parse error
+        let object_path: ObjectPath<Box<dyn ObjectStore>> = (object_store, store_path).into();
 
-    //             val.fill(0.0);
-    //             let times5 = val.dim().0 * 5;
-    //             times5
-    //         });
+        rt.block_on(async {
+            let mut bed_cloud = BedCloud::builder(object_path)
+                .iid_count(iid_count)
+                .sid_count(sid_count)
+                .build()
+                .await?;
 
-    //         sleep(Duration::from_secs(1)).await;
+            ReadOptions::builder()
+                .iid_index(*ii)
+                .sid_index(*si)
+                .is_a1_counted(is_a1_counted)
+                .num_threads(num_threads)
+                .read_and_fill_cloud(&mut bed_cloud, &mut val.view_mut())
+                .await?;
 
-    //         Ok(times5)
-    //     })
-    // }
+            Ok(())
+        })
+    }
 
     #[pyfn(m)]
     fn write_f64(

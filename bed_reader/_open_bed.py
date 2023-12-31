@@ -15,7 +15,7 @@ try:
 except ImportError:
     sparse = None
 
-from .bed_reader import read_f32, read_f64, read_i8, read_cloud_i8, url_to_bytes  # type: ignore
+from .bed_reader import read_f32, read_f64, read_i8, read_cloud_i8, read_cloud_f32, read_cloud_f64, url_to_bytes, check_file_cloud  # type: ignore
 
 
 # https://stackoverflow.com/questions/845058/how-to-get-line-count-of-a-large-file-cheaply-in-python
@@ -232,10 +232,12 @@ class open_bed:
         )
         self._iid_range = None
         self._sid_range = None
-        # cmk000
-        # if not self.skip_format_check:
-        #     with open(self.filepath, "rb") as filepointer:
-        #         self._check_file(filepointer)
+        if not self.skip_format_check:
+            if self._is_url(self.location):
+                check_file_cloud(self.location.geturl())
+            else:
+                with open(self.filepath, "rb") as filepointer:
+                    self._check_file(filepointer)
 
     @staticmethod
     def _replace_extension(location, extension):
@@ -429,10 +431,10 @@ class open_bed:
                     cloud_reader = read_cloud_i8
                 elif dtype == np.float64:
                     file_reader = read_f64
-                    cloud_reader = None  # cmk000
+                    cloud_reader = read_cloud_f64
                 elif dtype == np.float32:
                     file_reader = read_f32
-                    cloud_reader = None  # cmk000
+                    cloud_reader = read_cloud_f32
                 else:
                     raise ValueError(
                         f"dtype '{val.dtype}' not known, only "
@@ -1459,13 +1461,13 @@ class open_bed:
                 cloud_reader = read_cloud_i8
             elif dtype == np.float64:
                 file_reader = read_f64
-                cloud_reader = None  # cmk000
+                cloud_reader = read_cloud_f64
             elif dtype == np.float32:
                 file_reader = read_f32
-                cloud_reader = None  # cmk000
+                cloud_reader = read_cloud_f32
             else:
                 raise ValueError(
-                    f"dtype '{val.dtype}' not known, only "
+                    f"dtype '{dtype}' not known, only "
                     + "'int8', 'float32', and 'float64' are allowed."
                 )
 

@@ -1,12 +1,12 @@
 # import logging
 # import os
 # import platform
-# from pathlib import Path
+from pathlib import Path
 
-# import numpy as np
-# import pytest
+import numpy as np
+import pytest
 
-from bed_reader import open_bed
+from bed_reader import open_bed, to_bed
 
 
 def test_cloud_read1(shared_datadir):
@@ -31,150 +31,154 @@ def test_cloud_read1(shared_datadir):
         assert bed.bp_position[-1] == 100
 
 
-# def test_cloud_write(tmp_path, shared_datadir):
-#     in_file = shared_datadir / "plink_sim_10s_100v_10pmiss.bed"
-#     out_file = tmp_path / "out.bed"
-#     with open_bed(in_file) as bed:
-#         val0 = bed.read()
-#         properties0 = {
-#             "fid": bed.fid,
-#             "iid": bed.iid,
-#             "sid": bed.sid,
-#             "chromosome": bed.chromosome,
-#             "cm_position": bed.cm_position,
-#             "bp_position": bed.bp_position,
-#         }
-#         to_bed(out_file, val0, properties=properties0)
-#         with open_bed(out_file) as bed1:
-#             assert np.allclose(val0, bed1.read(), equal_nan=True)
-#             val_sparse = bed1.read_sparse()
-#             assert np.allclose(val0, val_sparse.toarray(), equal_nan=True)
-#             assert np.array_equal(bed1.fid, properties0["fid"])
-#             assert np.array_equal(bed1.iid, properties0["iid"])
-#             assert np.array_equal(bed1.sid, properties0["sid"])
-#             assert np.issubdtype(bed1.sid.dtype, np.str_)
-#             assert np.array_equal(bed1.chromosome, properties0["chromosome"])
-#             assert np.allclose(bed1.cm_position, properties0["cm_position"])
-#             assert np.allclose(bed1.bp_position, properties0["bp_position"])
+def test_cloud_write(tmp_path, shared_datadir):
+    in_file = shared_datadir / "plink_sim_10s_100v_10pmiss.bed"
+    in_file = "file:///" + str(in_file.as_posix())
 
-#     val_float = val0.astype("float")
-#     val_float[0, 0] = 0.5
+    out_file = tmp_path / "out.bed"
+    with open_bed(in_file) as bed:
+        val0 = bed.read()
+        properties0 = {
+            "fid": bed.fid,
+            "iid": bed.iid,
+            "sid": bed.sid,
+            "chromosome": bed.chromosome,
+            "cm_position": bed.cm_position,
+            "bp_position": bed.bp_position,
+        }
+        to_bed(out_file, val0, properties=properties0)
+        with open_bed(out_file) as bed1:
+            assert np.allclose(val0, bed1.read(), equal_nan=True)
+            val_sparse = bed1.read_sparse()
+            assert np.allclose(val0, val_sparse.toarray(), equal_nan=True)
+            assert np.array_equal(bed1.fid, properties0["fid"])
+            assert np.array_equal(bed1.iid, properties0["iid"])
+            assert np.array_equal(bed1.sid, properties0["sid"])
+            assert np.issubdtype(bed1.sid.dtype, np.str_)
+            assert np.array_equal(bed1.chromosome, properties0["chromosome"])
+            assert np.allclose(bed1.cm_position, properties0["cm_position"])
+            assert np.allclose(bed1.bp_position, properties0["bp_position"])
 
-#     for force_python_only in [False, True]:
-#         with pytest.raises(ValueError):
-#             to_bed(
-#                 out_file,
-#                 val_float,
-#                 properties=properties0,
-#                 force_python_only=force_python_only,
-#             )
-#     val0[np.isnan(val0)] = 0  # set any nan to 0
-#     val_int8 = val0.astype("int8")
-#     val_int8[0, 0] = -1
-#     for force_python_only in [False, True]:
-#         with pytest.raises(ValueError):
-#             to_bed(
-#                 out_file,
-#                 val_int8,
-#                 properties=properties0,
-#                 force_python_only=force_python_only,
-#             )
+    val_float = val0.astype("float")
+    val_float[0, 0] = 0.5
 
-
-# def test_cloud_overrides(shared_datadir):
-#     with open_bed(shared_datadir / "some_missing.bed") as bed:
-#         fid = bed.fid
-#         iid = bed.iid
-#         father = bed.father
-#         mother = bed.mother
-#         sex = bed.sex
-#         pheno = bed.pheno
-#         chromosome = bed.chromosome
-#         sid = bed.sid
-#         cm_position = bed.cm_position
-#         bp_position = bed.bp_position
-#         allele_1 = bed.allele_1
-#         allele_2 = bed.allele_2
-#     # lock in the expected results:
-#     # np.savez(
-#     #     shared_datadir / "some_missing.properties.npz",
-#     #     fid=fid,
-#     #     iid=iid,
-#     #     father=father,
-#     #     mother=mother,
-#     #     sex=sex,
-#     #     pheno=pheno,
-#     #     chromosome=chromosome,
-#     #     sid=sid,
-#     #     cm_position=cm_position,
-#     #     bp_position=bp_position,
-#     #     allele_1=allele_1,
-#     #     allele_2=allele_2,
-#     # )
-#     property_dict = np.load(shared_datadir / "some_missing.properties.npz")
-#     assert np.array_equal(property_dict["fid"], fid)
-#     assert np.array_equal(property_dict["iid"], iid)
-#     assert np.array_equal(property_dict["father"], father)
-#     assert np.array_equal(property_dict["mother"], mother)
-#     assert np.array_equal(property_dict["sex"], sex)
-#     assert np.array_equal(property_dict["pheno"], pheno)
-#     assert np.array_equal(property_dict["chromosome"], chromosome)
-#     assert np.array_equal(property_dict["sid"], sid)
-#     assert np.array_equal(property_dict["cm_position"], cm_position)
-#     assert np.array_equal(property_dict["bp_position"], bp_position)
-#     assert np.array_equal(property_dict["allele_1"], allele_1)
-#     assert np.array_equal(property_dict["allele_2"], allele_2)
-
-#     with pytest.raises(KeyError):
-#         open_bed(shared_datadir / "some_missing.bed", properties={"unknown": [3, 4, 4]})
-#     with open_bed(
-#         shared_datadir / "some_missing.bed", properties={"iid": None}
-#     ) as bed1:
-#         assert bed1.iid is None
-#     with open_bed(shared_datadir / "some_missing.bed", properties={"iid": []}) as bed1:
-#         assert np.issubdtype(bed1.iid.dtype, np.str_)
-#         assert len(bed1.iid) == 0
-#         with pytest.raises(ValueError):
-#             bed1.father
-
-#     with open_bed(
-#         shared_datadir / "some_missing.bed",
-#         properties={"sid": [i for i in range(len(sid))]},
-#     ) as bed1:
-#         assert np.issubdtype(bed1.sid.dtype, np.str_)
-#         assert bed1.sid[0] == "0"
-#     with pytest.raises(ValueError):
-#         open_bed(
-#             shared_datadir / "some_missing.bed",
-#             properties={"sex": ["F" for i in range(len(sex))]},
-#         )  # Sex must be coded as a number
-#     with open_bed(
-#         shared_datadir / "some_missing.bed",
-#         properties={"sid": np.array([i for i in range(len(sid))])},
-#     ) as bed1:
-#         assert np.issubdtype(bed1.sid.dtype, np.str_)
-#         assert bed1.sid[0] == "0"
-#     with pytest.raises(ValueError):
-#         open_bed(
-#             shared_datadir / "some_missing.bed",
-#             properties={"sid": np.array([(i, i) for i in range(len(sid))])},
-#         )
-#     with open_bed(
-#         shared_datadir / "some_missing.bed", properties={"sid": [1, 2, 3]}
-#     ) as bed1:
-#         with pytest.raises(ValueError):
-#             bed1.chromosome
+    for force_python_only in [False, True]:
+        with pytest.raises(ValueError):
+            to_bed(
+                out_file,
+                val_float,
+                properties=properties0,
+                force_python_only=force_python_only,
+            )
+    val0[np.isnan(val0)] = 0  # set any nan to 0
+    val_int8 = val0.astype("int8")
+    val_int8[0, 0] = -1
+    for force_python_only in [False, True]:
+        with pytest.raises(ValueError):
+            to_bed(
+                out_file,
+                val_int8,
+                properties=properties0,
+                force_python_only=force_python_only,
+            )
 
 
-# def test_cloud_str(shared_datadir):
-#     with open_bed(shared_datadir / "some_missing.bed") as bed:
-#         assert "open_bed(" in str(bed)
+def test_cloud_overrides(shared_datadir):
+    file = "file:///" + str((shared_datadir / "some_missing.bed").as_posix())
+    with open_bed(file) as bed:
+        fid = bed.fid
+        iid = bed.iid
+        father = bed.father
+        mother = bed.mother
+        sex = bed.sex
+        pheno = bed.pheno
+        chromosome = bed.chromosome
+        sid = bed.sid
+        cm_position = bed.cm_position
+        bp_position = bed.bp_position
+        allele_1 = bed.allele_1
+        allele_2 = bed.allele_2
+    # lock in the expected results:
+    # np.savez(
+    #     shared_datadir / "some_missing.properties.npz",
+    #     fid=fid,
+    #     iid=iid,
+    #     father=father,
+    #     mother=mother,
+    #     sex=sex,
+    #     pheno=pheno,
+    #     chromosome=chromosome,
+    #     sid=sid,
+    #     cm_position=cm_position,
+    #     bp_position=bp_position,
+    #     allele_1=allele_1,
+    #     allele_2=allele_2,
+    # )
+    property_dict = np.load(shared_datadir / "some_missing.properties.npz")
+    assert np.array_equal(property_dict["fid"], fid)
+    assert np.array_equal(property_dict["iid"], iid)
+    assert np.array_equal(property_dict["father"], father)
+    assert np.array_equal(property_dict["mother"], mother)
+    assert np.array_equal(property_dict["sex"], sex)
+    assert np.array_equal(property_dict["pheno"], pheno)
+    assert np.array_equal(property_dict["chromosome"], chromosome)
+    assert np.array_equal(property_dict["sid"], sid)
+    assert np.array_equal(property_dict["cm_position"], cm_position)
+    assert np.array_equal(property_dict["bp_position"], bp_position)
+    assert np.array_equal(property_dict["allele_1"], allele_1)
+    assert np.array_equal(property_dict["allele_2"], allele_2)
+
+    with pytest.raises(KeyError):
+        open_bed(file, properties={"unknown": [3, 4, 4]})
+    with open_bed(file, properties={"iid": None}) as bed1:
+        assert bed1.iid is None
+    with open_bed(file, properties={"iid": []}) as bed1:
+        assert np.issubdtype(bed1.iid.dtype, np.str_)
+        assert len(bed1.iid) == 0
+        with pytest.raises(ValueError):
+            bed1.father
+
+    with open_bed(
+        file,
+        properties={"sid": [i for i in range(len(sid))]},
+    ) as bed1:
+        assert np.issubdtype(bed1.sid.dtype, np.str_)
+        assert bed1.sid[0] == "0"
+    with pytest.raises(ValueError):
+        open_bed(
+            file,
+            properties={"sex": ["F" for i in range(len(sex))]},
+        )  # Sex must be coded as a number
+    with open_bed(
+        file,
+        properties={"sid": np.array([i for i in range(len(sid))])},
+    ) as bed1:
+        assert np.issubdtype(bed1.sid.dtype, np.str_)
+        assert bed1.sid[0] == "0"
+    with pytest.raises(ValueError):
+        open_bed(
+            file,
+            properties={"sid": np.array([(i, i) for i in range(len(sid))])},
+        )
+    with open_bed(file, properties={"sid": [1, 2, 3]}) as bed1:
+        with pytest.raises(ValueError):
+            bed1.chromosome
 
 
-# def test_cloud_bad_bed(shared_datadir):
-#     with pytest.raises(ValueError):
-#         open_bed(shared_datadir / "badfile.bed")
-#     open_bed(shared_datadir / "badfile.bed", skip_format_check=True)
+def file_to_url(file):
+    file = Path(file)
+    return "file:///" + str(file.as_posix())
+
+
+def test_cloud_str(shared_datadir):
+    with open_bed(file_to_url(shared_datadir / "some_missing.bed")) as bed:
+        assert "open_bed(" in str(bed)
+
+
+def test_cloud_bad_bed(shared_datadir):
+    with pytest.raises(ValueError):
+        open_bed(file_to_url(shared_datadir / "badfile.bed"))
+    open_bed(file_to_url(shared_datadir / "badfile.bed"), skip_format_check=True)
 
 
 # def test_cloud_bad_dtype_or_order(shared_datadir):
