@@ -224,8 +224,16 @@ class open_bed:
         self.count_A1 = count_A1
         self._num_threads = num_threads
         self.skip_format_check = skip_format_check
-        self._fam_location = (self._path_or_url(fam_location) if fam_location is not None else self._replace_extension(self.location, "fam"))
-        self._bim_location = (self._path_or_url(bim_location) if bim_location is not None else self._replace_extension(self.location, "bim"))
+        self._fam_location = (
+            self._path_or_url(fam_location)
+            if fam_location is not None
+            else self._replace_extension(self.location, "fam")
+        )
+        self._bim_location = (
+            self._path_or_url(bim_location)
+            if bim_location is not None
+            else self._replace_extension(self.location, "bim")
+        )
 
         self.properties_dict, self._counts = open_bed._fix_up_properties(
             properties, iid_count, sid_count, use_fill_sequence=False
@@ -236,7 +244,7 @@ class open_bed:
             if self._is_url(self.location):
                 check_file_cloud(self.location.geturl())
             else:
-                with open(self.filepath, "rb") as filepointer:
+                with open(self.location, "rb") as filepointer:
                     self._check_file(filepointer)
 
     @staticmethod
@@ -270,7 +278,9 @@ class open_bed:
             return input
         if isinstance(input, UrlParseResult):
             return input
-        assert isinstance(input, str), "Expected a string or Path object or UrlParseResult"
+        assert isinstance(
+            input, str
+        ), "Expected a string or Path object or UrlParseResult"
         parsed = urlparse(input)
         if parsed.scheme and "://" in input:
             return parsed
@@ -1019,9 +1029,23 @@ class open_bed:
         if count is None:
             location = self._property_location(suffix)
             if open_bed._is_url(location):
-                # should not download twice
-                file_bytes = bytes(url_to_bytes(location.geturl()))
-                count = _rawincount(BytesIO(file_bytes))
+                # should not download twice from cloud
+                if suffix == "fam":
+                    if self.property_item("iid") is None:
+                        # ... unless user doesn't want iid
+                        file_bytes = bytes(url_to_bytes(location.geturl()))
+                        count = _rawincount(BytesIO(file_bytes))
+                    else:
+                        count = len(self.iid)
+                elif suffix == "bim":
+                    if self.property_item("sid") is None:
+                        # ... unless user doesn't want sid
+                        file_bytes = bytes(url_to_bytes(location.geturl()))
+                        count = _rawincount(BytesIO(file_bytes))
+                    else:
+                        count = len(self.sid)
+                else:
+                    raise ValueError("real assert")
             else:
                 count = _rawincount(open(location, "rb"))
                 self._counts[suffix] = count
@@ -1079,7 +1103,7 @@ class open_bed:
             (3, 4)
 
         """
-        return (len(self.iid), len(self.sid))
+        return (self.iid_count, self.sid_count)
 
     @staticmethod
     def _split_index(index):

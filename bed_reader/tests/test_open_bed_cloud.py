@@ -1,4 +1,4 @@
-# import logging
+import logging
 # import os
 # import platform
 from pathlib import Path
@@ -181,119 +181,120 @@ def test_cloud_bad_bed(shared_datadir):
     open_bed(file_to_url(shared_datadir / "badfile.bed"), skip_format_check=True)
 
 
-# def test_cloud_bad_dtype_or_order(shared_datadir):
-#     with pytest.raises(ValueError):
-#         open_bed(shared_datadir / "some_missing.bed").read(dtype=np.int32)
-#     with pytest.raises(ValueError):
-#         open_bed(shared_datadir / "some_missing.bed").read(order="X")
-#     with pytest.raises(ValueError):
-#         open_bed(shared_datadir / "some_missing.bed").read_sparse(dtype=np.int32)
+def test_cloud_bad_dtype_or_order(shared_datadir):
+    with pytest.raises(ValueError):
+        open_bed(file_to_url(shared_datadir / "some_missing.bed")).read(dtype=np.int32)
+    with pytest.raises(ValueError):
+        open_bed(file_to_url(shared_datadir / "some_missing.bed")).read(order="X")
+    with pytest.raises(ValueError):
+        open_bed(file_to_url(shared_datadir / "some_missing.bed")).read_sparse(dtype=np.int32)
 
 
-# def setting_generator(seq_dict, seed=9392):
-#     import itertools
+# cmk similar code elsewhere
+def setting_generator(seq_dict, seed=9392):
+    import itertools
 
-#     from numpy.random import RandomState
+    from numpy.random import RandomState
 
-#     longest = max((len(value_list) for value_list in seq_dict.values()))
+    longest = max((len(value_list) for value_list in seq_dict.values()))
 
-#     for test_index in range(longest):
-#         setting = {}
-#         for offset, (key, value_list) in enumerate(seq_dict.items()):
-#             val = value_list[(test_index + offset) % len(value_list)]
-#             if not (isinstance(val, str) and "leave_out" == val):
-#                 setting[key] = val
-#         yield setting
+    for test_index in range(longest):
+        setting = {}
+        for offset, (key, value_list) in enumerate(seq_dict.items()):
+            val = value_list[(test_index + offset) % len(value_list)]
+            if not (isinstance(val, str) and "leave_out" == val):
+                setting[key] = val
+        yield setting
 
-#     all_combo = list(itertools.product(*seq_dict.values()))
+    all_combo = list(itertools.product(*seq_dict.values()))
 
-#     random_state = RandomState(seed)
-#     random_state.shuffle(all_combo)
-#     for combo in all_combo:
-#         setting = {
-#             key: value_list
-#             for key, value_list in itertools.zip_longest(seq_dict, combo)
-#             if not (isinstance(value_list, str) and "leave_out" == value_list)
-#         }
-#         yield setting
+    random_state = RandomState(seed)
+    random_state.shuffle(all_combo)
+    for combo in all_combo:
+        setting = {
+            key: value_list
+            for key, value_list in itertools.zip_longest(seq_dict, combo)
+            if not (isinstance(value_list, str) and "leave_out" == value_list)
+        }
+        yield setting
 
 
-# def test_cloud_properties(shared_datadir):
-#     file = shared_datadir / "plink_sim_10s_100v_10pmiss.bed"
-#     with open_bed(file) as bed:
-#         iid_list = bed.iid.tolist()
-#         sid_list = bed.sid.tolist()
-#         chromosome_list = bed.chromosome.tolist()
+def test_cloud_properties(shared_datadir):
+    file = file_to_url(shared_datadir / "plink_sim_10s_100v_10pmiss.bed")
+    with open_bed(file) as bed:
+        iid_list = bed.iid.tolist()
+        sid_list = bed.sid.tolist()
+        chromosome_list = bed.chromosome.tolist()
 
-#     test_count = 75
+    test_count = 75
 
-#     seq_dict = {
-#         "iid": ["leave_out", None, iid_list, np.array(iid_list)],
-#         "iid_count": ["leave_out", len(iid_list)],
-#         "iid_before_read": [False, True],
-#         "iid_after_read": [False, True],
-#         "sid": ["leave_out", None, sid_list, np.array(sid_list)],
-#         "sid_count": [None, len(sid_list)],
-#         "sid_before_read": [False, True],
-#         "sid_after_read": [False, True],
-#         "chromosome": ["leave_out", None, chromosome_list, np.array(chromosome_list)],
-#         "chromosome_before_read": [False, True],
-#         "chromosome_after_read": [False, True],
-#     }
+    seq_dict = {
+        "iid": ["leave_out", None, iid_list, np.array(iid_list)],
+        "iid_count": ["leave_out", len(iid_list)],
+        "iid_before_read": [False, True],
+        "iid_after_read": [False, True],
+        "sid": ["leave_out", None, sid_list, np.array(sid_list)],
+        "sid_count": [None, len(sid_list)],
+        "sid_before_read": [False, True],
+        "sid_after_read": [False, True],
+        "chromosome": ["leave_out", None, chromosome_list, np.array(chromosome_list)],
+        "chromosome_before_read": [False, True],
+        "chromosome_after_read": [False, True],
+    }
 
-#     def _not_set_to_none(settings, key):
-#         return key not in settings or settings[key] is not None
+    def _not_set_to_none(settings, key):
+        return key not in settings or settings[key] is not None
 
-#     for test_index, settings in enumerate(setting_generator(seq_dict)):
-#         if test_index >= test_count:
-#             break
-#         with open_bed(
-#             file,
-#             iid_count=settings.get("iid_count"),
-#             sid_count=settings.get("sid_count"),
-#             properties={
-#                 k: v for k, v in settings.items() if k in {"iid", "sid", "chromosome"}
-#             },
-#         ) as bed:
-#             logging.info(f"Test {test_count}")
-#             if settings["iid_before_read"]:
-#                 if _not_set_to_none(settings, "iid"):
-#                     assert np.array_equal(bed.iid, iid_list)
-#                 else:
-#                     assert bed.iid is None
-#             if settings["sid_before_read"]:
-#                 if _not_set_to_none(settings, "sid"):
-#                     assert np.array_equal(bed.sid, sid_list)
-#                 else:
-#                     assert bed.sid is None
-#             if settings["chromosome_before_read"]:
-#                 if _not_set_to_none(settings, "chromosome"):
-#                     assert np.array_equal(bed.chromosome, chromosome_list)
-#                 else:
-#                     assert bed.chromosome is None
-#             val = bed.read()
-#             assert val.shape == (
-#                 len(iid_list),
-#                 len(sid_list),
-#             )
-#             val_sparse = bed.read_sparse()
-#             assert np.allclose(val, val_sparse.toarray(), equal_nan=True)
-#             if settings["iid_after_read"]:
-#                 if _not_set_to_none(settings, "iid"):
-#                     assert np.array_equal(bed.iid, iid_list)
-#                 else:
-#                     assert bed.iid is None
-#             if settings["sid_after_read"]:
-#                 if _not_set_to_none(settings, "sid"):
-#                     assert np.array_equal(bed.sid, sid_list)
-#                 else:
-#                     assert bed.sid is None
-#             if settings["chromosome_after_read"]:
-#                 if _not_set_to_none(settings, "chromosome"):
-#                     assert np.array_equal(bed.chromosome, chromosome_list)
-#                 else:
-#                     assert bed.chromosome is None
-#             # bed._assert_iid_sid_chromosome()
+    for test_index, settings in enumerate(setting_generator(seq_dict)):
+        if test_index >= test_count:
+            break
+        with open_bed(
+            file,
+            iid_count=settings.get("iid_count"),
+            sid_count=settings.get("sid_count"),
+            properties={
+                k: v for k, v in settings.items() if k in {"iid", "sid", "chromosome"}
+            },
+        ) as bed:
+            logging.info(f"Test {test_count}")
+            if settings["iid_before_read"]:
+                if _not_set_to_none(settings, "iid"):
+                    assert np.array_equal(bed.iid, iid_list)
+                else:
+                    assert bed.iid is None
+            if settings["sid_before_read"]:
+                if _not_set_to_none(settings, "sid"):
+                    assert np.array_equal(bed.sid, sid_list)
+                else:
+                    assert bed.sid is None
+            if settings["chromosome_before_read"]:
+                if _not_set_to_none(settings, "chromosome"):
+                    assert np.array_equal(bed.chromosome, chromosome_list)
+                else:
+                    assert bed.chromosome is None
+            val = bed.read()
+            assert val.shape == (
+                len(iid_list),
+                len(sid_list),
+            )
+            val_sparse = bed.read_sparse()
+            assert np.allclose(val, val_sparse.toarray(), equal_nan=True)
+            if settings["iid_after_read"]:
+                if _not_set_to_none(settings, "iid"):
+                    assert np.array_equal(bed.iid, iid_list)
+                else:
+                    assert bed.iid is None
+            if settings["sid_after_read"]:
+                if _not_set_to_none(settings, "sid"):
+                    assert np.array_equal(bed.sid, sid_list)
+                else:
+                    assert bed.sid is None
+            if settings["chromosome_after_read"]:
+                if _not_set_to_none(settings, "chromosome"):
+                    assert np.array_equal(bed.chromosome, chromosome_list)
+                else:
+                    assert bed.chromosome is None
+            # bed._assert_iid_sid_chromosome()
 
 
 # def test_cloud_c_reader_bed(shared_datadir):
