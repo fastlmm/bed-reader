@@ -210,6 +210,7 @@ class open_bed:
     def __init__(
         self,
         location: Union[str, Path, UrlParseResult],
+        # cmk must also accept old value
         iid_count: Optional[int] = None,
         sid_count: Optional[int] = None,
         properties: Mapping[str, List[Any]] = {},
@@ -217,7 +218,9 @@ class open_bed:
         num_threads: Optional[int] = None,
         skip_format_check: bool = False,
         fam_location: Union[str, Path, UrlParseResult] = None,
+        # cmk must also accept old value
         bim_location: Union[str, Path, UrlParseResult] = None,
+        # cmk must also accept old value
     ):
         # cmk need to read the .fam and .bim files and check file from cloud if requested
         self.location = self._path_or_url(location)
@@ -426,7 +429,7 @@ class open_bed:
             self._sid_range[sid_index_or_slice_etc], dtype="intp"
         )
 
-        if not force_python_only:
+        if not force_python_only or open_bed._is_url(self.location):
             num_threads = get_num_threads(
                 self._num_threads if num_threads is None else num_threads
             )
