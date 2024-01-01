@@ -88,6 +88,7 @@ class open_bed:
 
     Parameters
     ----------
+    cmk update docs
     filepath: pathlib.Path or str
         File path to the .bed file.
     iid_count: None or int, optional
@@ -210,7 +211,6 @@ class open_bed:
     def __init__(
         self,
         location: Union[str, Path, UrlParseResult],
-        # cmk must also accept old value
         iid_count: Optional[int] = None,
         sid_count: Optional[int] = None,
         properties: Mapping[str, List[Any]] = {},
@@ -218,11 +218,17 @@ class open_bed:
         num_threads: Optional[int] = None,
         skip_format_check: bool = False,
         fam_location: Union[str, Path, UrlParseResult] = None,
-        # cmk must also accept old value
         bim_location: Union[str, Path, UrlParseResult] = None,
-        # cmk must also accept old value
+
+        # accept old keywords
+        filepath: Union[str, Path] = None,
+        fam_filepath: Union[str, Path] = None,
+        bim_filepath: Union[str, Path] = None,
     ):
-        # cmk need to read the .fam and .bim files and check file from cloud if requested
+        location = self._combined(location, filepath, "location", "filepath")
+        fam_location = self._combined(fam_location, fam_filepath, "fam_location", "fam_filepath")
+        bim_location = self._combined(bim_location, bim_filepath, "bim_location", "bim_filepath")
+
         self.location = self._path_or_url(location)
         self.count_A1 = count_A1
         self._num_threads = num_threads
@@ -249,6 +255,17 @@ class open_bed:
             else:
                 with open(self.location, "rb") as filepointer:
                     self._check_file(filepointer)
+
+    # # its an error to set both location and filepath
+    # location = self._combined(location, filepath, "location", "filepath")
+    # fam_location = self._combined(fam_location, fam_filepath, "fam_location", "fam_filepath")
+    # bim_location = self._combined(bim_location, bim_filepath, "bim_location", "bim_filepath")
+    @staticmethod
+    def _combined(location, filepath, location_name, filepath_name):
+        if location is not None and filepath is not None:
+            raise ValueError(f"Cannot set both {location_name} and {filepath_name}")
+        # None, None is ok for now
+        return location if location is not None else filepath
 
     @staticmethod
     def _replace_extension(location, extension):
@@ -436,33 +453,10 @@ class open_bed:
 
             val = np.zeros((len(iid_index), len(sid_index)), order=order, dtype=dtype)
 
-            # cmk similar code in sparse
             if self.iid_count > 0 and self.sid_count > 0:
-                if dtype == np.int8:
-                    # cmk000
-                    file_reader = read_i8
-                    cloud_reader = read_cloud_i8
-                elif dtype == np.float64:
-                    file_reader = read_f64
-                    cloud_reader = read_cloud_f64
-                elif dtype == np.float32:
-                    file_reader = read_f32
-                    cloud_reader = read_cloud_f32
-                else:
-                    raise ValueError(
-                        f"dtype '{val.dtype}' not known, only "
-                        + "'int8', 'float32', and 'float64' are allowed."
-                    )
-
-                if open_bed._is_url(self.location):
-                    reader = cloud_reader
-                    location_str = self.location.geturl()
-                else:
-                    reader = file_reader
-                    location_str = str(self.location.as_posix())
+                reader, location_str = self._pick_reader(dtype)
 
                 reader(
-                    # cmk000
                     location_str,
                     iid_count=self.iid_count,
                     sid_count=self.sid_count,
@@ -474,7 +468,6 @@ class open_bed:
                 )
 
         else:
-            # cmk assert not a cloud read
             if not self.count_A1:
                 byteZero = 0
                 byteThree = 2
@@ -531,6 +524,30 @@ class open_bed:
                     val = val.copy(order=order)
 
         return val
+
+    def _pick_reader(self, dtype):
+        if dtype == np.int8:
+            file_reader = read_i8
+            cloud_reader = read_cloud_i8
+        elif dtype == np.float64:
+            file_reader = read_f64
+            cloud_reader = read_cloud_f64
+        elif dtype == np.float32:
+            file_reader = read_f32
+            cloud_reader = read_cloud_f32
+        else:
+            raise ValueError(
+                f"dtype '{dtype}' not known, only "
+                + "'int8', 'float32', and 'float64' are allowed."
+            )
+
+        if open_bed._is_url(self.location):
+            reader = cloud_reader
+            location_str = self.location.geturl()
+        else:
+            reader = file_reader
+            location_str = str(self.location.as_posix())
+        return reader, location_str
 
     def __str__(self) -> str:
         return f"{self.__class__.__name__}('{self.location}',...)"
@@ -1239,7 +1256,7 @@ class open_bed:
             file_bytes = bytes(url_to_bytes(property_location.geturl()))
             if len(file_bytes) == 0:
                 columns, row_count = [], 0
-            else:  # cmk similar code
+            else:  # note similar code below
                 columns, row_count = _read_csv(
                     BytesIO(file_bytes),
                     delimiter=delimiter,
@@ -1482,28 +1499,7 @@ class open_bed:
         indices = [np.empty(0, dtype=np.int32)]
 
         if self.iid_count > 0 and self.sid_count > 0:
-            if dtype == np.int8:
-                # cmk000
-                file_reader = read_i8
-                cloud_reader = read_cloud_i8
-            elif dtype == np.float64:
-                file_reader = read_f64
-                cloud_reader = read_cloud_f64
-            elif dtype == np.float32:
-                file_reader = read_f32
-                cloud_reader = read_cloud_f32
-            else:
-                raise ValueError(
-                    f"dtype '{dtype}' not known, only "
-                    + "'int8', 'float32', and 'float64' are allowed."
-                )
-
-            if open_bed._is_url(self.location):
-                reader = cloud_reader
-                location_str = self.location.geturl()
-            else:
-                reader = file_reader
-                location_str = str(self.location.as_posix())
+            reader, location_str = self._pick_reader(dtype)
 
             if format == "csc":
                 val = np.zeros((len(iid_index), batch_size), order=order, dtype=dtype)
@@ -1652,4 +1648,3 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
     pytest.main(["--doctest-modules", __file__])
-# cmk000 look for every self.filepath and fam_file and .bim_file

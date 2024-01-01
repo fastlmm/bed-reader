@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 from bed_reader import open_bed, to_bed, subset_f64_f64
+from bed_reader.tests.test_open_bed import setting_generator, reference_val
 
 
 def test_cloud_read1(shared_datadir):
@@ -14,7 +15,6 @@ def test_cloud_read1(shared_datadir):
 
     file = shared_datadir / "plink_sim_10s_100v_10pmiss.bed"
     file = "file:///" + str(file.as_posix())
-    # cmk cmk next up, need to see if this is right and need to pass it to Rust
 
     with open_bed(file) as bed:
         assert bed.iid_count == 10
@@ -190,35 +190,6 @@ def test_cloud_bad_dtype_or_order(shared_datadir):
         open_bed(file_to_url(shared_datadir / "some_missing.bed")).read_sparse(dtype=np.int32)
 
 
-# cmk similar code elsewhere
-def setting_generator(seq_dict, seed=9392):
-    import itertools
-
-    from numpy.random import RandomState
-
-    longest = max((len(value_list) for value_list in seq_dict.values()))
-
-    for test_index in range(longest):
-        setting = {}
-        for offset, (key, value_list) in enumerate(seq_dict.items()):
-            val = value_list[(test_index + offset) % len(value_list)]
-            if not (isinstance(val, str) and "leave_out" == val):
-                setting[key] = val
-        yield setting
-
-    all_combo = list(itertools.product(*seq_dict.values()))
-
-    random_state = RandomState(seed)
-    random_state.shuffle(all_combo)
-    for combo in all_combo:
-        setting = {
-            key: value_list
-            for key, value_list in itertools.zip_longest(seq_dict, combo)
-            if not (isinstance(value_list, str) and "leave_out" == value_list)
-        }
-        yield setting
-
-
 def test_cloud_properties(shared_datadir):
     file = file_to_url(shared_datadir / "plink_sim_10s_100v_10pmiss.bed")
     with open_bed(file) as bed:
@@ -331,11 +302,6 @@ def test_cloud_c_reader_bed(shared_datadir):
             assert np.allclose(
                 ref_val, val_sparse.toarray(), rtol=1e-05, atol=1e-05, equal_nan=True
             )
-
-
-def reference_val(shared_datadir):
-    val = np.load(shared_datadir / "some_missing.val.npy")
-    return val
 
 
 def test_cloud_bed_int8(tmp_path, shared_datadir):
