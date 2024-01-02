@@ -219,6 +219,7 @@ class open_bed:
         skip_format_check: bool = False,
         fam_location: Union[str, Path, UrlParseResult] = None,
         bim_location: Union[str, Path, UrlParseResult] = None,
+        cloud_options: Mapping[str, str] = {},
 
         # accept old keywords
         filepath: Union[str, Path] = None,
@@ -230,6 +231,7 @@ class open_bed:
         bim_location = self._combined(bim_location, bim_filepath, "bim_location", "bim_filepath")
 
         self.location = self._path_or_url(location)
+        self.cloud_options = cloud_options
         self.count_A1 = count_A1
         self._num_threads = num_threads
         self.skip_format_check = skip_format_check
@@ -251,7 +253,7 @@ class open_bed:
         self._sid_range = None
         if not self.skip_format_check:
             if self._is_url(self.location):
-                check_file_cloud(self.location.geturl())
+                check_file_cloud(self.location.geturl(), self.cloud_options)
             else:
                 with open(self.location, "rb") as filepointer:
                     self._check_file(filepointer)
@@ -458,6 +460,7 @@ class open_bed:
 
                 reader(
                     location_str,
+                    self.cloud_options,
                     iid_count=self.iid_count,
                     sid_count=self.sid_count,
                     is_a1_counted=self.count_A1,
@@ -1053,14 +1056,14 @@ class open_bed:
                 if suffix == "fam":
                     if self.property_item("iid") is None:
                         # ... unless user doesn't want iid
-                        file_bytes = bytes(url_to_bytes(location.geturl()))
+                        file_bytes = bytes(url_to_bytes(location.geturl(), self.cloud_options))
                         count = _rawincount(BytesIO(file_bytes))
                     else:
                         count = len(self.iid)
                 elif suffix == "bim":
                     if self.property_item("sid") is None:
                         # ... unless user doesn't want sid
-                        file_bytes = bytes(url_to_bytes(location.geturl()))
+                        file_bytes = bytes(url_to_bytes(location.geturl(), self.cloud_options))
                         count = _rawincount(BytesIO(file_bytes))
                     else:
                         count = len(self.sid)
@@ -1253,7 +1256,7 @@ class open_bed:
         assert len(usecolsdict) > 0  # real assert
 
         if self._is_url(property_location):
-            file_bytes = bytes(url_to_bytes(property_location.geturl()))
+            file_bytes = bytes(url_to_bytes(property_location.geturl(), self.cloud_options))
             if len(file_bytes) == 0:
                 columns, row_count = [], 0
             else:  # note similar code below
@@ -1518,6 +1521,7 @@ class open_bed:
 
                     reader(
                         location_str,
+                        self.cloud_options,
                         iid_count=self.iid_count,
                         sid_count=self.sid_count,
                         is_a1_counted=self.count_A1,
@@ -1549,6 +1553,7 @@ class open_bed:
 
                     reader(
                         location_str,
+                        self.cloud_options,
                         iid_count=self.iid_count,
                         sid_count=self.sid_count,
                         is_a1_counted=self.count_A1,

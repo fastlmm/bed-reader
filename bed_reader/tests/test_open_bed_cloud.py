@@ -1,3 +1,4 @@
+import configparser
 import logging
 import os
 import platform
@@ -187,7 +188,9 @@ def test_cloud_bad_dtype_or_order(shared_datadir):
     with pytest.raises(ValueError):
         open_bed(file_to_url(shared_datadir / "some_missing.bed")).read(order="X")
     with pytest.raises(ValueError):
-        open_bed(file_to_url(shared_datadir / "some_missing.bed")).read_sparse(dtype=np.int32)
+        open_bed(file_to_url(shared_datadir / "some_missing.bed")).read_sparse(
+            dtype=np.int32
+        )
 
 
 def test_cloud_properties(shared_datadir):
@@ -362,7 +365,9 @@ def test_cloud_write1_bed_f64cpp(tmp_path, shared_datadir):
 
 def test_cloud_write1_x_x_cpp(tmp_path, shared_datadir):
     for count_A1 in [False, True]:
-        with open_bed(file_to_url(shared_datadir / "some_missing.bed"), count_A1=count_A1) as bed:
+        with open_bed(
+            file_to_url(shared_datadir / "some_missing.bed"), count_A1=count_A1
+        ) as bed:
             for order, format in [("F", "csc"), ("C", "csr")]:
                 for dtype in [np.float32, np.float64]:
                     val = bed.read(order=order, dtype=dtype)
@@ -603,7 +608,9 @@ def test_cloud_index(shared_datadir):
 
 
 def test_cloud_shape(shared_datadir):
-    with open_bed(file_to_url(shared_datadir / "plink_sim_10s_100v_10pmiss.bed")) as bed:
+    with open_bed(
+        file_to_url(shared_datadir / "plink_sim_10s_100v_10pmiss.bed")
+    ) as bed:
         assert bed.shape == (10, 100)
 
 
@@ -660,10 +667,12 @@ def test_cloud_iid_sid_count(shared_datadir):
         file_to_url(shared_datadir / "plink_sim_10s_100v_10pmiss.bed")
     ).shape
     assert (iid_count_ref, sid_count_ref) == open_bed(
-        file_to_url(shared_datadir / "plink_sim_10s_100v_10pmiss.bed"), iid_count=iid_count_ref
+        file_to_url(shared_datadir / "plink_sim_10s_100v_10pmiss.bed"),
+        iid_count=iid_count_ref,
     ).shape
     assert (iid_count_ref, sid_count_ref) == open_bed(
-        file_to_url(shared_datadir / "plink_sim_10s_100v_10pmiss.bed"), sid_count=sid_count_ref
+        file_to_url(shared_datadir / "plink_sim_10s_100v_10pmiss.bed"),
+        sid_count=sid_count_ref,
     ).shape
     assert (iid_count_ref, sid_count_ref) == open_bed(
         file_to_url(shared_datadir / "plink_sim_10s_100v_10pmiss.bed"),
@@ -685,7 +694,8 @@ def test_cloud_sample_file():
 
 def test_cloud_coverage2(shared_datadir, tmp_path):
     with open_bed(
-        file_to_url(shared_datadir / "plink_sim_10s_100v_10pmiss.bed"), properties={"iid": None}
+        file_to_url(shared_datadir / "plink_sim_10s_100v_10pmiss.bed"),
+        properties={"iid": None},
     ) as bed:
         assert bed.iid is None
     with pytest.raises(ValueError):
@@ -705,7 +715,8 @@ def test_cloud_coverage2(shared_datadir, tmp_path):
 def test_cloud_coverage3(shared_datadir, tmp_path):
     with pytest.warns(RuntimeWarning, match="invalid value encountered in cast"):
         with open_bed(
-            file_to_url(shared_datadir / "small.bed"), properties={"sex": [1.0, np.nan, 1.0, 2.0]}
+            file_to_url(shared_datadir / "small.bed"),
+            properties={"sex": [1.0, np.nan, 1.0, 2.0]},
         ) as bed:
             assert np.array_equal(bed.sex, np.array([1, 0, 1, 2]))
 
@@ -735,7 +746,9 @@ def test_cloud_nones(shared_datadir, tmp_path):
         "allele_2": None,
     }
 
-    with open_bed(file_to_url(shared_datadir / "small.bed"), properties=properties) as bed:
+    with open_bed(
+        file_to_url(shared_datadir / "small.bed"), properties=properties
+    ) as bed:
         assert np.array_equal(bed.iid, ["iid1", "iid2", "iid3"])
         assert bed.father is None
 
@@ -907,6 +920,53 @@ def test_cloud_convert_to_dtype():
             except ValueError as e:
                 print(e)
                 assert exp is None
+
+
+def load_aws_credentials(profile_name="default"):
+    """
+    Load AWS credentials from the default ~/.aws/credentials file.
+
+    :param profile_name: Name of the profile to load. Defaults to 'default'.
+    :return: A dictionary with 'aws_access_key_id' and 'aws_secret_access_key'.
+    """
+    aws_credentials_file = os.path.expanduser("~/.aws/credentials")
+
+    config = configparser.ConfigParser()
+    config.read(aws_credentials_file)
+
+    credentials = config[profile_name]
+    return {
+        "aws_access_key_id": credentials.get("aws_access_key_id"),
+        "aws_secret_access_key": credentials.get("aws_secret_access_key"),
+    }
+
+
+def test_s3(shared_datadir):
+    # local file
+    file = shared_datadir / "toydata.5chrom.bed"
+    with open_bed(file) as bed:
+        val = bed.read(dtype="int8")
+        assert val.shape == (500, 10_000)
+
+    # file url
+    # cmk is the 3rd "///" only for Windows? test on linux
+    file = "file:///" + str(file.as_posix())
+    with open_bed(file) as bed:
+        val = bed.read(dtype="int8")
+        assert val.shape == (500, 10_000)
+
+    # s3 url sans format check
+    aws_credentials = load_aws_credentials()
+    aws_credentials["aws_region"] = "us-west-2"
+    url = "s3://bedreader/v1/toydata.5chrom.bed"
+    with open_bed(url, cloud_options=aws_credentials, skip_format_check=True) as bed:
+        val = bed.read(dtype="int8")
+        assert val.shape == (500, 10_000)
+
+    # s3 url with format check
+    with open_bed(url, cloud_options=aws_credentials) as bed:
+        val = bed.read(dtype="int8")
+        assert val.shape == (500, 10_000)
 
 
 if __name__ == "__main__":

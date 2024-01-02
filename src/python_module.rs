@@ -1,5 +1,7 @@
 #![cfg(feature = "extension-module")]
 
+use std::collections::HashMap;
+
 use numpy::{PyArray1, PyArray2, PyArray3};
 use object_store::{path::Path as StorePath, ObjectStore};
 
@@ -50,12 +52,12 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
-    fn url_to_bytes(location: &str) -> Result<Vec<u8>, PyErr> {
-        let rt = runtime::Runtime::new().unwrap(); // cmk unwrap?
+    fn url_to_bytes(location: &str, options: HashMap<&str, String>) -> Result<Vec<u8>, PyErr> {
+        let rt = runtime::Runtime::new()?;
 
         let url = Url::parse(location).unwrap(); // cmk return a BedReader URL parse error
         let (object_store, store_path): (Box<dyn ObjectStore>, StorePath) =
-            object_store::parse_url(&url).unwrap(); // cmk return a BedReader URL parse error
+            object_store::parse_url_opts(&url,options).unwrap(); // cmk return a BedReader URL parse error
         let object_path: ObjectPath<Box<dyn ObjectStore>> = (object_store, store_path).into();
 
         rt.block_on(async {
@@ -69,8 +71,10 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     // cmk rename "filename" to "location"
     #[pyfn(m)]
     #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::needless_pass_by_value)]
     fn read_f64(
         filename: &str,
+        _ignore: HashMap<&str, String>,
         iid_count: usize,
         sid_count: usize,
         is_a1_counted: bool,
@@ -104,8 +108,10 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     #[pyfn(m)]
     #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::needless_pass_by_value)]
     fn read_f32(
         filename: &str,
+        _ignore: HashMap<&str, String>,
         iid_count: usize,
         sid_count: usize,
         is_a1_counted: bool,
@@ -139,8 +145,10 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     #[pyfn(m)]
     #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::needless_pass_by_value)]
     fn read_i8(
         filename: &str,
+        _ignore: HashMap<&str, String>,
         iid_count: usize,
         sid_count: usize,
         is_a1_counted: bool,
@@ -177,12 +185,13 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[allow(clippy::too_many_arguments)]
     fn check_file_cloud(
         url: &str,
+        options: HashMap<&str, String>
     ) -> Result<(), PyErr> {
         let rt = runtime::Runtime::new().unwrap(); // cmk unwrap?
 
         let url = Url::parse(url).unwrap(); // cmk return a BedReader URL parse error
         let (object_store, store_path): (Box<dyn ObjectStore>, StorePath) =
-            object_store::parse_url(&url).unwrap(); // cmk return a BedReader URL parse error
+            object_store::parse_url_opts(&url, options).unwrap(); // cmk return a BedReader URL parse error
         let object_path: ObjectPath<Box<dyn ObjectStore>> = (object_store, store_path).into();
 
         rt.block_on(async {
@@ -195,6 +204,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[allow(clippy::too_many_arguments)]
     fn read_cloud_i8(
         url: &str,
+        options: HashMap<&str, String>,
         iid_count: usize,
         sid_count: usize,
         is_a1_counted: bool,
@@ -215,7 +225,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
         let url = Url::parse(url).unwrap(); // cmk return a BedReader URL parse error
         let (object_store, store_path): (Box<dyn ObjectStore>, StorePath) =
-            object_store::parse_url(&url).unwrap(); // cmk return a BedReader URL parse error
+            object_store::parse_url_opts(&url,options).unwrap(); // cmk return a BedReader URL parse error
         let object_path: ObjectPath<Box<dyn ObjectStore>> = (object_store, store_path).into();
 
         rt.block_on(async {
@@ -241,6 +251,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[allow(clippy::too_many_arguments)]
     fn read_cloud_f32(
         url: &str,
+        options: HashMap<&str, String>,
         iid_count: usize,
         sid_count: usize,
         is_a1_counted: bool,
@@ -261,7 +272,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
         let url = Url::parse(url).unwrap(); // cmk return a BedReader URL parse error
         let (object_store, store_path): (Box<dyn ObjectStore>, StorePath) =
-            object_store::parse_url(&url).unwrap(); // cmk return a BedReader URL parse error
+            object_store::parse_url_opts(&url,options).unwrap(); // cmk return a BedReader URL parse error
         let object_path: ObjectPath<Box<dyn ObjectStore>> = (object_store, store_path).into();
 
         rt.block_on(async {
@@ -287,6 +298,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[allow(clippy::too_many_arguments)]
     fn read_cloud_f64(
         url: &str,
+        options: HashMap<&str, String>,
         iid_count: usize,
         sid_count: usize,
         is_a1_counted: bool,
@@ -307,7 +319,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
         let url = Url::parse(url).unwrap(); // cmk return a BedReader URL parse error
         let (object_store, store_path): (Box<dyn ObjectStore>, StorePath) =
-            object_store::parse_url(&url).unwrap(); // cmk return a BedReader URL parse error
+            object_store::parse_url_opts(&url,options).unwrap(); // cmk return a BedReader URL parse error
         let object_path: ObjectPath<Box<dyn ObjectStore>> = (object_store, store_path).into();
 
         rt.block_on(async {

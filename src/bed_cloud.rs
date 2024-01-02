@@ -9,7 +9,7 @@ use ndarray as nd;
 use object_store::delimited::newline_delimited_stream;
 use object_store::local::LocalFileSystem;
 use object_store::path::Path as StorePath;
-use object_store::ObjectStore;
+use object_store::{ObjectStore, ObjectMeta};
 use object_store::{GetOptions, GetResult};
 use std::cmp::max;
 use std::collections::HashSet;
@@ -168,6 +168,7 @@ fn convert_negative_sid_index(
 
 #[allow(clippy::too_many_arguments)]
 #[allow(clippy::similar_names)]
+#[inline(never)] // cmk remove this
 async fn internal_read_no_alloc<TVal: BedVal, TObjectStore>(
     object_path: &ObjectPath<TObjectStore>,
     size: usize,
@@ -382,13 +383,31 @@ where
     I: Into<ObjectPath<TObjectStore>>,
 {
     let object_path = object_path.into();
+
+    let object_store = object_path.object_store.clone();
+    let path: &StorePath = &object_path.path;
+    let object_meta  = object_store
+        .head(path)
+        .await
+        .map_err(|e| Box::new(BedErrorPlus::from(e)));
+    let object_meta: ObjectMeta = object_meta?;
+    let size: usize = object_meta.size;
+
+
     let get_options = GetOptions {
         range: Some(0..CB_HEADER_U64 as usize),
         ..Default::default()
     };
-    let get_result = object_path.get_opts(get_options).await?;
+    let object_store = object_path.object_store.clone();
+    let path: &StorePath = &object_path.path;
+    let get_result  = object_store
+        .get_opts(path, get_options)
+        .await
+        .map_err(|e| Box::new(BedErrorPlus::from(e)));
+    let get_result: GetResult = get_result?;
+    // cmk report bug: get_opts should return a meta with the size of the object, but instead returns the size of the range.
+    // cmk report bug: This is with AWS. With local, it returns the size of the object.
 
-    let size: usize = get_result.meta.size;
 
     let bytes = get_result.bytes().await.map_err(BedErrorPlus::from)?;
 

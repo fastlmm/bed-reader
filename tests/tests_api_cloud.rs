@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::sync::Arc;
 
@@ -2560,7 +2561,7 @@ async fn object_path_extension() -> Result<(), Box<BedErrorPlus>> {
 
 // cmk requires aws credentials
 #[tokio::test]
-async fn s3() -> Result<(), Box<BedErrorPlus>> {
+async fn s3_cloud() -> Result<(), Box<BedErrorPlus>> {
     // cmk too many unwraps
     use rusoto_credential::{ProfileProvider, ProvideAwsCredentials};
     let credentials = ProfileProvider::new().unwrap().credentials().await.unwrap();
@@ -2579,6 +2580,8 @@ async fn s3() -> Result<(), Box<BedErrorPlus>> {
     assert_eq!(object_path.size().await?, 1_250_003);
     Ok(())
 }
+
+
 
 #[cfg(test)]
 fn pathbuf_to_file_url(path: impl AsRef<std::path::Path>) -> Result<Url, url::ParseError> {
@@ -2616,5 +2619,61 @@ async fn dyn_cloud() -> Result<(), Box<BedErrorPlus>> {
         &nd::array![[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]],
     );
 
+    Ok(())
+}
+
+// cmk requires aws credentials
+#[tokio::test]
+async fn s3_url_cloud() -> Result<(), Box<BedErrorPlus>> {
+    // cmk too many unwraps
+    use rusoto_credential::{ProfileProvider, ProvideAwsCredentials};
+    let credentials = ProfileProvider::new().unwrap().credentials().await.unwrap();
+    let url = "s3://bedreader/v1/toydata.5chrom.bed";
+    // let url = "file:///O:/programs/br/bed_reader/tests/data/toydata.5chrom.bed";
+    let cloud_options: HashMap<&str, &str> = [
+        ("aws_access_key_id", credentials.aws_access_key_id()),
+        ("aws_secret_access_key", credentials.aws_secret_access_key()),
+        ("aws_region", "us-west-2"),
+    ].iter().cloned().collect();
+
+    let url = Url::parse(url).unwrap(); // cmk return a BedReader URL parse error
+    let (object_store, store_path): (Box<dyn ObjectStore>, StorePath) =
+        object_store::parse_url_opts(&url, cloud_options).unwrap(); // cmk return a BedReader URL parse error/
+    // print!("{:?}", object_store);
+    // print!("{:?}", store_path);
+    // // let store_path: StorePath = "/v1/toydata.5chrom.bed".into();
+    let object_path: ObjectPath<Box<dyn ObjectStore>> = (object_store, store_path).into();
+    // assert_eq!(object_path.size().await?, 1_250_003);
+
+    let mut bed_cloud = BedCloud::new(object_path).await?;
+    let val = bed_cloud.read::<i8>().await?;
+    assert_eq!(val.shape(), &[500, 10_000]);
+
+    Ok(())
+}
+
+
+// cmk requires aws credentials
+#[tokio::test]
+async fn s3_play_cloud() -> Result<(), Box<BedErrorPlus>> {
+    // cmk too many unwraps
+    use rusoto_credential::{ProfileProvider, ProvideAwsCredentials};
+    let credentials = ProfileProvider::new().unwrap().credentials().await.unwrap();
+
+    let url = "s3://bedreader/v1/toydata.5chrom.bed";
+
+    let s3 = AmazonS3Builder::new()
+        .with_region("us-west-2")
+        .with_url(url)
+        .with_access_key_id(credentials.aws_access_key_id())
+        .with_secret_access_key(credentials.aws_secret_access_key())
+        .build()
+        .unwrap(); // cmk unwrap
+    print!("{:?}", s3);
+
+    // cmk should we accept a string as a Path?
+    let store_path = StorePath::parse("/v1/toydata.5chrom.bed").unwrap();
+    let object_path = ObjectPath::from((s3, store_path));
+    assert_eq!(object_path.size().await?, 1_250_003);
     Ok(())
 }
