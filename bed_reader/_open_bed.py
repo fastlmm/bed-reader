@@ -88,9 +88,8 @@ class open_bed:
 
     Parameters
     ----------
-    cmk update docs
-    filepath: pathlib.Path or str
-        File path to the .bed file.
+    location: pathlib.Path or str
+        File path or URL to the .bed file.
     iid_count: None or int, optional
         Number of individuals (samples) in the .bed file.
         The default (``iid_count=None``) finds the number
@@ -130,12 +129,20 @@ class open_bed:
     skip_format_check: bool, optional
         False (default) to immediately check for expected starting bytes in
         the .bed file. True to delay the check until (and if) data is read.
-    fam_filepath: pathlib.Path or str, optional
+    fam_location: pathlib.Path or str or URL, optional
         Path to the file containing information about each individual (sample).
         Defaults to replacing the .bed file’s suffix with .fam.
-    bim_filepath: pathlib.Path or str, optional
+    bim_location: pathlib.Path or str URL, optional
         Path to the file containing information about each SNP (variant).
         Defaults to replacing the .bed file’s suffix with .bim.
+    cloud_options: dict, optional
+        A dictionary of options for reading from cloud storage. The default is an empty.
+    filepath: same as location
+        Deprecated. Use location instead.
+    fam_filepath: same as fam_location
+        Deprecated. Use fam_location instead.
+    bim_filepath: same as bim_location
+        Deprecated. Use bim_location instead.
 
     Returns
     -------
@@ -205,6 +212,28 @@ class open_bed:
         None
 
     See the :meth:`read` for details of reading batches via slicing and fancy indexing.
+
+    You can read from cloud storage via a `special URL <https://docs.rs/object_store/latest/object_store/>`_.
+
+    .. doctest::
+
+        >>> from bed_reader import open_bed
+        >>>
+        >>> # Somehow, get your AWS credentials
+        >>> import configparser, os
+        >>> config = configparser.ConfigParser()
+        >>> _ = config.read(os.path.expanduser("~/.aws/credentials"))
+
+        >>> # Create a dictionary with your AWS credentials and the AWS region.
+        >>> cloud_options = {
+        ...     "aws_access_key_id": config["default"].get("aws_access_key_id"),
+        ...     "aws_secret_access_key": config["default"].get("aws_secret_access_key"),
+        ...     "aws_region": "us-west-2"}
+
+        >>> # Open the bed file with a URL and any needed cloud options, then use as before.
+        >>> with open_bed("s3://bedreader/v1/toydata.5chrom.bed", cloud_options=cloud_options) as bed:
+        ...     val = bed.read(np.s_[:10, :10])
+        ...     assert val[0, 0] == 1.0
 
     """
 

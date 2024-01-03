@@ -969,6 +969,25 @@ def test_s3(shared_datadir):
         assert val.shape == (500, 10_000)
 
 
+def test_s3_example():
+    # Somehow, get your AWS credentials
+    config = configparser.ConfigParser()
+    _ = config.read(os.path.expanduser("~/.aws/credentials"))
+
+    # Create a dictionary with your AWS credentials and the AWS region.
+    cloud_options = {
+        "aws_access_key_id": config["default"].get("aws_access_key_id"),
+        "aws_secret_access_key": config["default"].get("aws_secret_access_key"),
+        "aws_region": "us-west-2"}
+
+    # Open the bed file with a URL and any needed cloud options, then use as before.
+    with open_bed("s3://bedreader/v1/toydata.5chrom.bed", cloud_options=cloud_options) as bed:
+        val = bed.read(np.s_[:10, :10])
+        assert val[0, 0] == 1.0
+
+    # See https://docs.rs/object_store/latest/object_store/ for hints on creating URLs for other cloud storage providers.
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
