@@ -15,7 +15,7 @@ def test_cloud_read1(shared_datadir):
     import math
 
     file = shared_datadir / "plink_sim_10s_100v_10pmiss.bed"
-    file = "file:///" + str(file.as_posix())
+    file = "file://" + str(file.as_posix())
 
     with open_bed(file) as bed:
         assert bed.iid_count == 10
@@ -34,7 +34,7 @@ def test_cloud_read1(shared_datadir):
 
 def test_cloud_write(tmp_path, shared_datadir):
     in_file = shared_datadir / "plink_sim_10s_100v_10pmiss.bed"
-    in_file = "file:///" + str(in_file.as_posix())
+    in_file = "file://" + str(in_file.as_posix())
 
     out_file = tmp_path / "out.bed"
     with open_bed(in_file) as bed:
@@ -85,7 +85,7 @@ def test_cloud_write(tmp_path, shared_datadir):
 
 
 def test_cloud_overrides(shared_datadir):
-    file = "file:///" + str((shared_datadir / "some_missing.bed").as_posix())
+    file = "file://" + str((shared_datadir / "some_missing.bed").as_posix())
     with open_bed(file) as bed:
         fid = bed.fid
         iid = bed.iid
@@ -168,7 +168,7 @@ def test_cloud_overrides(shared_datadir):
 
 def file_to_url(file):
     file = Path(file)
-    return "file:///" + str(file.as_posix())
+    return "file://" + str(file.as_posix())
 
 
 def test_cloud_str(shared_datadir):
