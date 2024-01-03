@@ -929,7 +929,7 @@ def load_aws_credentials(profile_name="default"):
     :param profile_name: Name of the profile to load. Defaults to 'default'.
     :return: A dictionary with 'aws_access_key_id' and 'aws_secret_access_key'.
     """
-    aws_credentials_file = os.path.expanduser("~/cmk.aws/credentials")
+    aws_credentials_file = os.path.expanduser("~/.aws/credentials")
 
     config = configparser.ConfigParser()
     config.read(aws_credentials_file)
@@ -952,7 +952,6 @@ def test_s3(shared_datadir):
         assert val.shape == (500, 10_000)
 
     # file url
-    # cmk is the 3rd "///" only for Windows? test on linux
     file = "file://" + str(file.as_posix())
     with open_bed(file) as bed:
         val = bed.read(dtype="int8")
