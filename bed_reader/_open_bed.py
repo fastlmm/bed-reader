@@ -1,12 +1,13 @@
-from itertools import takewhile, repeat
 import logging
 import multiprocessing
 import os
 from dataclasses import dataclass
+from io import BytesIO
+from itertools import repeat, takewhile
 from pathlib import Path
 from typing import Any, List, Mapping, Optional, Union
-from urllib.parse import urlparse, ParseResult as UrlParseResult
-from io import BytesIO
+from urllib.parse import ParseResult as UrlParseResult
+from urllib.parse import urlparse
 
 import numpy as np
 
@@ -15,7 +16,16 @@ try:
 except ImportError:
     sparse = None
 
-from .bed_reader import read_f32, read_f64, read_i8, read_cloud_i8, read_cloud_f32, read_cloud_f64, url_to_bytes, check_file_cloud  # type: ignore
+from .bed_reader import (  # type: ignore
+    check_file_cloud,
+    read_cloud_f32,
+    read_cloud_f64,
+    read_cloud_i8,
+    read_f32,
+    read_f64,
+    read_i8,
+    url_to_bytes,
+)
 
 
 # https://stackoverflow.com/questions/845058/how-to-get-line-count-of-a-large-file-cheaply-in-python
@@ -249,15 +259,18 @@ class open_bed:
         fam_location: Union[str, Path, UrlParseResult] = None,
         bim_location: Union[str, Path, UrlParseResult] = None,
         cloud_options: Mapping[str, str] = {},
-
         # accept old keywords
         filepath: Union[str, Path] = None,
         fam_filepath: Union[str, Path] = None,
         bim_filepath: Union[str, Path] = None,
     ):
         location = self._combined(location, filepath, "location", "filepath")
-        fam_location = self._combined(fam_location, fam_filepath, "fam_location", "fam_filepath")
-        bim_location = self._combined(bim_location, bim_filepath, "bim_location", "bim_filepath")
+        fam_location = self._combined(
+            fam_location, fam_filepath, "fam_location", "fam_filepath"
+        )
+        bim_location = self._combined(
+            bim_location, bim_filepath, "bim_location", "bim_filepath"
+        )
 
         self.location = self._path_or_url(location)
         self.cloud_options = cloud_options
@@ -1085,14 +1098,18 @@ class open_bed:
                 if suffix == "fam":
                     if self.property_item("iid") is None:
                         # ... unless user doesn't want iid
-                        file_bytes = bytes(url_to_bytes(location.geturl(), self.cloud_options))
+                        file_bytes = bytes(
+                            url_to_bytes(location.geturl(), self.cloud_options)
+                        )
                         count = _rawincount(BytesIO(file_bytes))
                     else:
                         count = len(self.iid)
                 elif suffix == "bim":
                     if self.property_item("sid") is None:
                         # ... unless user doesn't want sid
-                        file_bytes = bytes(url_to_bytes(location.geturl(), self.cloud_options))
+                        file_bytes = bytes(
+                            url_to_bytes(location.geturl(), self.cloud_options)
+                        )
                         count = _rawincount(BytesIO(file_bytes))
                     else:
                         count = len(self.sid)
@@ -1285,7 +1302,9 @@ class open_bed:
         assert len(usecolsdict) > 0  # real assert
 
         if self._is_url(property_location):
-            file_bytes = bytes(url_to_bytes(property_location.geturl(), self.cloud_options))
+            file_bytes = bytes(
+                url_to_bytes(property_location.geturl(), self.cloud_options)
+            )
             if len(file_bytes) == 0:
                 columns, row_count = [], 0
             else:  # note similar code below

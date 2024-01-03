@@ -7,8 +7,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from bed_reader import open_bed, to_bed, subset_f64_f64
-from bed_reader.tests.test_open_bed import setting_generator, reference_val
+from bed_reader import open_bed, subset_f64_f64, to_bed
+from bed_reader.tests.test_open_bed import reference_val, setting_generator
 
 
 def test_cloud_read1(shared_datadir):
@@ -978,10 +978,13 @@ def test_s3_example():
     cloud_options = {
         "aws_access_key_id": config["default"].get("aws_access_key_id"),
         "aws_secret_access_key": config["default"].get("aws_secret_access_key"),
-        "aws_region": "us-west-2"}
+        "aws_region": "us-west-2",
+    }
 
     # Open the bed file with a URL and any needed cloud options, then use as before.
-    with open_bed("s3://bedreader/v1/toydata.5chrom.bed", cloud_options=cloud_options) as bed:
+    with open_bed(
+        "s3://bedreader/v1/toydata.5chrom.bed", cloud_options=cloud_options
+    ) as bed:
         val = bed.read(np.s_[:10, :10])
         assert val[0, 0] == 1.0
 
