@@ -934,7 +934,7 @@ def load_aws_credentials(profile_name="default"):
     config = configparser.ConfigParser()
     config.read(aws_credentials_file)
 
-    if profile_name in config:
+    if profile_name not in config:
         return None
 
     credentials = config[profile_name]
@@ -953,7 +953,7 @@ def test_s3(shared_datadir):
 
     # file url
     # cmk is the 3rd "///" only for Windows? test on linux
-    file = "file:///" + str(file.as_posix())
+    file = "file://" + str(file.as_posix())
     with open_bed(file) as bed:
         val = bed.read(dtype="int8")
         assert val.shape == (500, 10_000)
