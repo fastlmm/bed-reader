@@ -296,7 +296,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         create_pool(num_threads)?.install(|| {
             impute_and_zero_mean_snps(
                 &mut val.view_mut(),
-                dist,
+                &dist,
                 apply_in_place,
                 use_stats,
                 &mut stats.view_mut(),
@@ -333,7 +333,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         create_pool(num_threads)?.install(|| {
             impute_and_zero_mean_snps(
                 &mut val.view_mut(),
-                dist,
+                &dist,
                 apply_in_place,
                 use_stats,
                 &mut stats.view_mut(),

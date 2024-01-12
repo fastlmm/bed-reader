@@ -946,7 +946,7 @@ fn bed_builder() -> Result<(), Box<BedErrorPlus>> {
 #[test]
 fn negative_indexing() -> Result<(), Box<BedErrorPlus>> {
     let file_name = sample_bed_file("small.bed")?;
-    let mut bed = Bed::new(&file_name)?;
+    let mut bed = Bed::new(file_name)?;
     // println!("{:?}", bed.read::<f64>()?);
     // [[1.0, 0.0, NaN, 0.0],
     // [2.0, 0.0, NaN, 2.0],

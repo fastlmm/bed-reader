@@ -1,7 +1,7 @@
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [package]
-version = "1.0.0"
+version = "1.0.1-beta.1"
 name = "bed-reader"
 description = "Read and write the PLINK BED format, simply and efficiently."
 repository = "https://github.com/fastlmm/bed-reader"
@@ -29,7 +29,7 @@ crate-type = ["cdylib", "rlib"]
 [features]
 # https://github.com/PyO3/pyo3/discussions/2271
 # https://pyo3.rs/latest/faq.html#i-cant-run-cargo-test-or-i-cant-build-in-a-cargo-workspace-im-having-linker-issues-like-symbol-not-found-or-undefined-reference-to-_pyexc_systemerror
-extension-module = ["pyo3/extension-module"]
+extension-module = ["pyo3/extension-module", "pyo3-asyncio"]
 default = ["extension-module"]
 
 [dependencies]
@@ -43,7 +43,10 @@ approx = "0.5.1"
 statrs = "0.16.0"
 byteorder = { version = "1.4.3", default-features = false }
 pyo3 = { version = "0.20.0", features = ["extension-module"], optional = true }
-dpc-pariter = "0.4.0"                                                           # //  pariter = "0.5.1"
+pyo3-asyncio = { version = "0.20.0", features = [
+    "tokio-runtime",
+], optional = true }
+dpc-pariter = "0.4.0" # //  pariter = "0.5.1"
 derive_builder = "0.12.0"
 temp_testdir = "0.2.3"
 ureq = { version = "2.6.2", features = [] }
@@ -53,9 +56,25 @@ base16ct = { version = "0.2.0", features = ["alloc"] }
 ctor = "0.2.0"
 anyinput = { version = "0.1.6", features = ["ndarray"] }
 fetch-data = "0.1.6"
+object_store = { version = "0.8.0", features = ["aws"] }
+tokio = { version = "1.35.0", features = ["full"] }
+anyhow = "1.0.75"
+futures-util = "0.3.29"
+bytecount = "0.6.7"
+itertools = "0.12.0"
+bytes = "1.5.0"
+url = "2.5.0"
 
 [dev-dependencies]
 ndarray-rand = "0.14.0"
+anyhow = "1.0.75"
+rusoto_credential = "0.48.0"
+pyo3-asyncio = { version = "0.20.0", features = [
+    "tokio-runtime",
+    "attributes",
+    "testing",
+] }
+
 
 [build-dependencies]
 pyo3-build-config = "0.20.0"
