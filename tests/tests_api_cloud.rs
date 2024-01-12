@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::panic::catch_unwind;
 use std::sync::Arc;
 
 use bed_reader::allclose;
@@ -23,6 +24,7 @@ use object_store::aws::AmazonS3Builder;
 use object_store::local::LocalFileSystem;
 use object_store::path::Path as StorePath;
 use object_store::ObjectStore;
+use tokio::runtime;
 use url::Url;
 
 // cmk see https://github.com/apache/arrow-rs/tree/master/object_store
@@ -665,276 +667,213 @@ async fn into_iter_cloud() -> Result<(), Box<BedErrorPlus>> {
 }
 
 // cmk need to find a way to test that doesn't require capturing panics
-// async fn rt1_cloud<R>(range_thing: R) -> Result<(), Box<BedErrorPlus>>
-// where
-//     R: std::ops::RangeBounds<usize>
-//         + std::fmt::Debug
-//         + Clone
-//         + std::slice::SliceIndex<[isize], Output = [isize]>
-//         + Send // Added Send trait for async compatibility
-//         + 'static, // Required for the task to be 'static
-// {
-//     println!("Running {:?}", &range_thing);
+fn rt1_cloud<R>(
+    range_thing: R,
+) -> Result<Result<nd::Array2<i8>, Box<BedErrorPlus>>, Box<BedErrorPlus>>
+where
+    R: std::ops::RangeBounds<usize>
+        + std::fmt::Debug
+        + Clone
+        + std::slice::SliceIndex<[isize], Output = [isize]>
+        + std::panic::RefUnwindSafe,
+{
+    println!("Running {:?}", &range_thing);
 
-//     let task = task::spawn(async move {
-//         let object_path = sample_bed_object_path("toydata.5chrom.bed")?;
-//         let mut bed_cloud = BedCloud::new(object_path).await.unwrap();
-//         let all: Vec<isize> = (0..(bed_cloud.iid_count().await.unwrap() as isize)).collect();
-//         let iid_index: &[isize] = &all[range_thing.clone()];
+    let result1 = catch_unwind(|| {
+        let rt = runtime::Runtime::new()?;
 
-//         ReadOptions::builder()
-//             .iid_index(iid_index)
-//             .i8()
-//             .read_cloud(&mut bed_cloud)
-//             .await
-//             .map(|_| ()) // Convert Ok(_) to Ok(())
-//             .map_err(|e| e.into())
-//     });
-//     match task.await {
-//         Err(_) => Err(BedError::PanickedThread().into()), // Task panicked
-//         Ok(Ok(_)) => Ok(()),                              // Success path
-//         Ok(Err(e)) => Err(e),                             // Error from within the async block
-//     }
-// }
+        rt.block_on(async {
+            let object_path = sample_bed_object_path("toydata.5chrom.bed")?;
+            let mut bed_cloud = BedCloud::new(object_path).await.unwrap();
+            let all: Vec<isize> = (0..(bed_cloud.iid_count().await.unwrap() as isize)).collect();
+            let iid_index: &[isize] = &all[range_thing.clone()];
 
-// async fn rt2_cloud(range_thing: bed_reader::Index) -> Result<(), Box<BedErrorPlus>> {
-//     println!("Running {:?}", &range_thing);
-//     let object_path = sample_bed_object_path("toydata.5chrom.bed")?;
+            ReadOptions::builder()
+                .iid_index(iid_index)
+                .i8()
+                .read_cloud(&mut bed_cloud)
+                .await
+        })
+    });
+    match result1 {
+        Err(_) => Err(BedError::PanickedThread().into()),
+        Ok(bed_result) => Ok(bed_result),
+    }
+}
 
-//     let task = task::spawn(async move {
-//         let mut bed_cloud = BedCloud::new(object_path).await.unwrap();
-//         ReadOptions::builder()
-//             .iid_index(range_thing)
-//             .i8()
-//             .read_cloud(&mut bed_cloud)
-//             .await
-//             .map(|_| ()) // Convert Ok(_) to Ok(())
-//             .map_err(|e| e.into())
-//     });
+fn rt2_cloud(
+    range_thing: bed_reader::Index,
+) -> Result<Result<nd::Array2<i8>, Box<BedErrorPlus>>, Box<BedErrorPlus>> {
+    println!("Running {:?}", &range_thing);
+    let object_path = sample_bed_object_path("toydata.5chrom.bed")?;
 
-//     match task.await {
-//         Err(_) => Err(BedError::PanickedThread().into()), // Task panicked
-//         Ok(Ok(_)) => Ok(()),                              // Success path
-//         Ok(Err(e)) => Err(e),                             // Error from within the async block
-//     }
-// }
-// async fn rt23_cloud(
-//     range_thing: bed_reader::Index,
-// ) -> (
-//     Result<(), Box<BedErrorPlus>>,
-//     Result<usize, Box<BedErrorPlus>>,
-// ) {
-//     let rt2_result = rt2_cloud(range_thing.clone()).await;
-//     let rt3_result = rt3_cloud(range_thing).await;
-//     (rt2_result, rt3_result)
-// }
+    let result1 = catch_unwind(|| {
+        let rt = runtime::Runtime::new()?;
 
-// async fn rt3_cloud(range_thing: bed_reader::Index) -> Result<usize, Box<BedErrorPlus>> {
-//     println!("Running {:?}", &range_thing);
-//     let object_path = sample_bed_object_path("toydata.5chrom.bed")?;
+        rt.block_on(async {
+            let mut bed_cloud = BedCloud::new(object_path).await.unwrap();
+            ReadOptions::builder()
+                .iid_index(range_thing)
+                .i8()
+                .read_cloud(&mut bed_cloud)
+                .await
+        })
+    });
+    match result1 {
+        Err(_) => Err(BedError::PanickedThread().into()),
+        Ok(bed_result) => Ok(bed_result),
+    }
+}
 
-//     let task = task::spawn(async move {
-//         let mut bed_cloud = BedCloud::new(object_path).await.unwrap();
-//         let count = bed_cloud.iid_count().await.unwrap();
-//         range_thing.len(count).map_err(|e| e.into())
-//     });
+type RrArray2 = Result<Result<nd::Array2<i8>, Box<BedErrorPlus>>, Box<BedErrorPlus>>;
+type RrUsize = Result<Result<usize, Box<BedErrorPlus>>, Box<BedErrorPlus>>;
 
-//     match task.await {
-//         Err(_) => Err(BedError::PanickedThread().into()), // Task panicked
-//         Ok(Ok(result)) => Ok(result),                     // Success path
-//         Ok(Err(e)) => Err(e),                             // Error from within the async block
-//     }
-// }
+fn rt23_cloud(range_thing: bed_reader::Index) -> (RrArray2, RrUsize) {
+    (rt2_cloud(range_thing.clone()), rt3_cloud(range_thing))
+}
 
-// async fn nds1_cloud(range_thing: SliceInfo1) -> Result<(), Box<BedErrorPlus>> {
-//     println!("Running {:?}", &range_thing);
-//     let object_path = sample_bed_object_path("toydata.5chrom.bed")?;
+fn rt3_cloud(
+    range_thing: bed_reader::Index,
+) -> Result<Result<usize, Box<BedErrorPlus>>, Box<BedErrorPlus>> {
+    println!("Running {:?}", &range_thing);
+    let object_path = sample_bed_object_path("toydata.5chrom.bed")?;
 
-//     let task = task::spawn(async move {
-//         let mut bed_cloud = BedCloud::new(object_path).await.unwrap();
-//         let all: nd::Array1<isize> = (0..(bed_cloud.iid_count().await.unwrap() as isize)).collect();
-//         let iid_index = &all.slice(&range_thing);
+    let result1 = catch_unwind(|| {
+        let rt = runtime::Runtime::new()?;
 
-//         ReadOptions::builder()
-//             .iid_index(iid_index)
-//             .i8()
-//             .read_cloud(&mut bed_cloud)
-//             .await
-//             .map(|_| ()) // Convert Ok(_) to Ok(())
-//             .map_err(|e| e.into())
-//     });
+        rt.block_on(async {
+            let mut bed_cloud = BedCloud::new(object_path).await.unwrap();
+            let count = bed_cloud.iid_count().await.unwrap();
+            range_thing.len(count)
+        })
+    });
+    match result1 {
+        Err(_) => Err(BedError::PanickedThread().into()),
+        Ok(bed_result) => Ok(bed_result),
+    }
+}
 
-//     match task.await {
-//         Err(_) => Err(BedError::PanickedThread().into()), // Task panicked
-//         Ok(Ok(_)) => Ok(()),                              // Success path
-//         Ok(Err(e)) => Err(e),                             // Error from within the async block
-//     }
-// }
+fn nds1_cloud(
+    range_thing: SliceInfo1,
+) -> Result<Result<nd::Array2<i8>, Box<BedErrorPlus>>, Box<BedErrorPlus>> {
+    println!("Running {:?}", &range_thing);
+    let object_path = sample_bed_object_path("toydata.5chrom.bed")?;
 
-// type RrArray2 = Result<(), Box<BedErrorPlus>>;
-// type RrUsize = Result<usize, Box<BedErrorPlus>>;
+    let result1 = catch_unwind(|| {
+        let rt = runtime::Runtime::new()?;
 
-// fn assert_same_result(result1: RrArray2, result23: (RrArray2, RrUsize)) {
-//     let result2 = result23.0;
-//     let result3 = result23.1;
+        rt.block_on(async {
+            let mut bed_cloud = BedCloud::new(object_path).await.unwrap();
+            let all: nd::Array1<isize> =
+                (0..(bed_cloud.iid_count().await.unwrap() as isize)).collect();
+            let iid_index = &all.slice(&range_thing);
 
-//     let err1 = is_err(&result1);
-//     let err2 = is_err(&result2);
-//     let err3 = is_err_usize(&result3);
+            ReadOptions::builder()
+                .iid_index(iid_index)
+                .i8()
+                .read_cloud(&mut bed_cloud)
+                .await
+        })
+    });
+    match result1 {
+        Err(_) => Err(BedError::PanickedThread().into()),
+        Ok(bed_result) => Ok(bed_result),
+    }
+}
 
-//     if err1 || err2 || err3 {
-//         if !err1 || !err2 || !err3 {
-//             println!("Result1: {:?}", result1);
-//             println!("Result2: {:?}", result2);
-//             println!("Result3: {:?}", result3);
-//             panic!("all should panic/error the same");
-//         }
-//         return;
-//     }
+fn is_err2<T>(result_result: &Result<Result<T, Box<BedErrorPlus>>, Box<BedErrorPlus>>) -> bool {
+    !matches!(result_result, Ok(Ok(_)))
+}
 
-//     let result1 = result1.unwrap();
-//     let result2 = result2.unwrap();
-//     let result3 = result3.unwrap();
-//     println!("Result1: {:?}", result1);
-//     println!("Result2: {:?}", result2);
-//     println!("Result3: {}", result3);
-//     // assert!(
-//     //     allclose(&result1.view(), &result2.view(), 0, true),
-//     //     "Arrays not close"
-//     // );
-//     // assert!(
-//     //     result1.dim().0 == result3,
-//     //     "Array length and usize value not the same"
-//     // );
-// }
+fn assert_same_result(result1: RrArray2, result23: (RrArray2, RrUsize)) {
+    let result2 = result23.0;
+    let result3 = result23.1;
+    let err1 = is_err2(&result1);
+    let err2 = is_err2(&result2);
+    let err3 = is_err2(&result3);
 
-// fn is_err<T>(result: &Result<T, Box<BedErrorPlus>>) -> bool {
-//     result.is_err()
-// }
+    if err1 || err2 || err3 {
+        if !err1 || !err2 || !err3 {
+            println!("{result1:?}");
+            println!("{result2:?}");
+            println!("{result3:?}");
+            panic!("all should panic/error the same");
+        }
+        return;
+    }
 
-// fn is_err_usize(result: &Result<usize, Box<BedErrorPlus>>) -> bool {
-//     result.is_err()
-// }
+    let result1 = result1.unwrap().unwrap();
+    let result2 = result2.unwrap().unwrap();
+    let result3 = result3.unwrap().unwrap();
+    println!("{result1:?}");
+    println!("{result2:?}");
+    println!("{result3:?}");
+    assert!(
+        allclose(&result1.view(), &result2.view(), 0, true),
+        "not close"
+    );
+    assert!(result1.dim().0 == result3, "not same length");
+}
 
-// #[tokio::test]
-// #[allow(clippy::reversed_empty_ranges)]
-// async fn range_same_cloud() -> Result<(), Box<BedErrorPlus>> {
-//     let a = rt1_cloud(3..0).await;
-//     println!("{:?}", a);
-//     let b = rt23_cloud((3..0).into()).await;
-//     println!("{:?}", b);
+#[test]
+#[allow(clippy::reversed_empty_ranges)]
+fn range_same_cloud() -> Result<(), Box<BedErrorPlus>> {
+    let a = rt1_cloud(3..0);
+    println!("{:?}", a);
+    let b = rt23_cloud((3..0).into());
+    println!("{:?}", b);
 
-//     assert_same_result(rt1_cloud(3..0).await, rt23_cloud((3..0).into()).await);
-//     assert_same_result(rt1_cloud(1000..).await, rt23_cloud((1000..).into()).await);
+    assert_same_result(rt1_cloud(3..0), rt23_cloud((3..0).into()));
+    assert_same_result(rt1_cloud(1000..), rt23_cloud((1000..).into()));
 
-//     assert_same_result(rt1_cloud(..).await, rt23_cloud((..).into()).await);
-//     assert_same_result(rt1_cloud(..3).await, rt23_cloud((..3).into()).await);
-//     assert_same_result(rt1_cloud(..=3).await, rt23_cloud((..=3).into()).await);
-//     assert_same_result(rt1_cloud(1..).await, rt23_cloud((1..).into()).await);
-//     assert_same_result(rt1_cloud(1..3).await, rt23_cloud((1..3).into()).await);
-//     assert_same_result(rt1_cloud(1..=3).await, rt23_cloud((1..=3).into()).await);
-//     assert_same_result(rt1_cloud(2..=2).await, rt23_cloud((2..=2).into()).await);
-//     Ok(())
-// }
+    assert_same_result(rt1_cloud(..), rt23_cloud((..).into()));
+    assert_same_result(rt1_cloud(..3), rt23_cloud((..3).into()));
+    assert_same_result(rt1_cloud(..=3), rt23_cloud((..=3).into()));
+    assert_same_result(rt1_cloud(1..), rt23_cloud((1..).into()));
+    assert_same_result(rt1_cloud(1..3), rt23_cloud((1..3).into()));
+    assert_same_result(rt1_cloud(1..=3), rt23_cloud((1..=3).into()));
+    assert_same_result(rt1_cloud(2..=2), rt23_cloud((2..=2).into()));
+    Ok(())
+}
 
-// #[tokio::test]
-// async fn nd_slice_same_cloud() -> Result<(), Box<BedErrorPlus>> {
-//     assert_same_result(
-//         nds1_cloud(s![1000..]).await,
-//         rt23_cloud(s![1000..].into()).await,
-//     );
-//     assert_same_result(
-//         nds1_cloud(s![..1000]).await,
-//         rt23_cloud(s![..1000].into()).await,
-//     );
-//     assert_same_result(
-//         nds1_cloud(s![999..1000]).await,
-//         rt23_cloud(s![999..1000].into()).await,
-//     );
-//     assert_same_result(
-//         nds1_cloud(s![-1000..]).await,
-//         rt23_cloud(s![-1000..].into()).await,
-//     );
-//     assert_same_result(
-//         nds1_cloud(s![..-1000]).await,
-//         rt23_cloud(s![..-1000].into()).await,
-//     );
+#[test]
+fn nd_slice_same_cloud() -> Result<(), Box<BedErrorPlus>> {
+    assert_same_result(nds1_cloud(s![1000..]), rt23_cloud(s![1000..].into()));
+    assert_same_result(nds1_cloud(s![..1000]), rt23_cloud(s![..1000].into()));
+    assert_same_result(nds1_cloud(s![999..1000]), rt23_cloud(s![999..1000].into()));
+    assert_same_result(nds1_cloud(s![-1000..]), rt23_cloud(s![-1000..].into()));
+    assert_same_result(nds1_cloud(s![..-1000]), rt23_cloud(s![..-1000].into()));
 
-//     #[allow(clippy::reversed_empty_ranges)]
-//     assert_same_result(
-//         nds1_cloud(s![-999..-1000]).await,
-//         rt23_cloud(s![-999..-1000].into()).await,
-//     );
-//     #[allow(clippy::reversed_empty_ranges)]
-//     assert_same_result(
-//         nds1_cloud(s![3..0]).await,
-//         rt23_cloud(s![3..0].into()).await,
-//     );
-//     #[allow(clippy::reversed_empty_ranges)]
-//     assert_same_result(
-//         nds1_cloud(s![-1..-2]).await,
-//         rt23_cloud(s![-1..-2].into()).await,
-//     );
+    #[allow(clippy::reversed_empty_ranges)]
+    assert_same_result(
+        nds1_cloud(s![-999..-1000]),
+        rt23_cloud(s![-999..-1000].into()),
+    );
+    #[allow(clippy::reversed_empty_ranges)]
+    assert_same_result(nds1_cloud(s![3..0]), rt23_cloud(s![3..0].into()));
+    #[allow(clippy::reversed_empty_ranges)]
+    assert_same_result(nds1_cloud(s![-1..-2]), rt23_cloud(s![-1..-2].into()));
 
-//     assert_same_result(
-//         nds1_cloud(s![..-3]).await,
-//         rt23_cloud(s![..-3].into()).await,
-//     );
-//     assert_same_result(
-//         nds1_cloud(s![..=-3]).await,
-//         rt23_cloud(s![..=-3].into()).await,
-//     );
-//     assert_same_result(
-//         nds1_cloud(s![-1..]).await,
-//         rt23_cloud(s![-1..].into()).await,
-//     );
-//     assert_same_result(
-//         nds1_cloud(s![-3..-1]).await,
-//         rt23_cloud(s![-3..-1].into()).await,
-//     );
-//     assert_same_result(
-//         nds1_cloud(s![-3..=-1]).await,
-//         rt23_cloud(s![-3..=-1].into()).await,
-//     );
-//     assert_same_result(
-//         nds1_cloud(s![-2..=-2]).await,
-//         rt23_cloud(s![-2..=-2].into()).await,
-//     );
+    assert_same_result(nds1_cloud(s![..-3]), rt23_cloud(s![..-3].into()));
+    assert_same_result(nds1_cloud(s![..=-3]), rt23_cloud(s![..=-3].into()));
+    assert_same_result(nds1_cloud(s![-1..]), rt23_cloud(s![-1..].into()));
+    assert_same_result(nds1_cloud(s![-3..-1]), rt23_cloud(s![-3..-1].into()));
+    assert_same_result(nds1_cloud(s![-3..=-1]), rt23_cloud(s![-3..=-1].into()));
+    assert_same_result(nds1_cloud(s![-2..=-2]), rt23_cloud(s![-2..=-2].into()));
 
-//     #[allow(clippy::reversed_empty_ranges)]
-//     assert_same_result(
-//         nds1_cloud(s![1..-1]).await,
-//         rt23_cloud(s![1..-1].into()).await,
-//     );
+    #[allow(clippy::reversed_empty_ranges)]
+    assert_same_result(nds1_cloud(s![1..-1]), rt23_cloud(s![1..-1].into()));
 
-//     assert_same_result(nds1_cloud(s![..]).await, rt23_cloud((s![..]).into()).await);
-//     assert_same_result(
-//         nds1_cloud(s![..3]).await,
-//         rt23_cloud((s![..3]).into()).await,
-//     );
-//     assert_same_result(
-//         nds1_cloud(s![..=3]).await,
-//         rt23_cloud((s![..=3]).into()).await,
-//     );
-//     assert_same_result(
-//         nds1_cloud(s![1..]).await,
-//         rt23_cloud((s![1..]).into()).await,
-//     );
-//     assert_same_result(
-//         nds1_cloud(s![1..3]).await,
-//         rt23_cloud((s![1..3]).into()).await,
-//     );
-//     assert_same_result(
-//         nds1_cloud(s![1..=3]).await,
-//         rt23_cloud((s![1..=3]).into()).await,
-//     );
-//     assert_same_result(
-//         nds1_cloud(s![2..=2]).await,
-//         rt23_cloud(s![2..=2].into()).await,
-//     );
+    assert_same_result(nds1_cloud(s![..]), rt23_cloud((s![..]).into()));
+    assert_same_result(nds1_cloud(s![..3]), rt23_cloud((s![..3]).into()));
+    assert_same_result(nds1_cloud(s![..=3]), rt23_cloud((s![..=3]).into()));
+    assert_same_result(nds1_cloud(s![1..]), rt23_cloud((s![1..]).into()));
+    assert_same_result(nds1_cloud(s![1..3]), rt23_cloud((s![1..3]).into()));
+    assert_same_result(nds1_cloud(s![1..=3]), rt23_cloud((s![1..=3]).into()));
+    assert_same_result(nds1_cloud(s![2..=2]), rt23_cloud(s![2..=2].into()));
 
-//     Ok(())
-// }
+    Ok(())
+}
 
 #[tokio::test]
 async fn bool_read_cloud() -> Result<(), Box<BedErrorPlus>> {
@@ -2083,7 +2022,6 @@ async fn object_path_extension() -> Result<(), Box<BedErrorPlus>> {
 // cmk requires aws credentials
 #[tokio::test]
 async fn s3_cloud() -> Result<(), Box<BedErrorPlus>> {
-    // cmk too many unwraps
     use rusoto_credential::{ProfileProvider, ProvideAwsCredentials};
     // Try to get credentials and return Ok(()) if not available
     let credentials = match ProfileProvider::new() {
@@ -2191,7 +2129,6 @@ async fn s3_url_cloud() -> Result<(), Box<BedErrorPlus>> {
 // cmk requires aws credentials
 #[tokio::test]
 async fn s3_play_cloud() -> Result<(), Box<BedErrorPlus>> {
-    // cmk too many unwraps
     use rusoto_credential::{ProfileProvider, ProvideAwsCredentials};
     // Try to get credentials and return Ok(()) if not available
     let credentials = match ProfileProvider::new() {
@@ -2210,10 +2147,10 @@ async fn s3_play_cloud() -> Result<(), Box<BedErrorPlus>> {
         .with_access_key_id(credentials.aws_access_key_id())
         .with_secret_access_key(credentials.aws_secret_access_key())
         .build()
-        .unwrap(); // cmk unwrap
+        .unwrap();
     print!("{:?}", s3);
 
-    // cmk should we accept a string as a Path?
+    // LATER should we accept a string as a Path?
     let store_path = StorePath::parse("/v1/toydata.5chrom.bed").unwrap();
     let object_path = ObjectPath::from((s3, store_path));
     assert_eq!(object_path.size().await?, 1_250_003);
