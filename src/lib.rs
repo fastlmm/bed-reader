@@ -1,9 +1,8 @@
 #![warn(missing_docs)]
-// cmk decide which of these to use
 #![warn(clippy::pedantic)]
 #![allow(
-    clippy::missing_panics_doc,
-    clippy::missing_errors_doc,
+    clippy::missing_panics_doc, // LATER: add panics docs
+    clippy::missing_errors_doc, // LATER: add errors docs
     clippy::similar_names,
     clippy::cast_possible_truncation,
     clippy::cast_possible_wrap,
@@ -3769,7 +3768,6 @@ impl From<()> for Index {
 /// for a list of expressions for selecting individuals (sample)
 /// and SNPs (variants).
 #[derive(Debug, Clone, Builder)]
-// cmk should this be Box<BedErrorPlus>?
 #[builder(build_fn(error = "Box<BedErrorPlus>"))]
 pub struct ReadOptions<TVal: BedVal> {
     /// Value to use for missing values (defaults to -127 or NaN)
@@ -3983,11 +3981,9 @@ pub struct ReadOptions<TVal: BedVal> {
     #[builder(default, setter(strip_option))]
     num_threads: Option<usize>,
 
+    // LATER: Allow this to be set with an environment variable.
     /// Maximum number of concurrent async requests (defaults to 10) --
     /// Used by `BedCloud`.
-    ///
-    /// cmk Can also be set with an environment variable.
-    /// See [Environment Variables](index.html#environment-variables).
     ///
     /// In this example, we read using only request at a time.
     /// ```
@@ -4014,11 +4010,9 @@ pub struct ReadOptions<TVal: BedVal> {
     #[builder(default, setter(strip_option))]
     max_concurrent_requests: Option<usize>,
 
+    // LATER: Allow this to be set with an environment variable.
     /// Maximum chunk size of async requests (defaults to 8_000_000 bytes) --
     /// Used by `BedCloud`.
-    ///
-    /// cmk Can also be set with an environment variable.
-    /// See [Environment Variables](index.html#environment-variables).
     ///
     /// In this example, we read using only 1_000_000 bytes per request.
     /// ```

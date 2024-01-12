@@ -1,3 +1,8 @@
+#[cfg(not(target_pointer_width = "64"))]
+compile_error!(
+    "This code requires a 64-bit target architecture because the cloud-library assumes it."
+);
+
 use anyinput::anyinput;
 use bytes::Bytes;
 use core::fmt;
@@ -156,15 +161,13 @@ fn convert_negative_sid_index(
         Ok(in_sid_i_signed as u64)
     } else if (lower_sid_count..=-1).contains(&in_sid_i_signed) {
         #[allow(clippy::cast_sign_loss)]
-        Ok((in_sid_i_signed - lower_sid_count) as u64) // cmk not sure about overflow
+        Ok((in_sid_i_signed - lower_sid_count) as u64)
     } else {
         Err(Box::new(BedErrorPlus::BedError(BedError::SidIndexTooBig(
             in_sid_i_signed,
         ))))
     }
 }
-
-// cmk somehow we must only compile if size(usize) is 64 bits.
 
 #[allow(clippy::too_many_arguments)]
 #[allow(clippy::similar_names)]
@@ -272,11 +275,7 @@ fn decode_bytes_into_columns<TVal: BedVal>(
 ) {
     for (bytes, out_sid_i) in bytes_slice.iter().zip(out_sid_i_vec.into_iter()) {
         let mut col = out_val.column_mut(out_sid_i);
-        // // cmk In parallel, decompress the iid info and put it in its column
-        // // cmk .par_bridge() // This seems faster that parallel zip
-        // .try_for_each(|(bytes_vector_result, mut col)| match bytes_vector_result {
-        //     Err(e) => Err(e),
-        //     Ok(bytes_vector) => {
+        // LATER: Consider doing this in parallel as in the non-cloud version.
         for out_iid_i in 0..iid_index.len() {
             let i_div_4 = i_div_4_array[out_iid_i];
             let i_mod_4_times_2: u8 = i_mod_4_times_2_array[out_iid_i];
@@ -455,7 +454,6 @@ where
         Ok(bed_cloud)
     }
 
-    /// cmk update docs
     /// Create [`BedCloud`](struct.BedCloud.html) from the builder.
     ///
     /// > See [`BedCloud::builder`](struct.BedCloud.html#method.builder) for more details and examples.
@@ -1223,7 +1221,7 @@ where
     /// assert!(dim == (3,4));
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
-    // cmk call these at the same time?
+    // LATER: Could these be called at the same time, async?
     pub async fn dim(&mut self) -> Result<(usize, usize), Box<BedErrorPlus>> {
         Ok((self.iid_count().await?, self.sid_count().await?))
     }
@@ -1767,52 +1765,6 @@ where
         .await
     }
 
-    /// cmk doc
-    // have read_and_fill_with_options call this
-    pub async fn read_and_fill_with_options_no_mut<TVal: BedVal>(
-        &self,
-        iid_count: usize,
-        sid_count: usize,
-        val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.,
-        read_options: &ReadOptions<TVal>,
-    ) -> Result<(), Box<BedErrorPlus>> {
-        // // must do these one-at-a-time because they mutate self to cache the results
-        // let iid_count = self.iid_count().await?;
-        // let sid_count = self.sid_count().await?;
-
-        let max_concurrent_requests =
-            compute_max_concurrent_requests(read_options.max_concurrent_requests)?;
-
-        let max_chunk_size = compute_max_chunk_size(read_options.max_chunk_size)?;
-
-        // If we already have a Vec<isize>, reference it. If we don't, create one and reference it.
-        let iid_hold = Hold::new(&read_options.iid_index, iid_count)?;
-        let iid_index = iid_hold.as_ref();
-        let sid_hold = Hold::new(&read_options.sid_index, sid_count)?;
-        let sid_index = sid_hold.as_ref();
-
-        let dim = val.dim();
-        if dim != (iid_index.len(), sid_index.len()) {
-            return Err(Box::new(
-                BedError::InvalidShape(iid_index.len(), sid_index.len(), dim.0, dim.1).into(),
-            ));
-        }
-
-        read_no_alloc(
-            &self.object_path,
-            iid_count,
-            sid_count,
-            read_options.is_a1_counted,
-            iid_index,
-            sid_index,
-            read_options.missing_value,
-            max_concurrent_requests,
-            max_chunk_size,
-            &mut val.view_mut(),
-        )
-        .await
-    }
-
     /// Read all genotype data into a preallocated array.
     ///
     /// > Also see [`ReadOptions::builder`](struct.ReadOptions.html#method.builder).
@@ -1896,122 +1848,7 @@ where
         Ok(val)
     }
 
-    /// Write genotype data with default metadata.
-    ///
-    /// > Also see [`WriteOptions::builder`](struct.WriteOptions.html#method.builder), which supports metadata and options.
-    ///
-    /// # Errors
-    /// See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
-    /// for all possible errors.
-    ///
-    /// # Example
-    /// In this example, write genotype data using default metadata.
-    /// ```ignore // cmk
-    /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, WriteOptions};
-    ///
-    /// let output_folder = temp_testdir::TempDir::default();
-    /// let output_file = output_folder.join("small.bed");
-    ///
-    /// let val = nd::array![[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]];
-    /// BedCloud::write(&val, &output_file)?;
-    ///
-    /// // If we then read the new file and list the chromosome property,
-    /// // it is an array of zeros, the default chromosome value.
-    /// let mut bed_cloud2 = BedCloud::new(&output_file)?;
-    /// println!("{:?}", bed_cloud2.chromosome().await?); // Outputs ndarray ["0", "0", "0", "0"]
-    /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), Box<BedErrorPlus>>(())
-    /// ```
-    // cmk need to do 'write'
-    // pub fn write<S: nd::Data<Elem = TVal>, TVal: BedVal>(
-    //     val: &nd::ArrayBase<S, nd::Ix2>,
-    //     path: &Path,
-    // ) -> Result<(), Box<BedErrorPlus>> {
-    //     WriteOptions::builder(path).write(val)
-    // }
-
-    /// Given an 2D array of genotype data and a [`WriteOptions`](struct.WriteOptionsBuilder.html), write to a .bed file.
-    ///
-    /// > Also see [`WriteOptionsBuilder::write`](struct.WriteOptionsBuilder.html#method.write), which creates
-    /// > a [`WriteOptions`](struct.WriteOptionsBuilder.html) and writes to file in one step.
-    ///
-    /// # Example
-    /// ```ignore // cmk
-    /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, WriteOptions};
-    ///
-    /// let val = nd::array![
-    ///     [1.0, 0.0, f64::NAN, 0.0],
-    ///     [2.0, 0.0, f64::NAN, 2.0],
-    ///     [0.0, 1.0, 2.0, 0.0]
-    /// ];
-    ///
-    /// let output_folder = temp_testdir::TempDir::default();
-    /// let output_file = output_folder.join("small.bed");
-    /// let write_options = WriteOptions::builder(output_file)
-    ///     .iid(["iid1", "iid2", "iid3"])
-    ///     .sid(["sid1", "sid2", "sid3", "sid4"])
-    ///     .build(3,4)?;
-    ///
-    /// BedCloud::write_with_options(&val, &write_options)?;
-    /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), Box<BedErrorPlus>>(())
-    /// ```
-    // cmk need to do 'write_with_options'
-    // pub fn write_with_options<S, TVal>(
-    //     val: &nd::ArrayBase<S, nd::Ix2>,
-    //     write_options: &WriteOptions<TVal>,
-    // ) -> Result<(), Box<BedErrorPlus>>
-    // where
-    //     S: nd::Data<Elem = TVal>,
-    //     TVal: BedVal,
-    // {
-    //     let (iid_count, sid_count) = val.dim();
-    //     if iid_count != write_options.iid_count() {
-    //         return Err(BedError::InconsistentCount(
-    //             "iid".to_string(),
-    //             write_options.iid_count(),
-    //             iid_count,
-    //         )
-    //         .into());
-    //     }
-    //     if sid_count != write_options.sid_count() {
-    //         return Err(BedError::InconsistentCount(
-    //             "sid".to_string(),
-    //             write_options.sid_count(),
-    //             sid_count,
-    //         )
-    //         .into());
-    //     }
-
-    //     let num_threads = compute_num_threads(write_options.num_threads)?;
-    //     write_val(
-    //         &write_options.path,
-    //         val,
-    //         write_options.is_a1_counted,
-    //         write_options.missing_value,
-    //         num_threads,
-    //     )?;
-
-    //     if !write_options.skip_fam() {
-    //         if let Err(e) = write_options.metadata.write_fam(write_options.fam_object_path()) {
-    //             // Clean up the file
-    //             let _ = fs::remove_file(&write_options.fam_object_path);
-    //             return Err(e);
-    //         }
-    //     }
-
-    //     if !write_options.skip_bim() {
-    //         if let Err(e) = write_options.metadata.write_bim(write_options.bim_object_path()) {
-    //             // Clean up the file
-    //             let _ = fs::remove_file(&write_options.bim_object_path);
-    //             return Err(e);
-    //         }
-    //     }
-
-    //     Ok(())
-    // }
+    // LATER: Support writing to a BedCloud
 
     async fn unlazy_fam<T: FromStringArray<T>>(
         &mut self,
@@ -2227,9 +2064,9 @@ pub struct ObjectPath<TObjectStore>
 where
     TObjectStore: ObjectStore,
 {
-    /// cmk doc
+    /// An `Arc`-wrapped [`ObjectStore`], for example, an AWS S3 reader or a local file reader.
     pub object_store: Arc<TObjectStore>,
-    /// cmk doc
+    /// A [`StorePath`] that points to a file on the [`ObjectStore`].
     pub path: StorePath,
 }
 
@@ -2287,7 +2124,9 @@ where
     /// ```
     pub async fn size(&self) -> Result<usize, Box<BedErrorPlus>> {
         let get_result = self.get().await?;
-        let object_meta = &get_result.meta; // cmk good idea?
+        // LATER: See if https://github.com/apache/arrow-rs/issues/5272 if fixed in
+        // a way so that only one read is needed.
+        let object_meta = &get_result.meta;
         Ok(object_meta.size)
     }
 
