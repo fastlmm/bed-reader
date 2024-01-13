@@ -21,6 +21,7 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use url::Url;
 
 use crate::{
     check_and_precompute_iid_index, compute_max_chunk_size, compute_max_concurrent_requests,
@@ -105,11 +106,7 @@ where
         Ok(BedCloud {
             object_path: match self.object_path {
                 Some(ref value) => Clone::clone(value),
-                None => {
-                    return Result::Err(Into::into(
-                        ::derive_builder::UninitializedFieldError::from("object_path"),
-                    ));
-                }
+                None => Err(BedError::UninitializedField("object_path"))?,
             },
             fam_object_path: match self.fam_object_path {
                 Some(ref value) => Clone::clone(value),
@@ -133,19 +130,11 @@ where
             },
             metadata: match self.metadata {
                 Some(ref value) => Clone::clone(value),
-                None => {
-                    return Result::Err(Into::into(
-                        ::derive_builder::UninitializedFieldError::from("metadata"),
-                    ));
-                }
+                None => Err(BedError::UninitializedField("metadata"))?,
             },
             skip_set: match self.skip_set {
                 Some(ref value) => Clone::clone(value),
-                None => {
-                    return Result::Err(Into::into(
-                        ::derive_builder::UninitializedFieldError::from("skip_set"),
-                    ));
-                }
+                None => Err(BedError::UninitializedField("skip_set"))?,
             },
         })
     }
@@ -302,9 +291,7 @@ where
     let file_len = size as u64;
     let file_len2 = in_iid_count_div4_u64 * (in_sid_count as u64) + CB_HEADER_U64;
     if file_len != file_len2 {
-        return Err(Box::new(
-            BedError::IllFormed(object_path.into().to_string()).into(),
-        ));
+        Err(BedError::IllFormed(object_path.into().to_string()))?;
     }
     Ok((in_iid_count_div4, in_iid_count_div4_u64))
 }
@@ -368,7 +355,7 @@ where
             )
             .await?;
         }
-        _ => return Err(Box::new(BedError::BadMode(object_path.to_string()).into())),
+        _ => Err(BedError::BadMode(object_path.to_string()))?,
     };
     Ok(())
 }
@@ -405,9 +392,7 @@ where
     let bytes = get_result.bytes().await.map_err(BedErrorPlus::from)?;
 
     if (BED_FILE_MAGIC1 != bytes[0]) || (BED_FILE_MAGIC2 != bytes[1]) {
-        return Err(Box::new(
-            BedError::IllFormed(object_path.to_string()).into(),
-        ));
+        Err(BedError::IllFormed(object_path.to_string()))?;
     }
     Ok((size, bytes))
 }
@@ -1745,9 +1730,12 @@ where
 
         let dim = val.dim();
         if dim != (iid_index.len(), sid_index.len()) {
-            return Err(Box::new(
-                BedError::InvalidShape(iid_index.len(), sid_index.len(), dim.0, dim.1).into(),
-            ));
+            Err(BedError::InvalidShape(
+                iid_index.len(),
+                sid_index.len(),
+                dim.0,
+                dim.1,
+            ))?;
         }
 
         read_no_alloc(
@@ -1857,7 +1845,7 @@ where
         name: &str,
     ) -> Result<(), Box<BedErrorPlus>> {
         if self.skip_set.contains(&field_index) {
-            return Err(BedError::CannotUseSkippedMetadata(name.to_string()).into());
+            Err(BedError::CannotUseSkippedMetadata(name.into()))?;
         }
         if is_none {
             self.fam().await?;
@@ -1872,7 +1860,7 @@ where
         name: &str,
     ) -> Result<(), Box<BedErrorPlus>> {
         if self.skip_set.contains(&field_index) {
-            return Err(BedError::CannotUseSkippedMetadata(name.to_string()).into());
+            Err(BedError::CannotUseSkippedMetadata(name.into()))?;
         }
         if is_none {
             self.bim().await?;
@@ -1892,9 +1880,7 @@ where
         match self.iid_count {
             Some(iid_count) => {
                 if iid_count != count {
-                    return Err(
-                        BedError::InconsistentCount("iid".to_string(), iid_count, count).into(),
-                    );
+                    Err(BedError::InconsistentCount("iid".into(), iid_count, count))?;
                 }
             }
             None => {
@@ -1916,9 +1902,7 @@ where
         match self.sid_count {
             Some(sid_count) => {
                 if sid_count != count {
-                    return Err(
-                        BedError::InconsistentCount("sid".to_string(), sid_count, count).into(),
-                    );
+                    Err(BedError::InconsistentCount("sid".into(), sid_count, count))?;
                 }
             }
             None => {
@@ -2079,6 +2063,26 @@ where
             object_store: self.object_store.clone(),
             path: self.path.clone(),
         }
+    }
+}
+
+impl ObjectPath<Box<dyn ObjectStore>> {
+    /// cmk doc
+    pub fn from_url<I, K, V>(
+        location: &str,
+        options: I,
+    ) -> Result<ObjectPath<Box<dyn ObjectStore>>, Box<BedErrorPlus>>
+    where
+        I: IntoIterator<Item = (K, V)>,
+        K: AsRef<str>,
+        V: Into<String>,
+    {
+        let url = Url::parse(location)
+            .map_err(|e| BedError::CannotParseUrl(location.to_string(), e.to_string()))?;
+
+        let (object_store, store_path): (Box<dyn ObjectStore>, StorePath) =
+            object_store::parse_url_opts(&url, options).map_err(BedErrorPlus::from)?;
+        Ok((object_store, store_path).into())
     }
 }
 

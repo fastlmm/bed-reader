@@ -666,7 +666,6 @@ async fn into_iter_cloud() -> Result<(), Box<BedErrorPlus>> {
     Ok(())
 }
 
-// cmk need to find a way to test that doesn't require capturing panics
 fn rt1_cloud<R>(
     range_thing: R,
 ) -> Result<Result<nd::Array2<i8>, Box<BedErrorPlus>>, Box<BedErrorPlus>>
@@ -2038,9 +2037,9 @@ async fn s3_cloud() -> Result<(), Box<BedErrorPlus>> {
         .with_access_key_id(credentials.aws_access_key_id())
         .with_secret_access_key(credentials.aws_secret_access_key())
         .build()
-        .unwrap(); // cmk unwrap
+        .unwrap();
 
-    // cmk should we accept a string as a Path?
+    // LATER should we accept a string as a Path?
     let store_path = StorePath::parse("/v1/toydata.5chrom.bed").unwrap();
     let object_path = ObjectPath::from((s3, store_path));
     assert_eq!(object_path.size().await?, 1_250_003);
@@ -2089,7 +2088,6 @@ async fn dyn_cloud() -> Result<(), Box<BedErrorPlus>> {
 // cmk requires aws credentials
 #[tokio::test]
 async fn s3_url_cloud() -> Result<(), Box<BedErrorPlus>> {
-    // cmk too many unwraps
     use rusoto_credential::{ProfileProvider, ProvideAwsCredentials};
     // Try to get credentials and return Ok(()) if not available
     let credentials = match ProfileProvider::new() {
@@ -2110,12 +2108,12 @@ async fn s3_url_cloud() -> Result<(), Box<BedErrorPlus>> {
     .cloned()
     .collect();
 
-    let url = Url::parse(url).unwrap(); // cmk return a BedReader URL parse error
+    let url = Url::parse(url).unwrap();
     let (object_store, store_path): (Box<dyn ObjectStore>, StorePath) =
-        object_store::parse_url_opts(&url, cloud_options).unwrap(); // cmk return a BedReader URL parse error/
-                                                                    // print!("{:?}", object_store);
-                                                                    // print!("{:?}", store_path);
-                                                                    // // let store_path: StorePath = "/v1/toydata.5chrom.bed".into();
+        object_store::parse_url_opts(&url, cloud_options).unwrap();
+    // print!("{:?}", object_store);
+    // print!("{:?}", store_path);
+    // // let store_path: StorePath = "/v1/toydata.5chrom.bed".into();
     let object_path: ObjectPath<Box<dyn ObjectStore>> = (object_store, store_path).into();
     // assert_eq!(object_path.size().await?, 1_250_003);
 

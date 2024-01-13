@@ -114,7 +114,7 @@ use anyinput::anyinput;
 pub use bed_cloud::ObjectPath;
 pub use bed_cloud::{sample_bed_object_path, sample_object_path, sample_object_paths, BedCloud};
 use core::fmt::Debug;
-use derive_builder::{Builder, UninitializedFieldError};
+use derive_builder::Builder;
 use fetch_data::{FetchData, FetchDataError};
 use futures_util::pin_mut;
 use futures_util::stream::StreamExt;
@@ -151,7 +151,6 @@ use std::num::{ParseFloatError, ParseIntError};
 use std::ops::AddAssign;
 use std::ops::{Div, Sub};
 use thiserror::Error;
-use tokio::task::JoinError;
 mod bed_cloud;
 
 const BED_FILE_MAGIC1: u8 = 0x6C; // 0b01101100 or 'l' (lowercase 'L')
@@ -188,10 +187,10 @@ pub enum BedErrorPlus {
     #[error(transparent)]
     ParseIntError(#[from] ParseIntError),
 
-    #[allow(missing_docs)]
-    #[error(transparent)]
-    UninitializedFieldError(#[from] ::derive_builder::UninitializedFieldError),
-
+    // cmk remove this
+    // #[allow(missing_docs)]
+    // #[error(transparent)]
+    // UninitializedFieldError(#[from] ::derive_builder::UninitializedFieldError),
     #[allow(missing_docs)]
     #[error(transparent)]
     ParseFloatError(#[from] ParseFloatError),
@@ -200,17 +199,20 @@ pub enum BedErrorPlus {
     #[error(transparent)]
     FetchData(#[from] FetchDataError),
 
+    // cmk optional on cloud feature
     #[allow(missing_docs)]
     #[error(transparent)]
     ObjectStoreError(#[from] object_store::Error),
 
+    // cmk optional on cloud feature
     #[allow(missing_docs)]
     #[error(transparent)]
     ObjectStorePathError(#[from] object_store::path::Error),
 
+    // cmk optional on cloud feature
     #[allow(missing_docs)]
     #[error(transparent)]
-    JoinError(#[from] JoinError),
+    JoinError(#[from] tokio::task::JoinError),
 
     #[allow(missing_docs)]
     #[error(transparent)]
@@ -346,6 +348,14 @@ pub enum BedError {
     #[allow(missing_docs)]
     #[error("Cannot create cache directory")]
     CannotCreateCacheDir(),
+
+    #[allow(missing_docs)]
+    #[error("Cannot parse URL: '{0}': {1}")]
+    CannotParseUrl(String, String),
+
+    #[allow(missing_docs)]
+    #[error("UninitializedField: '{0}'")]
+    UninitializedField(&'static str),
 }
 
 // Trait alias
@@ -451,16 +461,19 @@ impl From<ParseFloatError> for Box<BedErrorPlus> {
     }
 }
 
-impl From<::derive_builder::UninitializedFieldError> for Box<BedErrorPlus> {
+impl From<::derive_builder::UninitializedFieldError> for BedErrorPlus {
     fn from(err: ::derive_builder::UninitializedFieldError) -> Self {
-        Box::new(BedErrorPlus::UninitializedFieldError(err))
+        BedError::UninitializedField(err.field_name()).into()
     }
 }
+
 impl From<FetchDataError> for Box<BedErrorPlus> {
     fn from(err: FetchDataError) -> Self {
         Box::new(BedErrorPlus::FetchData(err))
     }
 }
+
+// cmk00 add more
 
 #[anyinput]
 fn open_and_check(
@@ -470,9 +483,7 @@ fn open_and_check(
     let mut bytes_array: [u8; CB_HEADER_USIZE] = [0; CB_HEADER_USIZE];
     buf_reader.read_exact(&mut bytes_array)?;
     if (BED_FILE_MAGIC1 != bytes_array[0]) || (BED_FILE_MAGIC2 != bytes_array[1]) {
-        return Err(Box::new(
-            BedError::IllFormed(path_ref_to_string(path)).into(),
-        ));
+        Err(BedError::IllFormed(path_ref_to_string(path)))?;
     }
     Ok((buf_reader, bytes_array))
 }
@@ -529,21 +540,16 @@ fn try_div_4<T: Max + TryFrom<usize> + Sub<Output = T> + Div<Output = T> + Ord>(
     } else {
         0
     };
-    let Ok(in_iid_count_div4_t) = T::try_from(in_iid_count_div4) else {
-        return Err(Box::new(
-            BedError::IndexesTooBigForFiles(in_iid_count, in_sid_count).into(),
-        ));
+
+    let (Ok(in_iid_count_div4_t), Ok(in_sid_count_t)) =
+        (T::try_from(in_iid_count_div4), T::try_from(in_sid_count))
+    else {
+        Err(BedError::IndexesTooBigForFiles(in_iid_count, in_sid_count))?
     };
-    let Ok(in_sid_count_t) = T::try_from(in_sid_count) else {
-        return Err(Box::new(
-            BedError::IndexesTooBigForFiles(in_iid_count, in_sid_count).into(),
-        ));
-    };
+
     let m: T = Max::max(); // Don't know how to move this into the next line.
     if in_sid_count > 0 && (m - cb_header) / in_sid_count_t < in_iid_count_div4_t {
-        return Err(Box::new(
-            BedError::IndexesTooBigForFiles(in_iid_count, in_sid_count).into(),
-        ));
+        Err(BedError::IndexesTooBigForFiles(in_iid_count, in_sid_count))?;
     }
 
     Ok((in_iid_count_div4, in_iid_count_div4_t))
@@ -570,9 +576,7 @@ fn internal_read_no_alloc<TVal: BedVal>(
     let file_len = buf_reader.seek(SeekFrom::End(0))?;
     let file_len2 = in_iid_count_div4_u64 * (in_sid_count as u64) + CB_HEADER_U64;
     if file_len != file_len2 {
-        return Err(Box::new(
-            BedError::IllFormed(path_ref_to_string(path)).into(),
-        ));
+        Err(BedError::IllFormed(path_ref_to_string(path)))?;
     }
 
     // Check and precompute for each iid_index
@@ -597,9 +601,7 @@ fn internal_read_no_alloc<TVal: BedVal>(
             } else if (lower_sid_count..=-1).contains(in_sid_i_signed) {
                 (in_sid_count - ((-in_sid_i_signed) as usize)) as u64
             } else {
-                return Err(Box::new(BedErrorPlus::BedError(BedError::SidIndexTooBig(
-                    *in_sid_i_signed,
-                ))));
+                Err(BedError::SidIndexTooBig(*in_sid_i_signed))?
             };
 
             // Read the iid info for one snp from the disk
@@ -607,7 +609,7 @@ fn internal_read_no_alloc<TVal: BedVal>(
             let pos: u64 = in_sid_i * in_iid_count_div4_u64 + CB_HEADER_U64; // "as" and math is safe because of early checks
             buf_reader.seek(SeekFrom::Start(pos))?;
             buf_reader.read_exact(&mut bytes_vector)?;
-            Ok(bytes_vector)
+            Ok::<_, Box<BedErrorPlus>>(bytes_vector)
         })
         // Zip in the column of the output array
         .zip(out_val.axis_iter_mut(nd::Axis(1)))
@@ -774,14 +776,14 @@ where
                         } else if (use_nan && v0 != v0) || (!use_nan && v0 == missing) {
                             1
                         } else {
-                            return Err(BedError::BadValue(path_ref_to_string(path)));
+                            Err(BedError::BadValue(path_ref_to_string(path)))?
                         };
                         // Possible optimization: We could pre-compute the conversion, the division, the mod, and the multiply*2
                         let i_div_4 = iid_i / 4;
                         let i_mod_4 = iid_i % 4;
                         bytes_vector[i_div_4] |= genotype_byte << (i_mod_4 * 2);
                     }
-                    Ok(bytes_vector)
+                    Ok::<_, Box<BedErrorPlus>>(bytes_vector)
                 }
             })
             .threads(num_threads)
@@ -860,14 +862,14 @@ fn find_factor<
     if let Dist::Beta { a, b } = dist {
         // Try to create a beta dist
         let Ok(beta_dist) = Beta::new(*a, *b) else {
-            return Err(BedError::CannotCreateBetaDist(*a, *b));
+            Err(BedError::CannotCreateBetaDist(*a, *b))?
         };
 
         // Try to an f64 maf
         let mut maf = if let Some(mean_u64) = mean_s.to_f64() {
             mean_u64 / 2.0
         } else {
-            return Err(BedError::CannotConvertBetaToFromF64);
+            Err(BedError::CannotConvertBetaToFromF64)?
         };
         if maf > 0.5 {
             maf = 1.0 - maf;
@@ -910,7 +912,7 @@ fn _process_sid<
         }
         if n_observed < T::one() {
             //LATER make it work (in some form) for n of 0
-            return Err(BedError::NoIndividuals);
+            Err(BedError::NoIndividuals)?;
         }
         let mean_s = sum_s / n_observed; //compute the mean over observed individuals for the current SNP
         let mean2_s: T = sum2_s / n_observed; //compute the mean of the squared SNP
@@ -919,7 +921,7 @@ fn _process_sid<
             || (matches!(dist, Dist::Beta { a: _, b: _ })
                 && ((mean_s > two) || (mean_s < T::zero())))
         {
-            return Err(BedError::IllegalSnpMean);
+            Err(BedError::IllegalSnpMean)?;
         }
 
         let variance: T = mean2_s - mean_s * mean_s; //By the Cauchy Schwartz inequality this should always be positive
@@ -1197,9 +1199,7 @@ fn file_ata_piece<T: Float + Send + Sync + Sync + AddAssign>(
         || (col_start + nrows != col_count)
         || (col_start + ncols > col_count)
     {
-        return Err(Box::new(BedErrorPlus::BedError(
-            BedError::CannotConvertBetaToFromF64,
-        )));
+        Err(BedError::CannotConvertBetaToFromF64)?;
     }
 
     _file_ata_piece_internal(
@@ -1315,9 +1315,7 @@ fn file_aat_piece<T: Float + Sync + Send + Sync + AddAssign>(
         || (row_start + nrows != row_count)
         || (row_start + ncols > row_count)
     {
-        return Err(Box::new(BedErrorPlus::BedError(
-            BedError::CannotConvertBetaToFromF64,
-        )));
+        Err(BedError::CannotConvertBetaToFromF64)?;
     }
 
     aat_piece.fill(T::zero());
@@ -2802,9 +2800,12 @@ impl Bed {
 
         let dim = val.dim();
         if dim != (iid_index.len(), sid_index.len()) {
-            return Err(Box::new(
-                BedError::InvalidShape(iid_index.len(), sid_index.len(), dim.0, dim.1).into(),
-            ));
+            Err(BedError::InvalidShape(
+                iid_index.len(),
+                sid_index.len(),
+                dim.0,
+                dim.1,
+            ))?;
         }
 
         read_no_alloc(
@@ -2972,20 +2973,18 @@ impl Bed {
     {
         let (iid_count, sid_count) = val.dim();
         if iid_count != write_options.iid_count() {
-            return Err(BedError::InconsistentCount(
-                "iid".to_string(),
+            Err(BedError::InconsistentCount(
+                "iid".into(),
                 write_options.iid_count(),
                 iid_count,
-            )
-            .into());
+            ))?;
         }
         if sid_count != write_options.sid_count() {
-            return Err(BedError::InconsistentCount(
-                "sid".to_string(),
+            Err(BedError::InconsistentCount(
+                "sid".into(),
                 write_options.sid_count(),
                 sid_count,
-            )
-            .into());
+            ))?;
         }
 
         let num_threads = compute_num_threads(write_options.num_threads)?;
@@ -3001,7 +3000,7 @@ impl Bed {
             if let Err(e) = write_options.metadata.write_fam(write_options.fam_path()) {
                 // Clean up the file
                 let _ = fs::remove_file(&write_options.fam_path);
-                return Err(e);
+                Err(e)?;
             }
         }
 
@@ -3009,7 +3008,7 @@ impl Bed {
             if let Err(e) = write_options.metadata.write_bim(write_options.bim_path()) {
                 // Clean up the file
                 let _ = fs::remove_file(&write_options.bim_path);
-                return Err(e);
+                Err(e)?;
             }
         }
 
@@ -3023,7 +3022,7 @@ impl Bed {
         name: &str,
     ) -> Result<(), Box<BedErrorPlus>> {
         if self.skip_set.contains(&field_index) {
-            return Err(BedError::CannotUseSkippedMetadata(name.to_string()).into());
+            Err(BedError::CannotUseSkippedMetadata(name.to_string()))?;
         }
         if is_none {
             self.fam()?;
@@ -3038,7 +3037,7 @@ impl Bed {
         name: &str,
     ) -> Result<(), Box<BedErrorPlus>> {
         if self.skip_set.contains(&field_index) {
-            return Err(BedError::CannotUseSkippedMetadata(name.to_string()).into());
+            Err(BedError::CannotUseSkippedMetadata(name.to_string()))?;
         }
         if is_none {
             self.bim()?;
@@ -3055,9 +3054,11 @@ impl Bed {
         match self.iid_count {
             Some(iid_count) => {
                 if iid_count != count {
-                    return Err(
-                        BedError::InconsistentCount("iid".to_string(), iid_count, count).into(),
-                    );
+                    Err(BedError::InconsistentCount(
+                        "iid".to_string(),
+                        iid_count,
+                        count,
+                    ))?;
                 }
             }
             None => {
@@ -3076,9 +3077,11 @@ impl Bed {
         match self.sid_count {
             Some(sid_count) => {
                 if sid_count != count {
-                    return Err(
-                        BedError::InconsistentCount("sid".to_string(), sid_count, count).into(),
-                    );
+                    Err(BedError::InconsistentCount(
+                        "sid".to_string(),
+                        sid_count,
+                        count,
+                    ))?;
                 }
             }
             None => {
@@ -3173,9 +3176,10 @@ impl Index {
             Index::Vec(vec) => Ok(vec.clone()),
             Index::NDArrayBool(nd_array_bool) => {
                 if nd_array_bool.len() != count {
-                    return Err(
-                        BedError::BoolArrayVectorWrongLength(count, nd_array_bool.len()).into(),
-                    );
+                    Err(BedError::BoolArrayVectorWrongLength(
+                        count,
+                        nd_array_bool.len(),
+                    ))?;
                 }
                 Ok(nd_array_bool
                     .iter()
@@ -3195,7 +3199,7 @@ impl Index {
             Index::One(one) => Ok(vec![*one]),
             Index::VecBool(vec_bool) => {
                 if vec_bool.len() != count {
-                    return Err(BedError::BoolArrayVectorWrongLength(count, vec_bool.len()).into());
+                    Err(BedError::BoolArrayVectorWrongLength(count, vec_bool.len()))?;
                 }
                 Ok(vec_bool
                     .iter()
@@ -3436,7 +3440,7 @@ impl RangeNdSlice {
         // As with ndarray, Start can be greater than End is allowed
         // and means the slice is empty.
         if nd_slice_info.in_ndim() != 1 || nd_slice_info.out_ndim() != 1 {
-            return Err(BedError::NdSliceInfoNot1D.into());
+            Err(BedError::NdSliceInfoNot1D)?;
         }
 
         let slice_info_elem = nd_slice_info[0];
@@ -3450,32 +3454,22 @@ impl RangeNdSlice {
                 // end index; negative are counted from the back of the axis; when not present the default is the full length of the axis.
                 // step size in elements; the default is 1, for every element.
                 // A range with step size. end is an exclusive index. Negative start or end indexes are counted from the back of the axis. If end is None, the slice extends to the end of the axis.
-                let step2: usize;
-                let is_reverse2: bool;
-                match step.cmp(&0) {
-                    Ordering::Greater => {
-                        step2 = step as usize;
-                        is_reverse2 = false;
-                    }
-                    Ordering::Less => {
-                        step2 = (-step) as usize;
-                        is_reverse2 = true;
-                    }
-                    Ordering::Equal => {
-                        return Err(BedError::StepZero.into());
-                    }
-                }
+                let (step2, is_reverse2) = match step.cmp(&0) {
+                    Ordering::Greater => (step as usize, false),
+                    Ordering::Less => ((-step) as usize, true),
+                    Ordering::Equal => Err(BedError::StepZero)?,
+                };
 
                 let start2 = if start >= 0 {
                     let start3 = start as usize;
                     if start3 > count {
-                        return Err(BedError::StartGreaterThanCount(start3, count).into());
+                        Err(BedError::StartGreaterThanCount(start3, count))?;
                     }
                     start3
                 } else {
                     let start3 = (-start) as usize;
                     if start3 > count {
-                        return Err(BedError::StartGreaterThanCount(start3, count).into());
+                        Err(BedError::StartGreaterThanCount(start3, count))?;
                     }
                     count - start3
                 };
@@ -3484,13 +3478,13 @@ impl RangeNdSlice {
                     if end >= 0 {
                         let end3 = end as usize;
                         if end3 > count {
-                            return Err(BedError::EndGreaterThanCount(end3, count).into());
+                            Err(BedError::EndGreaterThanCount(end3, count))?;
                         }
                         end3
                     } else {
                         let end3 = (-end) as usize;
                         if end3 > count {
-                            return Err(BedError::EndGreaterThanCount(end3, count).into());
+                            Err(BedError::EndGreaterThanCount(end3, count))?;
                         }
                         count - end3
                     }
@@ -5726,7 +5720,7 @@ where
         sid_count: usize,
     ) -> Result<WriteOptions<TVal>, Box<BedErrorPlus>> {
         let Some(path) = self.path.as_ref() else {
-            return Err(UninitializedFieldError::new("path").into());
+            Err(BedError::UninitializedField("path"))?
         };
 
         // unwrap always works because the metadata builder always initializes metadata
@@ -5932,9 +5926,11 @@ fn check_counts(
     for count in count_vec.into_iter().flatten() {
         if let Some(xid_count) = option_xid_count {
             if *xid_count != count {
-                return Err(
-                    BedError::InconsistentCount(prefix.to_string(), *xid_count, count).into(),
-                );
+                Err(BedError::InconsistentCount(
+                    prefix.to_string(),
+                    *xid_count,
+                    count,
+                ))?;
             }
         } else {
             *option_xid_count = Some(count);
@@ -5960,9 +5956,11 @@ fn compute_field<T: Clone, F: Fn(usize) -> T>(
 
     if let Some(array) = field {
         if array.len() != count {
-            return Err(
-                BedError::InconsistentCount(field_name.to_string(), array.len(), count).into(),
-            );
+            Err(BedError::InconsistentCount(
+                field_name.to_string(),
+                array.len(),
+                count,
+            ))?;
         }
     } else {
         let array = Rc::new((0..count).map(lambda).collect::<nd::Array1<T>>());
@@ -6723,12 +6721,11 @@ impl Metadata {
             };
 
             if fields.len() != 6 {
-                return Err(BedError::MetadataFieldCount(
+                Err(BedError::MetadataFieldCount(
                     6,
                     fields.len(),
                     path_ref_to_string(path),
-                )
-                .into());
+                ))?;
             }
 
             let mut of_interest_count = 0;
@@ -6780,12 +6777,11 @@ impl Metadata {
                 };
 
                 if fields.len() != 6 {
-                    return Err(BedError::MetadataFieldCount(
+                    Err(BedError::MetadataFieldCount(
                         6,
                         fields.len(),
                         object_path.to_string(),
-                    )
-                    .into());
+                    ))?;
                 }
 
                 let mut of_interest_count = 0;
@@ -6851,7 +6847,7 @@ impl Metadata {
         let mut result: Result<(), Box<BedErrorPlus>> = Ok(());
 
         if !self.is_some_fam() {
-            return Err(BedError::MetadataMissingForWrite("fam".to_string()).into());
+            Err(BedError::MetadataMissingForWrite("fam".to_string()))?;
         }
 
         // 1st as_ref turns Option<Rc<Array>> into Option<&Rc<Array>>
@@ -6913,7 +6909,7 @@ impl Metadata {
         let mut result: Result<(), Box<BedErrorPlus>> = Ok(());
 
         if !self.is_some_bim() {
-            return Err(BedError::MetadataMissingForWrite("bim".to_string()).into());
+            Err(BedError::MetadataMissingForWrite("bim".to_string()))?;
         }
 
         // 1st as_ref turns Option<Rc<Array>> into Option<&Rc<Array>>
@@ -7106,13 +7102,12 @@ fn matrix_subset_no_alloc<
     let did_count = in_val.dim().2;
 
     if (out_iid_count, out_sid_count, did_count) != out_val.dim() {
-        return Err(BedError::SubsetMismatch(
+        Err(BedError::SubsetMismatch(
             out_iid_count,
             out_sid_count,
             out_val.dim().0,
             out_val.dim().1,
-        )
-        .into());
+        ))?;
     }
 
     // If output is F-order (or in general if iid stride is no more than sid_stride)

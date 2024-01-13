@@ -3,7 +3,6 @@
 use std::collections::HashMap;
 
 use numpy::{PyArray1, PyArray2, PyArray3};
-use object_store::{path::Path as StorePath, ObjectStore};
 
 use crate::{
     BedError, BedErrorPlus, Dist, _file_ata_piece_internal, create_pool, file_aat_piece,
@@ -18,7 +17,6 @@ use pyo3::{
     PyErr,
 };
 use tokio::runtime;
-use url::Url;
 
 #[pymodule]
 #[allow(clippy::too_many_lines, clippy::items_after_statements)]
@@ -49,25 +47,9 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         }
     }
 
-    fn parse_url_to_object_path(
-        location: &str,
-        options: HashMap<&str, String>,
-    ) -> Result<ObjectPath<Box<dyn ObjectStore>>, PyErr> {
-        let url = Url::parse(location).map_err(|e| {
-            PyErr::new::<PyValueError, _>(format!("Failed to parse URL '{location}': {e}"))
-        })?;
-        let (object_store, store_path): (Box<dyn ObjectStore>, StorePath) =
-            object_store::parse_url_opts(&url, options).map_err(|e| {
-                PyErr::new::<PyValueError, _>(format!(
-                    "Failed to parse URL options for '{location}': {e}"
-                ))
-            })?;
-        Ok((object_store, store_path).into())
-    }
-
     #[pyfn(m)]
     fn url_to_bytes(location: &str, options: HashMap<&str, String>) -> Result<Vec<u8>, PyErr> {
-        let object_path = parse_url_to_object_path(location, options)?;
+        let object_path = ObjectPath::from_url(location, options)?;
 
         let rt = runtime::Runtime::new()?;
         rt.block_on(async {
@@ -196,7 +178,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[pyfn(m)]
     #[allow(clippy::too_many_arguments)]
     fn check_file_cloud(location: &str, options: HashMap<&str, String>) -> Result<(), PyErr> {
-        let object_path = parse_url_to_object_path(location, options)?;
+        let object_path = ObjectPath::from_url(location, options)?;
 
         let rt = runtime::Runtime::new()?;
         rt.block_on(async {
@@ -226,7 +208,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let mut val = val.readwrite();
         let mut val = val.as_array_mut();
 
-        let object_path = parse_url_to_object_path(location, options)?;
+        let object_path = ObjectPath::from_url(location, options)?;
 
         let rt = runtime::Runtime::new()?;
         rt.block_on(async {
@@ -269,7 +251,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let mut val = val.readwrite();
         let mut val = val.as_array_mut();
 
-        let object_path = parse_url_to_object_path(location, options)?;
+        let object_path = ObjectPath::from_url(location, options)?;
 
         let rt = runtime::Runtime::new()?;
         rt.block_on(async {
@@ -312,7 +294,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let mut val = val.readwrite();
         let mut val = val.as_array_mut();
 
-        let object_path = parse_url_to_object_path(location, options)?;
+        let object_path = ObjectPath::from_url(location, options)?;
 
         let rt = runtime::Runtime::new()?;
         rt.block_on(async {
