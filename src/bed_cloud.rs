@@ -371,11 +371,7 @@ where
 
     let object_store = object_path.object_store.clone();
     let path: &StorePath = &object_path.path;
-    let object_meta = object_store
-        .head(path)
-        .await
-        .map_err(|e| Box::new(BedErrorPlus::from(e)));
-    let object_meta: ObjectMeta = object_meta?;
+    let object_meta: ObjectMeta = object_store.head(path).await?;
     let size: usize = object_meta.size;
 
     let get_options = GetOptions {
@@ -384,12 +380,8 @@ where
     };
     let object_store = object_path.object_store.clone();
     let path: &StorePath = &object_path.path;
-    let get_result = object_store
-        .get_opts(path, get_options)
-        .await
-        .map_err(|e| Box::new(BedErrorPlus::from(e)));
-    let get_result: GetResult = get_result?;
-    let bytes = get_result.bytes().await.map_err(BedErrorPlus::from)?;
+    let get_result = object_store.get_opts(path, get_options).await?;
+    let bytes = get_result.bytes().await?;
 
     if (BED_FILE_MAGIC1 != bytes[0]) || (BED_FILE_MAGIC2 != bytes[1]) {
         Err(BedError::IllFormed(object_path.to_string()))?;
@@ -1947,10 +1939,8 @@ pub fn sample_bed_object_path(
 pub fn sample_object_path(path: AnyPath) -> Result<ObjectPath<LocalFileSystem>, Box<BedErrorPlus>> {
     let object_store = Arc::new(LocalFileSystem::new());
 
-    let file_path = STATIC_FETCH_DATA
-        .fetch_file(path)
-        .map_err(BedErrorPlus::from)?;
-    let store_path = StorePath::from_filesystem_path(file_path).map_err(BedErrorPlus::from)?;
+    let file_path = STATIC_FETCH_DATA.fetch_file(path)?;
+    let store_path = StorePath::from_filesystem_path(file_path)?;
     let object_path = ObjectPath::new(object_store, store_path);
     Ok(object_path)
 }
@@ -1968,13 +1958,11 @@ pub fn sample_object_paths(
 ) -> Result<Vec<ObjectPath<LocalFileSystem>>, Box<BedErrorPlus>> {
     let object_store = Arc::new(LocalFileSystem::new());
 
-    let file_paths = STATIC_FETCH_DATA
-        .fetch_files(path_list)
-        .map_err(BedErrorPlus::from)?;
+    let file_paths = STATIC_FETCH_DATA.fetch_files(path_list)?;
     file_paths
         .iter()
         .map(|file_path| {
-            let path = StorePath::from_filesystem_path(file_path).map_err(BedErrorPlus::from)?;
+            let path = StorePath::from_filesystem_path(file_path)?;
             Ok(ObjectPath::new(object_store.clone(), path))
         })
         .collect()
@@ -2002,7 +1990,7 @@ pub fn sample_object_paths(
 /// # Runtime::new().unwrap().block_on(async {
 /// let object_store = Arc::new(LocalFileSystem::new()); // Arc-wrapped ObjectStore
 /// let file_path = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?; // regular Rust PathBuf
-/// let store_path = StorePath::from_filesystem_path(&file_path).map_err(BedErrorPlus::from)?; // StorePath
+/// let store_path = StorePath::from_filesystem_path(&file_path)?; // StorePath
 ///
 /// let object_path0  = ObjectPath::<_>::from(&(&object_store, &store_path)); // ObjectPath from references
 /// let object_path1: ObjectPath<_> = (object_store, store_path).into(); // ObjectPath from owned values
@@ -2020,7 +2008,7 @@ pub fn sample_object_paths(
 /// # Runtime::new().unwrap().block_on(async {
 /// let object_store = LocalFileSystem::new(); // ObjectStore
 /// let file_path = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?; // regular Rust PathBuf
-/// let store_path = StorePath::from_filesystem_path(&file_path).map_err(BedErrorPlus::from)?; // StorePath
+/// let store_path = StorePath::from_filesystem_path(&file_path)?; // StorePath
 ///
 /// let object_path: ObjectPath<_> = (object_store, &store_path).into(); // ObjectPath from owned object_store
 /// assert_eq!(object_path.size().await?, 303);
@@ -2037,7 +2025,7 @@ pub fn sample_object_paths(
 /// # Runtime::new().unwrap().block_on(async {
 /// let object_store = Arc::new(LocalFileSystem::new()); // Arc-wrapped ObjectStore
 /// let file_path = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?; // regular Rust PathBuf
-/// let store_path = StorePath::from_filesystem_path(&file_path).map_err(BedErrorPlus::from)?; // StorePath
+/// let store_path = StorePath::from_filesystem_path(&file_path)?; // StorePath
 ///
 /// let object_path: ObjectPath<_> = ObjectPath::new(object_store, store_path); // ObjectPath from owned values
 /// assert_eq!(object_path.size().await?, 303);
@@ -2081,7 +2069,7 @@ impl ObjectPath<Box<dyn ObjectStore>> {
             .map_err(|e| BedError::CannotParseUrl(location.to_string(), e.to_string()))?;
 
         let (object_store, store_path): (Box<dyn ObjectStore>, StorePath) =
-            object_store::parse_url_opts(&url, options).map_err(BedErrorPlus::from)?;
+            object_store::parse_url_opts(&url, options)?;
         Ok((object_store, store_path).into())
     }
 }
@@ -2102,7 +2090,7 @@ where
     /// # Runtime::new().unwrap().block_on(async {
     /// let object_store = Arc::new(LocalFileSystem::new()); // Arc-wrapped ObjectStore
     /// let file_path = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?; // regular Rust PathBuf
-    /// let store_path = StorePath::from_filesystem_path(&file_path).map_err(BedErrorPlus::from)?; // StorePath
+    /// let store_path = StorePath::from_filesystem_path(&file_path)?; // StorePath
     ///
     /// let object_path: ObjectPath<_> = ObjectPath::new(object_store, store_path); // ObjectPath from owned values
     /// assert_eq!(object_path.size().await?, 303);
@@ -2139,26 +2127,17 @@ where
         &self,
         ranges: &[core::ops::Range<usize>],
     ) -> Result<Vec<Bytes>, Box<BedErrorPlus>> {
-        self.object_store
-            .get_ranges(&self.path, ranges)
-            .await
-            .map_err(|e| Box::new(BedErrorPlus::from(e)))
+        Ok(self.object_store.get_ranges(&self.path, ranges).await?)
     }
 
     /// Perform a get request with options
     pub async fn get_opts(&self, get_options: GetOptions) -> Result<GetResult, Box<BedErrorPlus>> {
-        self.object_store
-            .get_opts(&self.path, get_options)
-            .await
-            .map_err(|e| Box::new(BedErrorPlus::from(e)))
+        Ok(self.object_store.get_opts(&self.path, get_options).await?)
     }
 
     /// Return the bytes that are stored at the specified location.
     pub async fn get(&self) -> Result<GetResult, Box<BedErrorPlus>> {
-        self.object_store
-            .get(&self.path)
-            .await
-            .map_err(|e| Box::new(BedErrorPlus::from(e)))
+        Ok(self.object_store.get(&self.path).await?)
     }
 
     /// Updates the [`ObjectPath`] to have the given extension.
@@ -2194,7 +2173,7 @@ where
         }
 
         // Parse the string back to StorePath
-        self.path = StorePath::parse(&path_str).map_err(BedErrorPlus::from)?;
+        self.path = StorePath::parse(&path_str)?;
         Ok(())
     }
 }
@@ -2364,8 +2343,7 @@ where
             newline_count.fetch_add(count, Ordering::SeqCst);
             async { Ok(()) } // Return Ok(()) for each successful iteration
         })
-        .await
-        .map_err(BedErrorPlus::from)?; // Convert the error and propagate it if present
+        .await?; // Convert the error and propagate it if present
 
     Ok(newline_count.load(Ordering::SeqCst))
 }

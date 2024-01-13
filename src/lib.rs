@@ -113,21 +113,33 @@ mod tests;
 use anyinput::anyinput;
 pub use bed_cloud::ObjectPath;
 pub use bed_cloud::{sample_bed_object_path, sample_object_path, sample_object_paths, BedCloud};
+use byteorder::{LittleEndian, ReadBytesExt};
 use core::fmt::Debug;
 use derive_builder::Builder;
+use dpc_pariter::{scope, IteratorExt};
 use fetch_data::{FetchData, FetchDataError};
 use futures_util::pin_mut;
 use futures_util::stream::StreamExt;
 use nd::ShapeBuilder;
 use ndarray as nd;
+use num_traits::{abs, Float, FromPrimitive, Signed, ToPrimitive};
 use object_store::delimited::newline_delimited_stream;
 use object_store::ObjectStore;
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use rayon::{iter::ParallelBridge, ThreadPoolBuildError};
+use statrs::distribution::{Beta, Continuous};
 use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::convert::TryFrom;
 use std::fs::{self};
+use std::io::Read;
+use std::io::Seek;
+use std::io::SeekFrom;
 use std::io::Write;
+use std::num::{ParseFloatError, ParseIntError};
+use std::ops::AddAssign;
 use std::ops::{Bound, Range, RangeBounds, RangeFrom, RangeInclusive, RangeTo, RangeToInclusive};
+use std::ops::{Div, Sub};
 use std::rc::Rc;
 use std::str::Utf8Error;
 use std::{
@@ -137,19 +149,6 @@ use std::{
     ops::RangeFull,
     path::{Path, PathBuf},
 };
-
-use byteorder::{LittleEndian, ReadBytesExt};
-use dpc_pariter::{scope, IteratorExt};
-use num_traits::{abs, Float, FromPrimitive, Signed, ToPrimitive};
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use rayon::{iter::ParallelBridge, ThreadPoolBuildError};
-use statrs::distribution::{Beta, Continuous};
-use std::io::Read;
-use std::io::Seek;
-use std::io::SeekFrom;
-use std::num::{ParseFloatError, ParseIntError};
-use std::ops::AddAssign;
-use std::ops::{Div, Sub};
 use thiserror::Error;
 mod bed_cloud;
 
@@ -187,10 +186,6 @@ pub enum BedErrorPlus {
     #[error(transparent)]
     ParseIntError(#[from] ParseIntError),
 
-    // cmk remove this
-    // #[allow(missing_docs)]
-    // #[error(transparent)]
-    // UninitializedFieldError(#[from] ::derive_builder::UninitializedFieldError),
     #[allow(missing_docs)]
     #[error(transparent)]
     ParseFloatError(#[from] ParseFloatError),
@@ -470,6 +465,24 @@ impl From<::derive_builder::UninitializedFieldError> for BedErrorPlus {
 impl From<FetchDataError> for Box<BedErrorPlus> {
     fn from(err: FetchDataError) -> Self {
         Box::new(BedErrorPlus::FetchData(err))
+    }
+}
+
+impl From<object_store::Error> for Box<BedErrorPlus> {
+    fn from(err: object_store::Error) -> Self {
+        Box::new(BedErrorPlus::ObjectStoreError(err))
+    }
+}
+
+impl From<object_store::path::Error> for Box<BedErrorPlus> {
+    fn from(err: object_store::path::Error) -> Self {
+        Box::new(BedErrorPlus::ObjectStorePathError(err))
+    }
+}
+
+impl From<Utf8Error> for Box<BedErrorPlus> {
+    fn from(err: Utf8Error) -> Self {
+        Box::new(BedErrorPlus::Utf8Error(err))
     }
 }
 
@@ -6758,13 +6771,11 @@ impl Metadata {
 
         let mut count = 0;
         while let Some(chunk_result) = new_line_stream.next().await {
-            let chunk = chunk_result.map_err(BedErrorPlus::from)?; // Handle the chunk result
+            let chunk = chunk_result?; // Handle the chunk result
 
             // Assuming chunk is a Bytes that can be converted to a string
             // Split the chunk into lines
-            let lines = std::str::from_utf8(&chunk)
-                .map_err(BedErrorPlus::from)?
-                .split_terminator('\n');
+            let lines = std::str::from_utf8(&chunk)?.split_terminator('\n');
 
             for line in lines {
                 // let line = line?;
@@ -7168,9 +7179,7 @@ pub fn sample_bed_file(bed_path: AnyPath) -> Result<PathBuf, Box<BedErrorPlus>> 
 /// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
 #[anyinput]
 pub fn sample_file(path: AnyPath) -> Result<PathBuf, Box<BedErrorPlus>> {
-    Ok(STATIC_FETCH_DATA
-        .fetch_file(path)
-        .map_err(BedErrorPlus::from)?)
+    Ok(STATIC_FETCH_DATA.fetch_file(path)?)
 }
 
 /// Returns the local paths to a list of files. If necessary, the files will be downloaded.
@@ -7182,7 +7191,5 @@ pub fn sample_file(path: AnyPath) -> Result<PathBuf, Box<BedErrorPlus>> {
 pub fn sample_files(path_list: AnyIter<AnyPath>) -> Result<Vec<PathBuf>, Box<BedErrorPlus>>
 where
 {
-    Ok(STATIC_FETCH_DATA
-        .fetch_files(path_list)
-        .map_err(BedErrorPlus::from)?)
+    Ok(STATIC_FETCH_DATA.fetch_files(path_list)?)
 }

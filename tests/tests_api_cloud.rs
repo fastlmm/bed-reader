@@ -41,7 +41,7 @@ async fn rusty_cloud_bed0() -> Result<(), Box<BedErrorPlus>> {
 
     let object_store = Arc::new(LocalFileSystem::new());
     let file_path = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
-    let store_path = StorePath::from_filesystem_path(file_path).map_err(BedErrorPlus::from)?;
+    let store_path = StorePath::from_filesystem_path(file_path)?;
 
     let mut bed_cloud = BedCloud::new((object_store, store_path)).await?;
     let val = bed_cloud.read::<i8>().await?;
@@ -67,7 +67,7 @@ async fn rusty_cloud_bed1() -> Result<(), Box<BedErrorPlus>> {
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     assert!(mean == -13.274); // really shouldn't do mean on data where -127 represents missing
 
-    let store_path = StorePath::from_filesystem_path(file_path).map_err(BedErrorPlus::from)?;
+    let store_path = StorePath::from_filesystem_path(file_path)?;
     let object_store = Arc::new(LocalFileSystem::new());
 
     let mut bed_cloud = BedCloud::new((&object_store, &store_path)).await?;
@@ -103,7 +103,7 @@ async fn rusty_cloud_bed2() -> Result<(), Box<BedErrorPlus>> {
     println!("{mean:?}");
     assert!(mean == 1.0); // really shouldn't do mean on data where -127 represents missing
 
-    let store_path = StorePath::from_filesystem_path(file).map_err(BedErrorPlus::from)?;
+    let store_path = StorePath::from_filesystem_path(file)?;
     let object_store = Arc::new(LocalFileSystem::new());
     let mut bed_cloud = BedCloud::new((object_store, store_path)).await?;
     let val = ReadOptions::builder()
@@ -384,7 +384,7 @@ async fn metadata_etc_cloud() -> Result<(), Box<BedErrorPlus>> {
     // Initialize BedCloud with the sample file
     let file_name = sample_bed_file("small.bed")?;
     let object_store = Arc::new(LocalFileSystem::new());
-    let store_path = StorePath::from_filesystem_path(file_name).map_err(BedErrorPlus::from)?;
+    let store_path = StorePath::from_filesystem_path(file_name)?;
 
     // Reading sex data
     let mut bed_cloud = BedCloud::new((&object_store, &store_path)).await?;
@@ -1967,7 +1967,7 @@ async fn object_path() -> Result<(), Box<BedErrorPlus>> {
 
     // From a tuple of (object_store, store_path) or (object_store, &store_path)
     let object_store = LocalFileSystem::new();
-    let store_path = StorePath::from_filesystem_path(&file_path).map_err(BedErrorPlus::from)?;
+    let store_path = StorePath::from_filesystem_path(&file_path)?;
     let _object_path: ObjectPath<_> = (object_store, &store_path).into();
 
     let object_store = LocalFileSystem::new();
@@ -1977,33 +1977,33 @@ async fn object_path() -> Result<(), Box<BedErrorPlus>> {
     //         (Arc::new(object_store), &store_path), or (&Arc::new(object_store), &store_path)
     //   or &(Arc::new(object_store), store_path), etc.
     let object_store = Arc::new(LocalFileSystem::new());
-    let store_path = StorePath::from_filesystem_path(&file_path).map_err(BedErrorPlus::from)?;
+    let store_path = StorePath::from_filesystem_path(&file_path)?;
     let _object_path: ObjectPath<_> = (object_store, store_path).into();
 
     let object_store = Arc::new(LocalFileSystem::new());
-    let store_path = StorePath::from_filesystem_path(&file_path).map_err(BedErrorPlus::from)?;
+    let store_path = StorePath::from_filesystem_path(&file_path)?;
     let _object_path: ObjectPath<_> = (&object_store, store_path).into();
     let object_store = Arc::new(LocalFileSystem::new());
-    let store_path = StorePath::from_filesystem_path(&file_path).map_err(BedErrorPlus::from)?;
+    let store_path = StorePath::from_filesystem_path(&file_path)?;
     let _object_path: ObjectPath<_> = (object_store, &store_path).into();
     let object_store = Arc::new(LocalFileSystem::new());
-    let store_path = StorePath::from_filesystem_path(&file_path).map_err(BedErrorPlus::from)?;
+    let store_path = StorePath::from_filesystem_path(&file_path)?;
     let _object_path: ObjectPath<_> = (&object_store, &store_path).into();
     let object_store = Arc::new(LocalFileSystem::new());
-    let store_path = StorePath::from_filesystem_path(&file_path).map_err(BedErrorPlus::from)?;
+    let store_path = StorePath::from_filesystem_path(&file_path)?;
     let _object_path: ObjectPath<_> = (&(object_store, store_path)).into();
     let object_store = Arc::new(LocalFileSystem::new());
-    let store_path = StorePath::from_filesystem_path(&file_path).map_err(BedErrorPlus::from)?;
+    let store_path = StorePath::from_filesystem_path(&file_path)?;
     let _object_path: ObjectPath<_> = (&(&object_store, store_path)).into();
     let object_store = Arc::new(LocalFileSystem::new());
-    let store_path = StorePath::from_filesystem_path(&file_path).map_err(BedErrorPlus::from)?;
+    let store_path = StorePath::from_filesystem_path(&file_path)?;
     let _object_path: ObjectPath<_> = (&(object_store, &store_path)).into();
     let object_store = Arc::new(LocalFileSystem::new());
-    let store_path = StorePath::from_filesystem_path(&file_path).map_err(BedErrorPlus::from)?;
+    let store_path = StorePath::from_filesystem_path(&file_path)?;
     let _object_path: ObjectPath<_> = (&(&object_store, &store_path)).into();
 
     let object_store = Arc::new(LocalFileSystem::new());
-    let store_path = StorePath::from_filesystem_path(&file_path).map_err(BedErrorPlus::from)?;
+    let store_path = StorePath::from_filesystem_path(&file_path)?;
     let _object_path = ObjectPath::new(object_store, store_path);
 
     Ok(())
