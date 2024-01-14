@@ -20,9 +20,10 @@
 //!
 //! | Function | Description |
 //! | -------- | ----------- |
-//! | [`Bed::new`](struct.Bed.html#method.new) or [`Bed::builder`](struct.Bed.html#method.builder) | Open a PLINK .bed file for reading genotype data and metadata. |
-//! | [`ReadOptions::builder`](struct.ReadOptions.html#method.builder) | Read genotype data. Supports indexing and options. |
-//! | [`WriteOptions::builder`](struct.WriteOptions.html#method.builder) | Write values to a file in PLINK .bed format. Supports metadata and options. |
+//! | [`Bed::new`](struct.Bed.html#method.new) or [`Bed::builder`](struct.Bed.html#method.builder) | Open a local PLINK .bed file for reading genotype data and metadata. |
+//! | [`BedCloud::new`](struct.BedCloud.html#method.new) or [`BedCloud::builder`](struct.BedCloud.html#method.builder) | Open a cloud PLINK .bed file for reading genotype data and metadata. |
+//! | [`ReadOptions::builder`](struct.ReadOptions.html#method.builder) | Read genotype data from a local or cloud file. Supports indexing and options. |
+//! | [`WriteOptions::builder`](struct.WriteOptions.html#method.builder) | Write values to a local file in PLINK .bed format. Supports metadata and options. |
 //!
 //! ### `Bed` Metadata Methods
 //!
@@ -2080,7 +2081,7 @@ fn to_metadata_path(
 }
 
 impl Bed {
-    /// Attempts to open a PLINK .bed file for reading. Supports options.
+    /// Attempts to open a local PLINK .bed file for reading. Supports options.
     ///
     /// > Also see [`Bed::new`](struct.Bed.html#method.new), which does not support options.
     ///
@@ -2183,7 +2184,7 @@ impl Bed {
         BedBuilder::new(path)
     }
 
-    /// Attempts to open a PLINK .bed file for reading. Does not support options.
+    /// Attempts to open a local PLINK .bed file for reading. Does not support options.
     ///
     /// > Also see [`Bed::builder`](struct.Bed.html#method.builder), which does support options.
     ///

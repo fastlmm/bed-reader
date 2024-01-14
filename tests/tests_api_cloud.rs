@@ -267,10 +267,9 @@ async fn bad_header_cloud() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn bad_header_cloud_url() -> Result<(), Box<BedErrorPlus>> {
-    let url = format!(
-        "file://{}",
-        sample_bed_file("badfile.bed")?.to_string_lossy()
-    );
+    println!("start");
+    let url = sample_url("badfile.bed")?;
+    println!("{:?}", url);
     let bed_cloud = BedCloud::builder_from_url(&url, EMPTY_OPTIONS)?
         .skip_early_check()
         .build()
@@ -280,7 +279,9 @@ async fn bad_header_cloud_url() -> Result<(), Box<BedErrorPlus>> {
 
     // Attempt to create a new BedCloud instance and handle the error
     let result = BedCloud::from_url(&url, EMPTY_OPTIONS).await;
+    println!("{:?}", result);
     assert_error_variant!(result, BedErrorPlus::BedError(BedError::IllFormed(_)));
+    println!("done");
 
     Ok(())
 }
@@ -2265,3 +2266,34 @@ async fn s3_play_cloud() -> Result<(), Box<BedErrorPlus>> {
     assert_eq!(object_path.size().await?, 1_250_003);
     Ok(())
 }
+
+#[test]
+/// Open the file and read data for one SNP (variant)
+/// at index position 2.
+fn read_me_cloud() -> Result<(), Box<BedErrorPlus>> {
+    use bed_reader::{sample_url, BedCloud, ReadOptions, EMPTY_OPTIONS};
+    use ndarray as nd;
+    use {assert_eq_nan, bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
+    Runtime::new().unwrap().block_on(async {
+        let url = sample_url("small.bed")?;
+        let options = EMPTY_OPTIONS; // map of authetication keys, etc., if needed.
+        let mut bed_cloud = BedCloud::from_url(url, options).await?;
+        let val = ReadOptions::builder()
+            .sid_index(2)
+            .f64()
+            .read_cloud(&mut bed_cloud)
+            .await?;
+        assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
+        Ok::<(), Box<BedErrorPlus>>(())
+    })
+}
+
+// cmk Rules: Make Rust async
+// cmk do not make Python async
+// cmk Rules: pass URLs not objects across the line
+// cmk Rules: test as well as you can with file:// URLs
+// cmk Rules: combine stores and paths into one object
+// cmk Rules: give async doc tests examples
+// cmk Rules: use tokio testing
+// cmk Rules: Make strings, maps, etc as generic as you can
+// cmk Rules: allow user to control concurrency and buffer size
