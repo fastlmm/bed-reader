@@ -111,8 +111,11 @@
 mod python_module;
 mod tests;
 use anyinput::anyinput;
-pub use bed_cloud::ObjectPath;
-pub use bed_cloud::{sample_bed_object_path, sample_object_path, sample_object_paths, BedCloud};
+pub use bed_cloud::{
+    sample_bed_object_path, sample_bed_url, sample_object_path, sample_object_paths, sample_url,
+    sample_urls, BedCloud,
+};
+pub use bed_cloud::{ObjectPath, EMPTY_OPTIONS};
 use byteorder::{LittleEndian, ReadBytesExt};
 use core::fmt::Debug;
 use derive_builder::Builder;
@@ -485,8 +488,6 @@ impl From<Utf8Error> for Box<BedErrorPlus> {
         Box::new(BedErrorPlus::Utf8Error(err))
     }
 }
-
-// cmk00 add more
 
 #[anyinput]
 fn open_and_check(

@@ -1000,6 +1000,18 @@ def test_s3_example():
     # See https://docs.rs/object_store/latest/object_store/ for hints on creating URLs for other cloud storage providers.
 
 
+def test_url_errors(shared_datadir):
+    with pytest.raises(ValueError, match=r".*Unable to recogni[sz]e URL.*"):
+        open_bed("not://not_a_url")
+
+    url = file_to_url(shared_datadir / "some_missing.bed") + "nope"
+    with pytest.raises(ValueError, match=r".*not found.*"):
+        open_bed(url, cloud_options={"": "abc"})
+
+    with pytest.raises(ValueError, match=r".*S3 error.*"):
+        open_bed("s3://bedreader/v1/toydata.5chrom.bed", cloud_options={})
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 

@@ -1099,7 +1099,6 @@ class open_bed:
                     if self.property_item("iid") is None:
                         # ... unless user doesn't want iid
                         file_bytes = bytes(
-                            # cmk test this failing with bad url, options, and file-not-found
                             url_to_bytes(location.geturl(), self.cloud_options)
                         )
                         count = _rawincount(BytesIO(file_bytes))

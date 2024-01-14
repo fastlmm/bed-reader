@@ -18,6 +18,8 @@ use bed_reader::MetadataFields;
 use bed_reader::ObjectPath;
 use bed_reader::ReadOptions;
 use bed_reader::SliceInfo1;
+use bed_reader::EMPTY_OPTIONS;
+use bed_reader::{sample_url, sample_urls};
 use ndarray as nd;
 use ndarray::s;
 use object_store::aws::AmazonS3Builder;
@@ -47,6 +49,29 @@ async fn rusty_cloud_bed0() -> Result<(), Box<BedErrorPlus>> {
     let val = bed_cloud.read::<i8>().await?;
     println!("{val:?}");
 
+    assert!(allclose(&val0.view(), &val.view(), 0, true));
+    Ok(())
+}
+
+#[tokio::test]
+async fn rusty_cloud_bed0_url() -> Result<(), Box<BedErrorPlus>> {
+    let file_path = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
+    use bed_reader::Bed;
+
+    let mut bed = Bed::new(&file_path)?;
+    let val0 = bed.read::<i8>()?;
+    println!("{val0:?}");
+
+    let url = sample_url("plink_sim_10s_100v_10pmiss.bed")?;
+    let object_path = ObjectPath::from_url(&url, EMPTY_OPTIONS)?;
+    let mut bed_cloud = BedCloud::new(object_path).await?;
+    let val = bed_cloud.read::<i8>().await?;
+    println!("{val:?}");
+    assert!(allclose(&val0.view(), &val.view(), 0, true));
+
+    let mut bed_cloud = BedCloud::from_url(url, EMPTY_OPTIONS).await?;
+    let val = bed_cloud.read::<i8>().await?;
+    println!("{val:?}");
     assert!(allclose(&val0.view(), &val.view(), 0, true));
     Ok(())
 }
@@ -88,6 +113,30 @@ async fn rusty_cloud_bed1() -> Result<(), Box<BedErrorPlus>> {
 }
 
 #[tokio::test]
+async fn rusty_cloud_bed1_url() -> Result<(), Box<BedErrorPlus>> {
+    let url = format!(
+        "file://{}",
+        sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?.to_string_lossy()
+    );
+
+    let mut bed_cloud = BedCloud::from_url(&url, EMPTY_OPTIONS).await?;
+    let val = bed_cloud.read::<i8>().await?;
+    println!("{val:?}");
+    let mean = val.mapv(|elem| elem as f64).mean().unwrap();
+    assert!(mean == -13.142); // really shouldn't do mean on data where -127 represents missing
+
+    let mut bed_cloud = BedCloud::from_url(&url, EMPTY_OPTIONS).await?;
+    let val = ReadOptions::builder()
+        .count_a2()
+        .i8()
+        .read_cloud(&mut bed_cloud)
+        .await?;
+    let mean = val.mapv(|elem| elem as f64).mean().unwrap();
+    assert!(mean == -13.274); // really shouldn't do mean on data where -127 represents missing
+    Ok(())
+}
+
+#[tokio::test]
 async fn rusty_cloud_bed2() -> Result<(), Box<BedErrorPlus>> {
     use bed_reader::Bed;
 
@@ -106,6 +155,26 @@ async fn rusty_cloud_bed2() -> Result<(), Box<BedErrorPlus>> {
     let store_path = StorePath::from_filesystem_path(file)?;
     let object_store = Arc::new(LocalFileSystem::new());
     let mut bed_cloud = BedCloud::new((object_store, store_path)).await?;
+    let val = ReadOptions::builder()
+        .iid_index(0)
+        .sid_index(vec![1])
+        .i8()
+        .read_cloud(&mut bed_cloud)
+        .await?;
+    let mean = val.mapv(|elem| elem as f64).mean().unwrap();
+    println!("{mean:?}");
+    assert!(mean == 1.0); // really shouldn't do mean on data where -127 represents missing
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn rusty_cloud_bed2_url() -> Result<(), Box<BedErrorPlus>> {
+    let url = format!(
+        "file://{}",
+        sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?.to_string_lossy()
+    );
+    let mut bed_cloud = BedCloud::from_url(&url, EMPTY_OPTIONS).await?;
     let val = ReadOptions::builder()
         .iid_index(0)
         .sid_index(vec![1])
@@ -191,6 +260,26 @@ async fn bad_header_cloud() -> Result<(), Box<BedErrorPlus>> {
 
     // Attempt to create a new BedCloud instance and handle the error
     let result = BedCloud::new(&object_path).await;
+    assert_error_variant!(result, BedErrorPlus::BedError(BedError::IllFormed(_)));
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn bad_header_cloud_url() -> Result<(), Box<BedErrorPlus>> {
+    let url = format!(
+        "file://{}",
+        sample_bed_file("badfile.bed")?.to_string_lossy()
+    );
+    let bed_cloud = BedCloud::builder_from_url(&url, EMPTY_OPTIONS)?
+        .skip_early_check()
+        .build()
+        .await?;
+
+    println!("{:?}", bed_cloud.object_path());
+
+    // Attempt to create a new BedCloud instance and handle the error
+    let result = BedCloud::from_url(&url, EMPTY_OPTIONS).await;
     assert_error_variant!(result, BedErrorPlus::BedError(BedError::IllFormed(_)));
 
     Ok(())
@@ -463,6 +552,28 @@ async fn fam_and_bim_cloud() -> Result<(), Box<BedErrorPlus>> {
     let mut bed_cloud = BedCloud::builder(deb_maf_mib.remove(0))
         .fam_object_path(deb_maf_mib.remove(0)) // Note: indexes shift
         .bim_object_path(deb_maf_mib.remove(0)) // Note: indexes shift
+        .build()
+        .await?;
+
+    // Read and process data
+    println!("{:?}", bed_cloud.iid().await?);
+    println!("{:?}", bed_cloud.sid().await?);
+    let val: nd::Array2<i8> = bed_cloud.read().await?;
+    let mean = val.mapv(|elem| elem as f64).mean().unwrap();
+    println!("{mean:?}");
+    assert!(mean == -20.5); // really shouldn't do mean on data where -127 represents missing
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn fam_and_bim_cloud_url() -> Result<(), Box<BedErrorPlus>> {
+    let mut deb_maf_mib = sample_urls(["small.deb", "small.maf", "small.mib"])?;
+
+    // Build BedCloud with custom fam and bim paths
+    let mut bed_cloud = BedCloud::builder_from_url(deb_maf_mib.remove(0), EMPTY_OPTIONS)?
+        .fam_from_url(deb_maf_mib.remove(0), EMPTY_OPTIONS)? // Note: indexes shift
+        .bim_from_url(deb_maf_mib.remove(0), EMPTY_OPTIONS)? // Note: indexes shift
         .build()
         .await?;
 
