@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::collections::HashSet;
 use std::panic::catch_unwind;
 use std::sync::Arc;
@@ -266,7 +265,7 @@ async fn bad_header_cloud_url() -> Result<(), Box<BedErrorPlus>> {
     println!("start");
     let url = sample_url("badfile.bed")?;
     println!("{:?}", url);
-    let bed_cloud = BedCloud::builder_from_url(&url, EMPTY_OPTIONS)?
+    let bed_cloud = BedCloud::builder(&url, EMPTY_OPTIONS)?
         .skip_early_check()
         .build()
         .await?;
@@ -579,7 +578,7 @@ async fn fam_and_bim_cloud_url() -> Result<(), Box<BedErrorPlus>> {
     let mut deb_maf_mib = sample_urls(["small.deb", "small.maf", "small.mib"])?;
 
     // Build BedCloud with custom fam and bim paths
-    let mut bed_cloud = BedCloud::builder_from_url(deb_maf_mib.remove(0), EMPTY_OPTIONS)?
+    let mut bed_cloud = BedCloud::builder(deb_maf_mib.remove(0), EMPTY_OPTIONS)?
         .fam_from_url(deb_maf_mib.remove(0), EMPTY_OPTIONS)? // Note: indexes shift
         .bim_from_url(deb_maf_mib.remove(0), EMPTY_OPTIONS)? // Note: indexes shift
         .build()
@@ -2211,32 +2210,58 @@ async fn dyn_cloud() -> Result<(), Box<BedErrorPlus>> {
     Ok(())
 }
 
-// cmk requires aws credentials
 #[tokio::test]
 async fn s3_url_cloud() -> Result<(), Box<BedErrorPlus>> {
-    use rusoto_credential::{ProfileProvider, ProvideAwsCredentials};
-    // Try to get credentials and return Ok(()) if not available
-    let credentials = match ProfileProvider::new() {
-        Ok(provider) => match provider.credentials().await {
-            Ok(creds) => creds,
-            Err(_) => return Ok(()), // No credentials, return Ok(())
-        },
-        Err(_) => return Ok(()), // Unable to create ProfileProvider, return Ok(())
+    // Read my AWS credentials from file ~/.aws/credentials
+    use rusoto_credential::{CredentialsError, ProfileProvider, ProvideAwsCredentials};
+    let credentials = if let Ok(provider) = ProfileProvider::new() {
+        provider.credentials().await
+    } else {
+        Err(CredentialsError::new("No credentials found"))
     };
+
+    let Ok(credentials) = credentials else {
+        eprintln!("Skipping test because no AWS credentials found");
+        return Ok(());
+    };
+
     let url = "s3://bedreader/v1/toydata.5chrom.bed";
-    // let url = "file:///O:/programs/br/bed_reader/tests/data/toydata.5chrom.bed";
-    let cloud_options: HashMap<&str, &str> = [
+    let options = [
+        ("aws_region", "us-west-2"),
         ("aws_access_key_id", credentials.aws_access_key_id()),
         ("aws_secret_access_key", credentials.aws_secret_access_key()),
-        ("aws_region", "us-west-2"),
-    ]
-    .iter()
-    .cloned()
-    .collect();
+    ];
 
+    let mut bed_cloud = BedCloud::new(url, options).await?;
+    let val = bed_cloud.read::<i8>().await?;
+    assert_eq!(val.shape(), &[500, 10_000]);
+    Ok(())
+}
+
+#[tokio::test]
+async fn s3_url_cloud2() -> Result<(), Box<BedErrorPlus>> {
+    // Read my AWS credentials from file ~/.aws/credentials
+    use rusoto_credential::{CredentialsError, ProfileProvider, ProvideAwsCredentials};
+    let credentials = if let Ok(provider) = ProfileProvider::new() {
+        provider.credentials().await
+    } else {
+        Err(CredentialsError::new("No credentials found"))
+    };
+
+    let Ok(credentials) = credentials else {
+        eprintln!("Skipping test because no AWS credentials found");
+        return Ok(());
+    };
+
+    let url = "s3://bedreader/v1/toydata.5chrom.bed";
+    let options = [
+        ("aws_region", "us-west-2"),
+        ("aws_access_key_id", credentials.aws_access_key_id()),
+        ("aws_secret_access_key", credentials.aws_secret_access_key()),
+    ];
     let url = Url::parse(url).unwrap();
     let (object_store, store_path): (Box<dyn ObjectStore>, StorePath) =
-        object_store::parse_url_opts(&url, cloud_options).unwrap();
+        object_store::parse_url_opts(&url, options).unwrap();
     // print!("{:?}", object_store);
     // print!("{:?}", store_path);
     // // let store_path: StorePath = "/v1/toydata.5chrom.bed".into();
@@ -2252,24 +2277,21 @@ async fn s3_url_cloud() -> Result<(), Box<BedErrorPlus>> {
     Ok(())
 }
 
-#[tokio::test]
-async fn object_path_2() {
+#[test]
+fn object_path_2() -> Result<(), Box<BedErrorPlus>> {
     use bed_reader::{sample_bed_file, BedErrorPlus, ObjectPath};
     use object_store::{local::LocalFileSystem, path::Path as StorePath};
     use std::sync::Arc;
     use tokio::runtime::Runtime;
 
-    Runtime::new()
-        .unwrap()
-        .block_on(async {
-            let arc_object_store = Arc::new(LocalFileSystem::new()); // Arc-wrapped ObjectStore
-            let file_path = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?; // regular Rust PathBuf
-            let store_path = StorePath::from_filesystem_path(&file_path)?; // StorePath
-            let object_path = ObjectPath::new(arc_object_store, store_path); // ObjectPath
-            assert_eq!(object_path.size().await?, 303);
-            Ok::<(), Box<BedErrorPlus>>(())
-        })
-        .unwrap();
+    Runtime::new().unwrap().block_on(async {
+        let arc_object_store = Arc::new(LocalFileSystem::new()); // Arc-wrapped ObjectStore
+        let file_path = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?; // regular Rust PathBuf
+        let store_path = StorePath::from_filesystem_path(&file_path)?; // StorePath
+        let object_path = ObjectPath::new(arc_object_store, store_path); // ObjectPath
+        assert_eq!(object_path.size().await?, 303);
+        Ok::<(), Box<BedErrorPlus>>(())
+    })
 }
 
 // cmk requires aws credentials
@@ -2312,6 +2334,7 @@ fn read_me_cloud() -> Result<(), Box<BedErrorPlus>> {
     use {assert_eq_nan, bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
     Runtime::new().unwrap().block_on(async {
         let url = sample_url("small.bed")?;
+        println!("{url:?}"); // For example, "file://C:\\Users\\carlk\\AppData\\Local\\fastlmm\\bed-reader\\cache\\small.bed"
         let options = EMPTY_OPTIONS; // map of authetication keys, etc., if needed.
         let mut bed_cloud = BedCloud::new(url, options).await?;
         let val = ReadOptions::builder()
@@ -2333,3 +2356,4 @@ fn read_me_cloud() -> Result<(), Box<BedErrorPlus>> {
 // cmk Rules: use tokio testing
 // cmk Rules: Make strings, maps, etc as generic as you can
 // cmk Rules: allow user to control concurrency and buffer size
+// cmk Rules: Much larger binary for Python

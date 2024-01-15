@@ -19,7 +19,7 @@ Features:
 * Supports all Python indexing methods. Slice data by individuals (samples) and/or SNPs (variants).
 * Used by [PySnpTools](https://github.com/fastlmm/PySnpTools), [FaST-LMM](https://github.com/fastlmm/FaST-LMM), and [PyStatGen](https://github.com/pystatgen).
 * Supports [PLINK 1.9](https://www.cog-genomics.org/plink2/formats).
-* Read data from the cloud, efficiently and directly.
+* Read data locally or from the cloud, efficiently and directly.
 
 Install
 ====================

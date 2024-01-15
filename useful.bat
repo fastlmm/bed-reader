@@ -22,4 +22,4 @@ pytest --doctest-modules bed_reader\_open_bed.py
 maturin build --release
 
 # show docs
-cargo doc --open
+cargo doc --no-deps --open

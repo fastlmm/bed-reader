@@ -17,7 +17,7 @@ Features
 * Supports many indexing methods. Slice data by individuals (samples) and/or SNPs (variants).
 * The Python-facing APIs for this library is used by [PySnpTools](https://github.com/fastlmm/PySnpTools), [FaST-LMM](https://github.com/fastlmm/FaST-LMM), and [PyStatGen](https://github.com/pystatgen).
 * Supports [PLINK 1.9](https://www.cog-genomics.org/plink2/formats).
-* Read data from the cloud, efficiently and directly.
+* Read data locally or from the cloud, efficiently and directly.
 
 Examples
 --------
@@ -97,13 +97,10 @@ use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_url, EMPTY_OPTIONS
 # use {bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
 # Runtime::new().unwrap().block_on(async {
 let url = sample_url("small.bed")?;
+println!("{url:?}"); // For example, "file://C:\\Users\\carlk\\AppData\\Local\\fastlmm\\bed-reader\\cache\\small.bed"
 let options = EMPTY_OPTIONS; // map of authentication keys, etc., if needed.
 let mut bed_cloud = BedCloud::new(url, options).await?;
-let val = ReadOptions::builder()
-    .sid_index(2)
-    .f64()
-    .read_cloud(&mut bed_cloud)
-    .await?;
+let val = ReadOptions::builder().sid_index(2).f64().read_cloud(&mut bed_cloud).await?;
 assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
 # Ok::<(), Box<dyn std::error::Error>>(())
 # }).unwrap();

@@ -21,7 +21,7 @@
 //! | Function | Description |
 //! | -------- | ----------- |
 //! | [`Bed::new`](struct.Bed.html#method.new) or [`Bed::builder`](struct.Bed.html#method.builder) | Open a local PLINK .bed file for reading genotype data and metadata. |
-//! | [`BedCloud::from_object_path`](struct.BedCloud.html#method.from_object_path) or [`BedCloud::builder_cmk`](struct.BedCloud.html#method.builder_cmk) | Open a cloud PLINK .bed file for reading genotype data and metadata. |
+//! | [`BedCloud::new`](struct.BedCloud.html#method.new) or [`BedCloud::builder`](struct.BedCloud.html#method.builder) | Open a cloud PLINK .bed file for reading genotype data and metadata. |
 //! | [`ReadOptions::builder`](struct.ReadOptions.html#method.builder) | Read genotype data from a local or cloud file. Supports indexing and options. |
 //! | [`WriteOptions::builder`](struct.WriteOptions.html#method.builder) | Write values to a local file in PLINK .bed format. Supports metadata and options. |
 //!
@@ -54,6 +54,7 @@
 //! When using [`ReadOptions::builder`](struct.ReadOptions.html#method.builder) to read genotype data, use these options to
 //! specify a desired numeric type,
 //! which individuals (samples) to read, which SNPs (variants) to read, etc.
+//! cmk add links to cloud options
 //!
 //! | Option | Description |
 //! | -------- | ----------- |
@@ -7189,4 +7190,8 @@ pub fn sample_files(path_list: AnyIter<AnyPath>) -> Result<Vec<PathBuf>, Box<Bed
 where
 {
     Ok(STATIC_FETCH_DATA.fetch_files(path_list)?)
+}
+
+pub mod supplemental_documents {
+    #![doc = include_str!("supplemental_documents/options_etc.md")]
 }
