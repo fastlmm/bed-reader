@@ -21,7 +21,7 @@
 //! | Function | Description |
 //! | -------- | ----------- |
 //! | [`Bed::new`](struct.Bed.html#method.new) or [`Bed::builder`](struct.Bed.html#method.builder) | Open a local PLINK .bed file for reading genotype data and metadata. |
-//! | [`BedCloud::new`](struct.BedCloud.html#method.new) or [`BedCloud::builder`](struct.BedCloud.html#method.builder) | Open a cloud PLINK .bed file for reading genotype data and metadata. |
+//! | [`BedCloud::from_object_path`](struct.BedCloud.html#method.from_object_path) or [`BedCloud::builder_cmk`](struct.BedCloud.html#method.builder_cmk) | Open a cloud PLINK .bed file for reading genotype data and metadata. |
 //! | [`ReadOptions::builder`](struct.ReadOptions.html#method.builder) | Read genotype data from a local or cloud file. Supports indexing and options. |
 //! | [`WriteOptions::builder`](struct.WriteOptions.html#method.builder) | Write values to a local file in PLINK .bed format. Supports metadata and options. |
 //!
@@ -4002,7 +4002,7 @@ pub struct ReadOptions<TVal: BedVal> {
     ///
     /// # Runtime::new().unwrap().block_on(async {
     /// let object_path = sample_bed_object_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(object_path).await?;
+    /// let mut bed_cloud = BedCloud::from_object_path(&object_path).await?;
     /// let val = ReadOptions::builder().max_concurrent_requests(1).i8().read_cloud(&mut bed_cloud).await?;
     ///
     /// assert_eq_nan(
@@ -4031,7 +4031,7 @@ pub struct ReadOptions<TVal: BedVal> {
     ///
     /// # Runtime::new().unwrap().block_on(async {
     /// let object_path = sample_bed_object_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(object_path).await?;
+    /// let mut bed_cloud = BedCloud::from_object_path(&object_path).await?;
     /// let val = ReadOptions::builder().max_chunk_size(1_000_000).i8().read_cloud(&mut bed_cloud).await?;
     ///
     /// assert_eq_nan(
@@ -4337,7 +4337,7 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     /// # Runtime::new().unwrap().block_on(async {
     /// // Read the SNPs indexed by 2.
     /// let object_path = sample_bed_object_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(object_path).await?;
+    /// let mut bed_cloud = BedCloud::from_object_path(&object_path).await?;
     /// let mut val = ReadOptions::builder()
     ///     .sid_index(2)
     ///     .read_cloud(&mut bed_cloud).await?;
@@ -4421,7 +4421,7 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     /// # Runtime::new().unwrap().block_on(async {
     /// // Read the SNPs indexed by 2.
     /// let object_path = sample_bed_object_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(object_path).await?;
+    /// let mut bed_cloud = BedCloud::from_object_path(&object_path).await?;
     /// let mut val = nd::Array2::<f64>::default((3, 1));
     /// ReadOptions::builder()
     ///     .sid_index(2)
@@ -6444,9 +6444,9 @@ impl Metadata {
     /// let skip_set = HashSet::<MetadataFields>::new();
     /// let metadata_empty = Metadata::new();
     /// let (metadata_fam, iid_count) =
-    ///     metadata_empty.read_fam_cloud(sample_object_path("small.fam")?, &skip_set).await?;
+    ///     metadata_empty.read_fam_cloud(&sample_object_path("small.fam")?, &skip_set).await?;
     /// let (metadata_bim, sid_count) =
-    ///     metadata_fam.read_bim_cloud(sample_object_path("small.bim")?, &skip_set).await?;
+    ///     metadata_fam.read_bim_cloud(&sample_object_path("small.bim")?, &skip_set).await?;
     /// assert_eq!(iid_count, 3);
     /// assert_eq!(sid_count, 4);
     /// println!("{0:?}", metadata_fam.iid()); // Outputs optional ndarray Some(["iid1", "iid2", "iid3"]...)
@@ -6455,16 +6455,14 @@ impl Metadata {
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
-    pub async fn read_fam_cloud<TObjectStore, I>(
+    pub async fn read_fam_cloud<TObjectStore>(
         &self,
-        object_path: I,
+        object_path: &ObjectPath<TObjectStore>,
         skip_set: &HashSet<MetadataFields>,
     ) -> Result<(Metadata, usize), Box<BedErrorPlus>>
     where
         TObjectStore: ObjectStore,
-        I: Into<ObjectPath<TObjectStore>>,
     {
-        let object_path = object_path.into();
         let mut field_vec: Vec<usize> = Vec::new();
 
         if self.fid.is_none() && !skip_set.contains(&MetadataFields::Fid) {
@@ -6487,7 +6485,7 @@ impl Metadata {
         }
 
         let (mut vec_of_vec, count) = self
-            .read_fam_or_bim_cloud(&field_vec, true, &object_path)
+            .read_fam_or_bim_cloud(&field_vec, true, object_path)
             .await?;
 
         let mut clone = self.clone();
@@ -6629,9 +6627,9 @@ impl Metadata {
     /// let skip_set = HashSet::<MetadataFields>::new();
     /// let metadata_empty = Metadata::new();
     /// let (metadata_fam, iid_count) =
-    ///     metadata_empty.read_fam_cloud(sample_object_path("small.fam")?, &skip_set).await?;
+    ///     metadata_empty.read_fam_cloud(&sample_object_path("small.fam")?, &skip_set).await?;
     /// let (metadata_bim, sid_count) =
-    ///     metadata_fam.read_bim_cloud(sample_object_path("small.bim")?, &skip_set).await?;
+    ///     metadata_fam.read_bim_cloud(&sample_object_path("small.bim")?, &skip_set).await?;
     /// assert_eq!(iid_count, 3);
     /// assert_eq!(sid_count, 4);
     /// println!("{0:?}", metadata_fam.iid()); // Outputs optional ndarray Some(["iid1", "iid2", "iid3"]...)
@@ -6640,17 +6638,14 @@ impl Metadata {
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
-    pub async fn read_bim_cloud<TObjectStore, I>(
+    pub async fn read_bim_cloud<TObjectStore>(
         &self,
-        object_path: I,
+        object_path: &ObjectPath<TObjectStore>,
         skip_set: &HashSet<MetadataFields>,
     ) -> Result<(Metadata, usize), Box<BedErrorPlus>>
     where
         TObjectStore: ObjectStore,
-
-        I: Into<ObjectPath<TObjectStore>>,
     {
-        let object_path = object_path.into();
         let mut field_vec: Vec<usize> = Vec::new();
         if self.chromosome.is_none() && !skip_set.contains(&MetadataFields::Chromosome) {
             field_vec.push(0);
@@ -6674,7 +6669,7 @@ impl Metadata {
 
         let mut clone = self.clone();
         let (mut vec_of_vec, count) = self
-            .read_fam_or_bim_cloud(&field_vec, false, &object_path)
+            .read_fam_or_bim_cloud(&field_vec, false, object_path)
             .await?;
 
         // unwraps are safe because we pop once for every push

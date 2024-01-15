@@ -178,11 +178,9 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[pyfn(m)]
     #[allow(clippy::too_many_arguments)]
     fn check_file_cloud(location: &str, options: HashMap<&str, String>) -> Result<(), PyErr> {
-        let object_path = ObjectPath::from_url(location, options)?;
-
         let rt = runtime::Runtime::new()?;
         rt.block_on(async {
-            BedCloud::builder(object_path).build().await?;
+            BedCloud::new(location, options).await?;
             Ok(())
         })
     }
@@ -212,7 +210,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
         let rt = runtime::Runtime::new()?;
         rt.block_on(async {
-            let mut bed_cloud = BedCloud::builder(object_path)
+            let mut bed_cloud = BedCloud::builder_from_object_path(&object_path)
                 .iid_count(iid_count)
                 .sid_count(sid_count)
                 .build()
@@ -255,7 +253,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
         let rt = runtime::Runtime::new()?;
         rt.block_on(async {
-            let mut bed_cloud = BedCloud::builder(object_path)
+            let mut bed_cloud = BedCloud::builder_from_object_path(&object_path)
                 .iid_count(iid_count)
                 .sid_count(sid_count)
                 .build()
@@ -298,7 +296,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
         let rt = runtime::Runtime::new()?;
         rt.block_on(async {
-            let mut bed_cloud = BedCloud::builder(object_path)
+            let mut bed_cloud = BedCloud::builder_from_object_path(&object_path)
                 .iid_count(iid_count)
                 .sid_count(sid_count)
                 .build()
