@@ -36,6 +36,8 @@ use crate::{MetadataFields, CB_HEADER_U64};
 /// [`BedCloud::from_object_path`](struct.BedCloud.html#method.from_object_path), or
 /// [`BedCloud::builder_from_object_path`](struct.BedCloud.html#method.builder_from_object_path).
 ///
+/// > For reading local files, see [`Bed`](struct.Bed.html).
+///
 /// # Example
 ///
 /// Open a file for reading. Then, read the individual (sample) ids
@@ -1052,7 +1054,7 @@ impl BedCloud<Box<dyn ObjectStore>> {
     /// > `BedCloud` options.
     /// > Alternatively, you can use [`BedCloud::builder_from_object_path`](struct.BedCloud.html#method.builder_from_object_path)
     /// > to specify the cloud file via an [`ObjectPath`](struct.ObjectPath.html). For reading local files,
-    /// > see [`Bed`](struct.BedCloud.html).
+    /// > see [`Bed`](struct.Bed.html).
     ///
     /// # Errors
     /// URL parsing may return an error.
@@ -1126,7 +1128,7 @@ impl BedCloud<Box<dyn ObjectStore>> {
     /// > which does not support `BedCloud` options.
     /// > Alternatively, you can use [`BedCloud::builder_from_object_path`](struct.BedCloud.html#method.builder_from_object_path)
     /// > to specify the cloud file via an [`ObjectPath`](struct.ObjectPath.html). For reading local files,
-    /// > see [`Bed`](struct.BedCloud.html).
+    /// > see [`Bed`](struct.Bed.html).
     ///
     /// The `BedCloud` options, [listed here](struct.BedCloudBuilder.html#implementations), can:
     ///  * set the cloud location of the .fam and/or .bim file
@@ -1258,7 +1260,7 @@ where
     /// > which does not support `BedCloud` options.
     /// > Alternatively, you can use [`BedCloud::builder`](struct.BedCloud.html#method.builder)
     /// > to specify the cloud file via a URL string. For reading local files,
-    /// > see [`Bed`](struct.BedCloud.html).
+    /// > see [`Bed`](struct.Bed.html).
     ///
     /// The `BedCloud` options, [listed here](struct.BedCloudBuilder.html#implementations), can:
     ///  * set the cloud location of the .fam and/or .bim file
@@ -1379,7 +1381,7 @@ where
     ///
     /// > Also see, [`BedCloud::builder`](struct.BedCloud.html#method.builder)
     /// > to specify the cloud file via a URL string. For reading local files,
-    /// > see [`Bed`](struct.BedCloud.html).
+    /// > see [`Bed`](struct.Bed.html).
     ///
     /// # Errors
     /// By default, this method will return an error if the file is missing or its header

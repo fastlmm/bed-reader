@@ -29,9 +29,6 @@ use object_store::ObjectStore;
 use tokio::runtime;
 use url::Url;
 
-// cmk see https://github.com/apache/arrow-rs/tree/master/object_store
-// cmk see https://github.com/roeap/object-store-python
-
 #[tokio::test]
 async fn rusty_cloud_bed0() -> Result<(), Box<BedErrorPlus>> {
     let file_path = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
@@ -2084,55 +2081,6 @@ async fn read_index_quick_cloud() -> Result<(), Box<BedErrorPlus>> {
     Ok(())
 }
 
-// cmk delete
-// #[tokio::test]
-// async fn object_path() -> Result<(), Box<BedErrorPlus>> {
-//     let file_path = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?;
-
-//     // From a tuple of (object_store, store_path) or (object_store, &store_path)
-//     let object_store = LocalFileSystem::new();
-//     let store_path = StorePath::from_filesystem_path(&file_path)?;
-//     let _object_path: ObjectPath<_> = (object_store, &store_path).into();
-
-//     let object_store = LocalFileSystem::new();
-//     let _object_path: ObjectPath<_> = (object_store, store_path).into();
-
-//     // From a tuple of (Arc::new(object_store), store_path), (&Arc::new(object_store), store_path)
-//     //         (Arc::new(object_store), &store_path), or (&Arc::new(object_store), &store_path)
-//     //   or &(Arc::new(object_store), store_path), etc.
-//     let object_store = Arc::new(LocalFileSystem::new());
-//     let store_path = StorePath::from_filesystem_path(&file_path)?;
-//     let _object_path: ObjectPath<_> = (object_store, store_path).into();
-
-//     let object_store = Arc::new(LocalFileSystem::new());
-//     let store_path = StorePath::from_filesystem_path(&file_path)?;
-//     let _object_path: ObjectPath<_> = (&object_store, store_path).into();
-//     let object_store = Arc::new(LocalFileSystem::new());
-//     let store_path = StorePath::from_filesystem_path(&file_path)?;
-//     let _object_path: ObjectPath<_> = (object_store, &store_path).into();
-//     let object_store = Arc::new(LocalFileSystem::new());
-//     let store_path = StorePath::from_filesystem_path(&file_path)?;
-//     let _object_path: ObjectPath<_> = (&object_store, &store_path).into();
-//     let object_store = Arc::new(LocalFileSystem::new());
-//     let store_path = StorePath::from_filesystem_path(&file_path)?;
-//     let _object_path: ObjectPath<_> = (&(object_store, store_path)).into();
-//     let object_store = Arc::new(LocalFileSystem::new());
-//     let store_path = StorePath::from_filesystem_path(&file_path)?;
-//     let _object_path: ObjectPath<_> = (&(&object_store, store_path)).into();
-//     let object_store = Arc::new(LocalFileSystem::new());
-//     let store_path = StorePath::from_filesystem_path(&file_path)?;
-//     let _object_path: ObjectPath<_> = (&(object_store, &store_path)).into();
-//     let object_store = Arc::new(LocalFileSystem::new());
-//     let store_path = StorePath::from_filesystem_path(&file_path)?;
-//     let _object_path: ObjectPath<_> = (&(&object_store, &store_path)).into();
-
-//     let object_store = Arc::new(LocalFileSystem::new());
-//     let store_path = StorePath::from_filesystem_path(&file_path)?;
-//     let _object_path = ObjectPath::new(object_store, store_path);
-
-//     Ok(())
-// }
-
 #[tokio::test]
 async fn object_path_extension() -> Result<(), Box<BedErrorPlus>> {
     let mut object_path = sample_bed_object_path("plink_sim_10s_100v_10pmiss.bed")?;
@@ -2142,17 +2090,20 @@ async fn object_path_extension() -> Result<(), Box<BedErrorPlus>> {
     Ok(())
 }
 
-// cmk requires aws credentials
+// The AWS tests are skipped to credentials are not available.
 #[tokio::test]
 async fn s3_cloud() -> Result<(), Box<BedErrorPlus>> {
-    use rusoto_credential::{ProfileProvider, ProvideAwsCredentials};
-    // Try to get credentials and return Ok(()) if not available
-    let credentials = match ProfileProvider::new() {
-        Ok(provider) => match provider.credentials().await {
-            Ok(creds) => creds,
-            Err(_) => return Ok(()), // No credentials, return Ok(())
-        },
-        Err(_) => return Ok(()), // Unable to create ProfileProvider, return Ok(())
+    use rusoto_credential::{CredentialsError, ProfileProvider, ProvideAwsCredentials};
+    // Read my AWS credentials from file ~/.aws/credentials
+    let credentials = if let Ok(provider) = ProfileProvider::new() {
+        provider.credentials().await
+    } else {
+        Err(CredentialsError::new("No credentials found"))
+    };
+
+    let Ok(credentials) = credentials else {
+        eprintln!("Skipping test because no AWS credentials found");
+        return Ok(());
     };
 
     let s3 = AmazonS3Builder::new()
@@ -2165,7 +2116,6 @@ async fn s3_cloud() -> Result<(), Box<BedErrorPlus>> {
 
     // LATER should we accept a string as a Path?
     let store_path = StorePath::parse("/v1/toydata.5chrom.bed").unwrap();
-    // cmk would be nice if didn't need to say Arc::new
     let object_path = ObjectPath::new(Arc::new(s3), store_path);
     assert_eq!(object_path.size().await?, 1_250_003);
     Ok(())
@@ -2266,7 +2216,6 @@ async fn s3_url_cloud2() -> Result<(), Box<BedErrorPlus>> {
     // print!("{:?}", object_store);
     // print!("{:?}", store_path);
     // // let store_path: StorePath = "/v1/toydata.5chrom.bed".into();
-    // cmk would be nice if didn't need arc:new
     let object_path: ObjectPath<Box<dyn ObjectStore>> =
         ObjectPath::new(Arc::new(object_store), store_path);
     // assert_eq!(object_path.size().await?, 1_250_003);
@@ -2295,17 +2244,19 @@ fn object_path_2() -> Result<(), Box<BedErrorPlus>> {
     })
 }
 
-// cmk requires aws credentials
+// The AWS tests are skipped to credentials are not available.
 #[tokio::test]
 async fn s3_play_cloud() -> Result<(), Box<BedErrorPlus>> {
-    use rusoto_credential::{ProfileProvider, ProvideAwsCredentials};
-    // Try to get credentials and return Ok(()) if not available
-    let credentials = match ProfileProvider::new() {
-        Ok(provider) => match provider.credentials().await {
-            Ok(creds) => creds,
-            Err(_) => return Ok(()), // No credentials, return Ok(())
-        },
-        Err(_) => return Ok(()), // Unable to create ProfileProvider, return Ok(())
+    use rusoto_credential::{CredentialsError, ProfileProvider, ProvideAwsCredentials};
+    let credentials = if let Ok(provider) = ProfileProvider::new() {
+        provider.credentials().await
+    } else {
+        Err(CredentialsError::new("No credentials found"))
+    };
+
+    let Ok(credentials) = credentials else {
+        eprintln!("Skipping test because no AWS credentials found");
+        return Ok(());
     };
 
     let url = "s3://bedreader/v1/toydata.5chrom.bed";
@@ -2430,7 +2381,7 @@ fn aws_object_path_example() -> Result<(), Box<BedErrorPlus>> {
 }
 
 // cmk Rules: Make Rust async
-// cmk do not make Python async
+// cmk Rules: do not make Python async
 // cmk Rules: pass URLs not objects across the line
 // cmk Rules: test as well as you can with file:// URLs
 // cmk Rules: combine stores and paths into one object

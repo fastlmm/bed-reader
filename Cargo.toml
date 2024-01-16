@@ -56,7 +56,7 @@ base16ct = { version = "0.2.0", features = ["alloc"] }
 ctor = "0.2.0"
 anyinput = { version = "0.1.6", features = ["ndarray"] }
 fetch-data = "0.1.6"
-object_store = { version = "0.8.0", features = ["aws"] }
+object_store = { version = "0.9.0", features = ["aws"] }
 tokio = { version = "1.35.0", features = ["full"] }
 anyhow = "1.0.75"
 futures-util = "0.3.29"

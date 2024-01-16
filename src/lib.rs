@@ -54,7 +54,6 @@
 //! When using [`ReadOptions::builder`](struct.ReadOptions.html#method.builder) to read genotype data, use these options to
 //! specify a desired numeric type,
 //! which individuals (samples) to read, which SNPs (variants) to read, etc.
-//! cmk add links to cloud options
 //!
 //! | Option | Description |
 //! | -------- | ----------- |
@@ -71,6 +70,8 @@
 //! | [`count_a2`](struct.ReadOptionsBuilder.html#method.count_a2) | Count the number allele 2 |
 //! | [`is_a1_counted`](struct.ReadOptionsBuilder.html#method.is_a1_counted) | Is allele 1 counted? (defaults to true) |
 //! | [`num_threads`](struct.ReadOptionsBuilder.html#method.num_threads) | Number of threads to use (defaults to all processors) |
+//! | [`max_concurrent_requests`](struct.ReadOptionsBuilder.html#method.max_concurrent_requests) | Maximum number of concurrent async requests (defaults to 10) -- Used by [`BedCloud`](struct.BedCloud.html). |
+//! | [`max_chunk_size`](struct.ReadOptionsBuilder.html#method.max_chunk_size) | Maximum chunk size of async requests (defaults to 8_000_000 bytes) -- Used by [`BedCloud`](struct.BedCloud.html). |
 //!
 //! ### [`Index`](enum.Index.html) Expressions
 //!
@@ -1455,6 +1456,8 @@ fn lazy_or_skip_count<T>(array: &Option<Rc<nd::Array1<T>>>) -> Option<usize> {
 ///
 /// Construct with [`Bed::new`](struct.Bed.html#method.new) or [`Bed::builder`](struct.Bed.html#method.builder).
 ///
+/// > For reading cloud files, see [`BedCloud`](struct.BedCloud.html).
+///
 /// # Example
 ///
 /// Open a file for reading. Then, read the individual (sample) ids
@@ -2186,7 +2189,7 @@ impl Bed {
         BedBuilder::new(path)
     }
 
-    /// Attempts to open a local PLINK .bed file for reading. Does not support [options](supplemental_document_options/index.html#bedbedcloud-options).
+    /// Attempts to open a local PLINK .bed file for reading. Does not support options.
     ///
     /// > Also see [`Bed::builder`](struct.Bed.html#method.builder), which does support options.
     /// > For reading from the cloud, see [`BedCloud`](struct.BedCloud.html).
@@ -3995,7 +3998,7 @@ pub struct ReadOptions<TVal: BedVal> {
 
     // LATER: Allow this to be set with an environment variable.
     /// Maximum number of concurrent async requests (defaults to 10) --
-    /// Used by `BedCloud`.
+    /// Used by [`BedCloud`](struct.BedCloud.html).
     ///
     /// In this example, we read using only request at a time.
     /// ```
@@ -4024,7 +4027,7 @@ pub struct ReadOptions<TVal: BedVal> {
 
     // LATER: Allow this to be set with an environment variable.
     /// Maximum chunk size of async requests (defaults to 8_000_000 bytes) --
-    /// Used by `BedCloud`.
+    /// Used by [`BedCloud`](struct.BedCloud.html).
     ///
     /// In this example, we read using only 1_000_000 bytes per request.
     /// ```
