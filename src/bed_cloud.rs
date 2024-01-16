@@ -14,7 +14,7 @@ use ndarray as nd;
 use object_store::delimited::newline_delimited_stream;
 use object_store::local::LocalFileSystem;
 use object_store::path::Path as StorePath;
-use object_store::{GetOptions, GetResult};
+use object_store::{GetOptions, GetRange, GetResult};
 use object_store::{ObjectMeta, ObjectStore};
 use std::cmp::max;
 use std::collections::HashSet;
@@ -373,7 +373,7 @@ where
     let size: usize = object_meta.size;
 
     let get_options = GetOptions {
-        range: Some(0..CB_HEADER_U64 as usize),
+        range: Some(GetRange::Bounded(0..CB_HEADER_U64 as usize)),
         ..Default::default()
     };
     let object_store = object_path.object_store.clone();
@@ -2267,7 +2267,9 @@ pub fn sample_bed_object_path(
 pub fn sample_object_path(path: AnyPath) -> Result<ObjectPath<LocalFileSystem>, Box<BedErrorPlus>> {
     let object_store = Arc::new(LocalFileSystem::new());
 
-    let file_path = STATIC_FETCH_DATA.fetch_file(path)?;
+    let file_path = STATIC_FETCH_DATA
+        .fetch_file(path)
+        .map_err(|e| BedError::SampleFetch(e.to_string()))?;
     let store_path = StorePath::from_filesystem_path(file_path)?;
     let object_path = ObjectPath::new(object_store, store_path);
     Ok(object_path)
@@ -2286,7 +2288,9 @@ pub fn sample_object_paths(
 ) -> Result<Vec<ObjectPath<LocalFileSystem>>, Box<BedErrorPlus>> {
     let arc_object_store = Arc::new(LocalFileSystem::new());
 
-    let file_paths = STATIC_FETCH_DATA.fetch_files(path_list)?;
+    let file_paths = STATIC_FETCH_DATA
+        .fetch_files(path_list)
+        .map_err(|e| BedError::SampleFetch(e.to_string()))?;
     file_paths
         .iter()
         .map(|file_path| {
@@ -2325,7 +2329,9 @@ pub fn sample_bed_url(bed_path: AnyPath) -> Result<String, Box<BedErrorPlus>> {
 /// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
 #[anyinput]
 pub fn sample_url(path: AnyPath) -> Result<String, Box<BedErrorPlus>> {
-    let file_path = STATIC_FETCH_DATA.fetch_file(path)?;
+    let file_path = STATIC_FETCH_DATA
+        .fetch_file(path)
+        .map_err(|e| BedError::SampleFetch(e.to_string()))?;
     let url = format!("file://{}", file_path.to_string_lossy());
     Ok(url)
 }
@@ -2339,7 +2345,9 @@ pub fn sample_url(path: AnyPath) -> Result<String, Box<BedErrorPlus>> {
 /// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
 #[anyinput]
 pub fn sample_urls(path_list: AnyIter<AnyPath>) -> Result<Vec<String>, Box<BedErrorPlus>> {
-    let file_paths = STATIC_FETCH_DATA.fetch_files(path_list)?;
+    let file_paths = STATIC_FETCH_DATA
+        .fetch_files(path_list)
+        .map_err(|e| BedError::SampleFetch(e.to_string()))?;
     file_paths
         .iter()
         .map(|file_path| {

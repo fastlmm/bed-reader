@@ -26,9 +26,9 @@ exclude = [
 name = "bed_reader"
 crate-type = ["cdylib", "rlib"]
 
-[features]
 # https://github.com/PyO3/pyo3/discussions/2271
 # https://pyo3.rs/latest/faq.html#i-cant-run-cargo-test-or-i-cant-build-in-a-cargo-workspace-im-having-linker-issues-like-symbol-not-found-or-undefined-reference-to-_pyexc_systemerror
+[features]
 extension-module = ["pyo3/extension-module", "pyo3-asyncio"]
 default = ["extension-module"]
 
@@ -39,26 +39,19 @@ ndarray-npy = { version = "0.8.1", default-features = false }
 rayon = "1.7.0"
 numpy = "0.20.0"
 ndarray = { version = "0.15.6", features = ["approx", "rayon"] }
-approx = "0.5.1"
 statrs = "0.16.0"
 byteorder = { version = "1.4.3", default-features = false }
 pyo3 = { version = "0.20.0", features = ["extension-module"], optional = true }
 pyo3-asyncio = { version = "0.20.0", features = [
-    "tokio-runtime",
+    "tokio-runtime", # only when feature "cloud" is enabled
 ], optional = true }
 dpc-pariter = "0.4.0" # //  pariter = "0.5.1"
 derive_builder = "0.12.0"
-temp_testdir = "0.2.3"
-ureq = { version = "2.6.2", features = [] }
-directories = "5.0.1"
-sha2 = "0.10.6"
-base16ct = { version = "0.2.0", features = ["alloc"] }
-ctor = "0.2.0"
 anyinput = { version = "0.1.6", features = ["ndarray"] }
 fetch-data = "0.1.6"
+# only when feature "cloud" is enabled
 object_store = { version = "0.9.0", features = ["aws"] }
 tokio = { version = "1.35.0", features = ["full"] }
-anyhow = "1.0.75"
 futures-util = "0.3.29"
 bytecount = "0.6.7"
 itertools = "0.12.0"
@@ -74,6 +67,7 @@ pyo3-asyncio = { version = "0.20.0", features = [
     "attributes",
     "testing",
 ] }
+temp_testdir = "0.2.3"
 
 
 [build-dependencies]

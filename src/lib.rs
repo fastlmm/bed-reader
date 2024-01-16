@@ -123,7 +123,7 @@ use byteorder::{LittleEndian, ReadBytesExt};
 use core::fmt::Debug;
 use derive_builder::Builder;
 use dpc_pariter::{scope, IteratorExt};
-use fetch_data::{FetchData, FetchDataError};
+use fetch_data::FetchData;
 use futures_util::pin_mut;
 use futures_util::stream::StreamExt;
 use nd::ShapeBuilder;
@@ -196,9 +196,10 @@ pub enum BedErrorPlus {
     #[error(transparent)]
     ParseFloatError(#[from] ParseFloatError),
 
-    #[allow(missing_docs)]
-    #[error(transparent)]
-    FetchData(#[from] FetchDataError),
+    // cmk remove dep
+    // #[allow(missing_docs)]
+    // #[error(transparent)]
+    // FetchData(#[from] FetchDataError),
 
     // cmk optional on cloud feature
     #[allow(missing_docs)]
@@ -357,6 +358,10 @@ pub enum BedError {
     #[allow(missing_docs)]
     #[error("UninitializedField: '{0}'")]
     UninitializedField(&'static str),
+
+    #[allow(missing_docs)]
+    #[error("Sample fetch error: {0}")]
+    SampleFetch(String),
 }
 
 // Trait alias
@@ -468,11 +473,12 @@ impl From<::derive_builder::UninitializedFieldError> for BedErrorPlus {
     }
 }
 
-impl From<FetchDataError> for Box<BedErrorPlus> {
-    fn from(err: FetchDataError) -> Self {
-        Box::new(BedErrorPlus::FetchData(err))
-    }
-}
+// cmk remove dep
+// impl From<FetchDataError> for Box<BedErrorPlus> {
+//     fn from(err: FetchDataError) -> Self {
+//         Box::new(BedErrorPlus::FetchData(err))
+//     }
+// }
 
 impl From<object_store::Error> for Box<BedErrorPlus> {
     fn from(err: object_store::Error) -> Self {
@@ -7182,7 +7188,9 @@ pub fn sample_bed_file(bed_path: AnyPath) -> Result<PathBuf, Box<BedErrorPlus>> 
 /// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
 #[anyinput]
 pub fn sample_file(path: AnyPath) -> Result<PathBuf, Box<BedErrorPlus>> {
-    Ok(STATIC_FETCH_DATA.fetch_file(path)?)
+    Ok(STATIC_FETCH_DATA
+        .fetch_file(path)
+        .map_err(|e| BedError::SampleFetch(e.to_string()))?)
 }
 
 /// Returns the local paths to a list of files. If necessary, the files will be downloaded.
@@ -7194,7 +7202,9 @@ pub fn sample_file(path: AnyPath) -> Result<PathBuf, Box<BedErrorPlus>> {
 pub fn sample_files(path_list: AnyIter<AnyPath>) -> Result<Vec<PathBuf>, Box<BedErrorPlus>>
 where
 {
-    Ok(STATIC_FETCH_DATA.fetch_files(path_list)?)
+    Ok(STATIC_FETCH_DATA
+        .fetch_files(path_list)
+        .map_err(|e| BedError::SampleFetch(e.to_string()))?)
 }
 
 pub mod supplemental_document_options {
