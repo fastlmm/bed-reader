@@ -22,4 +22,12 @@ pytest --doctest-modules bed_reader\_open_bed.py
 maturin build --release
 
 # show docs
-cargo doc --no-deps --open
+cargo doc --no-deps --all-features --open
+
+cargo check --all-features
+
+cmk test both --no-features and default (which should include cloud)
+
+cargo test --no-default-features
+cargo check --no-default-features
+maturn develop

@@ -1,3 +1,5 @@
+#![cfg(feature = "cloud")]
+
 use std::collections::HashSet;
 use std::panic::catch_unwind;
 use std::sync::Arc;

@@ -111,26 +111,27 @@
 //! Any requested sample file will be downloaded to this directory. If the environment variable is not set,
 //! a cache folder, appropriate to the OS, will be used.
 
+#[cfg(feature = "cloud")]
 mod python_module;
 mod tests;
 use anyinput::anyinput;
+#[cfg(feature = "cloud")]
 pub use bed_cloud::{
     sample_bed_object_path, sample_bed_url, sample_object_path, sample_object_paths, sample_url,
-    sample_urls, BedCloud, BedCloudBuilder,
+    sample_urls, BedCloud, BedCloudBuilder, ObjectPath, EMPTY_OPTIONS,
 };
-pub use bed_cloud::{ObjectPath, EMPTY_OPTIONS};
 use byteorder::{LittleEndian, ReadBytesExt};
 use core::fmt::Debug;
 use derive_builder::Builder;
 use dpc_pariter::{scope, IteratorExt};
 use fetch_data::FetchData;
-use futures_util::pin_mut;
-use futures_util::stream::StreamExt;
+#[cfg(feature = "cloud")]
+use futures_util::{pin_mut, stream::StreamExt};
 use nd::ShapeBuilder;
 use ndarray as nd;
 use num_traits::{abs, Float, FromPrimitive, Signed, ToPrimitive};
-use object_store::delimited::newline_delimited_stream;
-use object_store::ObjectStore;
+#[cfg(feature = "cloud")]
+use object_store::{delimited::newline_delimited_stream, ObjectStore};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use rayon::{iter::ParallelBridge, ThreadPoolBuildError};
 use statrs::distribution::{Beta, Continuous};
@@ -156,6 +157,7 @@ use std::{
     path::{Path, PathBuf},
 };
 use thiserror::Error;
+#[cfg(feature = "cloud")]
 mod bed_cloud;
 
 const BED_FILE_MAGIC1: u8 = 0x6C; // 0b01101100 or 'l' (lowercase 'L')
@@ -200,18 +202,17 @@ pub enum BedErrorPlus {
     // #[allow(missing_docs)]
     // #[error(transparent)]
     // FetchData(#[from] FetchDataError),
-
-    // cmk optional on cloud feature
+    #[cfg(feature = "cloud")]
     #[allow(missing_docs)]
     #[error(transparent)]
     ObjectStoreError(#[from] object_store::Error),
 
-    // cmk optional on cloud feature
+    #[cfg(feature = "cloud")]
     #[allow(missing_docs)]
     #[error(transparent)]
     ObjectStorePathError(#[from] object_store::path::Error),
 
-    // cmk optional on cloud feature
+    #[cfg(feature = "cloud")]
     #[allow(missing_docs)]
     #[error(transparent)]
     JoinError(#[from] tokio::task::JoinError),
@@ -473,19 +474,14 @@ impl From<::derive_builder::UninitializedFieldError> for BedErrorPlus {
     }
 }
 
-// cmk remove dep
-// impl From<FetchDataError> for Box<BedErrorPlus> {
-//     fn from(err: FetchDataError) -> Self {
-//         Box::new(BedErrorPlus::FetchData(err))
-//     }
-// }
-
+#[cfg(feature = "cloud")]
 impl From<object_store::Error> for Box<BedErrorPlus> {
     fn from(err: object_store::Error) -> Self {
         Box::new(BedErrorPlus::ObjectStoreError(err))
     }
 }
 
+#[cfg(feature = "cloud")]
 impl From<object_store::path::Error> for Box<BedErrorPlus> {
     fn from(err: object_store::path::Error) -> Self {
         Box::new(BedErrorPlus::ObjectStorePathError(err))
@@ -3158,6 +3154,7 @@ fn compute_num_threads(option_num_threads: Option<usize>) -> Result<usize, Box<B
 }
 
 #[allow(clippy::unnecessary_wraps)]
+#[cfg(feature = "cloud")]
 fn compute_max_concurrent_requests(
     option_max_concurrent_requests: Option<usize>,
 ) -> Result<usize, Box<BedErrorPlus>> {
@@ -3175,6 +3172,7 @@ fn compute_max_concurrent_requests(
 }
 
 #[allow(clippy::unnecessary_wraps)]
+#[cfg(feature = "cloud")]
 fn compute_max_chunk_size(
     option_max_chunk_size: Option<usize>,
 ) -> Result<usize, Box<BedErrorPlus>> {
@@ -4027,8 +4025,8 @@ pub struct ReadOptions<TVal: BedVal> {
     /// );
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
-    /// ```
     #[builder(default, setter(strip_option))]
+    #[allow(dead_code)]
     max_concurrent_requests: Option<usize>,
 
     // LATER: Allow this to be set with an environment variable.
@@ -4058,6 +4056,7 @@ pub struct ReadOptions<TVal: BedVal> {
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
     #[builder(default, setter(strip_option))]
+    #[allow(dead_code)]
     max_chunk_size: Option<usize>,
 }
 
@@ -4357,7 +4356,8 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     /// assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
-    /// ```    
+    /// ```
+    #[cfg(feature = "cloud")]
     pub async fn read_cloud<TObjectStore>(
         &self,
         bed_cloud: &mut BedCloud<TObjectStore>,
@@ -4443,6 +4443,7 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```    
+    #[cfg(feature = "cloud")]
     pub async fn read_and_fill_cloud<TObjectStore>(
         &self,
         bed_cloud: &mut BedCloud<TObjectStore>,
@@ -6467,6 +6468,7 @@ impl Metadata {
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
+    #[cfg(feature = "cloud")]
     pub async fn read_fam_cloud<TObjectStore>(
         &self,
         object_path: &ObjectPath<TObjectStore>,
@@ -6650,6 +6652,7 @@ impl Metadata {
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
+    #[cfg(feature = "cloud")]
     pub async fn read_bim_cloud<TObjectStore>(
         &self,
         object_path: &ObjectPath<TObjectStore>,
@@ -6762,6 +6765,7 @@ impl Metadata {
         Ok((vec_of_vec, count))
     }
 
+    #[cfg(feature = "cloud")]
     async fn read_fam_or_bim_cloud<TObjectStore>(
         &self,
         field_vec: &[usize],
@@ -7207,10 +7211,12 @@ where
         .map_err(|e| BedError::SampleFetch(e.to_string()))?)
 }
 
+#[cfg(feature = "cloud")]
 pub mod supplemental_document_options {
     #![doc = include_str!("supplemental_documents/options_etc.md")]
 }
 
+#[cfg(feature = "cloud")]
 pub mod supplemental_document_cloud_urls {
     #![doc = include_str!("supplemental_documents/cloud_urls_etc.md")]
 }
