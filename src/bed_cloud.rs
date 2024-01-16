@@ -32,8 +32,9 @@ use crate::{MetadataFields, CB_HEADER_U64};
 
 /// Represents a PLINK .bed file in the cloud that is open for reading genotype data and metadata.
 ///
-/// Construct with [`BedCloud::new`](struct.BedCloud.html#method.new), [`BedCloud::from_object_path`](struct.BedCloud.html#method.from_object_path)
-///  [`BedCloud::builder`](struct.BedCloud.html#method.builder), or [`BedCloud::builder_cmk`](struct.BedCloud.html#method.builder_cmk).
+/// Construct with [`BedCloud::new`](struct.BedCloud.html#method.new), [`BedCloud::builder`](struct.BedCloud.html#method.builder),
+/// [`BedCloud::from_object_path`](struct.BedCloud.html#method.from_object_path), or
+/// [`BedCloud::builder_from_object_path`](struct.BedCloud.html#method.builder_from_object_path).
 ///
 /// # Example
 ///
@@ -396,13 +397,13 @@ impl BedCloudBuilder<Box<dyn ObjectStore>> {
         Ok(BedCloudBuilder::from(object_path))
     }
 
-    /// Set the cloud location of the .fam file. Specify the file with a URL.
+    /// Set the cloud location of the .fam file. Specify the file with a URL string.
     ///
     /// If not set, the .fam file will be assumed
     /// to have the same location as the .bed file, but with the extension .fam.
     ///
     /// > See [`BedCloudBuider::fam_object_path`](struct.BedCloudBuilder.html#method.fam_object_path) to specify the file with an [`ObjectPath`](struct.ObjectPath.html)
-    /// > instead of a URL.
+    /// > instead of a URL string.
     ///
     /// # Example:
     /// Read .bed, .fam, and .bim files with non-standard names.
@@ -431,13 +432,13 @@ impl BedCloudBuilder<Box<dyn ObjectStore>> {
         Ok(self)
     }
 
-    /// Set the cloud location of the .bim file. Specify the file with a URL.
+    /// Set the cloud location of the .bim file. Specify the file with a URL string.
     ///
     /// If not set, the .bim file will be assumed
     /// to have the same location as the .bed file, but with the extension .bim.
     ///
     /// > See [`BedCloudBuider::fam_object_path`](struct.BedCloudBuilder.html#method.bim_object_path) to specify the file with an [`ObjectPath`](struct.ObjectPath.html)
-    /// > instead of a URL.
+    /// > instead of a URL string.
     ///
     /// # Example:
     /// Read .bed, .fam, and .bim files with non-standard names.
@@ -511,9 +512,9 @@ impl<TObjectStore> BedCloudBuilder<TObjectStore>
 where
     TObjectStore: ObjectStore,
 {
-    /// Create [`BedCloud`](struct.BedCloud.html) from the builder.
+    /// Create a [`BedCloud`](struct.BedCloud.html) from the builder.
     ///
-    /// > See [`BedCloud::builder_cmk`](struct.BedCloud.html#method.builder_cmk) for more details and examples.
+    /// > See [`BedCloud::builder`](struct.BedCloud.html#method.builder) for more details and examples.
     pub async fn build(&self) -> Result<BedCloud<TObjectStore>, Box<BedErrorPlus>> {
         let mut bed_cloud = self.build_no_file_check()?;
 
@@ -530,28 +531,13 @@ where
         Ok(bed_cloud)
     }
 
-    /// Create [`BedCloud`](struct.BedCloud.html) from the builder.
-    ///
-    /// > See [`BedCloud::builder_cmk`](struct.BedCloud.html#method.builder_cmk) for more details and examples.
-    pub fn build_no_check(&self) -> Result<BedCloud<TObjectStore>, Box<BedErrorPlus>> {
-        let mut bed_cloud = self.build_no_file_check()?;
-
-        (bed_cloud.iid_count, bed_cloud.sid_count) = bed_cloud
-            .metadata
-            .check_counts(bed_cloud.iid_count, bed_cloud.sid_count)?;
-
-        Ok(bed_cloud)
-    }
-
-    // https://stackoverflow.com/questions/38183551/concisely-initializing-a-vector-of-strings
-    // https://stackoverflow.com/questions/65250496/how-to-convert-intoiteratoritem-asrefstr-to-iteratoritem-str-in-rust
-
     /// Override the family id (fid) values found in the .fam file.
     ///
     /// By default, if fid values are needed and haven't already been found,
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to give different values.
     #[anyinput]
+    #[must_use]
     pub fn fid(mut self, fid: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because BedCloudBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_fid(fid);
@@ -578,6 +564,7 @@ where
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
     #[anyinput]
+    #[must_use]
     pub fn iid(mut self, iid: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because BedCloudBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_iid(iid);
@@ -590,6 +577,7 @@ where
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to gi&ve different values.
     #[anyinput]
+    #[must_use]
     pub fn father(mut self, father: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because BedCloudBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_father(father);
@@ -602,6 +590,7 @@ where
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to give different values.
     #[anyinput]
+    #[must_use]
     pub fn mother(mut self, mother: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because BedCloudBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_mother(mother);
@@ -614,6 +603,7 @@ where
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to give different values.
     #[anyinput]
+    #[must_use]
     pub fn sex(mut self, sex: AnyIter<i32>) -> Self {
         // Unwrap will always work because BedCloudBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_sex(sex);
@@ -627,6 +617,7 @@ where
     /// they will be read from the .fam file.
     /// Providing them here avoids that file read and provides a way to give different values.
     #[anyinput]
+    #[must_use]
     pub fn pheno(mut self, pheno: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because BedCloudBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_pheno(pheno);
@@ -639,6 +630,7 @@ where
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
     #[anyinput]
+    #[must_use]
     pub fn chromosome(mut self, chromosome: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because BedCloudBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_chromosome(chromosome);
@@ -664,6 +656,7 @@ where
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
     #[anyinput]
+    #[must_use]
     pub fn sid(mut self, sid: AnyIter<AnyString>) -> Self {
         self.metadata.as_mut().unwrap().set_sid(sid);
         self
@@ -675,6 +668,7 @@ where
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
     #[anyinput]
+    #[must_use]
     pub fn cm_position(mut self, cm_position: AnyIter<f32>) -> Self {
         // Unwrap will always work because BedCloudBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_cm_position(cm_position);
@@ -687,6 +681,7 @@ where
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
     #[anyinput]
+    #[must_use]
     pub fn bp_position(mut self, bp_position: AnyIter<i32>) -> Self {
         // Unwrap will always work because BedCloudBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_bp_position(bp_position);
@@ -699,6 +694,7 @@ where
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
     #[anyinput]
+    #[must_use]
     pub fn allele_1(mut self, allele_1: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because BedCloudBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_allele_1(allele_1);
@@ -711,6 +707,7 @@ where
     /// they will be read from the .bim file.
     /// Providing them here avoids that file read and provides a way to give different values.
     #[anyinput]
+    #[must_use]
     pub fn allele_2(mut self, allele_2: AnyIter<AnyString>) -> Self {
         // Unwrap will always work because BedCloudBuilder starting with some metadata
         self.metadata.as_mut().unwrap().set_allele_2(allele_2);
@@ -723,6 +720,7 @@ where
     /// and remembered
     /// by opening the .fam file and quickly counting the number
     /// of lines. Providing the number thus avoids a file read.
+    #[must_use]
     pub fn iid_count(mut self, count: usize) -> Self {
         self.iid_count = Some(Some(count));
         self
@@ -734,6 +732,7 @@ where
     /// and remembered
     /// by opening the .bim file and quickly counting the number
     /// of lines. Providing the number thus avoids a file read.
+    #[must_use]
     pub fn sid_count(mut self, count: usize) -> Self {
         self.sid_count = Some(Some(count));
         self
@@ -762,6 +761,7 @@ where
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
+    #[must_use]
     pub fn skip_early_check(mut self) -> Self {
         self.is_checked_early = Some(false);
         self
@@ -787,6 +787,7 @@ where
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
+    #[must_use]
     pub fn fam_object_path(mut self, object_path: &ObjectPath<TObjectStore>) -> Self {
         self.fam_object_path = Some(Some(object_path.clone()));
         self
@@ -812,6 +813,7 @@ where
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
+    #[must_use]
     pub fn bim_object_path(mut self, object_path: &ObjectPath<TObjectStore>) -> Self {
         let object_path = object_path.clone();
         self.bim_object_path = Some(Some(object_path));
@@ -823,6 +825,7 @@ where
     /// By default, when the .fam is read, the fid (the family id) is recorded.
     /// This stops that recording. This is useful if the fid is not needed.
     /// Asking for the fid after skipping it results in an error.    
+    #[must_use]
     pub fn skip_fid(mut self) -> Self {
         // Unwrap will always work because BedCloudBuilder starting with some skip_set
         self.skip_set.as_mut().unwrap().insert(MetadataFields::Fid);
@@ -834,6 +837,7 @@ where
     /// By default, when the .fam is read, the iid (the individual id) is recorded.
     /// This stops that recording. This is useful if the iid is not needed.
     /// Asking for the iid after skipping it results in an error.
+    #[must_use]
     pub fn skip_iid(mut self) -> Self {
         // Unwrap will always work because BedCloudBuilder starting with some skip_set
         self.skip_set.as_mut().unwrap().insert(MetadataFields::Iid);
@@ -845,6 +849,7 @@ where
     /// By default, when the .fam is read, the father id is recorded.
     /// This stops that recording. This is useful if the father id is not needed.
     /// Asking for the father id after skipping it results in an error.    
+    #[must_use]
     pub fn skip_father(mut self) -> Self {
         // Unwrap will always work because BedCloudBuilder starting with some skip_set
         self.skip_set
@@ -859,6 +864,7 @@ where
     /// By default, when the .fam is read, the mother id is recorded.
     /// This stops that recording. This is useful if the mother id is not needed.
     /// Asking for the mother id after skipping it results in an error.    
+    #[must_use]
     pub fn skip_mother(mut self) -> Self {
         // Unwrap will always work because BedCloudBuilder starting with some skip_set
         self.skip_set
@@ -873,6 +879,7 @@ where
     /// By default, when the .fam is read, the sex is recorded.
     /// This stops that recording. This is useful if sex is not needed.
     /// Asking for sex after skipping it results in an error.    
+    #[must_use]
     pub fn skip_sex(mut self) -> Self {
         // Unwrap will always work because BedCloudBuilder starting with some skip_set
         self.skip_set.as_mut().unwrap().insert(MetadataFields::Sex);
@@ -888,6 +895,7 @@ where
     /// This stops that recording. This is useful if this phenotype
     /// information is not needed.
     /// Asking for the phenotype after skipping it results in an error.    
+    #[must_use]
     pub fn skip_pheno(mut self) -> Self {
         // Unwrap will always work because BedCloudBuilder starting with some skip_set
         self.skip_set
@@ -902,6 +910,7 @@ where
     /// By default, when the .bim is read, the chromosome is recorded.
     /// This stops that recording. This is useful if the chromosome is not needed.
     /// Asking for the chromosome after skipping it results in an error.    
+    #[must_use]
     pub fn skip_chromosome(mut self) -> Self {
         // Unwrap will always work because BedCloudBuilder starting with some skip_set
         self.skip_set
@@ -916,6 +925,7 @@ where
     /// By default, when the .bim is read, the sid (SNP id) is recorded.
     /// This stops that recording. This is useful if the sid is not needed.
     /// Asking for the sid after skipping it results in an error.    
+    #[must_use]
     pub fn skip_sid(mut self) -> Self {
         // Unwrap will always work because BedCloudBuilder starting with some skip_set
         self.skip_set.as_mut().unwrap().insert(MetadataFields::Sid);
@@ -927,6 +937,7 @@ where
     /// By default, when the .bim is read, the cm position is recorded.
     /// This stops that recording. This is useful if the cm position is not needed.
     /// Asking for the cm position after skipping it results in an error.    
+    #[must_use]
     pub fn skip_cm_position(mut self) -> Self {
         // Unwrap will always work because BedCloudBuilder starting with some skip_set
         self.skip_set
@@ -941,6 +952,7 @@ where
     /// By default, when the .bim is read, the bp position is recorded.
     /// This stops that recording. This is useful if the bp position is not needed.
     /// Asking for the cp position after skipping it results in an error.    
+    #[must_use]
     pub fn skip_bp_position(mut self) -> Self {
         // Unwrap will always work because BedCloudBuilder starting with some skip_set
         self.skip_set
@@ -955,6 +967,7 @@ where
     /// By default, when the .bim is read, allele 1 is recorded.
     /// This stops that recording. This is useful if allele 1 is not needed.
     /// Asking for allele 1 after skipping it results in an error.    
+    #[must_use]
     pub fn skip_allele_1(mut self) -> Self {
         // Unwrap will always work because BedCloudBuilder starting with some skip_set
         self.skip_set
@@ -969,6 +982,7 @@ where
     /// By default, when the .bim is read, allele 2 is recorded.
     /// This stops that recording. This is useful if allele 2 is not needed.
     /// Asking for allele 2 after skipping it results in an error.    
+    #[must_use]
     pub fn skip_allele_2(mut self) -> Self {
         // Unwrap will always work because BedCloudBuilder starting with some skip_set
         self.skip_set
@@ -1010,6 +1024,7 @@ where
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
+    #[must_use]
     pub fn metadata(mut self, metadata: &Metadata) -> Self {
         self.metadata = Some(
             Metadata::builder()
@@ -1023,16 +1038,14 @@ where
     }
 }
 
-// cmk need to put old build, new, back like they were but with links to new
-// cmk need to fix new example in README.md
 impl BedCloud<Box<dyn ObjectStore>> {
-    /// Attempts to open a PLINK .bed file in the cloud for reading. The file is specified by a URL.
+    /// Attempts to open a PLINK .bed file in the cloud for reading. The file is specified with a URL string.
     ///
-    /// See ["Cloud URLs and `ObjectPath` Examples"](supplemental_document_cloud_urls/index.html) for details of file specification.
+    /// See ["Cloud URLs and `ObjectPath` Examples"](supplemental_document_cloud_urls/index.html) for details specifying a file.
     ///
     /// You may give [cloud options](supplemental_document_options/index.html#cloud-options) but not
     /// [`BedCloud` options](supplemental_document_options/index.html#bedbedcloud-options) or
-    /// [`ReadOptions`](supplemental_document_options/index.html#bedbedcloud-options).
+    /// [`ReadOptions`](supplemental_document_options/index.html#readoptions).
     /// See ["Options, Options, Options"](supplemental_document_options/index.html) for details.
     ///
     /// > Also see [`BedCloud::builder`](struct.BedCloud.html#method.builder), which does support
@@ -1102,18 +1115,20 @@ impl BedCloud<Box<dyn ObjectStore>> {
         Ok(bed_cloud)
     }
 
-    /// Attempts to open a PLINK .bed file in the cloud for reading.
-    /// Specify the file with a URL. Supports both cloud-related and cmk reader-related options.
+    /// Attempts to open a PLINK .bed file in the cloud for reading. The file is specified with a URL string.
+    /// Supports both [cloud options](supplemental_document_options/index.html#cloud-options) and
+    /// [`BedCloud` options](supplemental_document_options/index.html#bedbedcloud-options).
     ///
-    /// See ["Cloud URLs and `ObjectPath` Examples"](supplemental_document_cloud_urls/index.html) for details of file specification.
+    /// See ["Cloud URLs and `ObjectPath` Examples"](supplemental_document_cloud_urls/index.html) for details of specifying a file.
+    /// See ["Options, Options, Options"](supplemental_document_options/index.html) for an overview of options types.
     ///
     /// > Also see [`BedCloud::new`](struct.BedCloud.html#method.url),
-    /// > which does not support reader-related options. cmk
-    /// > Alternatively, you can use [`BedCloud::from_object_path`](struct.BedCloud.html#method.from_object_path)
-    /// > to specify the file with an [`ObjectPath`](struct.ObjectPath.html). For local files,
+    /// > which does not support `BedCloud` options.
+    /// > Alternatively, you can use [`BedCloud::builder_from_object_path`](struct.BedCloud.html#method.builder_from_object_path)
+    /// > to specify the cloud file via an [`ObjectPath`](struct.ObjectPath.html). For reading local files,
     /// > see [`Bed`](struct.BedCloud.html).
     ///
-    /// The cmk reader-related options, [listed here](struct.BedCloudBuilder.html#implementations), can:
+    /// The `BedCloud` options, [listed here](struct.BedCloudBuilder.html#implementations), can:
     ///  * set the cloud location of the .fam and/or .bim file
     ///  * override some metadata, for example, replace the individual ids.
     ///  * set the number of individuals (samples) or SNPs (variants)
@@ -1235,11 +1250,17 @@ where
     TObjectStore: ObjectStore,
 {
     /// Attempts to open a PLINK .bed file in the cloud for reading. Specify the file with an [`ObjectPath`].
-    /// Does not support reader-related options. cmk
+    /// Supports `BedCloud` options.
     ///
-    /// > Also see [`BedCloud::from_object_path`](struct.BedCloud.html#method.from_object_path), which does not support options.
+    /// See ["Cloud URLs and `ObjectPath` Examples"](supplemental_document_cloud_urls/index.html) for details of specifying a file.
     ///
-    /// The options, [listed here](struct.BedCloudBuilder.html#implementations), can:
+    /// > Also see [`BedCloud::from_object_path`](struct.BedCloud.html#method.from_object_path)
+    /// > which does not support `BedCloud` options.
+    /// > Alternatively, you can use [`BedCloud::builder`](struct.BedCloud.html#method.builder)
+    /// > to specify the cloud file via a URL string. For reading local files,
+    /// > see [`Bed`](struct.BedCloud.html).
+    ///
+    /// The `BedCloud` options, [listed here](struct.BedCloudBuilder.html#implementations), can:
     ///  * set the cloud location of the .fam and/or .bim file
     ///  * override some metadata, for example, replace the individual ids.
     ///  * set the number of individuals (samples) or SNPs (variants)
@@ -1259,11 +1280,11 @@ where
     ///
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, assert_eq_nan, sample_bed_url, EMPTY_OPTIONS};
+    /// use bed_reader::{BedCloud, assert_eq_nan, sample_bed_object_path};
     ///
     /// # Runtime::new().unwrap().block_on(async {
-    /// let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::builder(url, EMPTY_OPTIONS)?.build().await?;
+    /// let object_path = sample_bed_object_path("small.bed")?;
+    /// let mut bed_cloud = BedCloud::builder_from_object_path(&object_path).build().await?;
     /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray ["iid1", "iid2", "iid3"]
     /// println!("{:?}", bed_cloud.sid().await?); // Outputs ndarray ["snp1", "snp2", "snp3", "snp4"]
     /// let val = bed_cloud.read::<f64>().await?;
@@ -1284,9 +1305,9 @@ where
     /// ```
     /// # Runtime::new().unwrap().block_on(async {
     /// # use ndarray as nd;
-    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_url, EMPTY_OPTIONS};
-    /// # let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::builder(url, EMPTY_OPTIONS)?
+    /// # use bed_reader::{BedCloud, assert_eq_nan, sample_bed_object_path};
+    /// # let object_path = sample_bed_object_path("small.bed")?;
+    /// let mut bed_cloud = BedCloud::builder_from_object_path(&object_path)
     ///    .iid(["sample1", "sample2", "sample3"])
     ///    .build().await?;
     /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray ["sample1", "sample2", "sample3"]
@@ -1299,9 +1320,9 @@ where
     /// ```
     /// # Runtime::new().unwrap().block_on(async {
     /// # use ndarray as nd;
-    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_url, EMPTY_OPTIONS};
-    /// # let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::builder(&url, EMPTY_OPTIONS)?
+    /// # use bed_reader::{BedCloud, assert_eq_nan, sample_bed_object_path};
+    /// # let object_path = sample_bed_object_path("small.bed")?;
+    /// let mut bed_cloud = BedCloud::builder_from_object_path(&object_path)
     ///     .iid_count(3)
     ///     .sid_count(4)
     ///     .skip_early_check()
@@ -1324,9 +1345,9 @@ where
     /// ```
     /// # Runtime::new().unwrap().block_on(async {
     /// # use ndarray as nd;
-    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_url, EMPTY_OPTIONS};
-    /// # let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::builder(url, EMPTY_OPTIONS)?
+    /// # use bed_reader::{BedCloud, assert_eq_nan, sample_bed_object_path};
+    /// # let object_path = sample_bed_object_path("small.bed")?;
+    /// let mut bed_cloud = BedCloud::builder_from_object_path(&object_path)
     ///     .skip_father()
     ///     .skip_mother()
     ///     .skip_sex()
@@ -1348,10 +1369,17 @@ where
     }
 
     /// Attempts to open a PLINK .bed file in the cloud for reading. Specify the file with an [`ObjectPath`].
-    /// Does not support reader-related options. cmk
     ///
-    /// > Also see [`BedCloud::builder_from_object_path`](struct.BedCloud.html#method.builder_object_path), which does support reader-related options, cmk
-    /// > including [`skip_early_check`](struct.BedCloudBuilder.html#method.skip_early_check).
+    /// See ["Cloud URLs and `ObjectPath` Examples"](supplemental_document_cloud_urls/index.html) for details specifying a file.
+    ///
+    /// You may not give
+    /// [`BedCloud` options](supplemental_document_options/index.html#bedbedcloud-options).
+    /// See [`BedCloud::builder_from_object_path`](struct.BedCloud.html#method.builder_from_object_path), which does support
+    /// `BedCloud` options.
+    ///
+    /// > Also see, [`BedCloud::builder`](struct.BedCloud.html#method.builder)
+    /// > to specify the cloud file via a URL string. For reading local files,
+    /// > see [`Bed`](struct.BedCloud.html).
     ///
     /// # Errors
     /// By default, this method will return an error if the file is missing or its header
@@ -2203,7 +2231,7 @@ where
     }
 }
 
-/// Returns the cloud location of a sample .bed file.
+/// Returns the cloud locations of a .bed file as an [`ObjectPath`](struct.ObjectPath.html).
 ///
 /// Behind the scenes, the "cloud location" will actually be local.
 /// If necessary, the file will be downloaded.
@@ -2226,7 +2254,7 @@ pub fn sample_bed_object_path(
     Ok(vec.swap_remove(0))
 }
 
-/// Returns the cloud location of a sample file.
+/// Returns the cloud locations of a file as an [`ObjectPath`](struct.ObjectPath.html).
 ///
 /// Behind the scenes, the "cloud location" will actually be local.
 /// If necessary, the file will be downloaded.
@@ -2243,7 +2271,7 @@ pub fn sample_object_path(path: AnyPath) -> Result<ObjectPath<LocalFileSystem>, 
     Ok(object_path)
 }
 
-/// Returns the cloud locations of a list of files. cmk
+/// Returns the cloud locations of a list of files as [`ObjectPath`](struct.ObjectPath.html)s.
 ///
 /// Behind the scenes, the "cloud location" will actually be local.
 /// If necessary, the file will be downloaded.
@@ -2300,7 +2328,7 @@ pub fn sample_url(path: AnyPath) -> Result<String, Box<BedErrorPlus>> {
     Ok(url)
 }
 
-/// Returns the cloud locations of a list of files as a URL. cmk
+/// Returns the cloud locations of a list of files as URL strings.
 ///
 /// Behind the scenes, the "cloud location" will actually be local.
 /// If necessary, the file will be downloaded.
@@ -2322,13 +2350,13 @@ pub fn sample_urls(path_list: AnyIter<AnyPath>) -> Result<Vec<String>, Box<BedEr
 #[derive(Debug)]
 /// The location of a file in the cloud.
 ///
-/// The location is made up of of two parts, an `Arc`-wrapped [`ObjectStore`] and a [`StorePath`].
-/// The [`ObjectStore`] is a file server, for example, AWS S3, Azure, the local file system, etc.
-/// The [`StorePath`] is the path to the file on the file server.
+/// The location is made up of of two parts, an `Arc`-wrapped [`ObjectStore`](https://docs.rs/object_store/latest/object_store/trait.ObjectStore.html) and an [`object_store::path::Path as StorePath`](https://docs.rs/object_store/latest/object_store/path/struct.Path.html).
+/// The [`ObjectStore`](https://docs.rs/object_store/latest/object_store/trait.ObjectStore.html) is a cloud service, for example, AWS S3, Azure, the local file system, etc.
+/// The `StorePath` is the path to the file on the cloud service.
 ///
+/// See ["Cloud URLs and `ObjectPath` Examples"](supplemental_document_cloud_urls/index.html) for details specifying a file.
 ///
-/// [`ObjectStore`]: object_store::ObjectStore
-/// [`StorePath`]: object_store::path::Path
+/// An `ObjectPath` can be efficiently cloned because the `ObjectStore` is `Arc`-wrapped.
 ///
 /// # Examples
 ///
@@ -2350,9 +2378,10 @@ pub struct ObjectPath<TObjectStore>
 where
     TObjectStore: ObjectStore,
 {
-    /// An `Arc`-wrapped [`ObjectStore`], for example, an AWS S3 reader or a local file reader.
+    /// An `Arc`-wrapped [`ObjectStore`](https://docs.rs/object_store/latest/object_store/trait.ObjectStore.html) cloud service, for example, AWS S3, Azure, the local file system, etc.
     pub object_store: Arc<TObjectStore>,
-    /// A [`StorePath`] that points to a file on the [`ObjectStore`].
+    /// A [`object_store::path::Path as StorePath`](https://docs.rs/object_store/latest/object_store/path/struct.Path.html) that points to a file on the [`ObjectStore`](https://docs.rs/object_store/latest/object_store/trait.ObjectStore.html)
+    /// that gives the path to the file on the cloud service.
     pub path: StorePath,
 }
 
@@ -2368,20 +2397,23 @@ where
     }
 }
 
-/// cmk doc
+/// An empty set of [cloud options](supplemental_document_options/index.html#cloud-options)
+///
+/// See ["Cloud URLs and `ObjectPath` Examples"](supplemental_document_cloud_urls/index.html) for examples.
 pub const EMPTY_OPTIONS: [(&str, String); 0] = [];
 
 impl ObjectPath<Box<dyn ObjectStore>> {
-    /// Create a new [`ObjectPath`] from URL and cloud-related options. cmk
+    /// Create a new [`ObjectPath`] from a URL string and [cloud options](supplemental_document_options/index.html#cloud-options).
+    ///
+    /// See ["Cloud URLs and `ObjectPath` Examples"](supplemental_document_cloud_urls/index.html) for details specifying a file.
     ///
     /// # Example
     /// ```
     /// use std::sync::Arc;
     /// use object_store::{local::LocalFileSystem, path::Path as StorePath};
-    /// use bed_reader::{ObjectPath, BedErrorPlus, sample_bed_file, EMPTY_OPTIONS};
+    /// use bed_reader::{ObjectPath, BedErrorPlus, sample_bed_url, EMPTY_OPTIONS};
     /// # Runtime::new().unwrap().block_on(async {
-    /// let file_path = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?; // regular Rust PathBuf
-    /// let url = format!("file://{}", file_path.to_string_lossy()); // URL string
+    /// let url: String = sample_bed_url("plink_sim_10s_100v_10pmiss.bed")?;
     /// let object_path: ObjectPath<_> = ObjectPath::from_url(url, EMPTY_OPTIONS)?;
     /// assert_eq!(object_path.size().await?, 303);
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
@@ -2412,7 +2444,7 @@ impl<TObjectStore> ObjectPath<TObjectStore>
 where
     TObjectStore: ObjectStore,
 {
-    /// Create a new [`ObjectPath`] from an `Arc`-wrapped [`ObjectStore`] and a [`StorePath`].
+    /// Create a new [`ObjectPath`] from an `Arc`-wrapped [`ObjectStore`](https://docs.rs/object_store/latest/object_store/trait.ObjectStore.html) and an [`object_store::path::Path as StorePath`](https://docs.rs/object_store/latest/object_store/path/struct.Path.html).
     ///
     /// Both parts must be owned, but see [`ObjectPath`] for examples of creating from a tuple with references.
     ///
@@ -2513,130 +2545,6 @@ where
         Ok(())
     }
 }
-
-// cmk
-// // Implementing From trait for ObjectPath to allow tuple conversions.
-// impl<TObjectStore> From<(Arc<TObjectStore>, StorePath)> for ObjectPath<TObjectStore>
-// where
-//     TObjectStore: ObjectStore,
-// {
-//     fn from(tuple: (Arc<TObjectStore>, StorePath)) -> Self {
-//         ObjectPath {
-//             object_store: tuple.0,
-//             path: tuple.1,
-//         }
-//     }
-// }
-// impl<TObjectStore> From<(&Arc<TObjectStore>, &StorePath)> for ObjectPath<TObjectStore>
-// where
-//     TObjectStore: ObjectStore,
-// {
-//     fn from(tuple: (&Arc<TObjectStore>, &StorePath)) -> Self {
-//         ObjectPath {
-//             object_store: tuple.0.clone(),
-//             path: tuple.1.clone(),
-//         }
-//     }
-// }
-// impl<TObjectStore> From<(Arc<TObjectStore>, &StorePath)> for ObjectPath<TObjectStore>
-// where
-//     TObjectStore: ObjectStore,
-// {
-//     fn from(tuple: (Arc<TObjectStore>, &StorePath)) -> Self {
-//         ObjectPath {
-//             object_store: tuple.0,
-//             path: tuple.1.clone(),
-//         }
-//     }
-// }
-// impl<TObjectStore> From<(&Arc<TObjectStore>, StorePath)> for ObjectPath<TObjectStore>
-// where
-//     TObjectStore: ObjectStore,
-// {
-//     fn from(tuple: (&Arc<TObjectStore>, StorePath)) -> Self {
-//         ObjectPath {
-//             object_store: tuple.0.clone(),
-//             path: tuple.1,
-//         }
-//     }
-// }
-
-// impl<TObjectStore> From<&(Arc<TObjectStore>, StorePath)> for ObjectPath<TObjectStore>
-// where
-//     TObjectStore: ObjectStore,
-// {
-//     fn from(tuple: &(Arc<TObjectStore>, StorePath)) -> Self {
-//         ObjectPath {
-//             object_store: tuple.0.clone(),
-//             path: tuple.1.clone(),
-//         }
-//     }
-// }
-// impl<TObjectStore> From<&(&Arc<TObjectStore>, &StorePath)> for ObjectPath<TObjectStore>
-// where
-//     TObjectStore: ObjectStore,
-// {
-//     fn from(tuple: &(&Arc<TObjectStore>, &StorePath)) -> Self {
-//         ObjectPath {
-//             object_store: tuple.0.clone(),
-//             path: tuple.1.clone(),
-//         }
-//     }
-// }
-// impl<TObjectStore> From<&(Arc<TObjectStore>, &StorePath)> for ObjectPath<TObjectStore>
-// where
-//     TObjectStore: ObjectStore,
-// {
-//     fn from(tuple: &(Arc<TObjectStore>, &StorePath)) -> Self {
-//         ObjectPath {
-//             object_store: tuple.0.clone(),
-//             path: tuple.1.clone(),
-//         }
-//     }
-// }
-// impl<TObjectStore> From<&(&Arc<TObjectStore>, StorePath)> for ObjectPath<TObjectStore>
-// where
-//     TObjectStore: ObjectStore,
-// {
-//     fn from(tuple: &(&Arc<TObjectStore>, StorePath)) -> Self {
-//         ObjectPath {
-//             object_store: tuple.0.clone(),
-//             path: tuple.1.clone(),
-//         }
-//     }
-// }
-
-// // Implementing From trait for ObjectPath to allow tuple conversions.
-// impl<TObjectStore> From<(TObjectStore, StorePath)> for ObjectPath<TObjectStore>
-// where
-//     TObjectStore: ObjectStore,
-// {
-//     fn from(tuple: (TObjectStore, StorePath)) -> Self {
-//         ObjectPath {
-//             object_store: Arc::new(tuple.0),
-//             path: tuple.1,
-//         }
-//     }
-// }
-// impl<TObjectStore> From<(TObjectStore, &StorePath)> for ObjectPath<TObjectStore>
-// where
-//     TObjectStore: ObjectStore,
-// {
-//     fn from(tuple: (TObjectStore, &StorePath)) -> Self {
-//         ObjectPath {
-//             object_store: Arc::new(tuple.0),
-//             path: tuple.1.clone(),
-//         }
-//     }
-// }
-// impl<TObjectStore> From<&ObjectPath<TObjectStore>> for ObjectPath<TObjectStore>
-// where
-//     TObjectStore: ObjectStore,
-// {
-//     fn from(ref_thing: &ObjectPath<TObjectStore>) -> Self {
-//         ref_thing.clone()
-//     }
-// }
 
 impl<TObjectStore> fmt::Display for ObjectPath<TObjectStore>
 where

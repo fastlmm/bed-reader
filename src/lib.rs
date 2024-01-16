@@ -1566,7 +1566,7 @@ impl BedBuilder {
         }
     }
 
-    /// Create [`Bed`](struct.Bed.html) from the builder.
+    /// Create a [`Bed`](struct.Bed.html) from the builder.
     ///
     /// > See [`Bed::builder`](struct.Bed.html#method.builder) for more details and examples.
     pub fn build(&self) -> Result<Bed, Box<BedErrorPlus>> {
@@ -5988,7 +5988,7 @@ fn compute_field<T: Clone, F: Fn(usize) -> T>(
 }
 
 impl MetadataBuilder {
-    /// Create [`Metadata`](struct.Metadata.html) from the builder.
+    /// Create a [`Metadata`](struct.Metadata.html) from the builder.
     ///
     /// > See [`Metadata::builder()`](struct.Metadata.html#method.builder)
     pub fn build(&self) -> Result<Metadata, Box<BedErrorPlus>> {
