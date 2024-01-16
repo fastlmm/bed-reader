@@ -1027,18 +1027,21 @@ where
 // cmk need to fix new example in README.md
 impl BedCloud<Box<dyn ObjectStore>> {
     /// Attempts to open a PLINK .bed file in the cloud for reading. The file is specified by a URL.
-    /// You may give cloud-related option (like authetication keys), but not
-    /// [reader-related options](struct.BedCloudBuilder.html#implementations)
-    /// like [`skip_early_check`](struct.BedCloudBuilder.html#method.skip_early_check).
+    ///
+    /// You may give [cloud options](supplemental_documents/index.html#cloud-options) but not
+    /// [`BedCloud` options](supplemental_documents/index.html#bedbedcloud-options) or
+    /// [`ReadOptions`](supplemental_documents/index.html#bedbedcloud-options).
+    /// See ["Options, Options, Options"](supplemental_documents/index.html) for details.
     ///
     /// > Also see [`BedCloud::builder`](struct.BedCloud.html#method.builder), which does support
-    /// > reader-related options.
-    /// > Alternatively, you can use [`BedCloud::from_object_path`](struct.BedCloud.html#method.from_object_path) or
-    /// > [`BedCloud::builder_cmk`](struct.BedCloud.html#method.builder_cmk) to specify the file with an [`ObjectPath`](struct.ObjectPath.html).
+    /// > `BedCloud` options.
+    /// > Alternatively, you can use [`BedCloud::builder_from_object_path`](struct.BedCloud.html#method.builder_from_object_path)
+    /// > to specify the cloud file via an [`ObjectPath`](struct.ObjectPath.html). For reading local files,
+    /// > see [`Bed`](struct.BedCloud.html).
     ///
     /// # Errors
     /// URL parsing errors will return as an error.
-    /// By default, this method will return an error if the file is missing or its header
+    /// Also, by default, this method will return an error if the file is missing or its header
     /// is ill-formed. See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
     /// for all possible errors.
     ///
@@ -2248,14 +2251,14 @@ pub fn sample_object_path(path: AnyPath) -> Result<ObjectPath<LocalFileSystem>, 
 pub fn sample_object_paths(
     path_list: AnyIter<AnyPath>,
 ) -> Result<Vec<ObjectPath<LocalFileSystem>>, Box<BedErrorPlus>> {
-    let object_store = Arc::new(LocalFileSystem::new());
+    let arc_object_store = Arc::new(LocalFileSystem::new());
 
     let file_paths = STATIC_FETCH_DATA.fetch_files(path_list)?;
     file_paths
         .iter()
         .map(|file_path| {
             let path = StorePath::from_filesystem_path(file_path)?;
-            Ok(ObjectPath::new(object_store.clone(), path))
+            Ok(ObjectPath::new(arc_object_store.clone(), path))
         })
         .collect()
 }

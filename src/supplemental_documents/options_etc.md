@@ -101,4 +101,4 @@ When reading read genotype data, use [`ReadOptions::builder`](../struct.ReadOpti
 * which SNPs (variants) to read,
 * etc.
 
-See this crates introductory material for [a complete table](../index.html#readoptions).
+See this crate's introductory material for [a complete table](../index.html#readoptions).

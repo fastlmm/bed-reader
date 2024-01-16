@@ -2082,9 +2082,10 @@ fn to_metadata_path(
 }
 
 impl Bed {
-    /// Attempts to open a local PLINK .bed file for reading. Supports options.
+    /// Attempts to open a local PLINK .bed file for reading. Supports [options](supplemental_documents/index.html#bedbedcloud-options).
     ///
     /// > Also see [`Bed::new`](struct.Bed.html#method.new), which does not support options.
+    /// > For reading from the cloud, see [`BedCloud`](struct.BedCloud.html).
     ///
     /// The options, [listed here](struct.BedBuilder.html#implementations), can:
     ///  * set the path of the .fam and/or .bim file
@@ -2185,9 +2186,10 @@ impl Bed {
         BedBuilder::new(path)
     }
 
-    /// Attempts to open a local PLINK .bed file for reading. Does not support options.
+    /// Attempts to open a local PLINK .bed file for reading. Does not support [options](supplemental_documents/index.html#bedbedcloud-options).
     ///
     /// > Also see [`Bed::builder`](struct.Bed.html#method.builder), which does support options.
+    /// > For reading from the cloud, see [`BedCloud`](struct.BedCloud.html).
     ///
     /// Note that this method is a lazy about holding files, so unlike `std::fs::File::open(&path)`, it
     /// will not necessarily lock the file(s).
@@ -7192,6 +7194,10 @@ where
     Ok(STATIC_FETCH_DATA.fetch_files(path_list)?)
 }
 
-pub mod supplemental_documents {
+pub mod supplemental_document_options {
     #![doc = include_str!("supplemental_documents/options_etc.md")]
+}
+
+pub mod supplemental_document_cloud_urls {
+    #![doc = include_str!("supplemental_documents/cloud_urls_etc.md")]
 }

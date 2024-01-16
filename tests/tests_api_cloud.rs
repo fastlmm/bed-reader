@@ -23,6 +23,7 @@ use bed_reader::{sample_url, sample_urls};
 use ndarray as nd;
 use ndarray::s;
 use object_store::aws::AmazonS3Builder;
+use object_store::local::LocalFileSystem;
 use object_store::path::Path as StorePath;
 use object_store::ObjectStore;
 use tokio::runtime;
@@ -2343,6 +2344,87 @@ fn read_me_cloud() -> Result<(), Box<BedErrorPlus>> {
             .read_cloud(&mut bed_cloud)
             .await?;
         assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
+        Ok::<(), Box<BedErrorPlus>>(())
+    })
+}
+
+#[test]
+fn local_file_url_example() -> Result<(), Box<BedErrorPlus>> {
+    use bed_reader::{sample_bed_file, BedCloud, ReadOptions, EMPTY_OPTIONS};
+    use ndarray as nd;
+    use {assert_eq_nan, bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
+    Runtime::new().unwrap().block_on(async {
+        let file_name = sample_bed_file("small.bed")?.to_string_lossy().to_string();
+        println!("{file_name:?}"); // For example, "C:\\Users\\carlk\\AppData\\Local\\fastlmm\\bed-reader\\cache\\small.bed"
+        let url: String = format!("file://{file_name}");
+        println!("{url:?}"); // For example, "file://C:\\Users\\carlk\\AppData\\Local\\fastlmm\\bed-reader\\cache\\small.bed"
+        let mut bed_cloud = BedCloud::new(url, EMPTY_OPTIONS).await?;
+        let val = ReadOptions::builder()
+            .sid_index(2)
+            .f64()
+            .read_cloud(&mut bed_cloud)
+            .await?;
+        assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
+        Ok::<(), Box<BedErrorPlus>>(())
+    })
+}
+
+#[test]
+fn local_file_object_path_example() -> Result<(), Box<BedErrorPlus>> {
+    use bed_reader::{sample_bed_file, BedCloud, ReadOptions};
+    use ndarray as nd;
+    use {assert_eq_nan, bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
+    Runtime::new().unwrap().block_on(async {
+        let file_name = sample_bed_file("small.bed")?.to_string_lossy().to_string();
+        println!("{file_name:?}"); // For example, "C:\\Users\\carlk\\AppData\\Local\\fastlmm\\bed-reader\\cache\\small.bed"
+
+        let arc_object_store = Arc::new(LocalFileSystem::new());
+        let path = StorePath::from_filesystem_path(&file_name)?;
+        let object_path = ObjectPath::new(arc_object_store, path);
+
+        let mut bed_cloud = BedCloud::from_object_path(&object_path).await?;
+        let val = ReadOptions::builder()
+            .sid_index(2)
+            .f64()
+            .read_cloud(&mut bed_cloud)
+            .await?;
+        assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
+        Ok::<(), Box<BedErrorPlus>>(())
+    })
+}
+
+#[test]
+fn aws_object_path_example() -> Result<(), Box<BedErrorPlus>> {
+    use bed_reader::BedCloud;
+    use rusoto_credential::{CredentialsError, ProfileProvider, ProvideAwsCredentials};
+    use {bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
+    Runtime::new().unwrap().block_on(async {
+        // Read my AWS credentials from file ~/.aws/credentials
+        let credentials = if let Ok(provider) = ProfileProvider::new() {
+            provider.credentials().await
+        } else {
+            Err(CredentialsError::new("No credentials found"))
+        };
+
+        let Ok(credentials) = credentials else {
+            eprintln!("Skipping test because no AWS credentials found");
+            return Ok(());
+        };
+
+        let arc_s3 = Arc::new(
+            AmazonS3Builder::new()
+                .with_region("us-west-2")
+                .with_bucket_name("bedreader")
+                .with_access_key_id(credentials.aws_access_key_id())
+                .with_secret_access_key(credentials.aws_secret_access_key())
+                .build()?,
+        );
+        let store_path = StorePath::parse("/v1/toydata.5chrom.bed")?;
+        let object_path = ObjectPath::new(arc_s3, store_path);
+
+        let mut bed_cloud = BedCloud::from_object_path(&object_path).await?;
+        let val = bed_cloud.read::<i8>().await?;
+        assert_eq!(val.shape(), &[500, 10_000]);
         Ok::<(), Box<BedErrorPlus>>(())
     })
 }
