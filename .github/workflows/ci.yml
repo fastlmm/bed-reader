@@ -32,8 +32,10 @@ jobs:
         with:
           toolchain: stable
           override: true
-      - name: Test Rust
+      - name: Test Rust no-default-features
         run: cargo test --verbose --no-default-features
+      - name: Test Rust default features
+        run: cargo test --verbose
   
   
   macos:
