@@ -115,7 +115,7 @@ mod tests;
 use anyinput::anyinput;
 pub use bed_cloud::{
     sample_bed_object_path, sample_bed_url, sample_object_path, sample_object_paths, sample_url,
-    sample_urls, BedCloud,
+    sample_urls, BedCloud, BedCloudBuilder,
 };
 pub use bed_cloud::{ObjectPath, EMPTY_OPTIONS};
 use byteorder::{LittleEndian, ReadBytesExt};
@@ -2082,7 +2082,7 @@ fn to_metadata_path(
 }
 
 impl Bed {
-    /// Attempts to open a local PLINK .bed file for reading. Supports [options](supplemental_documents/index.html#bedbedcloud-options).
+    /// Attempts to open a local PLINK .bed file for reading. Supports options.
     ///
     /// > Also see [`Bed::new`](struct.Bed.html#method.new), which does not support options.
     /// > For reading from the cloud, see [`BedCloud`](struct.BedCloud.html).
@@ -2186,7 +2186,7 @@ impl Bed {
         BedBuilder::new(path)
     }
 
-    /// Attempts to open a local PLINK .bed file for reading. Does not support [options](supplemental_documents/index.html#bedbedcloud-options).
+    /// Attempts to open a local PLINK .bed file for reading. Does not support [options](supplemental_document_options/index.html#bedbedcloud-options).
     ///
     /// > Also see [`Bed::builder`](struct.Bed.html#method.builder), which does support options.
     /// > For reading from the cloud, see [`BedCloud`](struct.BedCloud.html).

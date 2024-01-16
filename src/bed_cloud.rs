@@ -1028,10 +1028,12 @@ where
 impl BedCloud<Box<dyn ObjectStore>> {
     /// Attempts to open a PLINK .bed file in the cloud for reading. The file is specified by a URL.
     ///
-    /// You may give [cloud options](supplemental_documents/index.html#cloud-options) but not
-    /// [`BedCloud` options](supplemental_documents/index.html#bedbedcloud-options) or
-    /// [`ReadOptions`](supplemental_documents/index.html#bedbedcloud-options).
-    /// See ["Options, Options, Options"](supplemental_documents/index.html) for details.
+    /// See ["Cloud URLs and `ObjectPath` Examples"](supplemental_document_cloud_urls/index.html) for details of file specification.
+    ///
+    /// You may give [cloud options](supplemental_document_options/index.html#cloud-options) but not
+    /// [`BedCloud` options](supplemental_document_options/index.html#bedbedcloud-options) or
+    /// [`ReadOptions`](supplemental_document_options/index.html#bedbedcloud-options).
+    /// See ["Options, Options, Options"](supplemental_document_options/index.html) for details.
     ///
     /// > Also see [`BedCloud::builder`](struct.BedCloud.html#method.builder), which does support
     /// > `BedCloud` options.
@@ -1040,7 +1042,7 @@ impl BedCloud<Box<dyn ObjectStore>> {
     /// > see [`Bed`](struct.BedCloud.html).
     ///
     /// # Errors
-    /// URL parsing errors will return as an error.
+    /// URL parsing may return an error.
     /// Also, by default, this method will return an error if the file is missing or its header
     /// is ill-formed. See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
     /// for all possible errors.
@@ -1101,15 +1103,17 @@ impl BedCloud<Box<dyn ObjectStore>> {
     }
 
     /// Attempts to open a PLINK .bed file in the cloud for reading.
-    /// Specify the file with a URL. Supports both cloud-related and reader-related options.
+    /// Specify the file with a URL. Supports both cloud-related and cmk reader-related options.
+    ///
+    /// See ["Cloud URLs and `ObjectPath` Examples"](supplemental_document_cloud_urls/index.html) for details of file specification.
     ///
     /// > Also see [`BedCloud::new`](struct.BedCloud.html#method.url),
-    /// > which does not support reader-related options.
-    /// > Alternatively, you can use [`BedCloud::from_object_path`](struct.BedCloud.html#method.from_object_path) or
-    /// > [`BedCloud::builder_cmk`](struct.BedCloud.html#method.builder_cmk) to specify the file with an [`ObjectPath`](struct.ObjectPath.html).
+    /// > which does not support reader-related options. cmk
+    /// > Alternatively, you can use [`BedCloud::from_object_path`](struct.BedCloud.html#method.from_object_path)
+    /// > to specify the file with an [`ObjectPath`](struct.ObjectPath.html). For local files,
+    /// > see [`Bed`](struct.BedCloud.html).
     ///
-    /// cmk bad link
-    /// The reader-related options, [listed here](struct.BedCloudBuilder.html#implementations), can:
+    /// The cmk reader-related options, [listed here](struct.BedCloudBuilder.html#implementations), can:
     ///  * set the cloud location of the .fam and/or .bim file
     ///  * override some metadata, for example, replace the individual ids.
     ///  * set the number of individuals (samples) or SNPs (variants)
@@ -1117,7 +1121,7 @@ impl BedCloud<Box<dyn ObjectStore>> {
     ///  * skip reading selected metadata
     ///
     /// # Errors
-    /// URL parsing errors will return as an error.
+    /// URL parsing may return an error.
     /// Also, by default, this method will return an error if the file is missing or its header
     /// is ill-formed. It will also return an error if the options contradict each other.
     /// See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
@@ -1231,11 +1235,10 @@ where
     TObjectStore: ObjectStore,
 {
     /// Attempts to open a PLINK .bed file in the cloud for reading. Specify the file with an [`ObjectPath`].
-    /// Does not support reader-related options.
+    /// Does not support reader-related options. cmk
     ///
     /// > Also see [`BedCloud::from_object_path`](struct.BedCloud.html#method.from_object_path), which does not support options.
     ///
-    /// cmk bad link
     /// The options, [listed here](struct.BedCloudBuilder.html#implementations), can:
     ///  * set the cloud location of the .fam and/or .bim file
     ///  * override some metadata, for example, replace the individual ids.
@@ -1345,9 +1348,9 @@ where
     }
 
     /// Attempts to open a PLINK .bed file in the cloud for reading. Specify the file with an [`ObjectPath`].
-    /// Does not support reader-related options.
+    /// Does not support reader-related options. cmk
     ///
-    /// > Also see [`BedCloud::builder_from_object_path`](struct.BedCloud.html#method.builder_object_path), which does support reader-related options,
+    /// > Also see [`BedCloud::builder_from_object_path`](struct.BedCloud.html#method.builder_object_path), which does support reader-related options, cmk
     /// > including [`skip_early_check`](struct.BedCloudBuilder.html#method.skip_early_check).
     ///
     /// # Errors
@@ -1362,11 +1365,11 @@ where
     ///
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, assert_eq_nan, from_object_path};
+    /// use bed_reader::{BedCloud, assert_eq_nan, sample_bed_object_path};
     ///
     /// # Runtime::new().unwrap().block_on(async {
     /// let object_path = sample_bed_object_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::from_object_path(object_path).await?;
+    /// let mut bed_cloud = BedCloud::from_object_path(&object_path).await?;
     /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray: ["iid1", "iid2", "iid3"]
     /// println!("{:?}", bed_cloud.sid().await?); // Outputs ndarray: ["sid1", "sid2", "sid3", "sid4"]
     /// let val = bed_cloud.read::<f64>().await?;
@@ -1387,11 +1390,11 @@ where
     /// at index position 2.
     /// ```
     /// # use ndarray as nd;
-    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, from_object_path};
+    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_object_path};
     /// # Runtime::new().unwrap().block_on(async {
     /// # let object_path = sample_bed_object_path("small.bed")?;
     ///
-    /// let mut bed_cloud = BedCloud::from_object_path(object_path).await?;
+    /// let mut bed_cloud = BedCloud::from_object_path(&object_path).await?;
     /// let val = ReadOptions::builder().sid_index(2).f64().read_cloud(&mut bed_cloud).await?;
     ///
     /// assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
@@ -2369,7 +2372,7 @@ where
 pub const EMPTY_OPTIONS: [(&str, String); 0] = [];
 
 impl ObjectPath<Box<dyn ObjectStore>> {
-    /// Create a new [`ObjectPath`] from URL and cloud-related options.
+    /// Create a new [`ObjectPath`] from URL and cloud-related options. cmk
     ///
     /// # Example
     /// ```
