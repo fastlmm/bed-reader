@@ -40,7 +40,7 @@ cloud = [
     "bytes",
     "url"
 ]
-default = ["extension-module"]
+default = ["cloud"]
 
 [dependencies]
 thiserror = "1.0.40"

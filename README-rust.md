@@ -92,9 +92,10 @@ From the cloud: open a file and read data for one SNP (variant)
 at index position 2.
 
 ```rust
+# #[cfg(feature = "cloud")]
+# { use {bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
 use ndarray as nd;
 use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_url, EMPTY_OPTIONS};
-# use {bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
 # Runtime::new().unwrap().block_on(async {
 let url: String = sample_url("small.bed")?;
 println!("{url:?}"); // For example, "file://C:\\Users\\carlk\\AppData\\Local\\fastlmm\\bed-reader\\cache\\small.bed"
@@ -103,7 +104,8 @@ let mut bed_cloud = BedCloud::new(url, options).await?;
 let val = ReadOptions::builder().sid_index(2).f64().read_cloud(&mut bed_cloud).await?;
 assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
 # Ok::<(), Box<dyn std::error::Error>>(())
-# }).unwrap();
+# }).unwrap()};
+
 ```
 
 Project Links

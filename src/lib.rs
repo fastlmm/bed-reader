@@ -4006,6 +4006,8 @@ pub struct ReadOptions<TVal: BedVal> {
     ///
     /// In this example, we read using only request at a time.
     /// ```
+    /// # #[cfg(feature = "cloud")]
+    /// # { use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// use ndarray as nd;
     /// use bed_reader::{BedCloud, ReadOptions, sample_bed_object_path};
     /// use bed_reader::assert_eq_nan;
@@ -4023,8 +4025,7 @@ pub struct ReadOptions<TVal: BedVal> {
     ///         [0, 1, 2, 0]
     ///     ],
     /// );
-    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
-    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap() };
     #[builder(default, setter(strip_option))]
     #[allow(dead_code)]
     max_concurrent_requests: Option<usize>,
@@ -4035,6 +4036,8 @@ pub struct ReadOptions<TVal: BedVal> {
     ///
     /// In this example, we read using only 1_000_000 bytes per request.
     /// ```
+    /// # #[cfg(feature = "cloud")]
+    /// # { use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// use ndarray as nd;
     /// use bed_reader::{BedCloud, ReadOptions, sample_bed_object_path};
     /// use bed_reader::assert_eq_nan;
@@ -4052,8 +4055,7 @@ pub struct ReadOptions<TVal: BedVal> {
     ///         [0, 1, 2, 0]
     ///     ],
     /// );
-    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
-    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap() };
     /// ```
     #[builder(default, setter(strip_option))]
     #[allow(dead_code)]
