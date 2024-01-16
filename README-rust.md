@@ -10,14 +10,29 @@ bed-reader
 
 Read and write the PLINK BED format, simply and efficiently.
 
-Features
---------
+Highlights
+----------
 
 * Fast and multi-threaded
 * Supports many indexing methods. Slice data by individuals (samples) and/or SNPs (variants).
 * The Python-facing APIs for this library is used by [PySnpTools](https://github.com/fastlmm/PySnpTools), [FaST-LMM](https://github.com/fastlmm/FaST-LMM), and [PyStatGen](https://github.com/pystatgen).
 * Supports [PLINK 1.9](https://www.cog-genomics.org/plink2/formats).
 * Read data locally or from the cloud, efficiently and directly.
+
+Install
+-------
+
+**Full version**: Can read local and cloud files
+
+```bash
+cargo add bed-reader
+```
+
+**Minimal version**: Can read local files, only
+
+```bash
+cargo add bed-reader --no-default-features
+```
 
 Examples
 --------
@@ -47,8 +62,6 @@ assert_eq_nan(
 Read every second individual (samples) and SNPs (variants) 20 to 30.
 
 ```rust
-# // '#' needed for doctest
-# use bed_reader::{Bed, ReadOptions, assert_eq_nan, sample_bed_file};
 use ndarray::s;
 
 let file_name = sample_bed_file("some_missing.bed")?;
@@ -60,7 +73,7 @@ let val = ReadOptions::builder()
     .read(&mut bed)?;
 
 assert!(val.dim() == (50, 10));
-# use bed_reader::BedErrorPlus; // '#' needed for doctest
+# use bed_reader::{Bed, ReadOptions, BedErrorPlus, assert_eq_nan, sample_bed_file}; // '#' needed for doctest
 # Ok::<(), Box<BedErrorPlus>>(())
 ```
 
@@ -92,8 +105,8 @@ From the cloud: open a file and read data for one SNP (variant)
 at index position 2.
 
 ```rust
-# #[cfg(feature = "cloud")]
-# { use {bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
+# #[cfg(feature = "cloud")]  // '#' needed for doctest
+# { use {bed_reader::BedErrorPlus, tokio::runtime::Runtime};
 use ndarray as nd;
 use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_url, EMPTY_OPTIONS};
 # Runtime::new().unwrap().block_on(async {
@@ -103,8 +116,7 @@ let options = EMPTY_OPTIONS; // map of authentication keys, etc., if needed.
 let mut bed_cloud = BedCloud::new(url, options).await?;
 let val = ReadOptions::builder().sid_index(2).f64().read_cloud(&mut bed_cloud).await?;
 assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
-# Ok::<(), Box<dyn std::error::Error>>(())
-# }).unwrap()};
+# Ok::<(), Box<dyn std::error::Error>>(()) }).unwrap()};  // '#' needed for doctest
 
 ```
 

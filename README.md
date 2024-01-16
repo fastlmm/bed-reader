@@ -13,7 +13,8 @@ Read and write the PLINK BED format, simply and efficiently.
 
 *This is the Python README. For Rust, see [README-rust.md](https://crates.io/crates/bed-reader).*
 
-Features:
+Highlights
+====================
 
 * Fast multi-threaded Rust engine.
 * Supports all Python indexing methods. Slice data by individuals (samples) and/or SNPs (variants).
@@ -82,6 +83,8 @@ chromosome. Then, read every genomic value in chromosome 5.
 (100, 6)
 
 ```
+
+cmk add cloud example
 
 Project Links
 ==============
