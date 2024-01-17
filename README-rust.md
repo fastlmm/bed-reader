@@ -111,7 +111,7 @@ use ndarray as nd;
 use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_url, EMPTY_OPTIONS};
 # Runtime::new().unwrap().block_on(async {
 let url: String = sample_url("small.bed")?;
-println!("{url:?}"); // For example, "file://C:\\Users\\carlk\\AppData\\Local\\fastlmm\\bed-reader\\cache\\small.bed"
+println!("{url:?}"); // For example, "file:///C:/Users/carlk/AppData/Local/bed_reader/bed_reader/Cache/small.bed"
 let options = EMPTY_OPTIONS; // map of authentication keys, etc., if needed.
 let mut bed_cloud = BedCloud::new(url, options).await?;
 let val = ReadOptions::builder().sid_index(2).f64().read_cloud(&mut bed_cloud).await?;

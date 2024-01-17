@@ -6,7 +6,7 @@
 # for an article on how this project uses Rust to create a Python extension.
 
 from bed_reader._open_bed import get_num_threads, open_bed
-from bed_reader._sample_data import sample_file, tmp_path
+from bed_reader._sample_data import sample_file, sample_url, tmp_path
 from bed_reader._to_bed import to_bed
 
 from .bed_reader import (

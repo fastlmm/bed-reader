@@ -13,20 +13,20 @@ We can specify a local file as if it is in the cloud. This is a great way to tes
 
 ### Local File URL
 
-The URL for a local file takes the form `file://{file_name}`. No cloud options are needed, so we use `EMPTY_OPTIONS`.
+The URL for a local file takes the form `file:///{encoded_file_name}`. No cloud options are needed, so we use `EMPTY_OPTIONS`.
 
 *Example:*
 
 ```rust
 use ndarray as nd;
-use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_file, EMPTY_OPTIONS};
+use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_file, EMPTY_OPTIONS, path_to_url_string};
 # use {bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
 # Runtime::new().unwrap().block_on(async {
 
 let file_name = sample_bed_file("small.bed")?.to_string_lossy().to_string();
 println!("{file_name:?}"); // For example, "C:\\Users\\carlk\\AppData\\Local\\fastlmm\\bed-reader\\cache\\small.bed"
-let url: String = format!("file://{file_name}");
-println!("{url:?}"); // For example, "file://C:\\Users\\carlk\\AppData\\Local\\fastlmm\\bed-reader\\cache\\small.bed"
+let url: String = path_to_url_string(file_name)?;
+println!("{url:?}"); // For example, "file:///C:/Users/carlk/AppData/Local/bed_reader/bed_reader/Cache/small.bed"
 
 let mut bed_cloud = BedCloud::new(url, EMPTY_OPTIONS).await?;
 let val = ReadOptions::builder().sid_index(2).f64().read_cloud(&mut bed_cloud).await?;

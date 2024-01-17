@@ -117,8 +117,9 @@ mod tests;
 use anyinput::anyinput;
 #[cfg(feature = "cloud")]
 pub use bed_cloud::{
-    sample_bed_object_path, sample_bed_url, sample_object_path, sample_object_paths, sample_url,
-    sample_urls, BedCloud, BedCloudBuilder, ObjectPath, EMPTY_OPTIONS,
+    path_to_url_string, sample_bed_object_path, sample_bed_url, sample_object_path,
+    sample_object_paths, sample_url, sample_urls, BedCloud, BedCloudBuilder, ObjectPath,
+    EMPTY_OPTIONS,
 };
 use byteorder::{LittleEndian, ReadBytesExt};
 use core::fmt::Debug;
@@ -198,10 +199,6 @@ pub enum BedErrorPlus {
     #[error(transparent)]
     ParseFloatError(#[from] ParseFloatError),
 
-    // cmk remove dep
-    // #[allow(missing_docs)]
-    // #[error(transparent)]
-    // FetchData(#[from] FetchDataError),
     #[cfg(feature = "cloud")]
     #[allow(missing_docs)]
     #[error(transparent)]
@@ -363,6 +360,10 @@ pub enum BedError {
     #[allow(missing_docs)]
     #[error("Sample fetch error: {0}")]
     SampleFetch(String),
+
+    #[allow(missing_docs)]
+    #[error("Cannot create URL from this file path: '{0}'")]
+    CannotCreateUrlFromFilePath(String),
 }
 
 // Trait alias

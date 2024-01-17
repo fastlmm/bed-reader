@@ -2,7 +2,7 @@ import configparser
 import logging
 import os
 import platform
-from pathlib import Path
+from pathlib import Path, PurePath
 
 import numpy as np
 import pytest
@@ -15,7 +15,7 @@ def test_cloud_read1(shared_datadir):
     import math
 
     file = shared_datadir / "plink_sim_10s_100v_10pmiss.bed"
-    file = "file://" + str(file.as_posix())
+    file = PurePath(file).as_uri()
 
     with open_bed(file) as bed:
         assert bed.iid_count == 10
@@ -34,7 +34,7 @@ def test_cloud_read1(shared_datadir):
 
 def test_cloud_write(tmp_path, shared_datadir):
     in_file = shared_datadir / "plink_sim_10s_100v_10pmiss.bed"
-    in_file = "file://" + str(in_file.as_posix())
+    in_file = PurePath(in_file).as_uri()
 
     out_file = tmp_path / "out.bed"
     with open_bed(in_file) as bed:
@@ -85,7 +85,7 @@ def test_cloud_write(tmp_path, shared_datadir):
 
 
 def test_cloud_overrides(shared_datadir):
-    file = "file://" + str((shared_datadir / "some_missing.bed").as_posix())
+    file = PurePath(shared_datadir / "some_missing.bed").as_uri()
     with open_bed(file) as bed:
         fid = bed.fid
         iid = bed.iid
@@ -167,8 +167,7 @@ def test_cloud_overrides(shared_datadir):
 
 
 def file_to_url(file):
-    file = Path(file)
-    return "file://" + str(file.as_posix())
+    return PurePath(file).as_uri()
 
 
 def test_cloud_str(shared_datadir):
@@ -952,7 +951,7 @@ def test_s3(shared_datadir):
         assert val.shape == (500, 10_000)
 
     # file url
-    file = "file://" + str(file.as_posix())
+    file = PurePath(file).as_uri()
     with open_bed(file) as bed:
         val = bed.read(dtype="int8")
         assert val.shape == (500, 10_000)
@@ -1010,6 +1009,22 @@ def test_url_errors(shared_datadir):
 
     with pytest.raises(ValueError, match=r".*S3 error.*"):
         open_bed("s3://bedreader/v1/toydata.5chrom.bed", cloud_options={})
+
+
+def test_readme_example():
+    from bed_reader import sample_url
+
+    url = sample_url("small.bed")
+    print(
+        f"{url}"
+    )  # For example, "file:///C:/Users/carlk/AppData/Local/bed_reader/bed_reader/Cache/small.bed"
+    # file:///.../small.bed
+    with open_bed(url, cloud_options={}) as bed:
+        val = bed.read(index=np.s_[:, 2], dtype="float64")
+        print(val)
+    # [[nan]
+    #  [nan]
+    #  [ 2.]]
 
 
 if __name__ == "__main__":

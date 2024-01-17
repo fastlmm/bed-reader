@@ -82,3 +82,4 @@ object_store = { version = "0.9.0", features = ["aws"]}
 
 [build-dependencies]
 pyo3-build-config = "0.20.0"
+

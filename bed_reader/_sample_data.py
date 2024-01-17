@@ -1,5 +1,5 @@
 import tempfile
-from pathlib import Path
+from pathlib import Path, PurePath
 from typing import Union
 
 try:
@@ -80,6 +80,50 @@ def sample_file(filepath: Union[str, Path]) -> str:
         POOCH.fetch(file_string[:-4] + ".fam")
         POOCH.fetch(file_string[:-4] + ".bim")
     return POOCH.fetch(file_string)
+
+
+def sample_url(filepath: Union[str, Path]) -> str:
+    """
+    Retrieve a URL to a sample .bed file. (Also makes ready associated .fam and .bim files).
+
+    Parameters
+    ----------
+    filepath
+        Name of the sample .bed file.
+
+    Returns
+    -------
+    str
+        URL to sample .bed file.
+
+
+    .. note::
+        This function requires the :mod:`pooch` package. Install `pooch` with:
+
+        .. code-block:: bash
+
+            pip install --upgrade bed-reader[samples]
+
+
+    By default this function puts files under the user's cache directory.
+    Override this by setting
+    the `BED_READER_DATA_DIR` environment variable.
+
+    Example
+    --------
+
+    .. doctest::
+
+        >>> # pip install bed-reader[samples]  # if needed
+        >>> from bed_reader import sample_url
+        >>>
+        >>> url = sample_url("small.bed")
+        >>> print(f"The url is '{url}'")
+        The url is 'file:///.../small.bed'
+    """
+    file_name = sample_file(filepath)
+    url = PurePath(file_name).as_uri()
+    return url
 
 
 def tmp_path() -> Path:

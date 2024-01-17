@@ -1041,6 +1041,7 @@ where
 }
 
 impl BedCloud<Box<dyn ObjectStore>> {
+    #[allow(clippy::doc_link_with_quotes)]
     /// Attempts to open a PLINK .bed file in the cloud for reading. The file is specified with a URL string.
     ///
     /// See ["Cloud URLs and `ObjectPath` Examples"](supplemental_document_cloud_urls/index.html) for details specifying a file.
@@ -1073,7 +1074,7 @@ impl BedCloud<Box<dyn ObjectStore>> {
     ///
     /// # Runtime::new().unwrap().block_on(async {
     /// let url = sample_bed_url("small.bed")?;
-    /// println!("{url:?}"); // For example, "file://C:\\Users\\carlk\\AppData\\Local\\fastlmm\\bed-reader\\cache\\small.bed"
+    /// println!("{url:?}"); // For example, "file:///C:/Users/carlk/AppData/Local/bed_reader/bed_reader/Cache/small.bed"
     /// let mut bed_cloud = BedCloud::new(url, EMPTY_OPTIONS).await?;
     /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray: ["iid1", "iid2", "iid3"]
     /// println!("{:?}", bed_cloud.sid().await?); // Outputs ndarray: ["sid1", "sid2", "sid3", "sid4"]
@@ -1117,6 +1118,7 @@ impl BedCloud<Box<dyn ObjectStore>> {
         Ok(bed_cloud)
     }
 
+    #[allow(clippy::doc_link_with_quotes)]
     /// Attempts to open a PLINK .bed file in the cloud for reading. The file is specified with a URL string.
     /// Supports both [cloud options](supplemental_document_options/index.html#cloud-options) and
     /// [`BedCloud` options](supplemental_document_options/index.html#bedbedcloud-options).
@@ -1155,7 +1157,7 @@ impl BedCloud<Box<dyn ObjectStore>> {
     ///
     /// # Runtime::new().unwrap().block_on(async {
     /// let url = sample_bed_url("small.bed")?;
-    /// println!("{url:?}"); // For example, "file://C:\\Users\\carlk\\AppData\\Local\\fastlmm\\bed-reader\\cache\\small.bed"
+    /// println!("{url:?}"); // For example, "file:///C:/Users/carlk/AppData/Local/bed_reader/bed_reader/Cache/small.bed"
     /// let mut bed_cloud = BedCloud::builder(url, EMPTY_OPTIONS)?.build().await?;
     /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray ["iid1", "iid2", "iid3"]
     /// println!("{:?}", bed_cloud.sid().await?); // Outputs ndarray ["snp1", "snp2", "snp3", "snp4"]
@@ -2320,6 +2322,24 @@ pub fn sample_bed_url(bed_path: AnyPath) -> Result<String, Box<BedErrorPlus>> {
     Ok(vec.swap_remove(0))
 }
 
+/// Returns a local file's path as a URL string, taking care of any needed encoding.
+///
+/// ```
+/// use bed_reader::{path_to_url_string, sample_bed_file};
+/// let path = sample_bed_file("small.bed")?;
+/// let url: String = path_to_url_string(path)?;
+/// assert!(url.starts_with("file:///") && url.ends_with("/small.bed"));
+/// # use bed_reader::BedErrorPlus;
+/// # Ok::<(), Box<BedErrorPlus>>(())
+/// ```
+#[anyinput]
+pub fn path_to_url_string(path: AnyPath) -> Result<String, Box<BedErrorPlus>> {
+    let url = Url::from_file_path(path)
+        .map_err(|_e| BedError::CannotCreateUrlFromFilePath(path.to_string_lossy().to_string()))?
+        .to_string();
+    Ok(url)
+}
+
 /// Returns the cloud location of a sample file as a URL string.
 ///
 /// Behind the scenes, the "cloud location" will actually be local.
@@ -2332,7 +2352,7 @@ pub fn sample_url(path: AnyPath) -> Result<String, Box<BedErrorPlus>> {
     let file_path = STATIC_FETCH_DATA
         .fetch_file(path)
         .map_err(|e| BedError::SampleFetch(e.to_string()))?;
-    let url = format!("file://{}", file_path.to_string_lossy());
+    let url = path_to_url_string(file_path)?;
     Ok(url)
 }
 
@@ -2351,7 +2371,7 @@ pub fn sample_urls(path_list: AnyIter<AnyPath>) -> Result<Vec<String>, Box<BedEr
     file_paths
         .iter()
         .map(|file_path| {
-            let url = format!("file://{}", file_path.to_string_lossy());
+            let url = path_to_url_string(file_path)?;
             Ok(url)
         })
         .collect()

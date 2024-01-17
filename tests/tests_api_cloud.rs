@@ -7,6 +7,7 @@ use std::sync::Arc;
 use bed_reader::allclose;
 use bed_reader::assert_eq_nan;
 use bed_reader::assert_error_variant;
+use bed_reader::path_to_url_string;
 use bed_reader::sample_bed_file;
 use bed_reader::sample_bed_object_path;
 use bed_reader::sample_bed_url;
@@ -89,7 +90,7 @@ async fn rusty_cloud_bed1() -> Result<(), Box<BedErrorPlus>> {
     let mean = val.mapv(|elem| elem as f64).mean().unwrap();
     assert!(mean == -13.274); // really shouldn't do mean on data where -127 represents missing
 
-    let url = format!("file://{}", file_path.to_string_lossy());
+    let url = path_to_url_string(file_path)?;
 
     let mut bed_cloud = BedCloud::new(&url, EMPTY_OPTIONS).await?;
     let val = bed_cloud.read::<i8>().await?;
@@ -110,10 +111,7 @@ async fn rusty_cloud_bed1() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn rusty_cloud_bed1_url() -> Result<(), Box<BedErrorPlus>> {
-    let url = format!(
-        "file://{}",
-        sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?.to_string_lossy()
-    );
+    let url = sample_bed_url("plink_sim_10s_100v_10pmiss.bed")?;
 
     let mut bed_cloud = BedCloud::new(&url, EMPTY_OPTIONS).await?;
     let val = bed_cloud.read::<i8>().await?;
@@ -148,7 +146,7 @@ async fn rusty_cloud_bed2() -> Result<(), Box<BedErrorPlus>> {
     println!("{mean:?}");
     assert!(mean == 1.0); // really shouldn't do mean on data where -127 represents missing
 
-    let url = format!("file://{}", file.to_string_lossy());
+    let url = path_to_url_string(file)?;
     let mut bed_cloud = BedCloud::new(&url, EMPTY_OPTIONS).await?;
     let val = ReadOptions::builder()
         .iid_index(0)
@@ -165,10 +163,7 @@ async fn rusty_cloud_bed2() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn rusty_cloud_bed2_url() -> Result<(), Box<BedErrorPlus>> {
-    let url = format!(
-        "file://{}",
-        sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?.to_string_lossy()
-    );
+    let url = sample_bed_url("plink_sim_10s_100v_10pmiss.bed")?;
     let mut bed_cloud = BedCloud::new(&url, EMPTY_OPTIONS).await?;
     let val = ReadOptions::builder()
         .iid_index(0)
@@ -479,8 +474,7 @@ async fn open_examples_cloud() -> Result<(), Box<BedErrorPlus>> {
 #[tokio::test]
 async fn metadata_etc_cloud() -> Result<(), Box<BedErrorPlus>> {
     // Initialize BedCloud with the sample file
-    let file_name = sample_bed_file("small.bed")?;
-    let url = format!("file://{}", file_name.to_string_lossy());
+    let url = sample_bed_url("small.bed")?;
 
     // Reading sex data
     let mut bed_cloud = BedCloud::new(&url, EMPTY_OPTIONS).await?;
@@ -2123,24 +2117,11 @@ async fn s3_cloud() -> Result<(), Box<BedErrorPlus>> {
     Ok(())
 }
 
-#[cfg(test)]
-fn pathbuf_to_file_url(path: impl AsRef<std::path::Path>) -> Result<Url, url::ParseError> {
-    let path = path.as_ref();
-    // For Windows, manually construct the file URL
-    if cfg!(windows) {
-        let path_str = path.to_string_lossy();
-        let url_str = format!("file:///{}", path_str.replace('\\', "/"));
-        Url::parse(&url_str)
-    } else {
-        // For Unix-like systems, use the `from_file_path` method
-        Url::from_file_path(path).map_err(|_| url::ParseError::IdnaError)
-    }
-}
-
 #[tokio::test]
 async fn dyn_cloud() -> Result<(), Box<BedErrorPlus>> {
     let file_name = sample_bed_file("small.bed")?;
-    let url = pathbuf_to_file_url(file_name).unwrap();
+    let url = path_to_url_string(file_name)?;
+    let url = Url::parse(&url).unwrap();
     let iid_count = 3;
     let sid_count = 4;
     let (object_store, store_path) = object_store::parse_url(&url).unwrap();
@@ -2288,7 +2269,7 @@ fn read_me_cloud() -> Result<(), Box<BedErrorPlus>> {
     use {assert_eq_nan, bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
     Runtime::new().unwrap().block_on(async {
         let url = sample_url("small.bed")?;
-        println!("{url:?}"); // For example, "file://C:\\Users\\carlk\\AppData\\Local\\fastlmm\\bed-reader\\cache\\small.bed"
+        println!("{url:?}"); // For example, "file:///C:/Users/carlk/AppData/Local/bed_reader/bed_reader/Cache/small.bed"
         let options = EMPTY_OPTIONS; // map of authetication keys, etc., if needed.
         let mut bed_cloud = BedCloud::new(url, options).await?;
         let val = ReadOptions::builder()
@@ -2309,8 +2290,8 @@ fn local_file_url_example() -> Result<(), Box<BedErrorPlus>> {
     Runtime::new().unwrap().block_on(async {
         let file_name = sample_bed_file("small.bed")?.to_string_lossy().to_string();
         println!("{file_name:?}"); // For example, "C:\\Users\\carlk\\AppData\\Local\\fastlmm\\bed-reader\\cache\\small.bed"
-        let url: String = format!("file://{file_name}");
-        println!("{url:?}"); // For example, "file://C:\\Users\\carlk\\AppData\\Local\\fastlmm\\bed-reader\\cache\\small.bed"
+        let url: String = path_to_url_string(file_name)?;
+        println!("{url:?}"); // For example, "file:///C:/Users/carlk/AppData/Local/bed_reader/bed_reader/Cache/small.bed"
         let mut bed_cloud = BedCloud::new(url, EMPTY_OPTIONS).await?;
         let val = ReadOptions::builder()
             .sid_index(2)
@@ -2385,7 +2366,7 @@ fn aws_object_path_example() -> Result<(), Box<BedErrorPlus>> {
 // cmk Rules: Make Rust async
 // cmk Rules: do not make Python async
 // cmk Rules: pass URLs not objects across the line
-// cmk Rules: test as well as you can with file:// URLs
+// cmk Rules: test as well as you can with file:/// URLs
 // cmk Rules: combine stores and paths into one object
 // cmk Rules: give async doc tests examples
 // cmk Rules: use tokio testing
