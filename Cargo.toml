@@ -31,6 +31,7 @@ crate-type = ["cdylib", "rlib"]
 [features]
 extension-module = ["pyo3/extension-module", "pyo3-asyncio", "cloud"]
 cloud = [
+    "object_store/http",
     "object_store/aws",
     "pyo3-asyncio",
     "tokio/full",

@@ -16,7 +16,7 @@ maturin develop
 pytest bed_reader
 pytest --doctest-modules bed_reader\_open_bed.py
 pytest --doctest-modules README.md
-pytest bed_reader/tests/test_open_bed_cloud.py::test_readme_example
+pytest bed_reader/tests/test_open_bed_cloud.py::test_http_two -s
 pytest --collect-only   # check test discovery
 ```
 

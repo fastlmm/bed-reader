@@ -1,5 +1,6 @@
 import configparser
 import logging
+import math
 import os
 import platform
 from pathlib import Path, PurePath
@@ -1022,8 +1023,8 @@ def test_s3_article():
         print(bed.iid[:5])
         print(bed.sid[:5])
         print(np.unique(bed.chromosome))
-        val3 = bed.read(index=np.s_[:, bed.chromosome == "5"])
-        print(val3.shape)
+        val = bed.read(index=np.s_[:, bed.chromosome == "5"])
+        print(val.shape)
 
 
 def test_url_errors(shared_datadir):
@@ -1052,6 +1053,33 @@ def test_readme_example():
     # [[nan]
     #  [nan]
     #  [ 2.]]
+
+
+def test_http_one():
+    with open_bed(
+        "https://raw.githubusercontent.com/fastlmm/bed-reader/rustybed/bed_reader/tests/data/some_missing.bed",
+        cloud_options={},
+    ) as bed:
+        print(bed.iid[:5])
+        print(bed.sid[:5])
+        print(np.unique(bed.chromosome))
+        val = bed.read(index=np.s_[:, bed.chromosome == "5"])
+        print(val.shape)
+
+
+def test_http_two():
+    with open_bed(
+        "https://www.ebi.ac.uk/biostudies/files/S-BSST936/example/synthetic_small_v1_chr-10.bed",
+        fam_filepath=r"C:\Users\carlk\Downloads\S-BSST936\example\synthetic_small_v1_chr-10.fam",
+        bim_filepath=r"C:\Users\carlk\Downloads\S-BSST936\example\synthetic_small_v1_chr-10.bim",
+        skip_format_check=True,
+    ) as bed:
+        print(bed.iid[:5])
+        print(bed.sid[:5])
+        print(np.unique(bed.chromosome))
+        val = bed.read(index=np.s_[:10, :: bed.sid_count // 10])
+        print(val)
+        assert val.shape == (10, 10) or val.shape == (10, 11)
 
 
 if __name__ == "__main__":
