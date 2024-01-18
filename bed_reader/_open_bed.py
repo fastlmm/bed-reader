@@ -92,6 +92,18 @@ def get_num_threads(num_threads=None):
     return multiprocessing.cpu_count()
 
 
+def get_max_concurrent_requests(max_concurrent_requests=None):
+    if max_concurrent_requests is not None:
+        return max_concurrent_requests
+    return 10
+
+
+def get_max_chunk_size(max_chunk_size=None):
+    if max_chunk_size is not None:
+        return max_chunk_size
+    return 8_000_000
+
+
 class open_bed:
     """
     Open a PLINK .bed file for reading.
@@ -147,6 +159,12 @@ class open_bed:
         Defaults to replacing the .bed file’s suffix with .bim.
     cloud_options: dict, optional
         A dictionary of options for reading from cloud storage. The default is an empty.
+    max_concurrent_requests: None or int, optional
+        The maximum number of concurrent requests to make to the cloud storage service.
+        Defaults to 10.
+    max_chunk_size: None or int, optional
+        The maximum number of bytes to read in a single request to the cloud storage
+        service. Defaults to 8MB.
     filepath: same as location
         Deprecated. Use location instead.
     fam_filepath: same as fam_location
@@ -223,6 +241,7 @@ class open_bed:
 
     See the :meth:`read` for details of reading batches via slicing and fancy indexing.
 
+    cmk improve this whole section
     You can read from cloud storage via a `special URL <https://docs.rs/object_store/latest/object_store/>`_.
 
     .. doctest::
@@ -259,6 +278,8 @@ class open_bed:
         fam_location: Union[str, Path, UrlParseResult] = None,
         bim_location: Union[str, Path, UrlParseResult] = None,
         cloud_options: Mapping[str, str] = {},
+        max_concurrent_requests: Optional[int] = None,
+        max_chunk_size: Optional[int] = None,
         # accept old keywords
         filepath: Union[str, Path] = None,
         fam_filepath: Union[str, Path] = None,
@@ -276,6 +297,8 @@ class open_bed:
         self.cloud_options = cloud_options
         self.count_A1 = count_A1
         self._num_threads = num_threads
+        self._max_concurrent_requests = max_concurrent_requests
+        self._max_chunk_size = max_chunk_size
         self.skip_format_check = skip_format_check
         self._fam_location = (
             self._path_or_url(fam_location)
@@ -358,6 +381,8 @@ class open_bed:
         order: Optional[str] = "F",
         force_python_only: Optional[bool] = False,
         num_threads=None,
+        max_concurrent_requests=None,
+        max_chunk_size=None,
     ) -> np.ndarray:
         """
         Read genotype information.
@@ -389,6 +414,13 @@ class open_bed:
             environment variables (listed in priority order):
             'PST_NUM_THREADS', 'NUM_THREADS', 'MKL_NUM_THREADS'.
 
+        max_concurrent_requests: None or int, optional
+            The maximum number of concurrent requests to make to the cloud storage
+            service. Defaults to 10.
+
+        max_chunk_size: None or int, optional
+            The maximum number of bytes to read in a single request to the cloud
+            storage service. Defaults to 8MB.
 
         Returns
         -------
@@ -467,6 +499,7 @@ class open_bed:
              [   0    1    2    0]]
             >>> del bed  # optional: delete bed object
 
+        cmk add a cloud example
         """
 
         iid_index_or_slice_etc, sid_index_or_slice_etc = self._split_index(index)
@@ -494,23 +527,48 @@ class open_bed:
             num_threads = get_num_threads(
                 self._num_threads if num_threads is None else num_threads
             )
+            max_concurrent_requests = get_max_concurrent_requests(
+                self._max_concurrent_requests
+                if max_concurrent_requests is None
+                else max_concurrent_requests
+            )
+            max_chunk_size = get_max_chunk_size(
+                self._max_chunk_size if max_chunk_size is None else max_chunk_size
+            )
 
             val = np.zeros((len(iid_index), len(sid_index)), order=order, dtype=dtype)
 
             if self.iid_count > 0 and self.sid_count > 0:
-                reader, location_str = self._pick_reader(dtype)
+                reader, location_str, is_cloud = self._pick_reader(dtype)
 
-                reader(
-                    location_str,
-                    self.cloud_options,
-                    iid_count=self.iid_count,
-                    sid_count=self.sid_count,
-                    is_a1_counted=self.count_A1,
-                    iid_index=iid_index,
-                    sid_index=sid_index,
-                    val=val,
-                    num_threads=num_threads,
-                )
+                if not is_cloud:
+                    # cmk test this
+                    reader(
+                        location_str,
+                        self.cloud_options,
+                        iid_count=self.iid_count,
+                        sid_count=self.sid_count,
+                        is_a1_counted=self.count_A1,
+                        iid_index=iid_index,
+                        sid_index=sid_index,
+                        val=val,
+                        num_threads=num_threads,
+                    )
+                else:
+                    # cmk test this
+                    reader(
+                        location_str,
+                        self.cloud_options,
+                        iid_count=self.iid_count,
+                        sid_count=self.sid_count,
+                        is_a1_counted=self.count_A1,
+                        iid_index=iid_index,
+                        sid_index=sid_index,
+                        val=val,
+                        num_threads=num_threads,
+                        max_concurrent_requests=max_concurrent_requests,
+                        max_chunk_size=max_chunk_size,
+                    )
 
         else:
             if not self.count_A1:
@@ -589,10 +647,12 @@ class open_bed:
         if open_bed._is_url(self.location):
             reader = cloud_reader
             location_str = self.location.geturl()
+            is_cloud = True
         else:
             reader = file_reader
             location_str = str(self.location.as_posix())
-        return reader, location_str
+            is_cloud = False
+        return reader, location_str, is_cloud
 
     def __str__(self) -> str:
         return f"{self.__class__.__name__}('{self.location}',...)"
@@ -1351,6 +1411,8 @@ class open_bed:
         batch_size: Optional[int] = None,
         format: Optional[str] = "csc",
         num_threads=None,
+        max_concurrent_requests=None,
+        max_chunk_size=None,
     ) -> (Union[sparse.csc_matrix, sparse.csr_matrix]) if sparse is not None else None:
         """
         Read genotype information into a :mod:`scipy.sparse` matrix. Sparse matrices
@@ -1388,6 +1450,13 @@ class open_bed:
             Can also be set with :class:`open_bed` or these
             environment variables (listed in priority order):
             'PST_NUM_THREADS', 'NUM_THREADS', 'MKL_NUM_THREADS'.
+        max_concurrent_requests: None or int, optional
+            The maximum number of concurrent requests to make to the cloud storage
+            service. Defaults to 10.
+        max_chunk_size: None or int, optional
+            The maximum number of bytes to read in a single request to the cloud
+            storage service. Defaults to 8MB.
+
 
         Returns
         -------
@@ -1535,6 +1604,14 @@ class open_bed:
         num_threads = get_num_threads(
             self._num_threads if num_threads is None else num_threads
         )
+        max_concurrent_requests = get_max_concurrent_requests(
+            self._max_concurrent_requests
+            if max_concurrent_requests is None
+            else max_concurrent_requests
+        )
+        max_chunk_size = get_max_chunk_size(
+            self._max_chunk_size if max_chunk_size is None else max_chunk_size
+        )
 
         if format == "csc":
             order = "F"
@@ -1550,7 +1627,7 @@ class open_bed:
         indices = [np.empty(0, dtype=np.int32)]
 
         if self.iid_count > 0 and self.sid_count > 0:
-            reader, location_str = self._pick_reader(dtype)
+            reader, location_str, is_cloud = self._pick_reader(dtype)
 
             if format == "csc":
                 val = np.zeros((len(iid_index), batch_size), order=order, dtype=dtype)
@@ -1567,17 +1644,34 @@ class open_bed:
                     batch_slice = np.s_[batch_start:batch_end]
                     batch_index = sid_index[batch_slice]
 
-                    reader(
-                        location_str,
-                        self.cloud_options,
-                        iid_count=self.iid_count,
-                        sid_count=self.sid_count,
-                        is_a1_counted=self.count_A1,
-                        iid_index=iid_index,
-                        sid_index=batch_index,
-                        val=val,
-                        num_threads=num_threads,
-                    )
+                    if not is_cloud:
+                        # cmk test this
+                        reader(
+                            location_str,
+                            self.cloud_options,
+                            iid_count=self.iid_count,
+                            sid_count=self.sid_count,
+                            is_a1_counted=self.count_A1,
+                            iid_index=iid_index,
+                            sid_index=batch_index,
+                            val=val,
+                            num_threads=num_threads,
+                        )
+                    else:
+                        # cmk test this
+                        reader(
+                            location_str,
+                            self.cloud_options,
+                            iid_count=self.iid_count,
+                            sid_count=self.sid_count,
+                            is_a1_counted=self.count_A1,
+                            iid_index=iid_index,
+                            sid_index=batch_index,
+                            val=val,
+                            num_threads=num_threads,
+                            max_concurrent_requests=max_concurrent_requests,
+                            max_chunk_size=max_chunk_size,
+                        )
 
                     self.sparsify(
                         val, order, iid_index, batch_slice, data, indices, indptr
@@ -1599,17 +1693,34 @@ class open_bed:
                     batch_slice = np.s_[batch_start:batch_end]
                     batch_index = iid_index[batch_slice]
 
-                    reader(
-                        location_str,
-                        self.cloud_options,
-                        iid_count=self.iid_count,
-                        sid_count=self.sid_count,
-                        is_a1_counted=self.count_A1,
-                        iid_index=batch_index,
-                        sid_index=sid_index,
-                        val=val,
-                        num_threads=num_threads,
-                    )
+                    if not is_cloud:
+                        # cmk test this
+                        reader(
+                            location_str,
+                            self.cloud_options,
+                            iid_count=self.iid_count,
+                            sid_count=self.sid_count,
+                            is_a1_counted=self.count_A1,
+                            iid_index=batch_index,
+                            sid_index=sid_index,
+                            val=val,
+                            num_threads=num_threads,
+                        )
+                    else:
+                        # cmk test this
+                        reader(
+                            location_str,
+                            self.cloud_options,
+                            iid_count=self.iid_count,
+                            sid_count=self.sid_count,
+                            is_a1_counted=self.count_A1,
+                            iid_index=batch_index,
+                            sid_index=sid_index,
+                            val=val,
+                            num_threads=num_threads,
+                            max_concurrent_requests=max_concurrent_requests,
+                            max_chunk_size=max_chunk_size,
+                        )
 
                     self.sparsify(
                         val, order, sid_index, batch_slice, data, indices, indptr

@@ -2363,6 +2363,44 @@ fn aws_object_path_example() -> Result<(), Box<BedErrorPlus>> {
     })
 }
 
+#[tokio::test]
+async fn s3_article() -> Result<(), Box<BedErrorPlus>> {
+    // Somehow, get AWS credentials
+    use rusoto_credential::{CredentialsError, ProfileProvider, ProvideAwsCredentials};
+    let credentials = if let Ok(provider) = ProfileProvider::new() {
+        provider.credentials().await
+    } else {
+        Err(CredentialsError::new("No credentials found"))
+    };
+    let Ok(credentials) = credentials else {
+        eprintln!("Skipping test because no AWS credentials found");
+        return Ok(());
+    };
+
+    // Create a dictionary with your AWS region and credentials and the AWS region.
+    let options = [
+        ("aws_region", "us-west-2"),
+        ("aws_access_key_id", credentials.aws_access_key_id()),
+        ("aws_secret_access_key", credentials.aws_secret_access_key()),
+    ];
+
+    // Open the bed file with a URL and any needed cloud options, then use as before.
+    let mut bed_cloud = BedCloud::new("s3://bedreader/v1/some_missing.bed", options).await?;
+    println!("{:?}", bed_cloud.iid().await?.slice(s![..5]));
+    println!("{:?}", bed_cloud.sid().await?.slice(s![..5]));
+    println!(
+        "{:?}",
+        bed_cloud.chromosome().await?.iter().collect::<HashSet<_>>()
+    );
+    let val = ReadOptions::builder()
+        .sid_index(bed_cloud.chromosome().await?.map(|elem| elem == "5"))
+        .f64()
+        .read_cloud(&mut bed_cloud)
+        .await?;
+    assert!(val.dim() == (100, 6));
+    Ok(())
+}
+
 // cmk Rules: Make Rust async
 // cmk Rules: do not make Python async
 // cmk Rules: pass URLs not objects across the line

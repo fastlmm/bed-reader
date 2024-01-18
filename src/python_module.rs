@@ -198,6 +198,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         sid_index: &PyArray1<isize>,
         val: &PyArray2<i8>,
         num_threads: usize,
+        max_concurrent_requests: usize,
+        max_chunk_size: usize,
     ) -> Result<(), PyErr> {
         let iid_index = iid_index.readonly();
         let sid_index = sid_index.readonly();
@@ -222,6 +224,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
                 .sid_index(*si)
                 .is_a1_counted(is_a1_counted)
                 .num_threads(num_threads)
+                .max_concurrent_requests(max_concurrent_requests)
+                .max_chunk_size(max_chunk_size)
                 .read_and_fill_cloud(&mut bed_cloud, &mut val.view_mut())
                 .await?;
 
@@ -241,6 +245,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         sid_index: &PyArray1<isize>,
         val: &PyArray2<f32>,
         num_threads: usize,
+        max_concurrent_requests: usize,
+        max_chunk_size: usize,
     ) -> Result<(), PyErr> {
         let iid_index = iid_index.readonly();
         let sid_index = sid_index.readonly();
@@ -265,6 +271,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
                 .sid_index(*si)
                 .is_a1_counted(is_a1_counted)
                 .num_threads(num_threads)
+                .max_concurrent_requests(max_concurrent_requests)
+                .max_chunk_size(max_chunk_size)
                 .read_and_fill_cloud(&mut bed_cloud, &mut val.view_mut())
                 .await?;
 
@@ -284,6 +292,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         sid_index: &PyArray1<isize>,
         val: &PyArray2<f64>,
         num_threads: usize,
+        max_concurrent_requests: usize,
+        max_chunk_size: usize,
     ) -> Result<(), PyErr> {
         let iid_index = iid_index.readonly();
         let sid_index = sid_index.readonly();
@@ -308,6 +318,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
                 .sid_index(*si)
                 .is_a1_counted(is_a1_counted)
                 .num_threads(num_threads)
+                .max_concurrent_requests(max_concurrent_requests)
+                .max_chunk_size(max_chunk_size)
                 .read_and_fill_cloud(&mut bed_cloud, &mut val.view_mut())
                 .await?;
 

@@ -3,6 +3,7 @@ import logging
 import os
 import platform
 from pathlib import Path, PurePath
+import sys
 
 import numpy as np
 import pytest
@@ -999,6 +1000,32 @@ def test_s3_example():
     # See https://docs.rs/object_store/latest/object_store/ for hints on creating URLs for other cloud storage providers.
 
 
+def test_s3_article():
+    # Somehow, get AWS credentials
+    config = configparser.ConfigParser()
+    _ = config.read(os.path.expanduser("~/.aws/credentials"))
+    if "default" not in config:
+        print("No AWS credentials found. Skipping.", file=sys.stderr)
+        return
+
+    # Create a dictionary with your AWS region and credentials and the AWS region.
+    cloud_options = {
+        "aws_region": "us-west-2",
+        "aws_access_key_id": config["default"].get("aws_access_key_id"),
+        "aws_secret_access_key": config["default"].get("aws_secret_access_key"),
+    }
+
+    # Open the bed file with a URL and any needed cloud options, then use as before.
+    with open_bed(
+        "s3://bedreader/v1/some_missing.bed", cloud_options=cloud_options
+    ) as bed:
+        print(bed.iid[:5])
+        print(bed.sid[:5])
+        print(np.unique(bed.chromosome))
+        val3 = bed.read(index=np.s_[:, bed.chromosome == "5"])
+        print(val3.shape)
+
+
 def test_url_errors(shared_datadir):
     with pytest.raises(ValueError, match=r".*Unable to recogni[sz]e URL.*"):
         open_bed("not://not_a_url")
@@ -1038,3 +1065,4 @@ if __name__ == "__main__":
     # test_c_reader_bed(shared_datadir)
     # test_read1(shared_datadir)
     pytest.main([__file__])
+# cmk let python users control concurrancy and memory usage (like cloud_options? like num_threads?)
