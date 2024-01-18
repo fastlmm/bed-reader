@@ -2401,13 +2401,62 @@ async fn s3_article() -> Result<(), Box<BedErrorPlus>> {
     Ok(())
 }
 
-// cmk Rules: Make Rust async
-// cmk Rules: do not make Python async
-// cmk Rules: pass URLs not objects across the line
-// cmk Rules: test as well as you can with file:/// URLs
-// cmk Rules: combine stores and paths into one object
-// cmk Rules: give async doc tests examples
-// cmk Rules: use tokio testing
-// cmk Rules: Make strings, maps, etc as generic as you can
-// cmk Rules: allow user to control concurrency and buffer size
-// cmk Rules: Much larger binary for Python
+#[tokio::test]
+async fn http_one() -> Result<(), Box<BedErrorPlus>> {
+    // Open the bed file with a URL and any needed cloud options, then use as before.
+    let mut bed_cloud = BedCloud::new("https://raw.githubusercontent.com/fastlmm/bed-reader/rustybed/bed_reader/tests/data/some_missing.bed", EMPTY_OPTIONS).await?;
+    println!("{:?}", bed_cloud.iid().await?.slice(s![..5]));
+    println!("{:?}", bed_cloud.sid().await?.slice(s![..5]));
+    println!(
+        "{:?}",
+        bed_cloud.chromosome().await?.iter().collect::<HashSet<_>>()
+    );
+    let val = ReadOptions::builder()
+        .sid_index(bed_cloud.chromosome().await?.map(|elem| elem == "5"))
+        .f64()
+        .read_cloud(&mut bed_cloud)
+        .await?;
+    assert!(val.dim() == (100, 6));
+    Ok(())
+}
+
+#[tokio::test]
+async fn http_two() -> Result<(), Box<BedErrorPlus>> {
+    // cmk make this a const
+    let empty_skip_set = HashSet::<MetadataFields>::new();
+    let metadata = Metadata::new()
+        .read_fam(
+            r"C:\Users\carlk\Downloads\S-BSST936\example\synthetic_small_v1_chr-10.fam",
+            &empty_skip_set,
+        )?
+        .0
+        .read_bim(
+            r"C:\Users\carlk\Downloads\S-BSST936\example\synthetic_small_v1_chr-10.bim",
+            &empty_skip_set,
+        )?
+        .0;
+
+    // Open the bed file with a URL and any needed cloud options, then use as before.
+    let mut bed_cloud = BedCloud::builder(
+        "https://www.ebi.ac.uk/biostudies/files/S-BSST936/example/synthetic_small_v1_chr-10.bed",
+        [("timeout", "100")], // cmk must figure this out
+    )?
+    .metadata(&metadata)
+    .build()
+    .await?;
+    println!("{:?}", bed_cloud.iid().await?.slice(s![..5]));
+    println!("{:?}", bed_cloud.sid().await?.slice(s![..5]));
+    println!(
+        "{:?}",
+        bed_cloud.chromosome().await?.iter().collect::<HashSet<_>>()
+    );
+    let val = ReadOptions::builder()
+        .iid_index(..10)
+        .sid_index(s![..;bed_cloud.sid_count().await?/10])
+        .f64()
+        .read_cloud(&mut bed_cloud)
+        .await?;
+    println!("{:?}", val);
+    assert!(val.dim() == (10, 10) || val.dim() == (10, 11));
+    Ok(())
+}
