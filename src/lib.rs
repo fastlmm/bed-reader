@@ -7162,7 +7162,7 @@ fn matrix_subset_no_alloc<
 #[fetch_data::ctor]
 static STATIC_FETCH_DATA: FetchData = FetchData::new(
     include_str!("../bed_reader/tests/registry.txt"),
-    "https://raw.githubusercontent.com/fastlmm/bed-reader/rustybed/bed_reader/tests/data/",
+    "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/",
     "BED_READER_DATA_DIR",
     "github.io",
     "fastlmm",

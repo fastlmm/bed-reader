@@ -11,6 +11,7 @@ use bed_reader::path_to_url_string;
 use bed_reader::sample_bed_file;
 use bed_reader::sample_bed_object_path;
 use bed_reader::sample_bed_url;
+use bed_reader::sample_file;
 use bed_reader::sample_object_path;
 use bed_reader::sample_object_paths;
 use bed_reader::BedCloud;
@@ -29,6 +30,7 @@ use object_store::aws::AmazonS3Builder;
 use object_store::local::LocalFileSystem;
 use object_store::path::Path as StorePath;
 use object_store::ObjectStore;
+use thousands::Separable;
 use tokio::runtime;
 use url::Url;
 
@@ -2422,29 +2424,30 @@ async fn http_one() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn http_two() -> Result<(), Box<BedErrorPlus>> {
+    let local_fam_file = sample_file("synthetic_v1_chr-10.fam")?;
+    let local_bim_file = sample_file("synthetic_v1_chr-10.bim")?;
     // cmk make this a const
     let empty_skip_set = HashSet::<MetadataFields>::new();
     let metadata = Metadata::new()
-        .read_fam(
-            r"C:\Users\carlk\Downloads\S-BSST936\example\synthetic_small_v1_chr-10.fam",
-            &empty_skip_set,
-        )?
+        .read_fam(local_fam_file, &empty_skip_set)?
         .0
-        .read_bim(
-            r"C:\Users\carlk\Downloads\S-BSST936\example\synthetic_small_v1_chr-10.bim",
-            &empty_skip_set,
-        )?
+        .read_bim(local_bim_file, &empty_skip_set)?
         .0;
 
     // Open the bed file with a URL and any needed cloud options, then use as before.
     let mut bed_cloud = BedCloud::builder(
-        "https://www.ebi.ac.uk/biostudies/files/S-BSST936/example/synthetic_small_v1_chr-10.bed",
+        "https://www.ebi.ac.uk/biostudies/files/S-BSST936/genotypes/synthetic_v1_chr-10.bed",
         [("timeout", "100")], // cmk must figure this out
     )?
     .metadata(&metadata)
     .skip_early_check()
     .build()
     .await?;
+    println!(
+        "iid_count={}, sid_count={}",
+        bed_cloud.iid_count().await?.separate_with_underscores(),
+        bed_cloud.sid_count().await?.separate_with_underscores()
+    );
     println!("{:?}", bed_cloud.iid().await?.slice(s![..5]));
     println!("{:?}", bed_cloud.sid().await?.slice(s![..5]));
     println!(
