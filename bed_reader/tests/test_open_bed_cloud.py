@@ -14,8 +14,6 @@ from bed_reader.tests.test_open_bed import reference_val, setting_generator
 
 
 def test_cloud_read1(shared_datadir):
-    import math
-
     file = shared_datadir / "plink_sim_10s_100v_10pmiss.bed"
     file = PurePath(file).as_uri()
 
@@ -1068,17 +1066,22 @@ def test_http_one():
 
 
 def test_http_two():
+    from bed_reader import open_bed, sample_file
+
+    local_fam_file = sample_file("synthetic_v1_chr-10.fam")
+    local_bim_file = sample_file("synthetic_v1_chr-10.bim")
     with open_bed(
-        "https://www.ebi.ac.uk/biostudies/files/S-BSST936/example/synthetic_small_v1_chr-10.bed",
-        fam_filepath=r"C:\Users\carlk\Downloads\S-BSST936\example\synthetic_small_v1_chr-10.fam",
-        bim_filepath=r"C:\Users\carlk\Downloads\S-BSST936\example\synthetic_small_v1_chr-10.bim",
+        "https://www.ebi.ac.uk/biostudies/files/S-BSST936/genotypes/synthetic_v1_chr-10.bed",
+        fam_filepath=local_fam_file,
+        bim_filepath=local_bim_file,
         skip_format_check=True,
     ) as bed:
-        print(bed.iid[:5])
-        print(bed.sid[:5])
-        print(np.unique(bed.chromosome))
+        print(f"iid_count={bed.iid_count:_}, sid_count={bed.sid_count:_}")
+        print(f"iid={bed.iid[:5]}...")
+        print(f"sid={bed.sid[:5]}...")
+        print(f"unique chromosomes = {np.unique(bed.chromosome)}")
         val = bed.read(index=np.s_[:10, :: bed.sid_count // 10])
-        print(val)
+        print(f"val={val}")
         assert val.shape == (10, 10) or val.shape == (10, 11)
 
 
