@@ -3,6 +3,7 @@
 use std::collections::HashSet;
 use std::panic::catch_unwind;
 use std::sync::Arc;
+use std::time::Duration;
 
 use bed_reader::allclose;
 use bed_reader::assert_eq_nan;
@@ -27,8 +28,10 @@ use bed_reader::{sample_url, sample_urls};
 use ndarray as nd;
 use ndarray::s;
 use object_store::aws::AmazonS3Builder;
+use object_store::http::HttpBuilder;
 use object_store::local::LocalFileSystem;
 use object_store::path::Path as StorePath;
+use object_store::ClientOptions;
 use object_store::ObjectStore;
 use thousands::Separable;
 use tokio::runtime;
@@ -2462,5 +2465,45 @@ async fn http_two() -> Result<(), Box<BedErrorPlus>> {
         .await?;
     println!("{:?}", val);
     assert!(val.dim() == (10, 10) || val.dim() == (10, 11));
+    Ok(())
+}
+
+#[tokio::test]
+async fn http_object_path() -> Result<(), Box<BedErrorPlus>> {
+    // small
+    // let url =
+    //     "https://www.ebi.ac.uk/biostudies/files/S-BSST936/example/synthetic_small_v1_chr-10.bed";
+    let client_options = ClientOptions::new().with_timeout(Duration::from_secs(1000));
+    let option_store = HttpBuilder::new()
+        .with_url("https://www.ebi.ac.uk/")
+        .with_client_options(client_options)
+        .build()?;
+    let store_path =
+        StorePath::parse("biostudies/files/S-BSST936/example/synthetic_small_v1_chr-10.bed")?;
+    let object_path = ObjectPath::new(Arc::new(option_store), store_path);
+
+    // Open the bed file with a URL and any needed cloud options, then use as before.
+    let mut bed_cloud = BedCloud::builder_from_object_path(&object_path)
+        .skip_early_check()
+        .build()
+        .await?;
+    println!("{:?}", bed_cloud.iid().await?.slice(s![..5]));
+    println!("{:?}", bed_cloud.sid().await?.slice(s![..5]));
+    Ok(())
+}
+
+#[tokio::test]
+async fn http_long_url() -> Result<(), Box<BedErrorPlus>> {
+    // small
+    // Open the bed file with a URL and any needed cloud options, then use as before.
+    let mut bed_cloud = BedCloud::builder(
+        "https://www.ebi.ac.uk/biostudies/files/S-BSST936/example/synthetic_small_v1_chr-10.bed",
+        [("timeout", "1000")], // cmk must figure this out
+    )?
+    .skip_early_check()
+    .build()
+    .await?;
+    println!("{:?}", bed_cloud.iid().await?.slice(s![..5]));
+    println!("{:?}", bed_cloud.sid().await?.slice(s![..5]));
     Ok(())
 }

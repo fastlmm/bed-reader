@@ -1,5 +1,13 @@
 # Cloud URLs and ObjectPath Examples
 
+cmk update with this about how splitting url in two:
+    let option_store = HttpBuilder::new()
+        .with_url("https://www.ebi.ac.uk/")
+        .build()?;
+    let store_path =
+        StorePath::parse("biostudies/files/S-BSST936/example/synthetic_small_v1_chr-10.bed")?;
+    let object_path = ObjectPath::new(Arc::new(option_store), store_path);
+
 To specify a file in the cloud, you must specify either
 
 * a URL string plus options, or
