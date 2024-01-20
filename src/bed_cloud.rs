@@ -12,10 +12,11 @@ use itertools::Itertools;
 use nd::ShapeBuilder;
 use ndarray as nd;
 use object_store::delimited::newline_delimited_stream;
+use object_store::http::HttpBuilder;
 use object_store::local::LocalFileSystem;
 use object_store::path::Path as StorePath;
+use object_store::ObjectStore;
 use object_store::{GetOptions, GetRange, GetResult};
-use object_store::{ObjectMeta, ObjectStore};
 use std::cmp::max;
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -367,10 +368,10 @@ async fn open_and_check<TObjectStore>(
 where
     TObjectStore: ObjectStore,
 {
-    let object_store = object_path.object_store.clone();
-    let path: &StorePath = &object_path.path;
-    let object_meta: ObjectMeta = object_store.head(path).await?;
-    let size: usize = object_meta.size;
+    // let object_store = object_path.object_store.clone();
+    // let path: &StorePath = &object_path.path;
+    // let object_meta: ObjectMeta = object_store.head(path).await?;
+    // let size: usize = object_meta.size;
 
     let get_options = GetOptions {
         range: Some(GetRange::Bounded(0..CB_HEADER_U64 as usize)),
@@ -379,6 +380,7 @@ where
     let object_store = object_path.object_store.clone();
     let path: &StorePath = &object_path.path;
     let get_result = object_store.get_opts(path, get_options).await?;
+    let size: usize = get_result.meta.size;
     let bytes = get_result.bytes().await?;
 
     if (BED_FILE_MAGIC1 != bytes[0]) || (BED_FILE_MAGIC2 != bytes[1]) {
@@ -2380,9 +2382,10 @@ pub fn sample_urls(path_list: AnyIter<AnyPath>) -> Result<Vec<String>, Box<BedEr
 #[derive(Debug)]
 /// The location of a file in the cloud.
 ///
-/// The location is made up of of two parts, an `Arc`-wrapped [`ObjectStore`](https://docs.rs/object_store/latest/object_store/trait.ObjectStore.html) and an [`object_store::path::Path as StorePath`](https://docs.rs/object_store/latest/object_store/path/struct.Path.html).
-/// The [`ObjectStore`](https://docs.rs/object_store/latest/object_store/trait.ObjectStore.html) is a cloud service, for example, AWS S3, Azure, the local file system, etc.
-/// The `StorePath` is the path to the file on the cloud service.
+/// The location is made up of of two parts, an `Arc`-wrapped [`ObjectStore`](https://docs.rs/object_store/latest/object_store/trait.ObjectStore.html)
+/// and an [`object_store::path::Path as StorePath`](https://docs.rs/object_store/latest/object_store/path/struct.Path.html).
+/// The [`ObjectStore`](https://docs.rs/object_store/latest/object_store/trait.ObjectStore.html) is a cloud service, for example, Http, AWS S3, Azure,
+/// the local file system, etc. The `StorePath` is the path to the file on the cloud service.
 ///
 /// See ["Cloud URLs and `ObjectPath` Examples"](supplemental_document_cloud_urls/index.html) for details specifying a file.
 ///
@@ -2408,9 +2411,11 @@ pub struct ObjectPath<TObjectStore>
 where
     TObjectStore: ObjectStore,
 {
-    /// An `Arc`-wrapped [`ObjectStore`](https://docs.rs/object_store/latest/object_store/trait.ObjectStore.html) cloud service, for example, AWS S3, Azure, the local file system, etc.
+    /// An `Arc`-wrapped [`ObjectStore`](https://docs.rs/object_store/latest/object_store/trait.ObjectStore.html) cloud service, for example, Http, AWS S3,
+    /// Azure, the local file system, etc.
     pub object_store: Arc<TObjectStore>,
-    /// A [`object_store::path::Path as StorePath`](https://docs.rs/object_store/latest/object_store/path/struct.Path.html) that points to a file on the [`ObjectStore`](https://docs.rs/object_store/latest/object_store/trait.ObjectStore.html)
+    /// A [`object_store::path::Path as StorePath`](https://docs.rs/object_store/latest/object_store/path/struct.Path.html) that points to a file on
+    /// the [`ObjectStore`](https://docs.rs/object_store/latest/object_store/trait.ObjectStore.html)
     /// that gives the path to the file on the cloud service.
     pub path: StorePath,
 }
@@ -2464,9 +2469,67 @@ impl ObjectPath<Box<dyn ObjectStore>> {
             .map_err(|e| BedError::CannotParseUrl(location.to_string(), e.to_string()))?;
 
         let (object_store, store_path): (Box<dyn ObjectStore>, StorePath) =
-            object_store::parse_url_opts(&url, options)?;
+            parse_url_opts_work_around(&url, options)?;
         let object_path = ObjectPath::new(Arc::new(object_store), store_path);
         Ok(object_path)
+    }
+}
+
+#[allow(clippy::match_bool)]
+fn parse_work_around(url: &Url) -> Result<(bool, StorePath), object_store::Error> {
+    let strip_bucket = || Some(url.path().strip_prefix('/')?.split_once('/')?.1);
+
+    let (scheme, path) = match (url.scheme(), url.host_str()) {
+        ("http", Some(_)) => (true, url.path()),
+        ("https", Some(host)) => {
+            if host.ends_with("dfs.core.windows.net")
+                || host.ends_with("blob.core.windows.net")
+                || host.ends_with("dfs.fabric.microsoft.com")
+                || host.ends_with("blob.fabric.microsoft.com")
+            {
+                (false, url.path())
+            } else if host.ends_with("amazonaws.com") {
+                match host.starts_with("s3") {
+                    true => (false, strip_bucket().unwrap_or_default()),
+                    false => (false, url.path()),
+                }
+            } else if host.ends_with("r2.cloudflarestorage.com") {
+                (false, strip_bucket().unwrap_or_default())
+            } else {
+                (true, url.path())
+            }
+        }
+        _ => (false, url.path()),
+    };
+
+    Ok((scheme, StorePath::from_url_path(path)?))
+}
+
+// LATER when https://github.com/apache/arrow-rs/issues/5310 gets fixed, can remove work around
+pub fn parse_url_opts_work_around<I, K, V>(
+    url: &Url,
+    options: I,
+) -> Result<(Box<dyn ObjectStore>, StorePath), object_store::Error>
+where
+    I: IntoIterator<Item = (K, V)>,
+    K: AsRef<str>,
+    V: Into<String>,
+{
+    let (is_http, path) = parse_work_around(url)?;
+    if is_http {
+        let url = &url[..url::Position::BeforePath];
+        let path = StorePath::parse(path)?;
+        let builder = options.into_iter().fold(
+            <HttpBuilder>::new().with_url(url),
+            |builder, (key, value)| match key.as_ref().parse() {
+                Ok(k) => builder.with_config(k, value),
+                Err(_) => builder,
+            },
+        );
+        let store = Box::new(builder.build()?) as _;
+        Ok((store, path))
+    } else {
+        object_store::parse_url_opts(url, options)
     }
 }
 

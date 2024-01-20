@@ -13,6 +13,7 @@ To specify a file in the cloud, you must specify either
 * a URL string plus options, or
 * an [`ObjectPath`](../struct.ObjectPath.html)
 
+<!-- cmk: and http -->
 Let's look at how to do this [for a local file](#local-file) and [for AWS S3](#aws-s3).
 
 ## Local File

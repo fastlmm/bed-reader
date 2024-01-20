@@ -2429,7 +2429,6 @@ async fn http_one() -> Result<(), Box<BedErrorPlus>> {
 async fn http_two() -> Result<(), Box<BedErrorPlus>> {
     let local_fam_file = sample_file("synthetic_v1_chr-10.fam")?;
     let local_bim_file = sample_file("synthetic_v1_chr-10.bim")?;
-    // cmk make this a const
     let empty_skip_set = HashSet::<MetadataFields>::new();
     let metadata = Metadata::new()
         .read_fam(local_fam_file, &empty_skip_set)?
@@ -2440,7 +2439,7 @@ async fn http_two() -> Result<(), Box<BedErrorPlus>> {
     // Open the bed file with a URL and any needed cloud options, then use as before.
     let mut bed_cloud = BedCloud::builder(
         "https://www.ebi.ac.uk/biostudies/files/S-BSST936/genotypes/synthetic_v1_chr-10.bed",
-        [("timeout", "100")], // cmk must figure this out
+        [("timeout", "100s")],
     )?
     .metadata(&metadata)
     .skip_early_check()
@@ -2487,6 +2486,7 @@ async fn http_object_path() -> Result<(), Box<BedErrorPlus>> {
         .skip_early_check()
         .build()
         .await?;
+    println!("{:?}", bed_cloud);
     println!("{:?}", bed_cloud.iid().await?.slice(s![..5]));
     println!("{:?}", bed_cloud.sid().await?.slice(s![..5]));
     Ok(())
@@ -2498,7 +2498,7 @@ async fn http_long_url() -> Result<(), Box<BedErrorPlus>> {
     // Open the bed file with a URL and any needed cloud options, then use as before.
     let mut bed_cloud = BedCloud::builder(
         "https://www.ebi.ac.uk/biostudies/files/S-BSST936/example/synthetic_small_v1_chr-10.bed",
-        [("timeout", "1000")], // cmk must figure this out
+        [("timeout", "1000s")],
     )?
     .skip_early_check()
     .build()

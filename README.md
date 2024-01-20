@@ -88,11 +88,7 @@ From the cloud: open a file and read data for one SNP (variant)
 at index position 2.
 
 ```python
->>> from bed_reader import sample_url
->>> url = sample_url("small.bed")
->>> print(f"{url}")  # Example output: "file:///.../small.bed"
-file:///.../small.bed
->>> with open_bed(url, cloud_options={}) as bed:
+>>> with open_bed("https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed") as bed:
 ...     val = bed.read(index=np.s_[:,2], dtype="float64")
 ...     print(val)
 [[nan]

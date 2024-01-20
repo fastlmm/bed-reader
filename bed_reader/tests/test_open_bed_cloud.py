@@ -1038,14 +1038,9 @@ def test_url_errors(shared_datadir):
 
 
 def test_readme_example():
-    from bed_reader import sample_url
-
-    url = sample_url("small.bed")
-    print(
-        f"{url}"
-    )  # For example, "file:///C:/Users/carlk/AppData/Local/bed_reader/bed_reader/Cache/small.bed"
-    # file:///.../small.bed
-    with open_bed(url, cloud_options={}) as bed:
+    with open_bed(
+        "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed",
+    ) as bed:
         val = bed.read(index=np.s_[:, 2], dtype="float64")
         print(val)
     # [[nan]
@@ -1055,7 +1050,7 @@ def test_readme_example():
 
 def test_http_one():
     with open_bed(
-        "https://raw.githubusercontent.com/fastlmm/bed-reader/rustybed/bed_reader/tests/data/some_missing.bed",
+        "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/some_missing.bed",
         cloud_options={},
     ) as bed:
         print(bed.iid[:5])
@@ -1074,6 +1069,23 @@ def test_http_two():
         "https://www.ebi.ac.uk/biostudies/files/S-BSST936/genotypes/synthetic_v1_chr-10.bed",
         fam_filepath=local_fam_file,
         bim_filepath=local_bim_file,
+        skip_format_check=True,
+    ) as bed:
+        print(f"iid_count={bed.iid_count:_}, sid_count={bed.sid_count:_}")
+        print(f"iid={bed.iid[:5]}...")
+        print(f"sid={bed.sid[:5]}...")
+        print(f"unique chromosomes = {np.unique(bed.chromosome)}")
+        val = bed.read(index=np.s_[:10, :: bed.sid_count // 10])
+        print(f"val={val}")
+        assert val.shape == (10, 10) or val.shape == (10, 11)
+
+
+def test_http_two_slow():
+    from bed_reader import open_bed
+
+    with open_bed(
+        "https://www.ebi.ac.uk/biostudies/files/S-BSST936/genotypes/synthetic_v1_chr-10.bed",
+        cloud_options={"timeout": "100s"},
         skip_format_check=True,
     ) as bed:
         print(f"iid_count={bed.iid_count:_}, sid_count={bed.sid_count:_}")

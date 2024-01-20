@@ -9,6 +9,7 @@ When specifing a file in the cloud via a URL, we use methods [`BedCloud::new(url
 
 The cloud providers forbid putting some needed information in the URL. Instead, that information must
 go into `options`.
+<!-- cmk: and http -->
 For example, AWS S3 requires that information about `"aws_region"`, `"aws_access_key_id"`, and `"aws_secret_access_key"` be placed in the options.
 
 Here is an AWS example:
