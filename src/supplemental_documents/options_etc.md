@@ -4,13 +4,12 @@ Within this crate, the term "options" can refer to three levels of options: [Clo
 
 ## Cloud options
 
-When specifing a file in the cloud via a URL, we use methods [`BedCloud::new(url, options)`](../struct.BedCloud.html#method.new) and
+When specifying a file in the cloud via a URL, we use methods [`BedCloud::new(url, options)`](../struct.BedCloud.html#method.new) and
 [`BedCloud::builder(url, options)`](../struct.BedCloud.html#method.builder).
 
 The cloud providers forbid putting some needed information in the URL. Instead, that information must
-go into `options`.
-<!-- cmk: and http -->
-For example, AWS S3 requires that information about `"aws_region"`, `"aws_access_key_id"`, and `"aws_secret_access_key"` be placed in the options.
+go into `options`. For example, AWS S3 requires that information
+about `"aws_region"`, `"aws_access_key_id"`, and `"aws_secret_access_key"` be placed in the options.
 
 Here is an AWS example:
 
@@ -18,35 +17,34 @@ Here is an AWS example:
 
 ```rust
 use bed_reader::{BedCloud,BedErrorPlus};
-use tokio::runtime::Runtime;
 use rusoto_credential::{CredentialsError, ProfileProvider, ProvideAwsCredentials};
 
-Runtime::new().unwrap().block_on(async {
-    // Read my AWS credentials from file ~/.aws/credentials
-    let credentials = if let Ok(provider) = ProfileProvider::new() {
-        provider.credentials().await
-    } else {
-        Err(CredentialsError::new("No credentials found"))
-    };
+# use tokio::runtime::Runtime;
+# Runtime::new().unwrap().block_on(async {
+// Read my AWS credentials from file ~/.aws/credentials
+let credentials = if let Ok(provider) = ProfileProvider::new() {
+    provider.credentials().await
+} else {
+    Err(CredentialsError::new("No credentials found"))
+};
 
-    let Ok(credentials) = credentials else {
-        eprintln!("Skipping test because no AWS credentials found");
-        return Ok(());
-    };
+let Ok(credentials) = credentials else {
+    eprintln!("Skipping test because no AWS credentials found");
+    return Ok(());
+};
 
-    let url = "s3://bedreader/v1/toydata.5chrom.bed";
-    let options = [
-        ("aws_region", "us-west-2"),
-        ("aws_access_key_id", credentials.aws_access_key_id()),
-        ("aws_secret_access_key", credentials.aws_secret_access_key()),
-    ];
+let url = "s3://bedreader/v1/toydata.5chrom.bed";
+let options = [
+    ("aws_region", "us-west-2"),
+    ("aws_access_key_id", credentials.aws_access_key_id()),
+    ("aws_secret_access_key", credentials.aws_secret_access_key()),
+];
 
-    let mut bed_cloud = BedCloud::new(url, options).await?;
-    let val = bed_cloud.read::<i8>().await?;
-    assert_eq!(val.shape(), &[500, 10_000]);
-    Ok::<(), Box<BedErrorPlus>>(())
-});
-Ok::<(), Box<BedErrorPlus>>(())
+let mut bed_cloud = BedCloud::new(url, options).await?;
+let val = bed_cloud.read::<i8>().await?;
+assert_eq!(val.shape(), &[500, 10_000]);
+# Ok::<(), Box<dyn std::error::Error>>(())
+# }).unwrap();
 ```
 
 We can also read from local files as though they are in the cloud. In that case, no cloud options are needed, so we use `EMPTY_OPTIONS`:

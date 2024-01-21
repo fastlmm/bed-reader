@@ -23,15 +23,12 @@ use bed_reader::{sample_url, sample_urls};
 use ndarray as nd;
 use ndarray::s;
 use object_store::aws::AmazonS3Builder;
-use object_store::http::HttpBuilder;
 use object_store::local::LocalFileSystem;
 use object_store::path::Path as StorePath;
-use object_store::ClientOptions;
 use object_store::ObjectStore;
 use std::collections::HashSet;
 use std::panic::catch_unwind;
 use std::sync::Arc;
-use std::time::Duration;
 use thousands::Separable;
 use tokio::runtime;
 use url::Url;
@@ -2268,14 +2265,15 @@ async fn s3_play_cloud() -> Result<(), Box<BedErrorPlus>> {
 /// Open the file and read data for one SNP (variant)
 /// at index position 2.
 fn read_me_cloud() -> Result<(), Box<BedErrorPlus>> {
-    use bed_reader::{sample_url, BedCloud, ReadOptions, EMPTY_OPTIONS};
+    use bed_reader::{assert_eq_nan, BedCloud, ReadOptions, EMPTY_OPTIONS};
     use ndarray as nd;
-    use {assert_eq_nan, bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
+    use {bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
     Runtime::new().unwrap().block_on(async {
-        let url = sample_url("small.bed")?;
-        println!("{url:?}"); // For example, "file:///C:/Users/carlk/AppData/Local/bed_reader/bed_reader/Cache/small.bed"
-        let options = EMPTY_OPTIONS; // map of authentication keys, etc., if needed.
-        let mut bed_cloud = BedCloud::new(url, options).await?;
+        let mut bed_cloud = BedCloud::new(
+            "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed",
+            EMPTY_OPTIONS,
+        )
+        .await?;
         let val = ReadOptions::builder()
             .sid_index(2)
             .f64()
