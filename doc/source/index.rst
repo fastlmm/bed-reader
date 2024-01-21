@@ -15,6 +15,8 @@
 .. toctree::
    :maxdepth: 1
 
+   cloud_urls 
+
 Read and write the PLINK BED format, simply and efficiently.
 
 Features:
@@ -86,6 +88,19 @@ chromosome. Then, read every value in chromosome 5.
     ['1' '10' '11' '12' '13' '14' '15' '16' '17' '18' '19' '2' '20' '21' '22'
      '3' '4' '5' '6' '7' '8' '9']
     (100, 6)
+
+From the cloud: open a file and read data for one SNP (variant)
+at index position 2.
+
+::
+
+    >>> with open_bed("https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed") as bed:
+    ...     val = bed.read(index=np.s_[:,2], dtype="float64")
+    ...     print(val)
+    [[nan]
+     [nan]
+     [ 2.]]
+
 
 Project Links
 ==============

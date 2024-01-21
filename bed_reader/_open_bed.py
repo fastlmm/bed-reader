@@ -106,7 +106,7 @@ def get_max_chunk_size(max_chunk_size=None):
 
 class open_bed:
     """
-    Open a PLINK .bed file for reading.
+    Open a PLINK .bed file, local or cloud, for reading.
 
     Parameters
     ----------
@@ -180,7 +180,7 @@ class open_bed:
     Examples
     --------
 
-    List individual (sample) :attr:`iid` and SNP (variant) :attr:`sid`, then :meth:`read`
+    Open a local file and list individual (sample) :attr:`iid` and SNP (variant) :attr:`sid`. Then, :meth:`read`
     the whole file.
 
     .. doctest::
@@ -199,19 +199,21 @@ class open_bed:
          [ 0.  1.  2.  0.]]
         >>> del bed  # optional: delete bed object
 
-    Open the file and read data for one SNP (variant)
+    Open a cloud file with a non-default timeout.
+    Then, read the data for one SNP (variant)
     at index position 2.
 
     .. doctest::
 
         >>> import numpy as np
-        >>> with open_bed(file_name) as bed:
+        >>> with open_bed("https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed",
+        ...               cloud_options={"timeout": "10s"}) as bed:
         ...     print(bed.read(np.s_[:,2]))
         [[nan]
          [nan]
          [ 2.]]
 
-    Replace :attr:`iid`.
+    With the local file, replace :attr:`iid`.
 
 
         >>> bed = open_bed(file_name, properties={"iid":["sample1","sample2","sample3"]})

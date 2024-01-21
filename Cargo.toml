@@ -33,6 +33,8 @@ extension-module = ["pyo3/extension-module", "pyo3-asyncio", "cloud"]
 cloud = [
     "object_store/http",
     "object_store/aws",
+    "object_store/azure",
+    "object_store/gcp",
     "pyo3-asyncio",
     "tokio/full",
     "futures-util",

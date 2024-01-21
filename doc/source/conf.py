@@ -1,5 +1,6 @@
 import time
 from pathlib import Path
+from recommonmark.parser import CommonMarkParser
 
 
 def read(filepath):
@@ -20,7 +21,7 @@ def find_version(filepath):
 
 
 project = "Bed Reader"
-copyright = "2023, Carl Kadie"
+copyright = "2024, Carl Kadie"
 author = "Carl Kadie"
 
 version = find_version(Path(__file__).parents[0] / Path("../../Cargo.toml"))
@@ -69,3 +70,9 @@ intersphinx_mapping = {
     "pandas": ("https://pandas.pydata.org/pandas-docs/stable/", None),
     "scipy": ("https://docs.scipy.org/doc/scipy/reference/", None),
 }
+
+source_parsers = {
+    ".md": CommonMarkParser,
+}
+
+source_suffix = [".rst", ".md"]

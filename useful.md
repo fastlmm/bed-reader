@@ -17,6 +17,9 @@ pytest bed_reader
 pytest --doctest-modules bed_reader\_open_bed.py
 pytest --doctest-modules README.md
 pytest bed_reader/tests/test_open_bed_cloud.py::test_http_two -s
+pytest bed_reader/tests/test_open_bed_cloud.py::test_http_cloud_urls_rst_1 -s
+pytest --doctest-modules doc/index.rst
+
 pytest --collect-only   # check test discovery
 ```
 

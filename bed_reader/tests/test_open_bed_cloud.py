@@ -1080,21 +1080,85 @@ def test_http_two():
         assert val.shape == (10, 10) or val.shape == (10, 11)
 
 
-def test_http_two_slow():
+# # delete
+# def test_http_two_slow():
+#     from bed_reader import open_bed
+
+#     with open_bed(
+#         "https://www.ebi.ac.uk/biostudies/files/S-BSST936/genotypes/synthetic_v1_chr-10.bed",
+#         cloud_options={"timeout": "100s"},
+#         skip_format_check=True,
+#     ) as bed:
+#         print(f"iid_count={bed.iid_count:_}, sid_count={bed.sid_count:_}")
+#         print(f"iid={bed.iid[:5]}...")
+#         print(f"sid={bed.sid[:5]}...")
+#         print(f"unique chromosomes = {np.unique(bed.chromosome)}")
+#         val = bed.read(index=np.s_[:10, :: bed.sid_count // 10])
+#         print(f"val={val}")
+#         assert val.shape == (10, 10) or val.shape == (10, 11)
+
+
+def test_http_cloud_urls_rst_1():
     from bed_reader import open_bed
 
+    with open_bed(
+        "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed",
+    ) as bed:
+        val = bed.read()
+        missing_count = np.isnan(val).sum()
+        missing_fraction = missing_count / val.size
+        print(f"{missing_fraction:.2}")  # Outputs 0.17
+        assert missing_count == 2
+
+
+def test_http_cloud_urls_rst_2():
+    import numpy as np
+    from bed_reader import open_bed
+
+    with open_bed(
+        "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/toydata.5chrom.bed",
+        cloud_options={"timeout": "100s"},
+        skip_format_check=True,
+    ) as bed:
+        print(bed.iid[:5])
+        # ['per0' 'per1' 'per2' 'per3' 'per4']
+        print(bed.sid[:5])
+        # ['null_0' 'null_1' 'null_2' 'null_3' 'null_4']
+        print(np.unique(bed.chromosome))
+        # ['1' '2' '3' '4' '5']
+        val = bed.read(index=np.s_[:, bed.chromosome == "5"])
+        print(val.shape)
+        assert val.shape == (500, 440)
+
+
+def test_http_cloud_urls_rst_3():
     with open_bed(
         "https://www.ebi.ac.uk/biostudies/files/S-BSST936/genotypes/synthetic_v1_chr-10.bed",
         cloud_options={"timeout": "100s"},
         skip_format_check=True,
+        iid_count=1_008_000,
+        sid_count=361_561,
     ) as bed:
-        print(f"iid_count={bed.iid_count:_}, sid_count={bed.sid_count:_}")
-        print(f"iid={bed.iid[:5]}...")
-        print(f"sid={bed.sid[:5]}...")
-        print(f"unique chromosomes = {np.unique(bed.chromosome)}")
-        val = bed.read(index=np.s_[:10, :: bed.sid_count // 10])
-        print(f"val={val}")
-        assert val.shape == (10, 10) or val.shape == (10, 11)
+        val = bed.read(index=np.s_[:, 100_000], dtype=np.float32)
+        assert np.isclose(np.mean(val), 0.03391369, atol=1e-5)
+
+
+def test_local_cloud_urls_rst_1():
+    import numpy as np
+    from bed_reader import open_bed, sample_file
+    from urllib.parse import urljoin
+    from pathlib import Path
+
+    file_name = str(sample_file("small.bed"))
+    print(f"{file_name}")
+    url = urljoin("file:", Path(file_name).as_uri())
+    print(f"{url}")  # Outputs file URL
+
+    with open_bed(url) as bed:
+        val = bed.read(index=np.s_[:, 2], dtype=np.float64)
+        print(val)
+        expected_val = np.array([[np.nan], [np.nan], [2.0]])
+        assert np.allclose(val, expected_val, equal_nan=True)
 
 
 if __name__ == "__main__":
