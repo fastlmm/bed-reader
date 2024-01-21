@@ -1143,6 +1143,32 @@ def test_http_cloud_urls_rst_3():
         assert np.isclose(np.mean(val), 0.03391369, atol=1e-5)
 
 
+def test_http_cloud_urls_rst_4():
+    from bed_reader import open_bed, sample_file
+
+    # Instead of 'sample_file', manually download
+    # the *.fam and *.bim metadata files to a local directory.
+    # Then, set these variables to the local file paths.
+    local_fam_file = sample_file("synthetic_v1_chr-10.fam")
+    local_bim_file = sample_file("synthetic_v1_chr-10.bim")
+
+    # Now open the metadata files from your local directory
+    # and the bed file from the web.
+    with open_bed(
+        "https://www.ebi.ac.uk/biostudies/files/S-BSST936/genotypes/synthetic_v1_chr-10.bed",
+        fam_filepath=local_fam_file,
+        bim_filepath=local_bim_file,
+        skip_format_check=True,
+    ) as bed:
+        print(f"iid_count={bed.iid_count:_}, sid_count={bed.sid_count:_}")
+        print(f"iid={bed.iid[:5]}...")
+        print(f"sid={bed.sid[:5]}...")
+        print(f"unique chromosomes = {np.unique(bed.chromosome)}")
+        val = bed.read(index=np.s_[:10, :: bed.sid_count // 10])
+        print(f"val={val}")
+        assert val.shape == (10, 10) or val.shape == (10, 11)
+
+
 def test_local_cloud_urls_rst_1():
     import numpy as np
     from bed_reader import open_bed, sample_file
@@ -1159,6 +1185,28 @@ def test_local_cloud_urls_rst_1():
         print(val)
         expected_val = np.array([[np.nan], [np.nan], [2.0]])
         assert np.allclose(val, expected_val, equal_nan=True)
+
+
+def test_aws_cloud_urls_rst_1():
+    config = configparser.ConfigParser()
+    _ = config.read(os.path.expanduser("~/.aws/credentials"))
+
+    if "default" not in config:
+        print("No AWS credentials found. Skipping example.")
+        return
+
+    cloud_options = {
+        "aws_region": "us-west-2",
+        "aws_access_key_id": config["default"].get("aws_access_key_id"),
+        "aws_secret_access_key": config["default"].get("aws_secret_access_key"),
+    }
+
+    with open_bed(
+        "s3://bedreader/v1/toydata.5chrom.bed", cloud_options=cloud_options
+    ) as bed:
+        val = bed.read(dtype="int8")
+        print(val.shape)
+        assert val.shape == (500, 10_000)
 
 
 if __name__ == "__main__":

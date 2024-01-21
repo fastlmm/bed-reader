@@ -1,5 +1,7 @@
 # Cloud URLs and ObjectPath Examples
 
+<!-- cmk add link to other settings like timeout -->
+
 > *Table of Contents*:
 >
 > * [Http](#http)
@@ -17,8 +19,8 @@ The exact details depend on the cloud service. We'll look at [http](#http), at [
 
 ## Http
 
-You can read \*.bed from web sites directly. For small files, access will be fast.
-For medium-size files, you may need to extend the default `timeout`.
+You can read \*.bed files from web sites directly. For small files, access will be fast.
+For medium-sized files, you may need to extend the default `timeout`.
 
 Reading from large files can also be practical and even fast under these conditions:
 
@@ -58,7 +60,7 @@ metadata from the \*.fam and \*.bim files (or genomic data from \*.bed).
 You may also wish to use [`.skip_early_check()`](../struct.BedCloudBuilder.html#method.skip_early_check)
 to avoid a fast, early check of the \*.bed file's header.
 
-Here we print the first five iids (individual or sample ids) and first find sids (SNP or variant ids).
+Here we print the first five iids (individual or sample ids) and first five sids (SNP or variant ids).
 We then, print all unique chromosome values. Finally, we read all data from chromosome 5 and print its dimensions.
 
 ```rust

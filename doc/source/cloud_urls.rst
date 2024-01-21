@@ -1,13 +1,13 @@
-Cloud URLs Examples
+Cloud URL Examples
 ====================
+
+.. cmk add link to other settings like timeout
 
 *Table of Contents*:
 
-.. cmk do these links work?
-
-- `Http <#http>`_
-- `local file <#local-file>`_
-- `AWS S3 <#aws-s3>`_
+- `Http <#http-section>`_
+- `local file <#local-file-section>`_
+- `AWS S3 <#aws-section>`_
 
 .. note::
 
@@ -17,10 +17,12 @@ To specify a file in the cloud, you must specify URL string plus optional cloud 
 
 The exact details depend on the cloud service. We'll look at `http`, at `local files`, and at `AWS S3`.
 
+.. _http-section:
+
 Http
 ----
 
-You can read \*.bed from web sites directly. For small files, access will be fast. For medium-size files, you may need to extend the default `timeout`.
+You can read \*.bed files from web sites directly. For small files, access will be fast. For medium-sized files, you may need to extend the default `timeout`.
 
 Reading from large files can also be practical and even fast under these conditions:
 
@@ -44,9 +46,13 @@ Read an entire file and find the fraction of missing values.
     ...     missing_fraction  # doctest: +ELLIPSIS
     0.1666...
 
-When reading a medium-sized file, you may need to set a `timeout` in your options. With a `timeout`, you can give your code more than the default 30 seconds to read metadata from the \*.fam and \*.bim files (or genomic data from \*.bed). You may also wish to use `.skip_early_check()` to avoid a fast, early check of the \*.bed file's header.
+When reading a medium-sized file, you may need to set a `timeout` in your cloud options. With a `timeout`,
+you can give your code more than the default 30 seconds to read metadata from the \*.fam and \*.bim files
+(or genomic data from \*.bed). You may also wish to use `.skip_format_check=True` to avoid a fast,
+early check of the \*.bed file's header.
 
-Here we print the first five iids (individual or sample ids) and first find sids (SNP or variant ids). We then, print all unique chromosome values. Finally, we read all data from chromosome 5 and print its dimensions.
+Here we print the first five iids (individual or sample ids) and first five sids (SNP or variant ids).
+We then, print all unique chromosome values. Finally, we read all data from chromosome 5 and print its dimensions.
 
 .. code-block:: python
 
@@ -86,15 +92,59 @@ What is the mean value of the SNP (variant) at index position 100,000?
     ...     np.mean(val) # doctest: +ELLIPSIS
     0.033913...
 
+You can also download the \*.fam and \*.bim metadata files and then read from them locally while continuing to read the \*.bed file from the cloud.
+This gives you almost instant access to the metadata and the \*.bed file. Here is an example:
+
+.. code-block:: python
+
+    >>> from bed_reader import open_bed, sample_file
+    >>> import numpy as np
+    >>> # For this example, assume 'synthetic_v1_chr-10.fam' and 'synthetic_v1_chr-10.bim' are already downloaded
+    >>> # and 'local_fam_file' and 'local_bim_file' variables are set to their local file paths.
+    >>> local_fam_file = sample_file("synthetic_v1_chr-10.fam")
+    >>> local_bim_file = sample_file("synthetic_v1_chr-10.bim")
+    >>> with open_bed(
+    ...     "https://www.ebi.ac.uk/biostudies/files/S-BSST936/genotypes/synthetic_v1_chr-10.bed",
+    ...     fam_filepath=local_fam_file,
+    ...     bim_filepath=local_bim_file,
+    ...     skip_format_check=True,
+    ... ) as bed:
+    ...     print(f"iid_count={bed.iid_count:_}, sid_count={bed.sid_count:_}")
+    ...     print(f"iid={bed.iid[:5]}...")
+    ...     print(f"sid={bed.sid[:5]}...")
+    ...     print(f"unique chromosomes = {np.unique(bed.chromosome)}")
+    ...     val = bed.read(index=np.s_[:10, :: bed.sid_count // 10])
+    ...     print(f"val={val}")
+    iid_count=1_008_000, sid_count=361_561
+    iid=['syn1' 'syn2' 'syn3' 'syn4' 'syn5']...
+    sid=['chr10:10430:C:A' 'chr10:10483:A:C' 'chr10:10501:G:T' 'chr10:10553:C:A'
+     'chr10:10645:G:A']...
+    unique chromosomes = ['10']
+    val=[[0. 1. 0. 2. 0. 1. 0. 0. 0. 0. 0.]
+     [0. 0. 0. 0. 0. 0. 1. 1. 0. 0. 0.]
+     [0. 0. 2. 2. 0. 1. 0. 2. 0. 0. 0.]
+     [0. 1. 1. 1. 0. 0. 0. 0. 0. 0. 0.]
+     [0. 0. 1. 2. 0. 1. 0. 1. 0. 0. 0.]
+     [0. 0. 0. 0. 0. 1. 0. 1. 0. 0. 0.]
+     [0. 0. 0. 1. 0. 0. 0. 0. 0. 0. 0.]
+     [0. 0. 0. 2. 0. 0. 0. 1. 0. 0. 0.]
+     [0. 0. 0. 1. 0. 1. 0. 0. 0. 0. 0.]
+     [0. 0. 0. 2. 0. 1. 0. 1. 0. 0. 0.]]
+
+
+
+.. _local-file-section:
+
 Local File
 ----------
 
-We can specify a local file as if it is in the cloud. This is a great way to test cloud functions. For real work and better efficiency, however, use `Bed` instead of `BedCloud`.
+We can specify a local file as if it is in the cloud. This is a great way to test cloud functions. For real work and better efficiency, however,
+use the file's path rather than its URL.
 
 Local File URL
 ++++++++++++++
 
-The URL for a local file takes the form `file:///{encoded_file_name}`. No cloud options are needed, so we use `EMPTY_OPTIONS`.
+The URL for a local file takes the form `file:///{encoded_file_name}`. No cloud options are needed.
 
 *Example:*
 
@@ -117,6 +167,8 @@ The URL for a local file takes the form `file:///{encoded_file_name}`. No cloud 
      [nan]
      [ 2.]]
 
+.. _aws-section:
+
 AWS S3
 ------
 
@@ -124,7 +176,10 @@ Let's look next at reading a file (or part of a file) from AWS S3.
 
 The URL for an AWS S3 file takes the form `s3://{bucket_name}/{s3_path}`.
 
-AWS forbids putting some needed information in the URL. Instead, that information must go into a string-to-string map of options. Specifically, we'll put `"aws_region"`, `"aws_access_key_id"`, and `"aws_secret_access_key"` in the options. For security, we pull the last two option values from a file rather than hard-coding them into the program.
+AWS forbids putting some needed information in the URL. Instead, that information must go into a string-to-string
+dictionary of cloud options. Specifically, we'll put `"aws_region"`, `"aws_access_key_id"`, and `"aws_secret_access_key"` in
+the cloud options.
+For security, we pull the last two option values from a file rather than hard-coding them into the program.
 
 *Example:*
 
@@ -134,4 +189,20 @@ AWS forbids putting some needed information in the URL. Instead, that informatio
 
 .. code-block:: python
 
-    # Your Python example here
+    import os
+    import configparser
+    from bed_reader import open_bed
+
+    config = configparser.ConfigParser()
+    _ = config.read(os.path.expanduser("~/.aws/credentials"))
+
+    cloud_options = {
+        "aws_region": "us-west-2",
+        "aws_access_key_id": config["default"].get("aws_access_key_id"),
+        "aws_secret_access_key": config["default"].get("aws_secret_access_key"),
+    }
+
+    with open_bed("s3://bedreader/v1/toydata.5chrom.bed", cloud_options=cloud_options) as bed:
+        val = bed.read(dtype="int8")
+        print(val.shape)
+    # Expected output: (500, 10000)
