@@ -84,4 +84,3 @@ thousands = "0.2.0"
 
 [build-dependencies]
 pyo3-build-config = "0.20.0"
-

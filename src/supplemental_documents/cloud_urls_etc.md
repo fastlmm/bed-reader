@@ -1,24 +1,164 @@
 # Cloud URLs and ObjectPath Examples
 
-cmk update with this about how splitting url in two:
-    let option_store = HttpBuilder::new()
-        .with_url("https://www.ebi.ac.uk/")
-        .build()?;
-    let store_path =
-        StorePath::parse("biostudies/files/S-BSST936/example/synthetic_small_v1_chr-10.bed")?;
-    let object_path = ObjectPath::new(Arc::new(option_store), store_path);
-
 To specify a file in the cloud, you must specify either
 
 * a URL string plus options, or
 * an [`ObjectPath`](../struct.ObjectPath.html)
 
-<!-- cmk: and http -->
-Let's look at how to do this [for a local file](#local-file) and [for AWS S3](#aws-s3).
+The exact details depends on the cloud service. We'll look at [http](#http), at [local files](#local-file), and at [AWS S3](#aws-s3). The `bed-reader` crate also
+supports Azure and GCP.
+
+## Http
+
+You can read Bed files from web sites directly. For small files, access will be fast.
+For medium files, you may need to extend the default `timeout`.
+
+Reading from large files can also be practical and even fast under these conditions:
+
+* You need only some of the information
+* (Optional, but helpful) You can provide some metadata about individuals (samples) and SNPs (variants) locally.
+
+### Http URL
+
+Let's first look at reading a small or medium dataset using a URL.
+
+*Example:*
+
+Read an entire file and find the fraction of missing values.
+
+```rust
+use ndarray as nd;
+use bed_reader::{BedCloud, EMPTY_OPTIONS};
+# use {bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
+# Runtime::new().unwrap().block_on(async {
+let mut bed_cloud = BedCloud::new(
+    "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed",
+    EMPTY_OPTIONS,
+)
+.await?;
+let val: nd::Array2<f32> = bed_cloud.read().await?;
+let missing_count = val.iter().filter(|x| x.is_nan()).count();
+let missing_fraction = missing_count as f32 / val.len() as f32;
+println!("{missing_fraction:.2}"); // Outputs 0.17
+assert_eq!(missing_count, 2);
+# Ok::<(), Box<dyn std::error::Error>>(())
+# }).unwrap();
+```
+
+When reading a medium size file, you may want to set `timeout` in your cloud options. Also,
+you can use `.skip_early_check()` to avoid a (quick) check of the Bed file's header.
+
+Here we print the first five iids (individual or sample ids) and first find sids (SNP or variant ids).
+Print all unique chromosome values. Read all data from chromosome 5 and prints its dimensions.
+
+```rust
+use ndarray::{self as nd, s};
+use bed_reader::{BedCloud, ReadOptions};
+use std::collections::BTreeSet;
+# use {bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
+# Runtime::new().unwrap().block_on(async {
+let mut bed_cloud = BedCloud::builder(
+    "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/toydata.5chrom.bed",
+    [("timeout", "100s")],
+)?.skip_early_check().build().await?;
+println!("{:?}", bed_cloud.iid().await?.slice(s![..5])); // Outputs ndarray: ["per0", "per1", "per2", "per3", "per4"]
+println!("{:?}", bed_cloud.sid().await?.slice(s![..5])); // Outputs ndarray: ["null_0", "null_1", "null_2", "null_3", "null_4"]
+println!(
+    "{:?}",
+    bed_cloud
+        .chromosome()
+        .await?
+        .iter()
+        .collect::<BTreeSet<_>>()
+); // Outputs: {"1", "2", "3", "4", "5"}
+let val = ReadOptions::builder()
+    .sid_index(bed_cloud.chromosome().await?.map(|elem| elem == "5"))
+    .f32()
+    .read_cloud(&mut bed_cloud)
+    .await?;
+assert_eq!(val.dim(), (500, 440));
+# Ok::<(), Box<dyn std::error::Error>>(())
+# }).unwrap();
+```
+
+In this example, we read one data for one SNP (variant) from a 91 GB file. Because we
+know the number of individuals (samples) and SNPs (variants), we can do this quickly and with
+just one file access.
+
+What is the mean value of the SNP (variant) at index position 100,000?
+
+```rust
+use ndarray as nd;
+use bed_reader::{BedCloud, ReadOptions, EMPTY_OPTIONS};
+# use {bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
+# Runtime::new().unwrap().block_on(async {
+let mut bed_cloud = BedCloud::builder(
+    "https://www.ebi.ac.uk/biostudies/files/S-BSST936/genotypes/synthetic_v1_chr-10.bed",
+    EMPTY_OPTIONS,
+)?
+.skip_early_check()
+.iid_count(1_008_000)
+.sid_count(361_561)
+.build()
+.await?;
+let val = ReadOptions::builder()
+    .sid_index(100_000)
+    .f32()
+    .read_cloud(&mut bed_cloud)
+    .await?;
+assert_eq!(val.mean(), Some(0.03391369));
+# Ok::<(), Box<dyn std::error::Error>>(())
+# }).unwrap();
+```
+
+### Http ObjectPath
+
+<!-- cmk add more links -->
+If we want to work with structs we can specify a web file via an [`ObjectPath`](../struct.ObjectPath.html).
+
+We first create an [`ObjectStore`](https://docs.rs/object_store/latest/object_store/trait.ObjectStore.html) that tells which cloud service we are using.
+Here we use [`HttpStore`](https://docs.rs/object_store/latest/object_store/http/struct.HttpStore.html).
+We, next, wrap the result in an `Arc` to facilitate efficient cloning of something that would otherwise be un-clonable.
+We then create an [`object_store::path::Path as StorePath`](https://docs.rs/object_store/latest/object_store/path/struct.Path.html)
+using [`StorePath::from_url_path`](https://docs.rs/object_store/latest/object_store/path/struct.Path.html#method.from_url_path).
+It tells where on the web server your file is located.
+Finally, we put the `ObjectStore` and `StorePath` together, creating an [`ObjectPath`](../struct.ObjectPath.html).
+
+[`BedCloud`](../struct.BedCloud.html) can work via an `ObjectPath` slightly more efficiently than a URL.
+However, I generally use string URLs because I find them easier.
+
+This example puts all the steps together to read chromosome 5.
+
+```rust
+use std::sync::Arc;
+use ndarray as nd;
+use bed_reader::{assert_eq_nan, BedCloud, ObjectPath, ReadOptions};
+use object_store::{http::HttpBuilder, ClientOptions, path::Path as StorePath};
+use std::time::Duration;
+# use {bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
+# Runtime::new().unwrap().block_on(async {
+let client_options = ClientOptions::new().with_timeout(Duration::from_secs(1000));
+let http_store = HttpBuilder::new()
+    .with_url("https://raw.githubusercontent.com/")
+    .with_client_options(client_options)
+    .build()?;
+let arc_object_store = Arc::new(http_store);
+let path = StorePath::from_url_path("fastlmm/bed-sample-files/main/small.bed")?;
+let object_path = ObjectPath::new(arc_object_store, path);
+let mut bed_cloud = BedCloud::from_object_path(&object_path).await?;
+let val = ReadOptions::builder()
+    .sid_index(bed_cloud.chromosome().await?.map(|elem| elem == "5"))
+    .f64()
+    .read_cloud(&mut bed_cloud)
+    .await?;
+assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
+# Ok::<(), Box<dyn std::error::Error>>(())
+# }).unwrap();
+```
 
 ## Local File
 
-We can specify a local file as if it is in the cloud. This is a great way to test our cloud functions.
+We can specify a local file as if it is in the cloud. This is a great way to test cloud functions. For real work and better efficiency, however, use `Bed` instead of `BedCloud`.
 
 ### Local File URL
 
@@ -48,19 +188,6 @@ assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
 
 If we want to work with structs instead of `String`, we can specify a file via an [`ObjectPath`](../struct.ObjectPath.html).
 
-We first create an [`ObjectStore`](https://docs.rs/object_store/latest/object_store/trait.ObjectStore.html) that tells which cloud service we are using.
-Here we use [`LocalFileSystem`](https://docs.rs/object_store/latest/object_store/local/struct.LocalFileSystem.html).
-We, next, wrap the result in an `Arc` to faciliate efficient cloning of something that would otherwise be un-clonable.
-We then create an [`object_store::path::Path as StorePath`](https://docs.rs/object_store/latest/object_store/path/struct.Path.html)
-using [`StorePath::from_filesystem_path`](https://docs.rs/object_store/latest/object_store/path/struct.Path.html#method.from_filesystem_path).
-It tells where on the cloud service your file is located.
-Finally, we put the `ObjectStore` and `StorePath` together, creating an [`ObjectPath`](../struct.ObjectPath.html).
-
-[`BedCloud`](../struct.BedCloud.html) can work via an `ObjectPath` slightly more efficiently than a string URL.
-However, I generally use string URLs because I find them easier.
-
-This example puts all the steps together:
-
 ```rust
 use std::sync::Arc;
 use ndarray as nd;
@@ -83,7 +210,7 @@ assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
 
 ## AWS S3
 
-Let's look next at a more useful scenerio: Reading a file (or part of a file) from AWS S3.
+Let's look next at reading a file (or part of a file) from AWS S3.
 
 ### AWS S3 URL
 
@@ -136,7 +263,7 @@ Again, suppose we want to work with structs instead of `String`. Again, we can s
 
 We first create an [`ObjectStore`](https://docs.rs/object_store/latest/object_store/trait.ObjectStore.html) that tells which cloud service we are using.
 We use [`AmazonS3Builder`](https://docs.rs/object_store/latest/object_store/aws/struct.AmazonS3Builder.html).
-We again wrap the result in an `Arc` to faciliate efficient cloning of something that would otherwise be un-clonable.
+We again wrap the result in an `Arc` to facilitate efficient cloning of something that would otherwise be un-clonable.
 We then create an [`object_store::path::Path as StorePath`](https://docs.rs/object_store/latest/object_store/path/struct.Path.html)
 using [`StorePath::parse`](https://docs.rs/object_store/latest/object_store/path/struct.Path.html#method.parse).
 Finally, we put the `ObjectStore` and `StorePath` together, creating an [`ObjectPath`](../struct.ObjectPath.html).

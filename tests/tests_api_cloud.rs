@@ -1,10 +1,5 @@
 #![cfg(feature = "cloud")]
 
-use std::collections::HashSet;
-use std::panic::catch_unwind;
-use std::sync::Arc;
-use std::time::Duration;
-
 use bed_reader::allclose;
 use bed_reader::assert_eq_nan;
 use bed_reader::assert_error_variant;
@@ -33,6 +28,10 @@ use object_store::local::LocalFileSystem;
 use object_store::path::Path as StorePath;
 use object_store::ClientOptions;
 use object_store::ObjectStore;
+use std::collections::HashSet;
+use std::panic::catch_unwind;
+use std::sync::Arc;
+use std::time::Duration;
 use thousands::Separable;
 use tokio::runtime;
 use url::Url;
@@ -2275,7 +2274,7 @@ fn read_me_cloud() -> Result<(), Box<BedErrorPlus>> {
     Runtime::new().unwrap().block_on(async {
         let url = sample_url("small.bed")?;
         println!("{url:?}"); // For example, "file:///C:/Users/carlk/AppData/Local/bed_reader/bed_reader/Cache/small.bed"
-        let options = EMPTY_OPTIONS; // map of authetication keys, etc., if needed.
+        let options = EMPTY_OPTIONS; // map of authentication keys, etc., if needed.
         let mut bed_cloud = BedCloud::new(url, options).await?;
         let val = ReadOptions::builder()
             .sid_index(2)
@@ -2467,43 +2466,120 @@ async fn http_two() -> Result<(), Box<BedErrorPlus>> {
     Ok(())
 }
 
-#[tokio::test]
-async fn http_object_path() -> Result<(), Box<BedErrorPlus>> {
-    // small
-    // let url =
-    //     "https://www.ebi.ac.uk/biostudies/files/S-BSST936/example/synthetic_small_v1_chr-10.bed";
-    let client_options = ClientOptions::new().with_timeout(Duration::from_secs(1000));
-    let option_store = HttpBuilder::new()
-        .with_url("https://www.ebi.ac.uk/")
-        .with_client_options(client_options)
-        .build()?;
-    let store_path =
-        StorePath::parse("biostudies/files/S-BSST936/example/synthetic_small_v1_chr-10.bed")?;
-    let object_path = ObjectPath::new(Arc::new(option_store), store_path);
-
-    // Open the bed file with a URL and any needed cloud options, then use as before.
-    let mut bed_cloud = BedCloud::builder_from_object_path(&object_path)
-        .skip_early_check()
-        .build()
-        .await?;
-    println!("{:?}", bed_cloud);
-    println!("{:?}", bed_cloud.iid().await?.slice(s![..5]));
-    println!("{:?}", bed_cloud.sid().await?.slice(s![..5]));
-    Ok(())
+#[test]
+fn http_cloud_urls_md_1() -> Result<(), Box<BedErrorPlus>> {
+    use bed_reader::{BedCloud, EMPTY_OPTIONS};
+    use ndarray as nd;
+    use tokio::runtime::Runtime; // '#' needed for doctest
+    Runtime::new()
+        .unwrap()
+        .block_on(async {
+            let mut bed_cloud = BedCloud::new(
+                "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed",
+                EMPTY_OPTIONS,
+            )
+            .await?;
+            let val: nd::Array2<f32> = bed_cloud.read().await?;
+            let missing_count = val.iter().filter(|x| x.is_nan()).count();
+            let missing_fraction = missing_count as f32 / val.len() as f32;
+            println!("{missing_fraction:.2}"); // Outputs 0.17
+            assert_eq!(missing_count, 2);
+            Ok::<(), Box<dyn std::error::Error>>(())
+        })
+        .unwrap();
+    Ok::<(), Box<BedErrorPlus>>(())
 }
 
-#[tokio::test]
-async fn http_long_url() -> Result<(), Box<BedErrorPlus>> {
-    // small
-    // Open the bed file with a URL and any needed cloud options, then use as before.
-    let mut bed_cloud = BedCloud::builder(
-        "https://www.ebi.ac.uk/biostudies/files/S-BSST936/example/synthetic_small_v1_chr-10.bed",
-        [("timeout", "1000s")],
-    )?
-    .skip_early_check()
-    .build()
-    .await?;
-    println!("{:?}", bed_cloud.iid().await?.slice(s![..5]));
-    println!("{:?}", bed_cloud.sid().await?.slice(s![..5]));
-    Ok(())
+#[test]
+fn http_cloud_urls_md_2() -> Result<(), Box<BedErrorPlus>> {
+    use bed_reader::BedCloud;
+    use std::collections::BTreeSet;
+    use tokio::runtime::Runtime; // '#' needed for doctest
+    Runtime::new()
+        .unwrap()
+        .block_on(async {
+            let mut bed_cloud = BedCloud::builder(
+                "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/toydata.5chrom.bed",
+                [("timeout", "100s")],
+            )?.skip_early_check().build().await?;
+            println!("{:?}", bed_cloud.iid().await?.slice(s![..5])); // Outputs ndarray: ["per0", "per1", "per2", "per3", "per4"]
+            println!("{:?}", bed_cloud.sid().await?.slice(s![..5])); // Outputs ndarray: ["null_0", "null_1", "null_2", "null_3", "null_4"]
+            println!(
+                "{:?}",
+                bed_cloud
+                    .chromosome()
+                    .await?
+                    .iter()
+                    .collect::<BTreeSet<_>>()
+            ); // Outputs: {"1", "2", "3", "4", "5"}
+            let val = ReadOptions::builder()
+                .sid_index(bed_cloud.chromosome().await?.map(|elem| elem == "5"))
+                .f32()
+                .read_cloud(&mut bed_cloud)
+                .await?;
+            assert_eq!(val.dim(), (500, 440));
+
+            Ok::<(), Box<dyn std::error::Error>>(())
+        })
+        .unwrap();
+    Ok::<(), Box<BedErrorPlus>>(())
+}
+
+#[test]
+fn http_cloud_urls_md_3() -> Result<(), Box<BedErrorPlus>> {
+    use bed_reader::BedCloud;
+    use tokio::runtime::Runtime; // '#' needed for doctest
+    Runtime::new()
+        .unwrap()
+        .block_on(async {
+            let mut bed_cloud = BedCloud::builder(
+                "https://www.ebi.ac.uk/biostudies/files/S-BSST936/genotypes/synthetic_v1_chr-10.bed",
+                [("timeout", "100s")],
+            )?
+            .skip_early_check()
+            .iid_count(1_008_000)
+            .sid_count(361_561)
+            .build()
+            .await?;
+            let val = ReadOptions::builder()
+                .sid_index(100_000)
+                .f32()
+                .read_cloud(&mut bed_cloud)
+                .await?;
+            assert_eq!(val.mean(), Some(0.03391369));
+            Ok::<(), Box<dyn std::error::Error>>(())
+        })
+        .unwrap();
+    Ok::<(), Box<BedErrorPlus>>(())
+}
+
+#[test]
+fn http_cloud_urls_md_4() -> Result<(), Box<BedErrorPlus>> {
+    use bed_reader::{assert_eq_nan, BedCloud, ObjectPath};
+    use object_store::{http::HttpBuilder, ClientOptions};
+    use std::time::Duration;
+    use tokio::runtime::Runtime; // '#' needed for doctest
+    Runtime::new()
+        .unwrap()
+        .block_on(async {
+            let client_options = ClientOptions::new().with_timeout(Duration::from_secs(1000));
+            let http_store = HttpBuilder::new()
+                .with_url("https://raw.githubusercontent.com/")
+                .with_client_options(client_options)
+                .build()?;
+            let arc_object_store = Arc::new(http_store);
+            let path = StorePath::from_url_path("fastlmm/bed-sample-files/main/small.bed")?;
+            let object_path = ObjectPath::new(arc_object_store, path);
+            let mut bed_cloud = BedCloud::from_object_path(&object_path).await?;
+            let val = ReadOptions::builder()
+                .sid_index(bed_cloud.chromosome().await?.map(|elem| elem == "5"))
+                .f64()
+                .read_cloud(&mut bed_cloud)
+                .await?;
+            assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
+
+            Ok::<(), Box<dyn std::error::Error>>(())
+        })
+        .unwrap();
+    Ok::<(), Box<BedErrorPlus>>(())
 }

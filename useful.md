@@ -38,7 +38,13 @@ maturin build --release
 cargo doc --no-deps --open
 cargo check
 
+cargo test --doc supplemental_document_cloud_urls
+
 cargo test --no-default-features
 cargo check --no-default-features
 maturin develop
 ```
+
+## CMD
+
+set PROMPT=$P$G
