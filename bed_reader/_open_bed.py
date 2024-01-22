@@ -111,7 +111,7 @@ class open_bed:
     Parameters
     ----------
     location: pathlib.Path or str
-        File path or URL to the .bed file.
+        File path or URL to the .bed file. See :doc:`cloud_urls` for details on cloud URLs.
     iid_count: None or int, optional
         Number of individuals (samples) in the .bed file.
         The default (``iid_count=None``) finds the number
@@ -203,6 +203,8 @@ class open_bed:
     Then, read the data for one SNP (variant)
     at index position 2.
 
+    See :doc:`cloud_urls` for details on reading files from cloud storage.
+
     .. doctest::
 
         >>> import numpy as np
@@ -242,30 +244,6 @@ class open_bed:
         None
 
     See the :meth:`read` for details of reading batches via slicing and fancy indexing.
-
-    cmk improve this whole section
-    You can read from cloud storage via a `special URL <https://docs.rs/object_store/latest/object_store/>`_.
-
-    .. doctest::
-
-        >>> from bed_reader import open_bed  # doctest: +SKIP
-        >>>
-        >>> # Somehow, get your AWS credentials
-        >>> import configparser, os  # doctest: +SKIP
-        >>> config = configparser.ConfigParser()  # doctest: +SKIP
-        >>> _ = config.read(os.path.expanduser("~/.aws/credentials"))  # doctest: +SKIP
-
-        >>> # Create a dictionary with your AWS credentials and the AWS region.
-        >>> cloud_options = {  # doctest: +SKIP
-        ...     "aws_access_key_id": config["default"].get("aws_access_key_id"),  # doctest: +SKIP
-        ...     "aws_secret_access_key": config["default"].get("aws_secret_access_key"),  # doctest: +SKIP
-        ...     "aws_region": "us-west-2"}  # doctest: +SKIP
-
-        >>> # Open the bed file with a URL and any needed cloud options, then use as before.
-        >>> with open_bed("s3://bedreader/v1/toydata.5chrom.bed", cloud_options=cloud_options) as bed:  # doctest: +SKIP
-        ...     val = bed.read(np.s_[:10, :10])  # doctest: +SKIP
-        ...     assert val[0, 0] == 1.0  # doctest: +SKIP
-
     """
 
     def __init__(
@@ -500,8 +478,6 @@ class open_bed:
              [   2    0 -127    2]
              [   0    1    2    0]]
             >>> del bed  # optional: delete bed object
-
-        cmk add a cloud example
         """
 
         iid_index_or_slice_etc, sid_index_or_slice_etc = self._split_index(index)

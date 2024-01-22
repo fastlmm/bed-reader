@@ -1,7 +1,5 @@
 # Cloud URLs and ObjectPath Examples
 
-<!-- cmk add link to other settings like timeout -->
-
 > *Table of Contents*:
 >
 > * [Http](#http)
@@ -57,6 +55,10 @@ assert_eq!(missing_count, 2);
 When reading a medium-sized file, you may need to set a `timeout` in your options.
 With a `timeout`, you can give your code more than the default 30 seconds to read
 metadata from the \*.fam and \*.bim files (or genomic data from \*.bed).
+
+See [`ClientConfigKey`](https://docs.rs/object_store/latest/object_store/enum.ClientConfigKey.html) for a list of cloud options, such as `timeout`,
+that you can use with `Http`.
+
 You may also wish to use [`.skip_early_check()`](../struct.BedCloudBuilder.html#method.skip_early_check)
 to avoid a fast, early check of the \*.bed file's header.
 
@@ -229,6 +231,12 @@ The URL for an AWS S3 file takes the form `s3://{bucket_name}/{s3_path}`.
 AWS forbids putting some needed information in the URL. Instead, that information must
 go into a string-to-string map of options. Specifically, we'll put `"aws_region"`, `"aws_access_key_id"`, and `"aws_secret_access_key"` in the options.
 For security, we pull the last two option values from a file rather than hard-coding them into the program.
+
+See [`ClientConfigKey`](https://docs.rs/object_store/latest/object_store/enum.ClientConfigKey.html) for a list of cloud options, such as `timeout`,
+that you can always use.
+See [`AmazonS3ConfigKey`](https://docs.rs/object_store/latest/object_store/aws/enum.AmazonS3ConfigKey.html) for a list of AWS-specific options.
+See [`AzureConfigKey`](https://docs.rs/object_store/latest/object_store/azure/enum.AzureConfigKey.html) for a list of Azure-specific options.
+See [`GoogleConfigKey`](https://docs.rs/object_store/latest/object_store/gcp/enum.GoogleConfigKey.html) for a list of Google-specific options.
 
 *Example:*
 

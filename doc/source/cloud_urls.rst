@@ -1,8 +1,6 @@
 Cloud URL Examples
 ====================
 
-.. cmk add link to other settings like timeout
-
 *Table of Contents*:
 
 - `Http <#http-section>`_
@@ -22,7 +20,8 @@ The exact details depend on the cloud service. We'll look at `http`, at `local f
 Http
 ----
 
-You can read \*.bed files from web sites directly. For small files, access will be fast. For medium-sized files, you may need to extend the default `timeout`.
+You can read \*.bed files from web sites directly. For small files, access will be fast. For medium-sized files,
+you may need to extend the default `timeout`.
 
 Reading from large files can also be practical and even fast under these conditions:
 
@@ -48,7 +47,14 @@ Read an entire file and find the fraction of missing values.
 
 When reading a medium-sized file, you may need to set a `timeout` in your cloud options. With a `timeout`,
 you can give your code more than the default 30 seconds to read metadata from the \*.fam and \*.bim files
-(or genomic data from \*.bed). You may also wish to use `.skip_format_check=True` to avoid a fast,
+(or genomic data from \*.bed).
+
+.. note::
+    
+    See `ClientConfigKey <https://docs.rs/object_store/latest/object_store/enum.ClientConfigKey.html>`_
+    for a list of cloud options, such as `timeout`, that you can always use.
+
+You may also wish to use `.skip_format_check=True` to avoid a fast,
 early check of the \*.bed file's header.
 
 Here we print the first five iids (individual or sample ids) and first five sids (SNP or variant ids).
@@ -180,6 +186,11 @@ AWS forbids putting some needed information in the URL. Instead, that informatio
 dictionary of cloud options. Specifically, we'll put `"aws_region"`, `"aws_access_key_id"`, and `"aws_secret_access_key"` in
 the cloud options.
 For security, we pull the last two option values from a file rather than hard-coding them into the program.
+
+See `ClientConfigKey <https://docs.rs/object_store/latest/object_store/enum.ClientConfigKey.html>`_ for a list of cloud options, such as ``timeout``, that you can always use.
+See `AmazonS3ConfigKey <https://docs.rs/object_store/latest/object_store/aws/enum.AmazonS3ConfigKey.html>`_ for a list of AWS-specific options.
+See `AzureConfigKey <https://docs.rs/object_store/latest/object_store/azure/enum.AzureConfigKey.html>`_ for a list of Azure-specific options.
+See `GoogleConfigKey <https://docs.rs/object_store/latest/object_store/gcp/enum.GoogleConfigKey.html>`_ for a list of Google-specific options.
 
 *Example:*
 

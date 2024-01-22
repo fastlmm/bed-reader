@@ -11,12 +11,6 @@
 ################################
 
 .. currentmodule:: bed_reader
-
-.. toctree::
-   :maxdepth: 1
-
-   cloud_urls 
-
 Read and write the PLINK BED format, simply and efficiently.
 
 Features:
@@ -25,6 +19,7 @@ Features:
 * Supports all Python indexing methods. Slice data by individuals (samples) and/or SNPs (variants).
 * Used by `PySnpTools <https://github.com/fastlmm/PySnpTools>`_, `FaST-LMM <https://github.com/fastlmm/FaST-LMM>`_, and `PyStatGen <https://github.com/pystatgen>`_.
 * Supports `PLINK 1.9 <https://www.cog-genomics.org/plink2/formats>`_.
+* Read data locally or from the cloud, efficiently and directly.
 
 Install
 ====================
@@ -90,7 +85,7 @@ chromosome. Then, read every value in chromosome 5.
     (100, 6)
 
 From the cloud: open a file and read data for one SNP (variant)
-at index position 2.
+at index position 2. (See :doc:`cloud_urls` for details on cloud URLs.)
 
 ::
 
@@ -197,8 +192,15 @@ the ``BED_READER_DATA_DIR`` environment variable.
 
 By default, :class:`open_bed` uses all available processors. Override this with the ``num_threads``
 parameter or by setting environment variable (listed in priority order):
-'PST_NUM_THREADS', 'NUM_THREADS', 'MKL_NUM_THREADS'.
+'PST_NUM_THREAD
 
+Cloud URL Examples
+======================
+
+.. toctree::
+   :maxdepth: 1
+
+   cloud_urls 
 
 Indices and Tables
 ====================

@@ -1080,24 +1080,6 @@ def test_http_two():
         assert val.shape == (10, 10) or val.shape == (10, 11)
 
 
-# # delete
-# def test_http_two_slow():
-#     from bed_reader import open_bed
-
-#     with open_bed(
-#         "https://www.ebi.ac.uk/biostudies/files/S-BSST936/genotypes/synthetic_v1_chr-10.bed",
-#         cloud_options={"timeout": "100s"},
-#         skip_format_check=True,
-#     ) as bed:
-#         print(f"iid_count={bed.iid_count:_}, sid_count={bed.sid_count:_}")
-#         print(f"iid={bed.iid[:5]}...")
-#         print(f"sid={bed.sid[:5]}...")
-#         print(f"unique chromosomes = {np.unique(bed.chromosome)}")
-#         val = bed.read(index=np.s_[:10, :: bed.sid_count // 10])
-#         print(f"val={val}")
-#         assert val.shape == (10, 10) or val.shape == (10, 11)
-
-
 def test_http_cloud_urls_rst_1():
     from bed_reader import open_bed
 

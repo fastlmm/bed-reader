@@ -11,6 +11,11 @@ The cloud providers forbid putting some needed information in the URL. Instead, 
 go into `options`. For example, AWS S3 requires that information
 about `"aws_region"`, `"aws_access_key_id"`, and `"aws_secret_access_key"` be placed in the options.
 
+See [`ClientConfigKey`](https://docs.rs/object_store/latest/object_store/enum.ClientConfigKey.html) for a list of cloud options, such as `timeout`, that you can always use. See [`AmazonS3ConfigKey`](https://docs.rs/object_store/latest/object_store/aws/enum.AmazonS3ConfigKey.html) for a list of AWS-specific options.
+See [`AzureConfigKey`](https://docs.rs/object_store/latest/object_store/azure/enum.AzureConfigKey.html) for a list of Azure-specific options.
+See [`GoogleConfigKey`](https://docs.rs/object_store/latest/object_store/gcp/enum.GoogleConfigKey.html) for a list of Google-specific options.
+
+
 Here is an AWS example:
 
 > **Note:** I can run this, but others can't because of the authentication checks.

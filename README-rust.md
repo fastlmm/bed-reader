@@ -102,7 +102,8 @@ assert!(val.dim() == (100, 6));
 ```
 
 From the cloud: open a file and read data for one SNP (variant)
-at index position 2.
+at index position 2. (See ["Cloud URLs and `ObjectPath` Examples"](supplemental_document_cloud_urls/index.html)
+for details specifying a file in the cloud.)
 
 ```rust
 # #[cfg(feature = "cloud")]  // '#' needed for doctest
