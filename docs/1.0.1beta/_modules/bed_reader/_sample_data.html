@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>bed_reader._sample_data &mdash; Bed Reader 1.0.1-beta.1 documentation</title>
+  <title>bed_reader._sample_data &mdash; Bed Reader 1.0.1-beta.2 documentation</title>
       <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
@@ -30,7 +30,7 @@
             Bed Reader
           </a>
               <div class="version">
-                1.0.1-beta.1
+                1.0.1-beta.2
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
@@ -68,7 +68,7 @@
              
   <h1>Source code for bed_reader._sample_data</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">tempfile</span>
-<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span><span class="p">,</span> <span class="n">PurePath</span>
 <span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Union</span>
 
 <span class="k">try</span><span class="p">:</span>
@@ -83,9 +83,9 @@
         <span class="n">path</span><span class="o">=</span><span class="n">pooch</span><span class="o">.</span><span class="n">os_cache</span><span class="p">(</span><span class="s2">&quot;bed_reader&quot;</span><span class="p">),</span>
         <span class="c1"># The remote data is on Github</span>
         <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;https://raw.githubusercontent.com/&quot;</span>
-        <span class="o">+</span> <span class="s2">&quot;fastlmm/bed-reader/Oct2023/bed_reader/tests/data/&quot;</span><span class="p">,</span>
+        <span class="o">+</span> <span class="s2">&quot;fastlmm/bed-sample-files/main/&quot;</span><span class="p">,</span>
         <span class="c1"># If this is a development version, get the data from the master branch</span>
-        <span class="n">version_dev</span><span class="o">=</span><span class="s2">&quot;master&quot;</span><span class="p">,</span>
+        <span class="n">version_dev</span><span class="o">=</span><span class="s2">&quot;main&quot;</span><span class="p">,</span>
         <span class="c1"># The registry specifies the files that can be fetched</span>
         <span class="n">env</span><span class="o">=</span><span class="s2">&quot;BED_READER_DATA_DIR&quot;</span><span class="p">,</span>
     <span class="p">)</span>
@@ -149,6 +149,50 @@
         <span class="n">POOCH</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">file_string</span><span class="p">[:</span><span class="o">-</span><span class="mi">4</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;.fam&quot;</span><span class="p">)</span>
         <span class="n">POOCH</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">file_string</span><span class="p">[:</span><span class="o">-</span><span class="mi">4</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;.bim&quot;</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">POOCH</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">file_string</span><span class="p">)</span></div>
+
+
+<span class="k">def</span> <span class="nf">sample_url</span><span class="p">(</span><span class="n">filepath</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Retrieve a URL to a sample .bed file. (Also makes ready associated .fam and .bim files).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    filepath</span>
+<span class="sd">        Name of the sample .bed file.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    str</span>
+<span class="sd">        URL to sample .bed file.</span>
+
+
+<span class="sd">    .. note::</span>
+<span class="sd">        This function requires the :mod:`pooch` package. Install `pooch` with:</span>
+
+<span class="sd">        .. code-block:: bash</span>
+
+<span class="sd">            pip install --upgrade bed-reader[samples]</span>
+
+
+<span class="sd">    By default this function puts files under the user&#39;s cache directory.</span>
+<span class="sd">    Override this by setting</span>
+<span class="sd">    the `BED_READER_DATA_DIR` environment variable.</span>
+
+<span class="sd">    Example</span>
+<span class="sd">    --------</span>
+
+<span class="sd">    .. doctest::</span>
+
+<span class="sd">        &gt;&gt;&gt; # pip install bed-reader[samples]  # if needed</span>
+<span class="sd">        &gt;&gt;&gt; from bed_reader import sample_url</span>
+<span class="sd">        &gt;&gt;&gt;</span>
+<span class="sd">        &gt;&gt;&gt; url = sample_url(&quot;small.bed&quot;)</span>
+<span class="sd">        &gt;&gt;&gt; print(f&quot;The url is &#39;{url}&#39;&quot;)</span>
+<span class="sd">        The url is &#39;file:///.../small.bed&#39;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">file_name</span> <span class="o">=</span> <span class="n">sample_file</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="n">PurePath</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span><span class="o">.</span><span class="n">as_uri</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">url</span>
 
 
 <div class="viewcode-block" id="tmp_path"><a class="viewcode-back" href="../../index.html#bed_reader.tmp_path">[docs]</a><span class="k">def</span> <span class="nf">tmp_path</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
