@@ -591,12 +591,10 @@ fn internal_read_no_alloc<TVal: BedVal>(
     }
 
     // Check and precompute for each iid_index
-
-    let (i_div_4_array, i_mod_4_times_2_array) =
+    let (i_div_4_array, i_mod_4_times_2_array, i_div_4_range) =
         check_and_precompute_iid_index(in_iid_count, iid_index)?;
 
     // Check and compute work for each sid_index
-
     let from_two_bits_to_value = set_up_two_bits_to_value(is_a1_counted, missing_value);
     let lower_sid_count = -(in_sid_count as isize);
     let upper_sid_count: isize = (in_sid_count as isize) - 1;
@@ -616,8 +614,9 @@ fn internal_read_no_alloc<TVal: BedVal>(
             };
 
             // Read the iid info for one snp from the disk
-            let mut bytes_vector: Vec<u8> = vec![0; in_iid_count_div4];
-            let pos: u64 = in_sid_i * in_iid_count_div4_u64 + CB_HEADER_U64; // "as" and math is safe because of early checks
+            let mut bytes_vector: Vec<u8> = vec![0; i_div_4_range.len()];
+            let pos: u64 =
+                in_sid_i * in_iid_count_div4_u64 + i_div_4_range.start as u64 + CB_HEADER_U64; // "as" and math is safe because of early checks
             buf_reader.seek(SeekFrom::Start(pos))?;
             buf_reader.read_exact(&mut bytes_vector)?;
             Ok::<_, Box<BedErrorPlus>>(bytes_vector)
@@ -632,7 +631,8 @@ fn internal_read_no_alloc<TVal: BedVal>(
                 for out_iid_i in 0..iid_index.len() {
                     let i_div_4 = i_div_4_array[out_iid_i];
                     let i_mod_4_times_2 = i_mod_4_times_2_array[out_iid_i];
-                    let genotype_byte: u8 = (bytes_vector[i_div_4] >> i_mod_4_times_2) & 0x03;
+                    let genotype_byte: u8 =
+                        (bytes_vector[i_div_4 - i_div_4_range.start] >> i_mod_4_times_2) & 0x03;
                     col[out_iid_i] = from_two_bits_to_value[genotype_byte as usize];
                 }
                 Ok(())
@@ -645,10 +645,12 @@ fn internal_read_no_alloc<TVal: BedVal>(
 type Array1Usize = nd::ArrayBase<nd::OwnedRepr<usize>, nd::Dim<[usize; 1]>>;
 type Array1U8 = nd::ArrayBase<nd::OwnedRepr<u8>, nd::Dim<[usize; 1]>>;
 
+#[allow(clippy::type_complexity)]
+#[allow(clippy::range_plus_one)]
 fn check_and_precompute_iid_index(
     in_iid_count: usize,
     iid_index: &[isize],
-) -> Result<(Array1Usize, Array1U8), Box<BedErrorPlus>> {
+) -> Result<(Array1Usize, Array1U8, Range<usize>), Box<BedErrorPlus>> {
     let lower_iid_count = -(in_iid_count as isize);
     let upper_iid_count: isize = (in_iid_count as isize) - 1;
     let mut i_div_4_array = nd::Array1::<usize>::zeros(iid_index.len());
@@ -676,11 +678,18 @@ fn check_and_precompute_iid_index(
         *i_div_4 = in_iid_i / 4;
         *i_mod_4_times_2 = (in_iid_i % 4 * 2) as u8;
     });
+    let min_value = i_div_4_array.par_iter().min();
+    let max_value = i_div_4_array.par_iter().max();
+    let i_div_4_range = if let (Some(min_value), Some(max_value)) = (min_value, max_value) {
+        *min_value..*max_value + 1
+    } else {
+        0..0
+    };
     result_list
         .iter()
         .par_bridge()
         .try_for_each(|x| (*x).clone())?;
-    Ok((i_div_4_array, i_mod_4_times_2_array))
+    Ok((i_div_4_array, i_mod_4_times_2_array, i_div_4_range))
 }
 
 fn set_up_two_bits_to_value<TVal: From<i8>>(count_a1: bool, missing_value: TVal) -> [TVal; 4] {

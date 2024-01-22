@@ -185,7 +185,7 @@ where
     // compute numbers outside of the loop
     let (in_iid_count_div4, in_iid_count_div4_u64) =
         check_file_length(in_iid_count, in_sid_count, size, object_path)?;
-    let (i_div_4_array, i_mod_4_times_2_array) =
+    let (i_div_4_array, i_mod_4_times_2_array, _cmk_i_div_4_range) =
         check_and_precompute_iid_index(in_iid_count, iid_index)?;
     let chunk_size = max(1, max_chunk_size / in_iid_count_div4);
     let from_two_bits_to_value = set_up_two_bits_to_value(is_a1_counted, missing_value);
