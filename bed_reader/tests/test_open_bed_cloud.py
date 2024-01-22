@@ -3,8 +3,8 @@ import logging
 import math
 import os
 import platform
-from pathlib import Path, PurePath
 import sys
+from pathlib import Path, PurePath
 
 import numpy as np
 import pytest
@@ -1095,6 +1095,7 @@ def test_http_cloud_urls_rst_1():
 
 def test_http_cloud_urls_rst_2():
     import numpy as np
+
     from bed_reader import open_bed
 
     with open_bed(
@@ -1152,10 +1153,12 @@ def test_http_cloud_urls_rst_4():
 
 
 def test_local_cloud_urls_rst_1():
-    import numpy as np
-    from bed_reader import open_bed, sample_file
-    from urllib.parse import urljoin
     from pathlib import Path
+    from urllib.parse import urljoin
+
+    import numpy as np
+
+    from bed_reader import open_bed, sample_file
 
     file_name = str(sample_file("small.bed"))
     print(f"{file_name}")
