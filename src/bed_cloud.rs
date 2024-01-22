@@ -1,3 +1,4 @@
+// cmk will the Python code fail on 32 bit?
 #[cfg(not(target_pointer_width = "64"))]
 compile_error!(
     "This code requires a 64-bit target architecture because the cloud-library assumes it."
@@ -290,8 +291,7 @@ fn check_file_length<TObjectStore>(
 where
     TObjectStore: ObjectStore,
 {
-    let (in_iid_count_div4, in_iid_count_div4_u64) =
-        try_div_4(in_iid_count, in_sid_count, CB_HEADER_U64)?;
+    let (in_iid_count_div4, in_iid_count_div4_u64) = try_div_4(in_iid_count, in_sid_count)?;
     let file_len = size as u64;
     let file_len2 = in_iid_count_div4_u64 * (in_sid_count as u64) + CB_HEADER_U64;
     if file_len != file_len2 {
@@ -406,7 +406,7 @@ impl BedCloudBuilder<Box<dyn ObjectStore>> {
     /// If not set, the .fam file will be assumed
     /// to have the same location as the .bed file, but with the extension .fam.
     ///
-    /// > See [`BedCloudBuider::fam_object_path`](struct.BedCloudBuilder.html#method.fam_object_path) to specify the file with an [`ObjectPath`](struct.ObjectPath.html)
+    /// > See [`BedCloudBuilder::fam_object_path`](struct.BedCloudBuilder.html#method.fam_object_path) to specify the file with an [`ObjectPath`](struct.ObjectPath.html)
     /// > instead of a URL string.
     ///
     /// # Example:
@@ -441,7 +441,7 @@ impl BedCloudBuilder<Box<dyn ObjectStore>> {
     /// If not set, the .bim file will be assumed
     /// to have the same location as the .bed file, but with the extension .bim.
     ///
-    /// > See [`BedCloudBuider::fam_object_path`](struct.BedCloudBuilder.html#method.bim_object_path) to specify the file with an [`ObjectPath`](struct.ObjectPath.html)
+    /// > See [`BedCloudBuilder::fam_object_path`](struct.BedCloudBuilder.html#method.bim_object_path) to specify the file with an [`ObjectPath`](struct.ObjectPath.html)
     /// > instead of a URL string.
     ///
     /// # Example:
@@ -522,7 +522,7 @@ where
     pub async fn build(&self) -> Result<BedCloud<TObjectStore>, Box<BedErrorPlus>> {
         let mut bed_cloud = self.build_no_file_check()?;
 
-        // Unwrap is allowed becaue we can't construct BedCloudBuilder without object_path
+        // Unwrap is allowed because we can't construct BedCloudBuilder without object_path
         if bed_cloud.is_checked_early {
             let object_path = self.object_path.as_ref().unwrap().clone();
             open_and_check(&object_path).await?;

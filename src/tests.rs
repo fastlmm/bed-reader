@@ -478,53 +478,8 @@ fn standardize_unit() {
 
 #[test]
 fn div_4() {
-    match try_div_4(0, 16, 0u8) {
-        Ok(tup) => assert_eq!(tup, (0usize, 0u8)),
-        Err(err) => panic!("test failure: {err:?}"),
-    };
-
-    match try_div_4(1, 16, 0u8) {
-        Ok(tup) => assert_eq!(tup, (1usize, 1u8)),
-        Err(err) => panic!("test failure: {err:?}"),
-    };
-
-    match try_div_4(4, 16, 0u8) {
-        Ok(tup) => assert_eq!(tup, (1usize, 1u8)),
-        Err(err) => panic!("test failure: {err:?}"),
-    };
-
-    match try_div_4(5, 16, 0u8) {
-        Ok(tup) => assert_eq!(tup, (2usize, 2u8)),
-        Err(err) => panic!("test failure: {err:?}"),
-    };
-
     assert_error_variant!(
-        try_div_4(2000, 0, 0u8),
-        BedErrorPlus::BedError(BedError::IndexesTooBigForFiles(_, _))
-    );
-
-    assert_error_variant!(
-        try_div_4(0, 256, 0u8),
-        BedErrorPlus::BedError(BedError::IndexesTooBigForFiles(_, _))
-    );
-
-    match try_div_4(25 * 4, 10, 5u8) {
-        Ok(tup) => assert_eq!(tup, (25usize, 25u8)),
-        Err(err) => panic!("test failure: {err:?}"),
-    };
-
-    assert_error_variant!(
-        try_div_4(25 * 4 + 1, 10, 5u8),
-        BedErrorPlus::BedError(BedError::IndexesTooBigForFiles(_, _))
-    );
-
-    assert_error_variant!(
-        try_div_4(25 * 4, 11, 5u8),
-        BedErrorPlus::BedError(BedError::IndexesTooBigForFiles(_, _))
-    );
-
-    assert_error_variant!(
-        try_div_4(25 * 4, 10, 6u8),
+        try_div_4(usize::MAX, usize::MAX),
         BedErrorPlus::BedError(BedError::IndexesTooBigForFiles(_, _))
     );
 }

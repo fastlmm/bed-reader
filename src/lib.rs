@@ -1,3 +1,4 @@
+// cmk we either need to test on 32-bit or assume 64-bit (and remove the _u64 variables)
 #![warn(missing_docs)]
 #![warn(clippy::pedantic)]
 #![allow(
@@ -138,7 +139,6 @@ use rayon::{iter::ParallelBridge, ThreadPoolBuildError};
 use statrs::distribution::{Beta, Continuous};
 use std::cmp::Ordering;
 use std::collections::HashSet;
-use std::convert::TryFrom;
 use std::fs::{self};
 use std::io::Read;
 use std::io::Seek;
@@ -147,7 +147,6 @@ use std::io::Write;
 use std::num::{ParseFloatError, ParseIntError};
 use std::ops::AddAssign;
 use std::ops::{Bound, Range, RangeBounds, RangeFrom, RangeInclusive, RangeTo, RangeToInclusive};
-use std::ops::{Div, Sub};
 use std::rc::Rc;
 use std::str::Utf8Error;
 use std::{
@@ -548,31 +547,24 @@ impl Missing for i8 {
     }
 }
 
-// We make this generic instead of u64, so that we can test it via u8
-fn try_div_4<T: Max + TryFrom<usize> + Sub<Output = T> + Div<Output = T> + Ord>(
-    in_iid_count: usize,
-    in_sid_count: usize,
-    cb_header: T,
-) -> Result<(usize, T), Box<BedErrorPlus>> {
-    // 4 genotypes per byte so round up without overflow
-    let in_iid_count_div4 = if in_iid_count > 0 {
-        (in_iid_count - 1) / 4 + 1
-    } else {
-        0
-    };
+// try_div_4 assumes that |usize| <= |u64|
+#[cfg(not(any(target_pointer_width = "32", target_pointer_width = "64")))]
+compile_error!("This code requires a target architecture of either 32-bit or 64-bit");
 
-    let (Ok(in_iid_count_div4_t), Ok(in_sid_count_t)) =
-        (T::try_from(in_iid_count_div4), T::try_from(in_sid_count))
-    else {
-        Err(BedError::IndexesTooBigForFiles(in_iid_count, in_sid_count))?
-    };
+#[inline]
+fn try_div_4(in_iid_count: usize, in_sid_count: usize) -> Result<(usize, u64), Box<BedErrorPlus>> {
+    if in_iid_count == 0 {
+        return Ok((0, 0));
+    }
+    let in_iid_count_div4 = (in_iid_count - 1) / 4 + 1;
+    let in_iid_count_div4_u64 = in_iid_count_div4 as u64;
+    let in_sid_count_u64 = in_sid_count as u64;
 
-    let m: T = Max::max(); // Don't know how to move this into the next line.
-    if in_sid_count > 0 && (m - cb_header) / in_sid_count_t < in_iid_count_div4_t {
+    if in_sid_count > 0 && (u64::MAX - CB_HEADER_U64) / in_sid_count_u64 < in_iid_count_div4_u64 {
         Err(BedError::IndexesTooBigForFiles(in_iid_count, in_sid_count))?;
     }
 
-    Ok((in_iid_count_div4, in_iid_count_div4_t))
+    Ok((in_iid_count_div4, in_iid_count_div4_u64))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -590,10 +582,9 @@ fn internal_read_no_alloc<TVal: BedVal>(
 ) -> Result<(), Box<BedErrorPlus>> {
     // Check the file length
 
-    let (in_iid_count_div4, in_iid_count_div4_u64) =
-        try_div_4(in_iid_count, in_sid_count, CB_HEADER_U64)?;
+    let (in_iid_count_div4, in_iid_count_div4_u64) = try_div_4(in_iid_count, in_sid_count)?;
     // "as" and math is safe because of early checks
-    let file_len = buf_reader.seek(SeekFrom::End(0))?;
+    let file_len = buf_reader.get_ref().metadata()?.len();
     let file_len2 = in_iid_count_div4_u64 * (in_sid_count as u64) + CB_HEADER_U64;
     if file_len != file_len2 {
         Err(BedError::IllFormed(path_ref_to_string(path)))?;
@@ -731,7 +722,7 @@ where
     let (iid_count, sid_count) = val.dim();
 
     // 4 genotypes per byte so round up
-    let (iid_count_div4, _) = try_div_4(iid_count, sid_count, CB_HEADER_U64)?;
+    let (iid_count_div4, _) = try_div_4(iid_count, sid_count)?;
 
     // We create and write to a file.
     // If there is an error, we will delete it.
