@@ -1,6 +1,6 @@
 #![cfg(feature = "extension-module")]
 
-use std::collections::HashMap;
+use std::{collections::HashMap, f64::consts::E};
 
 use numpy::{PyArray1, PyArray2, PyArray3};
 use object_store::{path::Path as StorePath, ObjectStore};
@@ -49,22 +49,23 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         }
     }
 
-    // #[pyfn(m)]
-    // fn url_to_bytes(location: &str, options: HashMap<&str, String>) -> Result<Vec<u8>, PyErr> {
-    //     let rt = runtime::Runtime::new()?;
+    #[pyfn(m)]
+    fn url_to_bytes(location: &str, options: HashMap<&str, String>) -> Result<Vec<u8>, PyErr> {
+        let rt = runtime::Runtime::new()?;
 
-    //     let url = Url::parse(location).unwrap(); // cmk return a BedReader URL parse error
-    //     let (object_store, store_path): (Box<dyn ObjectStore>, StorePath) =
-    //         object_store::parse_url_opts(&url, options).unwrap(); // cmk return a BedReader URL parse error
-    //     let object_path: ObjectPath<Box<dyn ObjectStore>> = (object_store, store_path).into();
+        let url = Url::parse(location).unwrap(); // cmk return a BedReader URL parse error
+        let (object_store, store_path): (Box<dyn ObjectStore>, StorePath) =
+            object_store::parse_url_opts(&url, options).unwrap(); // cmk return a BedReader URL parse error
+        let object_path: ObjectPath<Box<dyn ObjectStore>> = (object_store, store_path).into();
 
-    //     rt.block_on(async {
-    //         let get_result = object_path.get().await?;
-    //         let bytes = get_result.bytes().await.unwrap(); // cmk ???
-    //         let vec: Vec<u8> = bytes.to_vec();
-    //         Ok(vec)
-    //     })
-    // }
+        rt.block_on(async {
+            let get_result = object_path.get().await?;
+            let bytes = get_result.bytes().await.unwrap(); // cmk ???
+            let vec: Vec<u8> = bytes.to_vec();
+            Ok(vec)
+        })
+        // Err(PyValueError::new_err("url_to_bytes is not implemented yet"))
+    }
 
     #[pyfn(m)]
     #[allow(clippy::too_many_arguments)]
