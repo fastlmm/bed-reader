@@ -29,6 +29,7 @@ use object_store::ObjectStore;
 use std::collections::HashSet;
 use std::panic::catch_unwind;
 use std::sync::Arc;
+use std::time::Instant;
 use thousands::Separable;
 use tokio::runtime;
 use url::Url;
@@ -2583,4 +2584,33 @@ fn http_cloud_urls_md_4() -> Result<(), Box<BedErrorPlus>> {
         })
         .unwrap();
     Ok::<(), Box<BedErrorPlus>>(())
+}
+
+#[tokio::test]
+async fn http_cloud_column_speed_test() -> Result<(), Box<dyn std::error::Error>> {
+    let mut bed_cloud = BedCloud::builder(
+        "https://www.ebi.ac.uk/biostudies/files/S-BSST936/genotypes/synthetic_v1_chr-10.bed",
+        [("timeout", "100s")],
+    )?
+    .skip_early_check()
+    .iid_count(1_008_000)
+    .sid_count(361_561)
+    .build()
+    .await?;
+
+    let start_time = Instant::now();
+    let val = ReadOptions::builder()
+        .iid_index(..1000)
+        .sid_index(..50)
+        .f32()
+        .read_cloud(&mut bed_cloud)
+        .await?;
+    let elapsed = start_time.elapsed();
+
+    println!("Time taken: {:?}", elapsed);
+    println!("Size of val: {} elements", val.len());
+    println!("Mean of val: {:?}", val.mean());
+    // assert_eq!(val.mean(), Some(0.03391369));
+
+    Ok(())
 }
