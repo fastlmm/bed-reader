@@ -1,8 +1,5 @@
-// cmk will the Python code fail on 32 bit?
 #[cfg(not(target_pointer_width = "64"))]
-compile_error!(
-    "This code requires a 64-bit target architecture because the cloud-library assumes it."
-);
+compile_error!("This code requires a 64-bit target architecture.");
 
 use anyinput::anyinput;
 use bytes::Bytes;
@@ -184,14 +181,13 @@ where
     TObjectStore: ObjectStore,
 {
     // compute numbers outside of the loop
-    let (_, in_iid_count_div4_u64) =
-        check_file_length(in_iid_count, in_sid_count, size, object_path)?;
-    let (i_div_4_less_start_array, i_mod_4_times_2_array, i_div_4_range) =
+    let in_iid_count_div4_u64 = check_file_length(in_iid_count, in_sid_count, size, object_path)?;
+    let (i_div_4_less_start_array, i_mod_4_times_2_array, i_div_4_start, i_div_4_len) =
         check_and_precompute_iid_index(in_iid_count, iid_index)?;
-    if i_div_4_range.is_empty() {
+    if i_div_4_len == 0 {
         return Ok(()); // we must return early because the chucks method doesn't work with size 0
     }
-    let chunk_count = max(1, max_chunk_size / i_div_4_range.len());
+    let chunk_count = max(1, max_chunk_size / i_div_4_len as usize);
     let from_two_bits_to_value = set_up_two_bits_to_value(is_a1_counted, missing_value);
     let lower_sid_count = -(in_sid_count as isize);
     let upper_sid_count: isize = (in_sid_count as isize) - 1;
@@ -210,7 +206,8 @@ where
             upper_sid_count,
             lower_sid_count,
             in_iid_count_div4_u64,
-            i_div_4_range.clone(),
+            i_div_4_start,
+            i_div_4_len,
         );
         async move {
             let (ranges, out_sid_i_vec) = result?;
@@ -239,6 +236,7 @@ where
 
 #[inline]
 #[allow(clippy::type_complexity)]
+#[allow(clippy::too_many_arguments)]
 fn extract_ranges(
     chunk_count: usize,
     chunk: itertools::Chunk<'_, std::slice::Iter<'_, isize>>,
@@ -246,18 +244,19 @@ fn extract_ranges(
     upper_sid_count: isize,
     lower_sid_count: isize,
     in_iid_count_div4_u64: u64,
-    i_div_4_range: Range<usize>,
-) -> Result<(Vec<std::ops::Range<usize>>, Vec<usize>), Box<BedErrorPlus>> {
+    i_div_4_start: u64,
+    i_div_4_len: u64,
+) -> Result<(Vec<Range<usize>>, Vec<usize>), Box<BedErrorPlus>> {
     let mut ranges = Vec::with_capacity(chunk_count);
     let mut out_sid_i_vec = Vec::with_capacity(chunk_count);
     for (inner_index, in_sid_i_signed) in chunk.enumerate() {
         let out_sid_i = chunk_index * chunk_count + inner_index;
         let in_sid_i =
             convert_negative_sid_index(*in_sid_i_signed, upper_sid_count, lower_sid_count)?;
-        let pos: u64 =
-            in_sid_i * in_iid_count_div4_u64 + i_div_4_range.start as u64 + CB_HEADER_U64; // "as" and math is safe because of early checks
-        let range = pos as usize..(pos as usize + i_div_4_range.len()) as usize;
-        debug_assert!((range.len() == i_div_4_range.len())); // real assert
+        let pos: usize =
+            (in_sid_i * in_iid_count_div4_u64 + i_div_4_start + CB_HEADER_U64) as usize; // "as" and math is safe because of early checks
+        let range = pos..pos + i_div_4_len as usize;
+        debug_assert!(range.end - range.start == i_div_4_len as usize); // real assert
         ranges.push(range);
         out_sid_i_vec.push(out_sid_i);
     }
@@ -296,17 +295,17 @@ fn check_file_length<TObjectStore>(
     in_sid_count: usize,
     size: usize,
     object_path: &ObjectPath<TObjectStore>,
-) -> Result<(usize, u64), Box<BedErrorPlus>>
+) -> Result<u64, Box<BedErrorPlus>>
 where
     TObjectStore: ObjectStore,
 {
-    let (in_iid_count_div4, in_iid_count_div4_u64) = try_div_4(in_iid_count, in_sid_count)?;
+    let in_iid_count_div4_u64 = try_div_4(in_iid_count, in_sid_count)?;
     let file_len = size as u64;
     let file_len2 = in_iid_count_div4_u64 * (in_sid_count as u64) + CB_HEADER_U64;
     if file_len != file_len2 {
         Err(BedError::IllFormed(object_path.to_string()))?;
     }
-    Ok((in_iid_count_div4, in_iid_count_div4_u64))
+    Ok(in_iid_count_div4_u64)
 }
 
 #[inline]
@@ -2053,7 +2052,7 @@ where
         let max_concurrent_requests =
             compute_max_concurrent_requests(read_options.max_concurrent_requests)?;
 
-        let max_chunk_size = compute_max_chunk_size(read_options.max_chunk_size)?; // cmk check
+        let max_chunk_size = compute_max_chunk_size(read_options.max_chunk_size)?;
 
         // If we already have a Vec<isize>, reference it. If we don't, create one and reference it.
         let iid_hold = Hold::new(&read_options.iid_index, iid_count)?;

@@ -1,4 +1,3 @@
-// cmk we either need to test on 32-bit or assume 64-bit (and remove the _u64 variables)
 #![warn(missing_docs)]
 #![warn(clippy::pedantic)]
 #![allow(
@@ -547,24 +546,21 @@ impl Missing for i8 {
     }
 }
 
-// try_div_4 assumes that |usize| <= |u64|
-#[cfg(not(any(target_pointer_width = "32", target_pointer_width = "64")))]
-compile_error!("This code requires a target architecture of either 32-bit or 64-bit");
-
+#[cfg(not(target_pointer_width = "64"))]
+compile_error!("This code requires a 64-bit target architecture.");
 #[inline]
-fn try_div_4(in_iid_count: usize, in_sid_count: usize) -> Result<(usize, u64), Box<BedErrorPlus>> {
+fn try_div_4(in_iid_count: usize, in_sid_count: usize) -> Result<u64, Box<BedErrorPlus>> {
     if in_iid_count == 0 {
-        return Ok((0, 0));
+        return Ok(0);
     }
-    let in_iid_count_div4 = (in_iid_count - 1) / 4 + 1;
-    let in_iid_count_div4_u64 = in_iid_count_div4 as u64;
+    let in_iid_count_div4_u64 = ((in_iid_count - 1) / 4 + 1) as u64;
     let in_sid_count_u64 = in_sid_count as u64;
 
     if in_sid_count > 0 && (u64::MAX - CB_HEADER_U64) / in_sid_count_u64 < in_iid_count_div4_u64 {
         Err(BedError::IndexesTooBigForFiles(in_iid_count, in_sid_count))?;
     }
 
-    Ok((in_iid_count_div4, in_iid_count_div4_u64))
+    Ok(in_iid_count_div4_u64)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -582,7 +578,7 @@ fn internal_read_no_alloc<TVal: BedVal>(
 ) -> Result<(), Box<BedErrorPlus>> {
     // Check the file length
 
-    let (_, in_iid_count_div4_u64) = try_div_4(in_iid_count, in_sid_count)?;
+    let in_iid_count_div4_u64 = try_div_4(in_iid_count, in_sid_count)?;
     // "as" and math is safe because of early checks
     let file_len = buf_reader.get_ref().metadata()?.len();
     let file_len2 = in_iid_count_div4_u64 * (in_sid_count as u64) + CB_HEADER_U64;
@@ -591,7 +587,7 @@ fn internal_read_no_alloc<TVal: BedVal>(
     }
 
     // Check and precompute for each iid_index
-    let (i_div_4_less_start_array, i_mod_4_times_2_array, i_div_4_range) =
+    let (i_div_4_less_start_array, i_mod_4_times_2_array, i_div_4_start, i_div_4_len) =
         check_and_precompute_iid_index(in_iid_count, iid_index)?;
 
     // Check and compute work for each sid_index
@@ -613,9 +609,8 @@ fn internal_read_no_alloc<TVal: BedVal>(
             };
 
             // Read the iid info for one snp from the disk
-            let mut bytes_vector: Vec<u8> = vec![0; i_div_4_range.len()];
-            let pos: u64 =
-                in_sid_i * in_iid_count_div4_u64 + i_div_4_range.start as u64 + CB_HEADER_U64; // "as" and math is safe because of early checks
+            let mut bytes_vector: Vec<u8> = vec![0; i_div_4_len as usize];
+            let pos: u64 = in_sid_i * in_iid_count_div4_u64 + i_div_4_start + CB_HEADER_U64; // "as" and math is safe because of early checks
             buf_reader.seek(SeekFrom::Start(pos))?;
             buf_reader.read_exact(&mut bytes_vector)?;
             Ok::<_, Box<BedErrorPlus>>(bytes_vector)
@@ -649,7 +644,7 @@ type Array1U8 = nd::ArrayBase<nd::OwnedRepr<u8>, nd::Dim<[usize; 1]>>;
 fn check_and_precompute_iid_index(
     in_iid_count: usize,
     iid_index: &[isize],
-) -> Result<(Array1Usize, Array1U8, Range<usize>), Box<BedErrorPlus>> {
+) -> Result<(Array1Usize, Array1U8, u64, u64), Box<BedErrorPlus>> {
     let lower_iid_count = -(in_iid_count as isize);
     let upper_iid_count: isize = (in_iid_count as isize) - 1;
     let mut i_div_4_less_start_array = nd::Array1::<usize>::zeros(iid_index.len());
@@ -682,22 +677,24 @@ fn check_and_precompute_iid_index(
         .par_bridge()
         .try_for_each(|x| (*x).clone())?;
 
-    let (min_value, i_div_4_range) =
+    let (i_div_4_start, i_div_4_len) =
         if let Some(min_value) = i_div_4_less_start_array.par_iter().min() {
             let max_value = *i_div_4_less_start_array.par_iter().max().unwrap(); // safe because of min
-            (*min_value, *min_value..max_value + 1)
+            (*min_value as u64, (max_value + 1 - *min_value) as u64)
         } else {
-            (0, 0..0)
+            (0, 0)
         };
-    if min_value > 0 {
-        i_div_4_less_start_array // cmk skip of min_value is 0
+    // skip of min_value is 0
+    if i_div_4_start > 0 {
+        i_div_4_less_start_array
             .par_iter_mut()
-            .for_each(|x| *x -= min_value);
+            .for_each(|x| *x -= i_div_4_start as usize);
     }
     Ok((
         i_div_4_less_start_array,
         i_mod_4_times_2_array,
-        i_div_4_range,
+        i_div_4_start,
+        i_div_4_len,
     ))
 }
 
@@ -740,13 +737,13 @@ where
     let (iid_count, sid_count) = val.dim();
 
     // 4 genotypes per byte so round up
-    let (iid_count_div4, _) = try_div_4(iid_count, sid_count)?;
+    let iid_count_div4_u64 = try_div_4(iid_count, sid_count)?;
 
     // We create and write to a file.
     // If there is an error, we will delete it.
     if let Err(e) = write_internal(
         path,
-        iid_count_div4,
+        iid_count_div4_u64,
         val,
         is_a1_counted,
         missing,
@@ -764,7 +761,7 @@ where
 #[anyinput]
 fn write_internal<S, TVal>(
     path: AnyPath,
-    iid_count_div4: usize,
+    iid_count_div4_u64: u64,
     //val: &nd::ArrayView2<'_, TVal>,
     val: &nd::ArrayBase<S, nd::Ix2>,
     is_a1_counted: bool,
@@ -792,7 +789,7 @@ where
             .parallel_map_scoped(scope, {
                 move |column| {
                     // Convert each column into a bytes_vector
-                    let mut bytes_vector: Vec<u8> = vec![0; iid_count_div4]; // inits to 0
+                    let mut bytes_vector: Vec<u8> = vec![0; iid_count_div4_u64 as usize]; // inits to 0
                     for (iid_i, &v0) in column.iter().enumerate() {
                         #[allow(clippy::eq_op)]
                         let genotype_byte = if v0 == homozygous_primary_allele {
