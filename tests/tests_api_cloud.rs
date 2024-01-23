@@ -950,6 +950,9 @@ fn range_same_cloud() -> Result<(), Box<BedErrorPlus>> {
 
 #[test]
 fn nd_slice_same_cloud() -> Result<(), Box<BedErrorPlus>> {
+    #[allow(clippy::reversed_empty_ranges)]
+    assert_same_result(nds1_cloud(s![3..0]), rt23_cloud(s![3..0].into()));
+
     assert_same_result(nds1_cloud(s![1000..]), rt23_cloud(s![1000..].into()));
     assert_same_result(nds1_cloud(s![..1000]), rt23_cloud(s![..1000].into()));
     assert_same_result(nds1_cloud(s![999..1000]), rt23_cloud(s![999..1000].into()));
@@ -961,8 +964,6 @@ fn nd_slice_same_cloud() -> Result<(), Box<BedErrorPlus>> {
         nds1_cloud(s![-999..-1000]),
         rt23_cloud(s![-999..-1000].into()),
     );
-    #[allow(clippy::reversed_empty_ranges)]
-    assert_same_result(nds1_cloud(s![3..0]), rt23_cloud(s![3..0].into()));
     #[allow(clippy::reversed_empty_ranges)]
     assert_same_result(nds1_cloud(s![-1..-2]), rt23_cloud(s![-1..-2].into()));
 

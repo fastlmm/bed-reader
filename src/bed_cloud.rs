@@ -188,11 +188,10 @@ where
         check_file_length(in_iid_count, in_sid_count, size, object_path)?;
     let (i_div_4_less_start_array, i_mod_4_times_2_array, i_div_4_range) =
         check_and_precompute_iid_index(in_iid_count, iid_index)?;
-    let chunk_count = if i_div_4_range.is_empty() {
-        1
-    } else {
-        max(1, max_chunk_size / i_div_4_range.len())
-    };
+    if i_div_4_range.is_empty() {
+        return Ok(()); // we must return early because the chucks method doesn't work with size 0
+    }
+    let chunk_count = max(1, max_chunk_size / i_div_4_range.len());
     let from_two_bits_to_value = set_up_two_bits_to_value(is_a1_counted, missing_value);
     let lower_sid_count = -(in_sid_count as isize);
     let upper_sid_count: isize = (in_sid_count as isize) - 1;
