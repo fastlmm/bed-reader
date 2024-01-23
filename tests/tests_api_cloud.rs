@@ -1463,6 +1463,8 @@ async fn cloud_index_options() -> Result<(), Box<BedErrorPlus>> {
         .read_cloud(&mut bed_cloud)
         .await?;
     let expected = all.slice(s![99isize..=99, 99isize..=99]);
+    println!("{:?}", val);
+    println!("{:?}", expected);
     assert!(
         allclose(&val.view(), &expected.view(), 1e-08, true),
         "not close"

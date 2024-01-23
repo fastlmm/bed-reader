@@ -20,6 +20,7 @@ use object_store::ObjectStore;
 use object_store::{GetOptions, GetRange, GetResult};
 use std::cmp::max;
 use std::collections::HashSet;
+use std::ops::Range;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -183,11 +184,15 @@ where
     TObjectStore: ObjectStore,
 {
     // compute numbers outside of the loop
-    let (in_iid_count_div4, in_iid_count_div4_u64) =
+    let (_, in_iid_count_div4_u64) =
         check_file_length(in_iid_count, in_sid_count, size, object_path)?;
-    let (i_div_4_array, i_mod_4_times_2_array, _cmk_i_div_4_range) =
+    let (i_div_4_less_start_array, i_mod_4_times_2_array, i_div_4_range) =
         check_and_precompute_iid_index(in_iid_count, iid_index)?;
-    let chunk_size = max(1, max_chunk_size / in_iid_count_div4);
+    let chunk_count = if i_div_4_range.is_empty() {
+        1
+    } else {
+        max(1, max_chunk_size / i_div_4_range.len())
+    };
     let from_two_bits_to_value = set_up_two_bits_to_value(is_a1_counted, missing_value);
     let lower_sid_count = -(in_sid_count as isize);
     let upper_sid_count: isize = (in_sid_count as isize) - 1;
@@ -197,21 +202,20 @@ where
 
     // For each chunk of columns to read ...
 
-    let chunks = sid_index.iter().chunks(chunk_size);
+    let chunks = sid_index.iter().chunks(chunk_count);
     let iterator = chunks.into_iter().enumerate().map(|(chunk_index, chunk)| {
         let result = extract_ranges(
-            chunk_size,
+            chunk_count,
             chunk,
             chunk_index,
             upper_sid_count,
             lower_sid_count,
             in_iid_count_div4_u64,
+            i_div_4_range.clone(),
         );
         async move {
             let (ranges, out_sid_i_vec) = result?;
-
             let vec_bytes = object_path.get_ranges(&ranges).await?;
-
             Result::<_, Box<BedErrorPlus>>::Ok((vec_bytes, out_sid_i_vec))
         }
     });
@@ -224,7 +228,7 @@ where
             &vec_bytes,
             out_sid_i_vec,
             iid_index,
-            &i_div_4_array,
+            &i_div_4_less_start_array,
             &i_mod_4_times_2_array,
             out_val,
             from_two_bits_to_value,
@@ -237,21 +241,24 @@ where
 #[inline]
 #[allow(clippy::type_complexity)]
 fn extract_ranges(
-    chunk_size: usize,
+    chunk_count: usize,
     chunk: itertools::Chunk<'_, std::slice::Iter<'_, isize>>,
     chunk_index: usize,
     upper_sid_count: isize,
     lower_sid_count: isize,
     in_iid_count_div4_u64: u64,
+    i_div_4_range: Range<usize>,
 ) -> Result<(Vec<std::ops::Range<usize>>, Vec<usize>), Box<BedErrorPlus>> {
-    let mut ranges = Vec::with_capacity(chunk_size);
-    let mut out_sid_i_vec = Vec::with_capacity(chunk_size);
+    let mut ranges = Vec::with_capacity(chunk_count);
+    let mut out_sid_i_vec = Vec::with_capacity(chunk_count);
     for (inner_index, in_sid_i_signed) in chunk.enumerate() {
-        let out_sid_i = chunk_index * chunk_size + inner_index;
+        let out_sid_i = chunk_index * chunk_count + inner_index;
         let in_sid_i =
             convert_negative_sid_index(*in_sid_i_signed, upper_sid_count, lower_sid_count)?;
-        let pos: u64 = in_sid_i * in_iid_count_div4_u64 + CB_HEADER_U64; // "as" and math is safe because of early checks
-        let range = pos as usize..(pos + in_iid_count_div4_u64) as usize;
+        let pos: u64 =
+            in_sid_i * in_iid_count_div4_u64 + i_div_4_range.start as u64 + CB_HEADER_U64; // "as" and math is safe because of early checks
+        let range = pos as usize..(pos as usize + i_div_4_range.len()) as usize;
+        debug_assert!((range.len() == i_div_4_range.len())); // real assert
         ranges.push(range);
         out_sid_i_vec.push(out_sid_i);
     }
@@ -263,7 +270,10 @@ fn decode_bytes_into_columns<TVal: BedVal>(
     bytes_slice: &[Bytes],
     out_sid_i_vec: Vec<usize>,
     iid_index: &[isize],
-    i_div_4_array: &nd::prelude::ArrayBase<nd::OwnedRepr<usize>, nd::prelude::Dim<[usize; 1]>>,
+    i_div_4_less_start_array: &nd::prelude::ArrayBase<
+        nd::OwnedRepr<usize>,
+        nd::prelude::Dim<[usize; 1]>,
+    >,
     i_mod_4_times_2_array: &nd::prelude::ArrayBase<nd::OwnedRepr<u8>, nd::prelude::Dim<[usize; 1]>>,
     out_val: &mut nd::prelude::ArrayBase<nd::ViewRepr<&mut TVal>, nd::prelude::Dim<[usize; 2]>>,
     from_two_bits_to_value: [TVal; 4],
@@ -272,9 +282,9 @@ fn decode_bytes_into_columns<TVal: BedVal>(
         let mut col = out_val.column_mut(out_sid_i);
         // LATER: Consider doing this in parallel as in the non-cloud version.
         for out_iid_i in 0..iid_index.len() {
-            let i_div_4 = i_div_4_array[out_iid_i];
+            let i_div_4_less_start = i_div_4_less_start_array[out_iid_i];
             let i_mod_4_times_2: u8 = i_mod_4_times_2_array[out_iid_i];
-            let encoded: u8 = bytes[i_div_4];
+            let encoded: u8 = bytes[i_div_4_less_start];
             let genotype_byte: u8 = (encoded >> i_mod_4_times_2) & 0x03;
             col[out_iid_i] = from_two_bits_to_value[genotype_byte as usize];
         }
@@ -2044,7 +2054,7 @@ where
         let max_concurrent_requests =
             compute_max_concurrent_requests(read_options.max_concurrent_requests)?;
 
-        let max_chunk_size = compute_max_chunk_size(read_options.max_chunk_size)?;
+        let max_chunk_size = compute_max_chunk_size(read_options.max_chunk_size)?; // cmk check
 
         // If we already have a Vec<isize>, reference it. If we don't, create one and reference it.
         let iid_hold = Hold::new(&read_options.iid_index, iid_count)?;
