@@ -9,7 +9,6 @@ use futures_util::{StreamExt, TryStreamExt};
 use itertools::Itertools;
 use nd::ShapeBuilder;
 use ndarray as nd;
-use object_store::delimited::newline_delimited_stream;
 use object_store::http::HttpBuilder;
 use object_store::local::LocalFileSystem;
 use object_store::path::Path as StorePath;
@@ -19,7 +18,6 @@ use std::cmp::max;
 use std::collections::HashSet;
 use std::ops::Range;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use url::Url;
 
@@ -2463,6 +2461,7 @@ impl ObjectPath<Box<dyn ObjectStore>> {
     /// # use {tokio::runtime::Runtime};
     /// ```
     pub fn from_url<I, K, V, S>(
+        // cmk should we call this 'new'?
         location: S,
         options: I,
     ) -> Result<ObjectPath<Box<dyn ObjectStore>>, Box<BedErrorPlus>>
@@ -2584,6 +2583,7 @@ where
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
     pub async fn size(&self) -> Result<usize, Box<BedErrorPlus>> {
+        // cmk is this still needed?
         let get_result = self.get().await?;
         // LATER: See if https://github.com/apache/arrow-rs/issues/5272 if fixed in
         // a way so that only one read is needed.
@@ -2681,16 +2681,21 @@ where
 {
     let stream = object_path.get().await?.into_stream();
 
-    let new_line_stream = newline_delimited_stream(stream);
-
-    let newline_count = AtomicUsize::new(0);
-    new_line_stream
-        .try_for_each(|bytes| {
+    let newline_count = stream
+        .try_fold(0, |acc, bytes| async move {
             let count = bytecount::count(&bytes, b'\n');
-            newline_count.fetch_add(count, Ordering::SeqCst);
-            async { Ok(()) } // Return Ok(()) for each successful iteration
+            Ok(acc + count) // Accumulate the count
         })
-        .await?; // Convert the error and propagate it if present
+        .await?;
 
-    Ok(newline_count.load(Ordering::SeqCst))
+    // let mut stream = object_path.get().await?.into_stream();
+    // let mut count2: usize = 0;
+    // while let Some(bytes) = stream.next().await {
+    //     let bytes = bytes?;
+    //     let count = bytecount::count(&bytes, b'\n');
+    //     count2 += count;
+    // }
+
+    // assert!(count2 == newline_count); // cmk
+    Ok(newline_count)
 }

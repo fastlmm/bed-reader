@@ -6785,22 +6785,16 @@ impl Metadata {
         TObjectStore: ObjectStore,
     {
         let mut vec_of_vec = vec![vec![]; field_vec.len()];
+        let mut count = 0;
 
         let stream = object_path.get().await?.into_stream();
+        let line_chunk_stream = newline_delimited_stream(stream);
+        pin_mut!(line_chunk_stream);
 
-        let new_line_stream = newline_delimited_stream(stream);
-        pin_mut!(new_line_stream);
-
-        let mut count = 0;
-        while let Some(chunk_result) = new_line_stream.next().await {
-            let chunk = chunk_result?; // Handle the chunk result
-
-            // Assuming chunk is a Bytes that can be converted to a string
-            // Split the chunk into lines
-            let lines = std::str::from_utf8(&chunk)?.split_terminator('\n');
-
+        while let Some(line_chunk) = line_chunk_stream.next().await {
+            let line_chunk = line_chunk?;
+            let lines = std::str::from_utf8(&line_chunk)?.split_terminator('\n');
             for line in lines {
-                // let line = line?;
                 count += 1;
 
                 let fields: Vec<&str> = if is_split_whitespace {
