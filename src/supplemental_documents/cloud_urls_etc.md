@@ -138,7 +138,7 @@ a URL string. However, I generally use string URLs because I find them easier.
 
 This example puts the steps together to read chromosome 5.
 
-```rust
+```ignore cmk
 use std::sync::Arc;
 use ndarray as nd;
 use bed_reader::{assert_eq_nan, BedCloud, ObjectPath, ReadOptions};
@@ -179,13 +179,13 @@ The URL for a local file takes the form `file:///{encoded_file_name}`. No cloud 
 
 ```rust
 use ndarray as nd;
-use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_file, EMPTY_OPTIONS, path_to_url_string};
+use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_file, EMPTY_OPTIONS, abs_path_to_url_string};
 # use {bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
 # Runtime::new().unwrap().block_on(async {
 
 let file_name = sample_bed_file("small.bed")?.to_string_lossy().to_string();
 println!("{file_name:?}"); // For example, "C:\\Users\\carlk\\AppData\\Local\\fastlmm\\bed-reader\\cache\\small.bed"
-let url: String = path_to_url_string(file_name)?;
+let url: String = abs_path_to_url_string(file_name)?;
 println!("{url:?}"); // For example, "file:///C:/Users/carlk/AppData/Local/bed_reader/bed_reader/Cache/small.bed"
 
 let mut bed_cloud = BedCloud::new(url, EMPTY_OPTIONS).await?;
@@ -195,11 +195,12 @@ assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
 # }).unwrap();
 ```
 
+<!-- cmk remove these sections -->
 ### Local File ObjectPath
 
 If we want to work with structs instead of `String`, we can specify a file via an [`ObjectPath`](../struct.ObjectPath.html).
 
-```rust
+```ignore cmk
 use std::sync::Arc;
 use ndarray as nd;
 use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_file, ObjectPath};
@@ -293,7 +294,7 @@ Here is an AWS Object Path example:
 
 > **Note:** I can run this, but others can't because of the authentication checks.
 
-```rust
+```ignore cmk
 use std::sync::Arc;
 use ndarray as nd;
 use bed_reader::{BedCloud, ObjectPath};

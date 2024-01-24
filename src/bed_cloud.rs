@@ -3,23 +3,18 @@ compile_error!("This code requires a 64-bit target architecture.");
 
 use anyinput::anyinput;
 use bytes::Bytes;
-use core::fmt;
 use derive_builder::Builder;
 use futures_util::{StreamExt, TryStreamExt};
 use itertools::Itertools;
 use nd::ShapeBuilder;
 use ndarray as nd;
-use object_store::http::HttpBuilder;
-use object_store::local::LocalFileSystem;
+use object_path::{abs_path_to_url_string, ObjectPath, ObjectPathError};
 use object_store::path::Path as StorePath;
-use object_store::ObjectStore;
-use object_store::{GetOptions, GetRange, GetResult};
+use object_store::{GetOptions, GetRange};
 use std::cmp::max;
 use std::collections::HashSet;
 use std::ops::Range;
 use std::path::PathBuf;
-use std::sync::Arc;
-use url::Url;
 
 use crate::{
     check_and_precompute_iid_index, compute_max_chunk_size, compute_max_concurrent_requests,
@@ -42,8 +37,7 @@ use crate::{MetadataFields, CB_HEADER_U64};
 /// and all the genotype data.
 /// ```
 /// use ndarray as nd;
-/// use bed_reader::{BedCloud, ReadOptions, sample_bed_url, EMPTY_OPTIONS};
-/// use bed_reader::assert_eq_nan;
+/// use bed_reader::{BedCloud, ReadOptions, sample_bed_url, assert_eq_nan, EMPTY_OPTIONS};
 ///
 /// # Runtime::new().unwrap().block_on(async {
 /// let url = sample_bed_url("small.bed")?;
@@ -64,20 +58,17 @@ use crate::{MetadataFields, CB_HEADER_U64};
 /// ```
 #[derive(Clone, Debug, Builder)]
 #[builder(build_fn(skip))]
-pub struct BedCloud<TObjectStore>
-where
-    TObjectStore: ObjectStore,
-{
+pub struct BedCloud {
     #[builder(setter(custom))]
-    object_path: ObjectPath<TObjectStore>,
+    object_path: ObjectPath,
 
     #[builder(setter(custom))]
     #[builder(default = "None")]
-    fam_object_path: Option<ObjectPath<TObjectStore>>,
+    fam_object_path: Option<ObjectPath>,
 
     #[builder(setter(custom))]
     #[builder(default = "None")]
-    bim_object_path: Option<ObjectPath<TObjectStore>>,
+    bim_object_path: Option<ObjectPath>,
 
     #[builder(setter(custom))]
     #[builder(default = "true")]
@@ -100,11 +91,8 @@ where
 
 // We need to define our own build_no_file_check
 // because otherwise derive_builder (needlessly) requires ObjectStore: Clone
-impl<TObjectStore> BedCloudBuilder<TObjectStore>
-where
-    TObjectStore: ObjectStore,
-{
-    fn build_no_file_check(&self) -> Result<BedCloud<TObjectStore>, Box<BedErrorPlus>> {
+impl BedCloudBuilder {
+    fn build_no_file_check(&self) -> Result<BedCloud, Box<BedErrorPlus>> {
         Ok(BedCloud {
             object_path: match self.object_path {
                 Some(ref value) => Clone::clone(value),
@@ -162,8 +150,8 @@ fn convert_negative_sid_index(
 
 #[allow(clippy::too_many_arguments)]
 #[allow(clippy::similar_names)]
-async fn internal_read_no_alloc<TVal: BedVal, TObjectStore>(
-    object_path: &ObjectPath<TObjectStore>,
+async fn internal_read_no_alloc<TVal: BedVal>(
+    object_path: &ObjectPath,
     size: usize,
     in_iid_count: usize,
     in_sid_count: usize,
@@ -174,10 +162,7 @@ async fn internal_read_no_alloc<TVal: BedVal, TObjectStore>(
     max_concurrent_requests: usize,
     max_chunk_size: usize,
     out_val: &mut nd::ArrayViewMut2<'_, TVal>,
-) -> Result<(), Box<BedErrorPlus>>
-where
-    TObjectStore: ObjectStore,
-{
+) -> Result<(), Box<BedErrorPlus>> {
     // compute numbers outside of the loop
     let in_iid_count_div4_u64 = check_file_length(in_iid_count, in_sid_count, size, object_path)?;
     let (i_div_4_less_start_array, i_mod_4_times_2_array, i_div_4_start, i_div_4_len) =
@@ -288,15 +273,12 @@ fn decode_bytes_into_columns<TVal: BedVal>(
 }
 
 #[allow(clippy::similar_names)]
-fn check_file_length<TObjectStore>(
+fn check_file_length(
     in_iid_count: usize,
     in_sid_count: usize,
     size: usize,
-    object_path: &ObjectPath<TObjectStore>,
-) -> Result<u64, Box<BedErrorPlus>>
-where
-    TObjectStore: ObjectStore,
-{
+    object_path: &ObjectPath,
+) -> Result<u64, Box<BedErrorPlus>> {
     let in_iid_count_div4_u64 = try_div_4(in_iid_count, in_sid_count)?;
     let file_len = size as u64;
     let file_len2 = in_iid_count_div4_u64 * (in_sid_count as u64) + CB_HEADER_U64;
@@ -309,8 +291,8 @@ where
 #[inline]
 #[allow(clippy::too_many_arguments)]
 #[allow(clippy::similar_names)]
-async fn read_no_alloc<TVal: BedVal, TObjectStore>(
-    object_path: &ObjectPath<TObjectStore>,
+async fn read_no_alloc<TVal: BedVal>(
+    object_path: &ObjectPath,
     iid_count: usize,
     sid_count: usize,
     is_a1_counted: bool,
@@ -321,10 +303,7 @@ async fn read_no_alloc<TVal: BedVal, TObjectStore>(
     max_chunk_size: usize,
 
     val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
-) -> Result<(), Box<BedErrorPlus>>
-where
-    TObjectStore: ObjectStore,
-{
+) -> Result<(), Box<BedErrorPlus>> {
     let (size, bytes) = open_and_check(object_path).await?;
 
     match bytes[2] {
@@ -368,26 +347,23 @@ where
     Ok(())
 }
 
-async fn open_and_check<TObjectStore>(
-    object_path: &ObjectPath<TObjectStore>,
-) -> Result<(usize, Bytes), Box<BedErrorPlus>>
-where
-    TObjectStore: ObjectStore,
-{
-    // let object_store = object_path.object_store.clone();
-    // let path: &StorePath = &object_path.path;
-    // let object_meta: ObjectMeta = object_store.head(path).await?;
-    // let size: usize = object_meta.size;
-
+async fn open_and_check(object_path: &ObjectPath) -> Result<(usize, Bytes), Box<BedErrorPlus>> {
+    // cmk00 define get_opts on object_path
     let get_options = GetOptions {
         range: Some(GetRange::Bounded(0..CB_HEADER_U64 as usize)),
         ..Default::default()
     };
-    let object_store = object_path.object_store.clone();
-    let path: &StorePath = &object_path.path;
-    let get_result = object_store.get_opts(path, get_options).await?;
+    let object_store = object_path.arc_object_store.clone();
+    let path: &StorePath = &object_path.store_path;
+    let get_result = object_store
+        .get_opts(path, get_options)
+        .await
+        .map_err(ObjectPathError::ObjectStoreError)?;
     let size: usize = get_result.meta.size;
-    let bytes = get_result.bytes().await?;
+    let bytes = get_result
+        .bytes()
+        .await
+        .map_err(ObjectPathError::ObjectStoreError)?;
 
     if (BED_FILE_MAGIC1 != bytes[0]) || (BED_FILE_MAGIC2 != bytes[1]) {
         Err(BedError::IllFormed(object_path.to_string()))?;
@@ -395,15 +371,14 @@ where
     Ok((size, bytes))
 }
 
-impl BedCloudBuilder<Box<dyn ObjectStore>> {
-    fn new<S, I, K, V>(url: S, options: I) -> Result<Self, Box<BedErrorPlus>>
+impl BedCloudBuilder {
+    fn new<I, K, V>(url: impl AsRef<str>, options: I) -> Result<Self, Box<BedErrorPlus>>
     where
-        S: AsRef<str>,
         I: IntoIterator<Item = (K, V)>,
         K: AsRef<str>,
         V: Into<String>,
     {
-        let object_path = ObjectPath::from_url(url, options)?;
+        let object_path = ObjectPath::new(url, options)?;
         Ok(BedCloudBuilder::from(object_path))
     }
 
@@ -422,22 +397,25 @@ impl BedCloudBuilder<Box<dyn ObjectStore>> {
     /// # Runtime::new().unwrap().block_on(async {
     /// let deb_maf_mib = sample_urls(["small.deb", "small.maf", "small.mib"])?;
     /// let mut bed_cloud = BedCloud::builder(&deb_maf_mib[0], EMPTY_OPTIONS)?
-    ///    .fam_from_url(&deb_maf_mib[1], EMPTY_OPTIONS)?
-    ///    .bim_from_url(&deb_maf_mib[2], EMPTY_OPTIONS)?
+    ///    .fam(&deb_maf_mib[1], EMPTY_OPTIONS)?
+    ///    .bim(&deb_maf_mib[2], EMPTY_OPTIONS)?
     ///    .build().await?;
     /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray ["iid1", "iid2", "iid3"]
     /// println!("{:?}", bed_cloud.sid().await?); // Outputs ndarray ["sid1", "sid2", "sid3", "sid4"]
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
-    pub fn fam_from_url<S, I, K, V>(mut self, url: S, options: I) -> Result<Self, Box<BedErrorPlus>>
+    pub fn fam<I, K, V>(
+        mut self,
+        url: impl AsRef<str>,
+        options: I,
+    ) -> Result<Self, Box<BedErrorPlus>>
     where
-        S: AsRef<str>,
         I: IntoIterator<Item = (K, V)>,
         K: AsRef<str>,
         V: Into<String>,
     {
-        let object_path = ObjectPath::from_url(url, options)?;
+        let object_path = ObjectPath::new(url, options)?;
         self.fam_object_path = Some(Some(object_path));
         Ok(self)
     }
@@ -457,32 +435,32 @@ impl BedCloudBuilder<Box<dyn ObjectStore>> {
     /// # Runtime::new().unwrap().block_on(async {
     /// let deb_maf_mib = sample_urls(["small.deb", "small.maf", "small.mib"])?;
     /// let mut bed_cloud = BedCloud::builder(&deb_maf_mib[0], EMPTY_OPTIONS)?
-    ///    .fam_from_url(&deb_maf_mib[1], EMPTY_OPTIONS)?
-    ///    .bim_from_url(&deb_maf_mib[2], EMPTY_OPTIONS)?
+    ///    .fam(&deb_maf_mib[1], EMPTY_OPTIONS)?
+    ///    .bim(&deb_maf_mib[2], EMPTY_OPTIONS)?
     ///    .build().await?;
     /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray ["iid1", "iid2", "iid3"]
     /// println!("{:?}", bed_cloud.sid().await?); // Outputs ndarray ["sid1", "sid2", "sid3", "sid4"]
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
-    pub fn bim_from_url<S, I, K, V>(mut self, url: S, options: I) -> Result<Self, Box<BedErrorPlus>>
+    pub fn bim<I, K, V>(
+        mut self,
+        url: impl AsRef<str>,
+        options: I,
+    ) -> Result<Self, Box<BedErrorPlus>>
     where
-        S: AsRef<str>,
         I: IntoIterator<Item = (K, V)>,
         K: AsRef<str>,
         V: Into<String>,
     {
-        let object_path = ObjectPath::from_url(url, options)?;
+        let object_path = ObjectPath::new(url, options)?;
         self.bim_object_path = Some(Some(object_path));
         Ok(self)
     }
 }
 
-impl<TObjectStore> From<&ObjectPath<TObjectStore>> for BedCloudBuilder<TObjectStore>
-where
-    TObjectStore: ObjectStore,
-{
-    fn from(object_path: &ObjectPath<TObjectStore>) -> Self {
+impl From<&ObjectPath> for BedCloudBuilder {
+    fn from(object_path: &ObjectPath) -> Self {
         Self {
             object_path: Some(object_path.clone()), // Cloned here.
             fam_object_path: None,
@@ -498,11 +476,8 @@ where
     }
 }
 
-impl<TObjectStore> From<ObjectPath<TObjectStore>> for BedCloudBuilder<TObjectStore>
-where
-    TObjectStore: ObjectStore,
-{
-    fn from(object_path: ObjectPath<TObjectStore>) -> Self {
+impl From<ObjectPath> for BedCloudBuilder {
+    fn from(object_path: ObjectPath) -> Self {
         Self {
             object_path: Some(object_path), // Cloned here.
             fam_object_path: None,
@@ -518,14 +493,11 @@ where
     }
 }
 
-impl<TObjectStore> BedCloudBuilder<TObjectStore>
-where
-    TObjectStore: ObjectStore,
-{
+impl BedCloudBuilder {
     /// Create a [`BedCloud`](struct.BedCloud.html) from the builder.
     ///
     /// > See [`BedCloud::builder`](struct.BedCloud.html#method.builder) for more details and examples.
-    pub async fn build(&self) -> Result<BedCloud<TObjectStore>, Box<BedErrorPlus>> {
+    pub async fn build(&self) -> Result<BedCloud, Box<BedErrorPlus>> {
         let mut bed_cloud = self.build_no_file_check()?;
 
         // Unwrap is allowed because we can't construct BedCloudBuilder without object_path
@@ -789,8 +761,8 @@ where
     /// # Runtime::new().unwrap().block_on(async {
     /// let deb_maf_mib = sample_urls(["small.deb", "small.maf", "small.mib"])?;
     /// let mut bed_cloud = BedCloud::builder(&deb_maf_mib[0], EMPTY_OPTIONS)?
-    ///    .fam_from_url(&deb_maf_mib[1], EMPTY_OPTIONS)?
-    ///    .bim_from_url(&deb_maf_mib[2], EMPTY_OPTIONS)?
+    ///    .fam(&deb_maf_mib[1], EMPTY_OPTIONS)?
+    ///    .bim(&deb_maf_mib[2], EMPTY_OPTIONS)?
     ///    .build().await?;
     /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray ["iid1", "iid2", "iid3"]
     /// println!("{:?}", bed_cloud.sid().await?); // Outputs ndarray ["sid1", "sid2", "sid3", "sid4"]
@@ -798,7 +770,7 @@ where
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
     #[must_use]
-    pub fn fam_object_path(mut self, object_path: &ObjectPath<TObjectStore>) -> Self {
+    pub fn fam_object_path(mut self, object_path: &ObjectPath) -> Self {
         self.fam_object_path = Some(Some(object_path.clone()));
         self
     }
@@ -812,8 +784,12 @@ where
     /// Read .bed, .fam, and .bim files with non-standard names.
     /// ```
     /// # Runtime::new().unwrap().block_on(async {
-    /// use bed_reader::{BedCloud, ReadOptions, sample_object_paths};
-    /// let deb_maf_mib = sample_object_paths(["small.deb", "small.maf", "small.mib"])?;
+    /// use bed_reader::{BedCloud, ReadOptions, sample_urls, ObjectPath, EMPTY_OPTIONS};
+    ///
+    /// let deb_maf_mib = sample_urls(["small.deb", "small.maf", "small.mib"])?
+    ///    .iter()
+    ///    .map(|url| ObjectPath::new(url, EMPTY_OPTIONS))
+    ///    .collect::<Result<Vec<ObjectPath>, _>>()?;
     /// let mut bed_cloud = BedCloud::builder_from_object_path(&deb_maf_mib[0])
     ///    .fam_object_path(&deb_maf_mib[1])
     ///    .bim_object_path(&deb_maf_mib[2])
@@ -824,7 +800,7 @@ where
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
     #[must_use]
-    pub fn bim_object_path(mut self, object_path: &ObjectPath<TObjectStore>) -> Self {
+    pub fn bim_object_path(mut self, object_path: &ObjectPath) -> Self {
         let object_path = object_path.clone();
         self.bim_object_path = Some(Some(object_path));
         self
@@ -1048,7 +1024,8 @@ where
     }
 }
 
-impl BedCloud<Box<dyn ObjectStore>> {
+impl BedCloud {
+    // cmk should there be new and new_ops?
     #[allow(clippy::doc_link_with_quotes)]
     /// Attempts to open a PLINK .bed file in the cloud for reading. The file is specified with a URL string.
     ///
@@ -1114,14 +1091,16 @@ impl BedCloud<Box<dyn ObjectStore>> {
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
-    pub async fn new<S, I, K, V>(url: S, cloud_options: I) -> Result<Self, Box<BedErrorPlus>>
+    pub async fn new<I, K, V>(
+        url: impl AsRef<str>,
+        cloud_options: I,
+    ) -> Result<Self, Box<BedErrorPlus>>
     where
-        S: AsRef<str>,
         I: IntoIterator<Item = (K, V)>,
         K: AsRef<str>,
         V: Into<String>,
     {
-        let object_path = ObjectPath::from_url(url, cloud_options)?;
+        let object_path = ObjectPath::new(url, cloud_options)?;
         let bed_cloud = BedCloud::from_object_path(&object_path).await?;
         Ok(bed_cloud)
     }
@@ -1243,12 +1222,11 @@ impl BedCloud<Box<dyn ObjectStore>> {
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
     ///
-    pub fn builder<S, I, K, V>(
-        url: S,
+    pub fn builder<I, K, V>(
+        url: impl AsRef<str>,
         options: I,
-    ) -> Result<BedCloudBuilder<Box<dyn ObjectStore>>, Box<BedErrorPlus>>
+    ) -> Result<BedCloudBuilder, Box<BedErrorPlus>>
     where
-        S: AsRef<str>,
         I: IntoIterator<Item = (K, V)>,
         K: AsRef<str>,
         V: Into<String>,
@@ -1257,10 +1235,7 @@ impl BedCloud<Box<dyn ObjectStore>> {
     }
 }
 
-impl<TObjectStore> BedCloud<TObjectStore>
-where
-    TObjectStore: ObjectStore,
-{
+impl BedCloud {
     /// Attempts to open a PLINK .bed file in the cloud for reading. Specify the file with an [`ObjectPath`].
     /// Supports `BedCloud` options.
     ///
@@ -1292,11 +1267,11 @@ where
     ///
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, assert_eq_nan, sample_bed_object_path};
+    /// use bed_reader::{BedCloud, assert_eq_nan, sample_bed_url, EMPTY_OPTIONS};
     ///
     /// # Runtime::new().unwrap().block_on(async {
-    /// let object_path = sample_bed_object_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::builder_from_object_path(&object_path).build().await?;
+    /// let url = sample_bed_url("small.bed")?;
+    /// let mut bed_cloud = BedCloud::builder(&url, EMPTY_OPTIONS)?.build().await?;
     /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray ["iid1", "iid2", "iid3"]
     /// println!("{:?}", bed_cloud.sid().await?); // Outputs ndarray ["snp1", "snp2", "snp3", "snp4"]
     /// let val = bed_cloud.read::<f64>().await?;
@@ -1317,9 +1292,9 @@ where
     /// ```
     /// # Runtime::new().unwrap().block_on(async {
     /// # use ndarray as nd;
-    /// # use bed_reader::{BedCloud, assert_eq_nan, sample_bed_object_path};
-    /// # let object_path = sample_bed_object_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::builder_from_object_path(&object_path)
+    /// # use bed_reader::{BedCloud, assert_eq_nan, sample_bed_url, EMPTY_OPTIONS};
+    /// # let url = sample_bed_url("small.bed")?;
+    /// let mut bed_cloud = BedCloud::builder(&url, EMPTY_OPTIONS)?
     ///    .iid(["sample1", "sample2", "sample3"])
     ///    .build().await?;
     /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray ["sample1", "sample2", "sample3"]
@@ -1332,9 +1307,9 @@ where
     /// ```
     /// # Runtime::new().unwrap().block_on(async {
     /// # use ndarray as nd;
-    /// # use bed_reader::{BedCloud, assert_eq_nan, sample_bed_object_path};
-    /// # let object_path = sample_bed_object_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::builder_from_object_path(&object_path)
+    /// # use bed_reader::{BedCloud, assert_eq_nan, sample_bed_url, EMPTY_OPTIONS};
+    /// # let url = sample_bed_url("small.bed")?;
+    /// let mut bed_cloud = BedCloud::builder(&url, EMPTY_OPTIONS)?
     ///     .iid_count(3)
     ///     .sid_count(4)
     ///     .skip_early_check()
@@ -1357,9 +1332,9 @@ where
     /// ```
     /// # Runtime::new().unwrap().block_on(async {
     /// # use ndarray as nd;
-    /// # use bed_reader::{BedCloud, assert_eq_nan, sample_bed_object_path};
-    /// # let object_path = sample_bed_object_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::builder_from_object_path(&object_path)
+    /// # use bed_reader::{BedCloud, assert_eq_nan, sample_bed_url, EMPTY_OPTIONS};
+    /// # let url = sample_bed_url("small.bed")?;
+    /// let mut bed_cloud = BedCloud::builder(&url, EMPTY_OPTIONS)?
     ///     .skip_father()
     ///     .skip_mother()
     ///     .skip_sex()
@@ -1374,9 +1349,7 @@ where
     /// ```
     ///
     #[must_use]
-    pub fn builder_from_object_path(
-        object_path: &ObjectPath<TObjectStore>,
-    ) -> BedCloudBuilder<TObjectStore> {
+    pub fn builder_from_object_path(object_path: &ObjectPath) -> BedCloudBuilder {
         BedCloudBuilder::from(object_path)
     }
 
@@ -1405,11 +1378,11 @@ where
     ///
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, assert_eq_nan, sample_bed_object_path};
+    /// use bed_reader::{BedCloud, assert_eq_nan, sample_bed_url, EMPTY_OPTIONS};
     ///
     /// # Runtime::new().unwrap().block_on(async {
-    /// let object_path = sample_bed_object_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::from_object_path(&object_path).await?;
+    /// let url = sample_bed_url("small.bed")?;
+    /// let mut bed_cloud = BedCloud::new(&url, EMPTY_OPTIONS).await?;
     /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray: ["iid1", "iid2", "iid3"]
     /// println!("{:?}", bed_cloud.sid().await?); // Outputs ndarray: ["sid1", "sid2", "sid3", "sid4"]
     /// let val = bed_cloud.read::<f64>().await?;
@@ -1430,20 +1403,18 @@ where
     /// at index position 2.
     /// ```
     /// # use ndarray as nd;
-    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_object_path};
+    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_url, EMPTY_OPTIONS};
     /// # Runtime::new().unwrap().block_on(async {
-    /// # let object_path = sample_bed_object_path("small.bed")?;
+    /// # let url = sample_bed_url("small.bed")?;
     ///
-    /// let mut bed_cloud = BedCloud::from_object_path(&object_path).await?;
+    /// let mut bed_cloud = BedCloud::new(&url, EMPTY_OPTIONS).await?;
     /// let val = ReadOptions::builder().sid_index(2).f64().read_cloud(&mut bed_cloud).await?;
     ///
     /// assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
-    pub async fn from_object_path(
-        object_path: &ObjectPath<TObjectStore>,
-    ) -> Result<Self, Box<BedErrorPlus>> {
+    pub async fn from_object_path(object_path: &ObjectPath) -> Result<Self, Box<BedErrorPlus>> {
         BedCloudBuilder::from(object_path).build().await
     }
 
@@ -1928,12 +1899,12 @@ where
 
     /// Return the `ObjectPath` of the .bed file.
     #[must_use]
-    pub fn object_path(&self) -> ObjectPath<TObjectStore> {
+    pub fn object_path(&self) -> ObjectPath {
         self.object_path.clone()
     }
 
     /// Return the cloud location of the .fam file.
-    pub fn fam_object_path(&mut self) -> Result<ObjectPath<TObjectStore>, Box<BedErrorPlus>> {
+    pub fn fam_object_path(&mut self) -> Result<ObjectPath, Box<BedErrorPlus>> {
         // We need to clone the object_path because self might mutate later
         if let Some(fam_object_path) = &self.fam_object_path {
             Ok(fam_object_path.clone())
@@ -1946,7 +1917,7 @@ where
     }
 
     /// Return the cloud location of the .bim file.
-    pub fn bim_object_path(&mut self) -> Result<ObjectPath<TObjectStore>, Box<BedErrorPlus>> {
+    pub fn bim_object_path(&mut self) -> Result<ObjectPath, Box<BedErrorPlus>> {
         // We need to clone the object_path because self might mutate later
         if let Some(bim_object_path) = &self.bim_object_path {
             Ok(bim_object_path.clone())
@@ -2243,72 +2214,77 @@ where
     }
 }
 
-/// Returns the cloud locations of a .bed file as an [`ObjectPath`](struct.ObjectPath.html).
-///
-/// Behind the scenes, the "cloud location" will actually be local.
-/// If necessary, the file will be downloaded.
-/// The .fam and .bim files will also be downloaded, if they are not already present.
-/// SHA256 hashes are used to verify that the files are correct.
-/// The files will be in a directory determined by environment variable `BED_READER_DATA_DIR`.
-/// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
-#[anyinput]
-pub fn sample_bed_object_path(
-    bed_path: AnyPath,
-) -> Result<ObjectPath<LocalFileSystem>, Box<BedErrorPlus>> {
-    let mut path_list: Vec<PathBuf> = Vec::new();
-    for ext in &["bed", "bim", "fam"] {
-        let file_path = bed_path.with_extension(ext);
-        path_list.push(file_path);
-    }
+// // cmk remove after no longer needed
+// /// Returns the cloud locations of a .bed file as an [`ObjectPath`](struct.ObjectPath.html).
+// ///
+// /// Behind the scenes, the "cloud location" will actually be local.
+// /// If necessary, the file will be downloaded.
+// /// The .fam and .bim files will also be downloaded, if they are not already present.
+// /// SHA256 hashes are used to verify that the files are correct.
+// /// The files will be in a directory determined by environment variable `BED_READER_DATA_DIR`.
+// /// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
+// #[anyinput]
+// pub fn sample_bed_url(bed_path: AnyPath) -> Result<ObjectPath, Box<BedErrorPlus>> {
+//     let mut path_list: Vec<PathBuf> = Vec::new();
+//     for ext in &["bed", "bim", "fam"] {
+//         let file_path = bed_path.with_extension(ext);
+//         path_list.push(file_path);
+//     }
 
-    let mut vec = sample_object_paths(path_list)?;
-    debug_assert!(vec.len() == 3);
-    Ok(vec.swap_remove(0))
-}
+//     let mut vec = sample_object_paths(path_list)?;
+//     debug_assert!(vec.len() == 3);
+//     Ok(vec.swap_remove(0))
+// }
 
-/// Returns the cloud locations of a file as an [`ObjectPath`](struct.ObjectPath.html).
-///
-/// Behind the scenes, the "cloud location" will actually be local.
-/// If necessary, the file will be downloaded.
-/// A SHA256 hash is used to verify that the file is correct.
-/// The file will be in a directory determined by environment variable `BED_READER_DATA_DIR`.
-/// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
-#[anyinput]
-pub fn sample_object_path(path: AnyPath) -> Result<ObjectPath<LocalFileSystem>, Box<BedErrorPlus>> {
-    let object_store = Arc::new(LocalFileSystem::new());
+// /// Returns the cloud locations of a file as an [`ObjectPath`](struct.ObjectPath.html).
+// ///
+// /// Behind the scenes, the "cloud location" will actually be local.
+// /// If necessary, the file will be downloaded.
+// /// A SHA256 hash is used to verify that the file is correct.
+// /// The file will be in a directory determined by environment variable `BED_READER_DATA_DIR`.
+// /// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
+// #[anyinput]
+// pub fn sample_object_path(path: AnyPath) -> Result<ObjectPath, Box<BedErrorPlus>> {
+//     let object_store = Arc::new(LocalFileSystem::new());
 
-    let file_path = STATIC_FETCH_DATA
-        .fetch_file(path)
-        .map_err(|e| BedError::SampleFetch(e.to_string()))?;
-    let store_path = StorePath::from_filesystem_path(file_path)?;
-    let object_path = ObjectPath::new(object_store, store_path);
-    Ok(object_path)
-}
+//     let file_path = STATIC_FETCH_DATA
+//         .fetch_file(path)
+//         .map_err(|e| BedError::SampleFetch(e.to_string()))?;
+//     let store_path = StorePath::from_filesystem_path(file_path)?;
+//     let object_path = ObjectPath {
+//         arc_object_store: &object_store,
+//         store_path,
+//     };
+//     Ok(object_path)
+// }
 
-/// Returns the cloud locations of a list of files as [`ObjectPath`](struct.ObjectPath.html)s.
-///
-/// Behind the scenes, the "cloud location" will actually be local.
-/// If necessary, the file will be downloaded.
-/// SHA256 hashes are used to verify that the files are correct.
-/// The files will be in a directory determined by environment variable `BED_READER_DATA_DIR`.
-/// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
-#[anyinput]
-pub fn sample_object_paths(
-    path_list: AnyIter<AnyPath>,
-) -> Result<Vec<ObjectPath<LocalFileSystem>>, Box<BedErrorPlus>> {
-    let arc_object_store = Arc::new(LocalFileSystem::new());
+// /// Returns the cloud locations of a list of files as [`ObjectPath`](struct.ObjectPath.html)s.
+// ///
+// /// Behind the scenes, the "cloud location" will actually be local.
+// /// If necessary, the file will be downloaded.
+// /// SHA256 hashes are used to verify that the files are correct.
+// /// The files will be in a directory determined by environment variable `BED_READER_DATA_DIR`.
+// /// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
+// #[anyinput]
+// pub fn sample_object_paths(
+//     path_list: AnyIter<AnyPath>,
+// ) -> Result<Vec<ObjectPath>, Box<BedErrorPlus>> {
+//     let arc_object_store = Arc::new(LocalFileSystem::new());
 
-    let file_paths = STATIC_FETCH_DATA
-        .fetch_files(path_list)
-        .map_err(|e| BedError::SampleFetch(e.to_string()))?;
-    file_paths
-        .iter()
-        .map(|file_path| {
-            let path = StorePath::from_filesystem_path(file_path)?;
-            Ok(ObjectPath::new(arc_object_store.clone(), path))
-        })
-        .collect()
-}
+//     let file_paths = STATIC_FETCH_DATA
+//         .fetch_files(path_list)
+//         .map_err(|e| BedError::SampleFetch(e.to_string()))?;
+//     file_paths
+//         .iter()
+//         .map(|file_path| {
+//             let store_path = StorePath::from_filesystem_path(file_path)?;
+//             Ok(ObjectPath {
+//                 arc_object_store: arc_object_store.clone(),
+//                 store_path,
+//             })
+//         })
+//         .collect()
+// }
 
 /// Returns the cloud location of a sample .bed file as a URL string.
 ///
@@ -2330,24 +2306,6 @@ pub fn sample_bed_url(bed_path: AnyPath) -> Result<String, Box<BedErrorPlus>> {
     Ok(vec.swap_remove(0))
 }
 
-/// Returns a local file's path as a URL string, taking care of any needed encoding.
-///
-/// ```
-/// use bed_reader::{path_to_url_string, sample_bed_file};
-/// let path = sample_bed_file("small.bed")?;
-/// let url: String = path_to_url_string(path)?;
-/// assert!(url.starts_with("file:///") && url.ends_with("/small.bed"));
-/// # use bed_reader::BedErrorPlus;
-/// # Ok::<(), Box<BedErrorPlus>>(())
-/// ```
-#[anyinput]
-pub fn path_to_url_string(path: AnyPath) -> Result<String, Box<BedErrorPlus>> {
-    let url = Url::from_file_path(path)
-        .map_err(|_e| BedError::CannotCreateUrlFromFilePath(path.to_string_lossy().to_string()))?
-        .to_string();
-    Ok(url)
-}
-
 /// Returns the cloud location of a sample file as a URL string.
 ///
 /// Behind the scenes, the "cloud location" will actually be local.
@@ -2360,7 +2318,7 @@ pub fn sample_url(path: AnyPath) -> Result<String, Box<BedErrorPlus>> {
     let file_path = STATIC_FETCH_DATA
         .fetch_file(path)
         .map_err(|e| BedError::SampleFetch(e.to_string()))?;
-    let url = path_to_url_string(file_path)?;
+    let url = abs_path_to_url_string(file_path)?;
     Ok(url)
 }
 
@@ -2379,291 +2337,17 @@ pub fn sample_urls(path_list: AnyIter<AnyPath>) -> Result<Vec<String>, Box<BedEr
     file_paths
         .iter()
         .map(|file_path| {
-            let url = path_to_url_string(file_path)?;
+            let url = abs_path_to_url_string(file_path)?;
             Ok(url)
         })
         .collect()
 }
 
-#[derive(Debug)]
-/// The location of a file in the cloud.
-///
-/// The location is made up of of two parts, an `Arc`-wrapped [`ObjectStore`](https://docs.rs/object_store/latest/object_store/trait.ObjectStore.html)
-/// and an [`object_store::path::Path as StorePath`](https://docs.rs/object_store/latest/object_store/path/struct.Path.html).
-/// The [`ObjectStore`](https://docs.rs/object_store/latest/object_store/trait.ObjectStore.html) is a cloud service, for example, Http, AWS S3, Azure,
-/// the local file system, etc. The `StorePath` is the path to the file on the cloud service.
-///
-/// See ["Cloud URLs and `ObjectPath` Examples"](supplemental_document_cloud_urls/index.html) for details specifying a file.
-///
-/// An `ObjectPath` can be efficiently cloned because the `ObjectStore` is `Arc`-wrapped.
-///
-/// # Examples
-///
-/// ```
-/// use std::sync::Arc;
-/// use object_store::{local::LocalFileSystem, path::Path as StorePath};
-/// use bed_reader::{ObjectPath, BedErrorPlus, sample_bed_file};
-///
-/// # Runtime::new().unwrap().block_on(async {
-/// let arc_object_store = Arc::new(LocalFileSystem::new()); // Arc-wrapped ObjectStore
-/// let file_path = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?; // regular Rust PathBuf
-/// let store_path = StorePath::from_filesystem_path(&file_path)?; // StorePath
-/// let object_path = ObjectPath::new(arc_object_store, store_path); // ObjectPath
-/// assert_eq!(object_path.size().await?, 303);
-/// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
-/// # use {tokio::runtime::Runtime};
-/// ```
-pub struct ObjectPath<TObjectStore>
-where
-    TObjectStore: ObjectStore,
-{
-    /// An `Arc`-wrapped [`ObjectStore`](https://docs.rs/object_store/latest/object_store/trait.ObjectStore.html) cloud service, for example, Http, AWS S3,
-    /// Azure, the local file system, etc.
-    pub object_store: Arc<TObjectStore>,
-    /// A [`object_store::path::Path as StorePath`](https://docs.rs/object_store/latest/object_store/path/struct.Path.html) that points to a file on
-    /// the [`ObjectStore`](https://docs.rs/object_store/latest/object_store/trait.ObjectStore.html)
-    /// that gives the path to the file on the cloud service.
-    pub path: StorePath,
-}
-
-impl<TObjectStore> Clone for ObjectPath<TObjectStore>
-where
-    TObjectStore: ObjectStore,
-{
-    fn clone(&self) -> Self {
-        ObjectPath {
-            object_store: self.object_store.clone(),
-            path: self.path.clone(),
-        }
-    }
-}
-
-/// An empty set of [cloud options](supplemental_document_options/index.html#cloud-options)
-///
-/// See ["Cloud URLs and `ObjectPath` Examples"](supplemental_document_cloud_urls/index.html) for examples.
-pub const EMPTY_OPTIONS: [(&str, String); 0] = [];
-
-impl ObjectPath<Box<dyn ObjectStore>> {
-    /// Create a new [`ObjectPath`] from a URL string and [cloud options](supplemental_document_options/index.html#cloud-options).
-    ///
-    /// See ["Cloud URLs and `ObjectPath` Examples"](supplemental_document_cloud_urls/index.html) for details specifying a file.
-    ///
-    /// # Example
-    /// ```
-    /// use std::sync::Arc;
-    /// use object_store::{local::LocalFileSystem, path::Path as StorePath};
-    /// use bed_reader::{ObjectPath, BedErrorPlus, sample_bed_url, EMPTY_OPTIONS};
-    /// # Runtime::new().unwrap().block_on(async {
-    /// let url: String = sample_bed_url("plink_sim_10s_100v_10pmiss.bed")?;
-    /// let object_path: ObjectPath<_> = ObjectPath::from_url(url, EMPTY_OPTIONS)?;
-    /// assert_eq!(object_path.size().await?, 303);
-    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
-    /// # use {tokio::runtime::Runtime};
-    /// ```
-    pub fn from_url<I, K, V, S>(
-        // cmk should we call this 'new'?
-        location: S,
-        options: I,
-    ) -> Result<ObjectPath<Box<dyn ObjectStore>>, Box<BedErrorPlus>>
-    where
-        I: IntoIterator<Item = (K, V)>,
-        K: AsRef<str>,
-        V: Into<String>,
-        S: AsRef<str>,
-    {
-        let location = location.as_ref();
-        let url = Url::parse(location)
-            .map_err(|e| BedError::CannotParseUrl(location.to_string(), e.to_string()))?;
-
-        let (object_store, store_path): (Box<dyn ObjectStore>, StorePath) =
-            parse_url_opts_work_around(&url, options)?;
-        let object_path = ObjectPath::new(Arc::new(object_store), store_path);
-        Ok(object_path)
-    }
-}
-
-#[allow(clippy::match_bool)]
-fn parse_work_around(url: &Url) -> Result<(bool, StorePath), object_store::Error> {
-    let strip_bucket = || Some(url.path().strip_prefix('/')?.split_once('/')?.1);
-
-    let (scheme, path) = match (url.scheme(), url.host_str()) {
-        ("http", Some(_)) => (true, url.path()),
-        ("https", Some(host)) => {
-            if host.ends_with("dfs.core.windows.net")
-                || host.ends_with("blob.core.windows.net")
-                || host.ends_with("dfs.fabric.microsoft.com")
-                || host.ends_with("blob.fabric.microsoft.com")
-            {
-                (false, url.path())
-            } else if host.ends_with("amazonaws.com") {
-                match host.starts_with("s3") {
-                    true => (false, strip_bucket().unwrap_or_default()),
-                    false => (false, url.path()),
-                }
-            } else if host.ends_with("r2.cloudflarestorage.com") {
-                (false, strip_bucket().unwrap_or_default())
-            } else {
-                (true, url.path())
-            }
-        }
-        _ => (false, url.path()),
-    };
-
-    Ok((scheme, StorePath::from_url_path(path)?))
-}
-
-// LATER when https://github.com/apache/arrow-rs/issues/5310 gets fixed, can remove work around
-pub fn parse_url_opts_work_around<I, K, V>(
-    url: &Url,
-    options: I,
-) -> Result<(Box<dyn ObjectStore>, StorePath), object_store::Error>
-where
-    I: IntoIterator<Item = (K, V)>,
-    K: AsRef<str>,
-    V: Into<String>,
-{
-    let (is_http, path) = parse_work_around(url)?;
-    if is_http {
-        let url = &url[..url::Position::BeforePath];
-        let path = StorePath::parse(path)?;
-        let builder = options.into_iter().fold(
-            <HttpBuilder>::new().with_url(url),
-            |builder, (key, value)| match key.as_ref().parse() {
-                Ok(k) => builder.with_config(k, value),
-                Err(_) => builder,
-            },
-        );
-        let store = Box::new(builder.build()?) as _;
-        Ok((store, path))
-    } else {
-        object_store::parse_url_opts(url, options)
-    }
-}
-
-impl<TObjectStore> ObjectPath<TObjectStore>
-where
-    TObjectStore: ObjectStore,
-{
-    /// Create a new [`ObjectPath`] from an `Arc`-wrapped [`ObjectStore`](https://docs.rs/object_store/latest/object_store/trait.ObjectStore.html) and an [`object_store::path::Path as StorePath`](https://docs.rs/object_store/latest/object_store/path/struct.Path.html).
-    ///
-    /// Both parts must be owned, but see [`ObjectPath`] for examples of creating from a tuple with references.
-    ///
-    /// # Example
-    /// ```
-    /// use std::sync::Arc;
-    /// use object_store::{local::LocalFileSystem, path::Path as StorePath};
-    /// use bed_reader::{ObjectPath, BedErrorPlus, sample_bed_file};
-    /// # Runtime::new().unwrap().block_on(async {
-    /// let object_store = Arc::new(LocalFileSystem::new()); // Arc-wrapped ObjectStore
-    /// let file_path = sample_bed_file("plink_sim_10s_100v_10pmiss.bed")?; // regular Rust PathBuf
-    /// let store_path = StorePath::from_filesystem_path(&file_path)?; // StorePath
-    ///
-    /// let object_path: ObjectPath<_> = ObjectPath::new(object_store, store_path); // ObjectPath from owned values
-    /// assert_eq!(object_path.size().await?, 303);
-    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
-    /// # use {tokio::runtime::Runtime};
-    /// ```
-    pub fn new(arc_object_store: Arc<TObjectStore>, path: StorePath) -> Self {
-        ObjectPath {
-            object_store: arc_object_store,
-            path,
-        }
-    }
-
-    /// Return the size of a file stored in the cloud.
-    ///
-    /// # Example
-    /// ```
-    /// use bed_reader::{sample_bed_object_path};
-    ///
-    /// # Runtime::new().unwrap().block_on(async {
-    /// let mut object_path = sample_bed_object_path("plink_sim_10s_100v_10pmiss.bed")?;
-    /// assert_eq!(object_path.size().await?, 303);
-    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
-    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
-    /// ```
-    pub async fn size(&self) -> Result<usize, Box<BedErrorPlus>> {
-        // cmk is this still needed?
-        let get_result = self.get().await?;
-        // LATER: See if https://github.com/apache/arrow-rs/issues/5272 if fixed in
-        // a way so that only one read is needed.
-        let object_meta = &get_result.meta;
-        Ok(object_meta.size)
-    }
-
-    /// Return the bytes that are stored at the specified location in the given byte ranges
-    pub async fn get_ranges(
-        &self,
-        ranges: &[core::ops::Range<usize>],
-    ) -> Result<Vec<Bytes>, Box<BedErrorPlus>> {
-        Ok(self.object_store.get_ranges(&self.path, ranges).await?)
-    }
-
-    /// Perform a get request with options
-    pub async fn get_opts(&self, get_options: GetOptions) -> Result<GetResult, Box<BedErrorPlus>> {
-        Ok(self.object_store.get_opts(&self.path, get_options).await?)
-    }
-
-    /// Return the bytes that are stored at the specified location.
-    pub async fn get(&self) -> Result<GetResult, Box<BedErrorPlus>> {
-        Ok(self.object_store.get(&self.path).await?)
-    }
-
-    /// Updates the [`ObjectPath`] to have the given extension.
-    ///
-    /// It removes the current extension, if any.
-    /// It appends the given extension, if any.
-    ///
-    /// # Example
-    /// ```
-    /// use bed_reader::{sample_bed_object_path};
-    ///
-    /// # Runtime::new().unwrap().block_on(async {
-    /// let mut object_path = sample_bed_object_path("plink_sim_10s_100v_10pmiss.bed")?;
-    /// assert_eq!(object_path.size().await?, 303);
-    /// object_path.set_extension("fam")?;
-    /// assert_eq!(object_path.size().await?, 130);
-    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
-    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
-    /// ```
-    pub fn set_extension(&mut self, extension: &str) -> Result<(), Box<BedErrorPlus>> {
-        let mut path_str = self.path.to_string();
-
-        // Find the last dot in the object path
-        if let Some(dot_index) = path_str.rfind('.') {
-            // Remove the current extension
-            path_str.truncate(dot_index);
-        }
-
-        if !extension.is_empty() {
-            // Append the new extension
-            path_str.push('.');
-            path_str.push_str(extension);
-        }
-
-        // Parse the string back to StorePath
-        self.path = StorePath::parse(&path_str)?;
-        Ok(())
-    }
-}
-
-impl<TObjectStore> fmt::Display for ObjectPath<TObjectStore>
-where
-    TObjectStore: ObjectStore,
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "ObjectPath: {:?}", self.path)
-    }
-}
-
-fn to_metadata_path<TObjectStore>(
-    bed_object_path: &ObjectPath<TObjectStore>,
-    metadata_object_path: &Option<ObjectPath<TObjectStore>>,
+fn to_metadata_path(
+    bed_object_path: &ObjectPath,
+    metadata_object_path: &Option<ObjectPath>,
     extension: &str,
-) -> Result<ObjectPath<TObjectStore>, Box<BedErrorPlus>>
-where
-    TObjectStore: ObjectStore,
-{
+) -> Result<ObjectPath, Box<BedErrorPlus>> {
     if let Some(metadata_object_path) = metadata_object_path {
         Ok(metadata_object_path.clone())
     } else {
@@ -2673,12 +2357,8 @@ where
     }
 }
 
-async fn count_lines<TObjectStore>(
-    object_path: &ObjectPath<TObjectStore>,
-) -> Result<usize, Box<BedErrorPlus>>
-where
-    TObjectStore: ObjectStore,
-{
+// cmk make this a method on ObjectPath?
+async fn count_lines(object_path: &ObjectPath) -> Result<usize, Box<BedErrorPlus>> {
     let stream = object_path.get().await?.into_stream();
 
     let newline_count = stream
@@ -2686,7 +2366,8 @@ where
             let count = bytecount::count(&bytes, b'\n');
             Ok(acc + count) // Accumulate the count
         })
-        .await?;
+        .await
+        .map_err(ObjectPathError::ObjectStoreError)?;
 
     // let mut stream = object_path.get().await?.into_stream();
     // let mut count2: usize = 0;

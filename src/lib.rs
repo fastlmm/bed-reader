@@ -116,11 +116,7 @@ mod python_module;
 mod tests;
 use anyinput::anyinput;
 #[cfg(feature = "cloud")]
-pub use bed_cloud::{
-    path_to_url_string, sample_bed_object_path, sample_bed_url, sample_object_path,
-    sample_object_paths, sample_url, sample_urls, BedCloud, BedCloudBuilder, ObjectPath,
-    EMPTY_OPTIONS,
-};
+pub use bed_cloud::{sample_bed_url, sample_url, sample_urls, BedCloud, BedCloudBuilder};
 use byteorder::{LittleEndian, ReadBytesExt};
 use core::fmt::Debug;
 use derive_builder::Builder;
@@ -131,8 +127,11 @@ use futures_util::{pin_mut, stream::StreamExt};
 use nd::ShapeBuilder;
 use ndarray as nd;
 use num_traits::{abs, Float, FromPrimitive, Signed, ToPrimitive};
-#[cfg(feature = "cloud")]
-use object_store::{delimited::newline_delimited_stream, ObjectStore};
+pub use object_path::abs_path_to_url_string;
+pub use object_path::EMPTY_OPTIONS;
+pub use object_path::{ObjectPath, ObjectPathError};
+#[cfg(feature = "cloud")] // cmk need more of these
+use object_store::delimited::newline_delimited_stream;
 use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
 use rayon::{iter::ParallelBridge, ThreadPoolBuildError};
 use statrs::distribution::{Beta, Continuous};
@@ -200,12 +199,7 @@ pub enum BedErrorPlus {
     #[cfg(feature = "cloud")]
     #[allow(missing_docs)]
     #[error(transparent)]
-    ObjectStoreError(#[from] object_store::Error),
-
-    #[cfg(feature = "cloud")]
-    #[allow(missing_docs)]
-    #[error(transparent)]
-    ObjectStorePathError(#[from] object_store::path::Error),
+    ObjectPathError(#[from] ObjectPathError),
 
     #[cfg(feature = "cloud")]
     #[allow(missing_docs)]
@@ -358,10 +352,6 @@ pub enum BedError {
     #[allow(missing_docs)]
     #[error("Sample fetch error: {0}")]
     SampleFetch(String),
-
-    #[allow(missing_docs)]
-    #[error("Cannot create URL from this file path: '{0}'")]
-    CannotCreateUrlFromFilePath(String),
 }
 
 // Trait alias
@@ -474,16 +464,9 @@ impl From<::derive_builder::UninitializedFieldError> for BedErrorPlus {
 }
 
 #[cfg(feature = "cloud")]
-impl From<object_store::Error> for Box<BedErrorPlus> {
-    fn from(err: object_store::Error) -> Self {
-        Box::new(BedErrorPlus::ObjectStoreError(err))
-    }
-}
-
-#[cfg(feature = "cloud")]
-impl From<object_store::path::Error> for Box<BedErrorPlus> {
-    fn from(err: object_store::path::Error) -> Self {
-        Box::new(BedErrorPlus::ObjectStorePathError(err))
+impl From<ObjectPathError> for Box<BedErrorPlus> {
+    fn from(err: ObjectPathError) -> Self {
+        Box::new(BedErrorPlus::ObjectPathError(err))
     }
 }
 
@@ -4016,12 +3999,12 @@ pub struct ReadOptions<TVal: BedVal> {
     /// # #[cfg(feature = "cloud")]
     /// # { use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_object_path};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url, EMPTY_OPTIONS};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # Runtime::new().unwrap().block_on(async {
-    /// let object_path = sample_bed_object_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::from_object_path(&object_path).await?;
+    /// let url = sample_bed_url("small.bed")?;
+    /// let mut bed_cloud = BedCloud::new(&url, EMPTY_OPTIONS).await?;
     /// let val = ReadOptions::builder().max_concurrent_requests(1).i8().read_cloud(&mut bed_cloud).await?;
     ///
     /// assert_eq_nan(
@@ -4046,12 +4029,12 @@ pub struct ReadOptions<TVal: BedVal> {
     /// # #[cfg(feature = "cloud")]
     /// # { use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_object_path};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url, EMPTY_OPTIONS};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # Runtime::new().unwrap().block_on(async {
-    /// let object_path = sample_bed_object_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::from_object_path(&object_path).await?;
+    /// let url = sample_bed_url("small.bed")?;
+    /// let mut bed_cloud = BedCloud::new(&url, EMPTY_OPTIONS).await?;
     /// let val = ReadOptions::builder().max_chunk_size(1_000_000).i8().read_cloud(&mut bed_cloud).await?;
     ///
     /// assert_eq_nan(
@@ -4351,13 +4334,13 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     ///
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_object_path};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url, EMPTY_OPTIONS};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # Runtime::new().unwrap().block_on(async {
     /// // Read the SNPs indexed by 2.
-    /// let object_path = sample_bed_object_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::from_object_path(&object_path).await?;
+    /// let url = sample_bed_url("small.bed")?;
+    /// let mut bed_cloud = BedCloud::new(&url, EMPTY_OPTIONS).await?;
     /// let mut val = ReadOptions::builder()
     ///     .sid_index(2)
     ///     .read_cloud(&mut bed_cloud).await?;
@@ -4367,13 +4350,10 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
     #[cfg(feature = "cloud")]
-    pub async fn read_cloud<TObjectStore>(
+    pub async fn read_cloud(
         &self,
-        bed_cloud: &mut BedCloud<TObjectStore>,
-    ) -> Result<nd::Array2<TVal>, Box<BedErrorPlus>>
-    where
-        TObjectStore: ObjectStore,
-    {
+        bed_cloud: &mut BedCloud,
+    ) -> Result<nd::Array2<TVal>, Box<BedErrorPlus>> {
         let read_options = self.build()?;
         bed_cloud.read_with_options(&read_options).await
     }
@@ -4436,13 +4416,13 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     ///
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_object_path};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url, EMPTY_OPTIONS};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # Runtime::new().unwrap().block_on(async {
     /// // Read the SNPs indexed by 2.
-    /// let object_path = sample_bed_object_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::from_object_path(&object_path).await?;
+    /// let url = sample_bed_url("small.bed")?;
+    /// let mut bed_cloud = BedCloud::new(&url, EMPTY_OPTIONS).await?;
     /// let mut val = nd::Array2::<f64>::default((3, 1));
     /// ReadOptions::builder()
     ///     .sid_index(2)
@@ -4453,14 +4433,11 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```    
     #[cfg(feature = "cloud")]
-    pub async fn read_and_fill_cloud<TObjectStore>(
+    pub async fn read_and_fill_cloud(
         &self,
-        bed_cloud: &mut BedCloud<TObjectStore>,
+        bed_cloud: &mut BedCloud,
         val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
-    ) -> Result<(), Box<BedErrorPlus>>
-    where
-        TObjectStore: ObjectStore,
-    {
+    ) -> Result<(), Box<BedErrorPlus>> {
         let read_options = self.build()?;
         bed_cloud
             .read_and_fill_with_options(val, &read_options)
@@ -6460,15 +6437,17 @@ impl Metadata {
     /// ```
     /// use ndarray as nd;
     /// use std::collections::HashSet;
-    /// use bed_reader::{Metadata, MetadataFields, sample_object_path};
+    /// use bed_reader::{Metadata, MetadataFields, sample_url, ObjectPath, EMPTY_OPTIONS};
     ///
     /// # Runtime::new().unwrap().block_on(async {
     /// let skip_set = HashSet::<MetadataFields>::new();
+    /// let fam_object_path = ObjectPath::new(sample_url("small.fam")?, EMPTY_OPTIONS)?;
+    /// let bim_object_path = ObjectPath::new(sample_url("small.bim")?, EMPTY_OPTIONS)?;
     /// let metadata_empty = Metadata::new();
     /// let (metadata_fam, iid_count) =
-    ///     metadata_empty.read_fam_cloud(&sample_object_path("small.fam")?, &skip_set).await?;
+    ///     metadata_empty.read_fam_cloud(&fam_object_path, &skip_set).await?;
     /// let (metadata_bim, sid_count) =
-    ///     metadata_fam.read_bim_cloud(&sample_object_path("small.bim")?, &skip_set).await?;
+    ///     metadata_fam.read_bim_cloud(&bim_object_path, &skip_set).await?;
     /// assert_eq!(iid_count, 3);
     /// assert_eq!(sid_count, 4);
     /// println!("{0:?}", metadata_fam.iid()); // Outputs optional ndarray Some(["iid1", "iid2", "iid3"]...)
@@ -6478,14 +6457,11 @@ impl Metadata {
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
     #[cfg(feature = "cloud")]
-    pub async fn read_fam_cloud<TObjectStore>(
+    pub async fn read_fam_cloud(
         &self,
-        object_path: &ObjectPath<TObjectStore>,
+        object_path: &ObjectPath,
         skip_set: &HashSet<MetadataFields>,
-    ) -> Result<(Metadata, usize), Box<BedErrorPlus>>
-    where
-        TObjectStore: ObjectStore,
-    {
+    ) -> Result<(Metadata, usize), Box<BedErrorPlus>> {
         let mut field_vec: Vec<usize> = Vec::new();
 
         if self.fid.is_none() && !skip_set.contains(&MetadataFields::Fid) {
@@ -6644,15 +6620,17 @@ impl Metadata {
     /// ```
     /// use ndarray as nd;
     /// use std::collections::HashSet;
-    /// use bed_reader::{Metadata, MetadataFields, sample_object_path};
+    /// use bed_reader::{Metadata, MetadataFields, sample_url, ObjectPath, EMPTY_OPTIONS};
     ///
     /// # Runtime::new().unwrap().block_on(async {
     /// let skip_set = HashSet::<MetadataFields>::new();
+    /// let fam_object_path = ObjectPath::new(sample_url("small.fam")?, EMPTY_OPTIONS)?;
+    /// let bim_object_path = ObjectPath::new(sample_url("small.bim")?, EMPTY_OPTIONS)?;
     /// let metadata_empty = Metadata::new();
     /// let (metadata_fam, iid_count) =
-    ///     metadata_empty.read_fam_cloud(&sample_object_path("small.fam")?, &skip_set).await?;
+    ///     metadata_empty.read_fam_cloud(&fam_object_path, &skip_set).await?;
     /// let (metadata_bim, sid_count) =
-    ///     metadata_fam.read_bim_cloud(&sample_object_path("small.bim")?, &skip_set).await?;
+    ///     metadata_fam.read_bim_cloud(&bim_object_path, &skip_set).await?;
     /// assert_eq!(iid_count, 3);
     /// assert_eq!(sid_count, 4);
     /// println!("{0:?}", metadata_fam.iid()); // Outputs optional ndarray Some(["iid1", "iid2", "iid3"]...)
@@ -6662,14 +6640,11 @@ impl Metadata {
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
     #[cfg(feature = "cloud")]
-    pub async fn read_bim_cloud<TObjectStore>(
+    pub async fn read_bim_cloud(
         &self,
-        object_path: &ObjectPath<TObjectStore>,
+        object_path: &ObjectPath,
         skip_set: &HashSet<MetadataFields>,
-    ) -> Result<(Metadata, usize), Box<BedErrorPlus>>
-    where
-        TObjectStore: ObjectStore,
-    {
+    ) -> Result<(Metadata, usize), Box<BedErrorPlus>> {
         let mut field_vec: Vec<usize> = Vec::new();
         if self.chromosome.is_none() && !skip_set.contains(&MetadataFields::Chromosome) {
             field_vec.push(0);
@@ -6775,15 +6750,12 @@ impl Metadata {
     }
 
     #[cfg(feature = "cloud")]
-    async fn read_fam_or_bim_cloud<TObjectStore>(
+    async fn read_fam_or_bim_cloud(
         &self,
         field_vec: &[usize],
         is_split_whitespace: bool,
-        object_path: &ObjectPath<TObjectStore>,
-    ) -> Result<(Vec<Vec<String>>, usize), Box<BedErrorPlus>>
-    where
-        TObjectStore: ObjectStore,
-    {
+        object_path: &ObjectPath,
+    ) -> Result<(Vec<Vec<String>>, usize), Box<BedErrorPlus>> {
         let mut vec_of_vec = vec![vec![]; field_vec.len()];
         let mut count = 0;
 
@@ -6792,7 +6764,7 @@ impl Metadata {
         pin_mut!(line_chunk_stream);
 
         while let Some(line_chunk) = line_chunk_stream.next().await {
-            let line_chunk = line_chunk?;
+            let line_chunk = line_chunk.map_err(ObjectPathError::ObjectStoreError)?;
             let lines = std::str::from_utf8(&line_chunk)?.split_terminator('\n');
             for line in lines {
                 count += 1;
