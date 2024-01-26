@@ -102,7 +102,7 @@ assert!(val.dim() == (100, 6));
 ```
 
 From the cloud: open a file and read data for one SNP (variant)
-at index position 2. (See ["Cloud URLs and `ObjectPath` Examples"](supplemental_document_cloud_urls/index.html)
+at index position 2. (See ["Cloud URLs and `CloudFiles` Examples"](supplemental_document_cloud_urls/index.html)
 for details specifying a file in the cloud.)
 
 ```rust
@@ -118,7 +118,6 @@ let mut bed_cloud = BedCloud::new(
 let val = ReadOptions::builder().sid_index(2).f64().read_cloud(&mut bed_cloud).await?;
 assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
 # Ok::<(), Box<dyn std::error::Error>>(()) }).unwrap()};  // '#' needed for doctest
-
 ```
 
 Project Links

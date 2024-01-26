@@ -154,6 +154,7 @@ dependencies = [
  "bytecount",
  "byteorder",
  "bytes",
+ "cloud-files",
  "derive_builder",
  "dpc-pariter",
  "fetch-data",
@@ -164,7 +165,6 @@ dependencies = [
  "ndarray-rand",
  "num-traits",
  "numpy",
- "object-path",
  "object_store",
  "pyo3",
  "pyo3-asyncio",
@@ -274,6 +274,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2850f2f5a82cbf437dd5af4d49848fbdfc27c157c3d010345776f952765261c5"
 dependencies = [
  "os_str_bytes",
+]
+
+[[package]]
+name = "cloud-files"
+version = "0.1.0"
+dependencies = [
+ "bytecount",
+ "bytes",
+ "futures",
+ "futures-util",
+ "object_store",
+ "thiserror",
+ "tokio",
+ "url",
 ]
 
 [[package]]
@@ -1180,20 +1194,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9cf5f9dd3933bd50a9e1f149ec995f39ae2c496d31fd772c1fd45ebc27e902b0"
 dependencies = [
  "memchr",
-]
-
-[[package]]
-name = "object-path"
-version = "0.1.0"
-dependencies = [
- "bytecount",
- "bytes",
- "futures",
- "futures-util",
- "object_store",
- "thiserror",
- "tokio",
- "url",
 ]
 
 [[package]]

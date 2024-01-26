@@ -1,4 +1,4 @@
-# Cloud URLs and ObjectPath Examples
+# Cloud URL Examples
 
 > *Table of Contents*:
 >
@@ -8,10 +8,7 @@
 >
 > *The `bed-reader` crate also supports Azure and GCP, but we don't have examples.*
 
-To specify a file in the cloud, you must specify either
-
-* a URL string plus options, or
-* an [`ObjectPath`](../struct.ObjectPath.html)
+To specify a file in the cloud, you must specify a URL string plus options.
 
 The exact details depend on the cloud service. We'll look at [http](#http), at [local files](#local-file), and at [AWS S3](#aws-s3).
 
@@ -24,8 +21,6 @@ Reading from large files can also be practical and even fast under these conditi
 
 * You need only some of the information
 * (Optional, but helpful) You can provide some metadata about individuals (samples) and SNPs (variants) locally.
-
-### Http URL
 
 Let's first look at reading a small or medium-sized dataset using a URL string.
 
@@ -121,51 +116,6 @@ assert_eq!(val.mean(), Some(0.03391369));
 # }).unwrap();
 ```
 
-### Http ObjectPath
-
-If we want to work with structs we can specify a web file via an [`ObjectPath`](../struct.ObjectPath.html).
-
-We first create an [`ObjectStore`](https://docs.rs/object_store/latest/object_store/trait.ObjectStore.html) that tells which cloud service we are using.
-Here we use [`HttpStore`](https://docs.rs/object_store/latest/object_store/http/struct.HttpStore.html).
-We, next, wrap the result in an `Arc` to facilitate efficient cloning of something that would otherwise be un-clonable.
-We then create an [`object_store::path::Path as StorePath`](https://docs.rs/object_store/latest/object_store/path/struct.Path.html)
-using [`StorePath::from_url_path`](https://docs.rs/object_store/latest/object_store/path/struct.Path.html#method.from_url_path).
-It tells where on the web server your file is located.
-Finally, we put the `ObjectStore` and `StorePath` together, creating an [`ObjectPath`](../struct.ObjectPath.html).
-
-[`BedCloud`](../struct.BedCloud.html) can work via an `ObjectPath` slightly more efficiently than directly from
-a URL string. However, I generally use string URLs because I find them easier.
-
-This example puts the steps together to read chromosome 5.
-
-```ignore cmk
-use std::sync::Arc;
-use ndarray as nd;
-use bed_reader::{assert_eq_nan, BedCloud, ObjectPath, ReadOptions};
-use object_store::{http::HttpBuilder, ClientOptions, path::Path as StorePath};
-use std::time::Duration;
-
-# use {bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
-# Runtime::new().unwrap().block_on(async {
-let client_options = ClientOptions::new().with_timeout(Duration::from_secs(1000));
-let http_store = HttpBuilder::new()
-    .with_url("https://raw.githubusercontent.com/")
-    .with_client_options(client_options)
-    .build()?;
-let arc_object_store = Arc::new(http_store);
-let path = StorePath::from_url_path("fastlmm/bed-sample-files/main/small.bed")?;
-let object_path = ObjectPath::new(arc_object_store, path);
-let mut bed_cloud = BedCloud::from_object_path(&object_path).await?;
-let val = ReadOptions::builder()
-    .sid_index(bed_cloud.chromosome().await?.map(|elem| elem == "5"))
-    .f64()
-    .read_cloud(&mut bed_cloud)
-    .await?;
-assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
-# Ok::<(), Box<dyn std::error::Error>>(())
-# }).unwrap();
-```
-
 ## Local File
 
 We can specify a local file as if it is in the cloud. This is a great way to test cloud functions. For real work and better efficiency,
@@ -173,7 +123,8 @@ however, use [`Bed`](../struct.Bed.html) instead of [`BedCloud`](../struct.BedCl
 
 ### Local File URL
 
-The URL for a local file takes the form `file:///{encoded_file_name}`. No cloud options are needed, so we use `EMPTY_OPTIONS`.
+The URL for a local file takes the form `file:///{encoded_file_name}`. We can use the [`abs_path_to_url_string`](../fn.abs_path_to_url_string.html)
+function to do this encoding. When it was the url to `BedCloud`,  no cloud options are needed, so we use `EMPTY_OPTIONS`.
 
 *Example:*
 
@@ -183,7 +134,7 @@ use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_file, EMPTY_OP
 # use {bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
 # Runtime::new().unwrap().block_on(async {
 
-let file_name = sample_bed_file("small.bed")?.to_string_lossy().to_string();
+let file_name = sample_bed_file("small.bed")?;
 println!("{file_name:?}"); // For example, "C:\\Users\\carlk\\AppData\\Local\\fastlmm\\bed-reader\\cache\\small.bed"
 let url: String = abs_path_to_url_string(file_name)?;
 println!("{url:?}"); // For example, "file:///C:/Users/carlk/AppData/Local/bed_reader/bed_reader/Cache/small.bed"
@@ -195,37 +146,9 @@ assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
 # }).unwrap();
 ```
 
-<!-- cmk remove these sections -->
-### Local File ObjectPath
-
-If we want to work with structs instead of `String`, we can specify a file via an [`ObjectPath`](../struct.ObjectPath.html).
-
-```ignore cmk
-use std::sync::Arc;
-use ndarray as nd;
-use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_file, ObjectPath};
-use object_store::{local::LocalFileSystem, path::Path as StorePath};
-
-# use {bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
-# Runtime::new().unwrap().block_on(async {
-let file_name = sample_bed_file("small.bed")?.to_string_lossy().to_string();
-
-let arc_object_store = Arc::new(LocalFileSystem::new());
-let path = StorePath::from_filesystem_path(&file_name)?;
-let object_path = ObjectPath::new(arc_object_store, path);
-
-let mut bed_cloud = BedCloud::from_object_path(&object_path).await?;
-let val = ReadOptions::builder().sid_index(2).f64().read_cloud(&mut bed_cloud).await?;
-assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
-# Ok::<(), Box<dyn std::error::Error>>(())
-# }).unwrap();
-```
-
 ## AWS S3
 
 Let's look next at reading a file (or part of a file) from AWS S3.
-
-### AWS S3 URL
 
 The URL for an AWS S3 file takes the form `s3://{bucket_name}/{s3_path}`.
 
@@ -245,64 +168,8 @@ See [`GoogleConfigKey`](https://docs.rs/object_store/latest/object_store/gcp/enu
 
 ```rust
 use bed_reader::{BedCloud,BedErrorPlus};
-use tokio::runtime::Runtime;
 use rusoto_credential::{CredentialsError, ProfileProvider, ProvideAwsCredentials};
-
-Runtime::new().unwrap().block_on(async {
-    // Read my AWS credentials from file ~/.aws/credentials
-    let credentials = if let Ok(provider) = ProfileProvider::new() {
-        provider.credentials().await
-    } else {
-        Err(CredentialsError::new("No credentials found"))
-    };
-
-    let Ok(credentials) = credentials else {
-        eprintln!("Skipping test because no AWS credentials found");
-        return Ok(());
-    };
-
-    let url = "s3://bedreader/v1/toydata.5chrom.bed";
-    let options = [
-        ("aws_region", "us-west-2"),
-        ("aws_access_key_id", credentials.aws_access_key_id()),
-        ("aws_secret_access_key", credentials.aws_secret_access_key()),
-    ];
-
-    let mut bed_cloud = BedCloud::new(url, options).await?;
-    let val = bed_cloud.read::<i8>().await?;
-    assert_eq!(val.shape(), &[500, 10_000]);
-    Ok::<(), Box<BedErrorPlus>>(())
-});
-Ok::<(), Box<BedErrorPlus>>(())
-```
-
-### AWS S3 ObjectPath
-
-Again, suppose we want to work with structs instead of `String`. Again, we can specify a file via an [`ObjectPath`](../struct.ObjectPath.html).
-
-We first create an [`ObjectStore`](https://docs.rs/object_store/latest/object_store/trait.ObjectStore.html) that tells which cloud service we are using.
-We use [`AmazonS3Builder`](https://docs.rs/object_store/latest/object_store/aws/struct.AmazonS3Builder.html).
-We again wrap the result in an `Arc` to facilitate efficient cloning of something that would otherwise be un-clonable.
-We then create an [`object_store::path::Path as StorePath`](https://docs.rs/object_store/latest/object_store/path/struct.Path.html)
-using [`StorePath::parse`](https://docs.rs/object_store/latest/object_store/path/struct.Path.html#method.parse).
-Finally, we put the `ObjectStore` and `StorePath` together, creating an [`ObjectPath`](../struct.ObjectPath.html).
-
-As before, [`BedCloud`](../struct.BedCloud.html) can work via an `ObjectPath` slightly more efficiently than a string URL.
-However, I generally use string URLs because I find them easier.
-
-Here is an AWS Object Path example:
-
-> **Note:** I can run this, but others can't because of the authentication checks.
-
-```ignore cmk
-use std::sync::Arc;
-use ndarray as nd;
-use bed_reader::{BedCloud, ObjectPath};
-use object_store::{aws::AmazonS3Builder, path::Path as StorePath};
-# use {bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
-use rusoto_credential::{CredentialsError, ProfileProvider, ProvideAwsCredentials};
-
-# Runtime::new().unwrap().block_on(async {
+# use tokio::runtime::Runtime; Runtime::new().unwrap().block_on(async {
 // Read my AWS credentials from file ~/.aws/credentials
 let credentials = if let Ok(provider) = ProfileProvider::new() {
     provider.credentials().await
@@ -315,20 +182,15 @@ let Ok(credentials) = credentials else {
     return Ok(());
 };
 
-let arc_s3 = Arc::new(
-    AmazonS3Builder::new()
-        .with_region("us-west-2")
-        .with_bucket_name("bedreader")
-        .with_access_key_id(credentials.aws_access_key_id())
-        .with_secret_access_key(credentials.aws_secret_access_key())
-        .build()?,
-);
-let store_path = StorePath::parse("/v1/toydata.5chrom.bed")?;
-let object_path = ObjectPath::new(arc_s3, store_path);
+let url = "s3://bedreader/v1/toydata.5chrom.bed";
+let options = [
+    ("aws_region", "us-west-2"),
+    ("aws_access_key_id", credentials.aws_access_key_id()),
+    ("aws_secret_access_key", credentials.aws_secret_access_key()),
+];
 
-let mut bed_cloud = BedCloud::from_object_path(&object_path).await?;
+let mut bed_cloud = BedCloud::new(url, options).await?;
 let val = bed_cloud.read::<i8>().await?;
 assert_eq!(val.shape(), &[500, 10_000]);
-# Ok::<(), Box<dyn std::error::Error>>(())
-# }).unwrap();
+# Ok::<(), Box<BedErrorPlus>>(()) }); Ok::<(), Box<BedErrorPlus>>(())
 ```
