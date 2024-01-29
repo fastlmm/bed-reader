@@ -6757,8 +6757,8 @@ impl Metadata {
         let mut vec_of_vec = vec![vec![]; field_vec.len()];
         let mut count = 0;
 
-        let mut line_chunk_stream = cloud_file.line_chunks().await?;
-        while let Some(line_chunk) = line_chunk_stream.next().await {
+        let mut line_chunks = cloud_file.stream_line_chunks().await?;
+        while let Some(line_chunk) = line_chunks.next().await {
             let line_chunk = line_chunk.map_err(CloudFileError::ObjectStoreError)?;
             let lines = std::str::from_utf8(&line_chunk)?.split_terminator('\n');
             for line in lines {

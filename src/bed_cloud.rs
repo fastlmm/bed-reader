@@ -192,7 +192,7 @@ async fn internal_read_no_alloc<TVal: BedVal>(
         );
         async move {
             let (ranges, out_sid_i_vec) = result?;
-            let vec_bytes = cloud_file.ranges(&ranges).await?;
+            let vec_bytes = cloud_file.read_ranges(&ranges).await?;
             Result::<_, Box<BedErrorPlus>>::Ok((vec_bytes, out_sid_i_vec))
         }
     });
@@ -347,7 +347,7 @@ async fn read_no_alloc<TVal: BedVal>(
 
 async fn open_and_check(cloud_file: &CloudFile) -> Result<(usize, Bytes), Box<BedErrorPlus>> {
     let (bytes, size) = cloud_file
-        .range_and_file_size(0..CB_HEADER_U64 as usize)
+        .read_range_and_file_size(0..CB_HEADER_U64 as usize)
         .await?;
     if (BED_FILE_MAGIC1 != bytes[0]) || (BED_FILE_MAGIC2 != bytes[1]) {
         Err(BedError::IllFormed(cloud_file.to_string()))?;
@@ -1428,7 +1428,7 @@ impl BedCloud {
             Ok(iid_count)
         } else {
             let fam_cloud_file = self.fam_cloud_file()?;
-            let iid_count = fam_cloud_file.line_count().await?;
+            let iid_count = fam_cloud_file.count_lines().await?;
             self.iid_count = Some(iid_count);
             Ok(iid_count)
         }
@@ -1461,7 +1461,7 @@ impl BedCloud {
             Ok(sid_count)
         } else {
             let bim_cloud_file = self.bim_cloud_file()?;
-            let sid_count = bim_cloud_file.line_count().await?;
+            let sid_count = bim_cloud_file.count_lines().await?;
             self.sid_count = Some(sid_count);
             Ok(sid_count)
         }

@@ -52,12 +52,12 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
             .map_err(|e| Box::new(BedErrorPlus::CloudFileError(e)))?;
         let rt = runtime::Runtime::new()?;
         rt.block_on(async {
-            let bytes = cloud_file.bytes().await.map_err(|e| {
+            let all = cloud_file.read_all().await.map_err(|e| {
                 PyErr::new::<PyValueError, _>(format!(
                     "Error retrieving bytes for '{location}: {e}"
                 ))
             })?;
-            let vec: Vec<u8> = bytes.to_vec();
+            let vec: Vec<u8> = all.to_vec();
             Ok(vec)
         })
     }
