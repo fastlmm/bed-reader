@@ -3,13 +3,12 @@ compile_error!("This code requires a 64-bit target architecture.");
 
 use anyinput::anyinput;
 use bytes::Bytes;
+use cloud_file::{abs_path_to_url_string, CloudFile};
 use derive_builder::Builder;
 use futures_util::StreamExt;
 use itertools::Itertools;
 use nd::ShapeBuilder;
 use ndarray as nd;
-use cloud_files::{abs_path_to_url_string, CloudFiles, CloudFilesError};
-use object_store::{GetOptions, GetRange};
 use std::cmp::max;
 use std::collections::HashSet;
 use std::ops::Range;
@@ -25,8 +24,8 @@ use crate::{MetadataFields, CB_HEADER_U64};
 /// Represents a PLINK .bed file in the cloud that is open for reading genotype data and metadata.
 ///
 /// Construct with [`BedCloud::new`](struct.BedCloud.html#method.new), [`BedCloud::builder`](struct.BedCloud.html#method.builder),
-/// [`BedCloud::from_cloud_files`](struct.BedCloud.html#method.from_cloud_files), or
-/// [`BedCloud::builder_from_cloud_files`](struct.BedCloud.html#method.builder_from_cloud_files).
+/// [`BedCloud::from_cloud_file`](struct.BedCloud.html#method.from_cloud_file), or
+/// [`BedCloud::builder_from_cloud_file`](struct.BedCloud.html#method.builder_from_cloud_file).
 ///
 /// > For reading local files, see [`Bed`](struct.Bed.html).
 ///
@@ -59,15 +58,15 @@ use crate::{MetadataFields, CB_HEADER_U64};
 #[builder(build_fn(skip))]
 pub struct BedCloud {
     #[builder(setter(custom))]
-    cloud_files: CloudFiles,
+    cloud_file: CloudFile,
 
     #[builder(setter(custom))]
     #[builder(default = "None")]
-    fam_cloud_files: Option<CloudFiles>,
+    fam_cloud_file: Option<CloudFile>,
 
     #[builder(setter(custom))]
     #[builder(default = "None")]
-    bim_cloud_files: Option<CloudFiles>,
+    bim_cloud_file: Option<CloudFile>,
 
     #[builder(setter(custom))]
     #[builder(default = "true")]
@@ -93,15 +92,15 @@ pub struct BedCloud {
 impl BedCloudBuilder {
     fn build_no_file_check(&self) -> Result<BedCloud, Box<BedErrorPlus>> {
         Ok(BedCloud {
-            cloud_files: match self.cloud_files {
+            cloud_file: match self.cloud_file {
                 Some(ref value) => Clone::clone(value),
-                None => Err(BedError::UninitializedField("cloud_files"))?,
+                None => Err(BedError::UninitializedField("cloud_file"))?,
             },
-            fam_cloud_files: match self.fam_cloud_files {
+            fam_cloud_file: match self.fam_cloud_file {
                 Some(ref value) => Clone::clone(value),
                 None => None,
             },
-            bim_cloud_files: match self.bim_cloud_files {
+            bim_cloud_file: match self.bim_cloud_file {
                 Some(ref value) => Clone::clone(value),
                 None => None,
             },
@@ -150,7 +149,7 @@ fn convert_negative_sid_index(
 #[allow(clippy::too_many_arguments)]
 #[allow(clippy::similar_names)]
 async fn internal_read_no_alloc<TVal: BedVal>(
-    cloud_files: &CloudFiles,
+    cloud_file: &CloudFile,
     size: usize,
     in_iid_count: usize,
     in_sid_count: usize,
@@ -163,7 +162,7 @@ async fn internal_read_no_alloc<TVal: BedVal>(
     out_val: &mut nd::ArrayViewMut2<'_, TVal>,
 ) -> Result<(), Box<BedErrorPlus>> {
     // compute numbers outside of the loop
-    let in_iid_count_div4_u64 = check_file_length(in_iid_count, in_sid_count, size, cloud_files)?;
+    let in_iid_count_div4_u64 = check_file_length(in_iid_count, in_sid_count, size, cloud_file)?;
     let (i_div_4_less_start_array, i_mod_4_times_2_array, i_div_4_start, i_div_4_len) =
         check_and_precompute_iid_index(in_iid_count, iid_index)?;
     if i_div_4_len == 0 {
@@ -193,7 +192,7 @@ async fn internal_read_no_alloc<TVal: BedVal>(
         );
         async move {
             let (ranges, out_sid_i_vec) = result?;
-            let vec_bytes = cloud_files.get_ranges(&ranges).await?;
+            let vec_bytes = cloud_file.ranges(&ranges).await?;
             Result::<_, Box<BedErrorPlus>>::Ok((vec_bytes, out_sid_i_vec))
         }
     });
@@ -276,13 +275,13 @@ fn check_file_length(
     in_iid_count: usize,
     in_sid_count: usize,
     size: usize,
-    cloud_files: &CloudFiles,
+    cloud_file: &CloudFile,
 ) -> Result<u64, Box<BedErrorPlus>> {
     let in_iid_count_div4_u64 = try_div_4(in_iid_count, in_sid_count)?;
     let file_len = size as u64;
     let file_len2 = in_iid_count_div4_u64 * (in_sid_count as u64) + CB_HEADER_U64;
     if file_len != file_len2 {
-        Err(BedError::IllFormed(cloud_files.to_string()))?;
+        Err(BedError::IllFormed(cloud_file.to_string()))?;
     }
     Ok(in_iid_count_div4_u64)
 }
@@ -291,7 +290,7 @@ fn check_file_length(
 #[allow(clippy::too_many_arguments)]
 #[allow(clippy::similar_names)]
 async fn read_no_alloc<TVal: BedVal>(
-    cloud_files: &CloudFiles,
+    cloud_file: &CloudFile,
     iid_count: usize,
     sid_count: usize,
     is_a1_counted: bool,
@@ -303,7 +302,7 @@ async fn read_no_alloc<TVal: BedVal>(
 
     val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
 ) -> Result<(), Box<BedErrorPlus>> {
-    let (size, bytes) = open_and_check(cloud_files).await?;
+    let (size, bytes) = open_and_check(cloud_file).await?;
 
     match bytes[2] {
         0 => {
@@ -311,7 +310,7 @@ async fn read_no_alloc<TVal: BedVal>(
             let mut val_t = val.view_mut().reversed_axes();
 
             internal_read_no_alloc(
-                cloud_files,
+                cloud_file,
                 size,
                 sid_count,
                 iid_count,
@@ -327,7 +326,7 @@ async fn read_no_alloc<TVal: BedVal>(
         }
         1 => {
             internal_read_no_alloc(
-                cloud_files,
+                cloud_file,
                 size,
                 iid_count,
                 sid_count,
@@ -341,25 +340,17 @@ async fn read_no_alloc<TVal: BedVal>(
             )
             .await?;
         }
-        _ => Err(BedError::BadMode(cloud_files.to_string()))?,
+        _ => Err(BedError::BadMode(cloud_file.to_string()))?,
     };
     Ok(())
 }
 
-async fn open_and_check(cloud_files: &CloudFiles) -> Result<(usize, Bytes), Box<BedErrorPlus>> {
-    let get_options = GetOptions {
-        range: Some(GetRange::Bounded(0..CB_HEADER_U64 as usize)),
-        ..Default::default()
-    };
-    let get_result = cloud_files.get_opts(get_options).await?;
-    let size: usize = get_result.meta.size;
-    let bytes = get_result
-        .bytes()
-        .await
-        .map_err(CloudFilesError::ObjectStoreError)?;
-
+async fn open_and_check(cloud_file: &CloudFile) -> Result<(usize, Bytes), Box<BedErrorPlus>> {
+    let (bytes, size) = cloud_file
+        .range_and_file_size(0..CB_HEADER_U64 as usize)
+        .await?;
     if (BED_FILE_MAGIC1 != bytes[0]) || (BED_FILE_MAGIC2 != bytes[1]) {
-        Err(BedError::IllFormed(cloud_files.to_string()))?;
+        Err(BedError::IllFormed(cloud_file.to_string()))?;
     }
     Ok((size, bytes))
 }
@@ -371,8 +362,8 @@ impl BedCloudBuilder {
         K: AsRef<str>,
         V: Into<String>,
     {
-        let cloud_files = CloudFiles::new(url, options)?;
-        Ok(BedCloudBuilder::from(cloud_files))
+        let cloud_file = CloudFile::new_with_options(url, options)?;
+        Ok(BedCloudBuilder::from(cloud_file))
     }
 
     /// Set the cloud location of the .fam file. Specify the file with a URL string.
@@ -380,7 +371,7 @@ impl BedCloudBuilder {
     /// If not set, the .fam file will be assumed
     /// to have the same location as the .bed file, but with the extension .fam.
     ///
-    /// > See [`BedCloudBuilder::fam_cloud_files`](struct.BedCloudBuilder.html#method.fam_cloud_files) to specify the file with an [`CloudFiles`](struct.CloudFiles.html)
+    /// > See [`BedCloudBuilder::fam_cloud_file`](struct.BedCloudBuilder.html#method.fam_cloud_file) to specify the file with an [`CloudFile`](struct.CloudFile.html)
     /// > instead of a URL string.
     ///
     /// # Example:
@@ -408,8 +399,8 @@ impl BedCloudBuilder {
         K: AsRef<str>,
         V: Into<String>,
     {
-        let cloud_files = CloudFiles::new(url, options)?;
-        self.fam_cloud_files = Some(Some(cloud_files));
+        let cloud_file = CloudFile::new_with_options(url, options)?;
+        self.fam_cloud_file = Some(Some(cloud_file));
         Ok(self)
     }
 
@@ -418,7 +409,7 @@ impl BedCloudBuilder {
     /// If not set, the .bim file will be assumed
     /// to have the same location as the .bed file, but with the extension .bim.
     ///
-    /// > See [`BedCloudBuilder::fam_cloud_files`](struct.BedCloudBuilder.html#method.bim_cloud_files) to specify the file with an [`CloudFiles`](struct.CloudFiles.html)
+    /// > See [`BedCloudBuilder::fam_cloud_file`](struct.BedCloudBuilder.html#method.bim_cloud_file) to specify the file with an [`CloudFile`](struct.CloudFile.html)
     /// > instead of a URL string.
     ///
     /// # Example:
@@ -446,18 +437,18 @@ impl BedCloudBuilder {
         K: AsRef<str>,
         V: Into<String>,
     {
-        let cloud_files = CloudFiles::new(url, options)?;
-        self.bim_cloud_files = Some(Some(cloud_files));
+        let cloud_file = CloudFile::new_with_options(url, options)?;
+        self.bim_cloud_file = Some(Some(cloud_file));
         Ok(self)
     }
 }
 
-impl From<&CloudFiles> for BedCloudBuilder {
-    fn from(cloud_files: &CloudFiles) -> Self {
+impl From<&CloudFile> for BedCloudBuilder {
+    fn from(cloud_file: &CloudFile) -> Self {
         Self {
-            cloud_files: Some(cloud_files.clone()), // Cloned here.
-            fam_cloud_files: None,
-            bim_cloud_files: None,
+            cloud_file: Some(cloud_file.clone()), // Cloned here.
+            fam_cloud_file: None,
+            bim_cloud_file: None,
 
             is_checked_early: None,
             iid_count: None,
@@ -469,12 +460,12 @@ impl From<&CloudFiles> for BedCloudBuilder {
     }
 }
 
-impl From<CloudFiles> for BedCloudBuilder {
-    fn from(cloud_files: CloudFiles) -> Self {
+impl From<CloudFile> for BedCloudBuilder {
+    fn from(cloud_file: CloudFile) -> Self {
         Self {
-            cloud_files: Some(cloud_files), // Cloned here.
-            fam_cloud_files: None,
-            bim_cloud_files: None,
+            cloud_file: Some(cloud_file), // Cloned here.
+            fam_cloud_file: None,
+            bim_cloud_file: None,
 
             is_checked_early: None,
             iid_count: None,
@@ -493,10 +484,10 @@ impl BedCloudBuilder {
     pub async fn build(&self) -> Result<BedCloud, Box<BedErrorPlus>> {
         let mut bed_cloud = self.build_no_file_check()?;
 
-        // Unwrap is allowed because we can't construct BedCloudBuilder without cloud_files
+        // Unwrap is allowed because we can't construct BedCloudBuilder without cloud_file
         if bed_cloud.is_checked_early {
-            let cloud_files = self.cloud_files.as_ref().unwrap().clone();
-            open_and_check(&cloud_files).await?;
+            let cloud_file = self.cloud_file.as_ref().unwrap().clone();
+            open_and_check(&cloud_file).await?;
         }
 
         (bed_cloud.iid_count, bed_cloud.sid_count) = bed_cloud
@@ -763,8 +754,8 @@ impl BedCloudBuilder {
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
     #[must_use]
-    pub fn fam_cloud_files(mut self, cloud_files: &CloudFiles) -> Self {
-        self.fam_cloud_files = Some(Some(cloud_files.clone()));
+    pub fn fam_cloud_file(mut self, cloud_file: &CloudFile) -> Self {
+        self.fam_cloud_file = Some(Some(cloud_file.clone()));
         self
     }
 
@@ -777,15 +768,15 @@ impl BedCloudBuilder {
     /// Read .bed, .fam, and .bim files with non-standard names.
     /// ```
     /// # Runtime::new().unwrap().block_on(async {
-    /// use bed_reader::{BedCloud, ReadOptions, sample_urls, CloudFiles, EMPTY_OPTIONS};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_urls, CloudFile, EMPTY_OPTIONS};
     ///
     /// let deb_maf_mib = sample_urls(["small.deb", "small.maf", "small.mib"])?
     ///    .iter()
-    ///    .map(|url| CloudFiles::new(url, EMPTY_OPTIONS))
-    ///    .collect::<Result<Vec<CloudFiles>, _>>()?;
-    /// let mut bed_cloud = BedCloud::builder_from_cloud_files(&deb_maf_mib[0])
-    ///    .fam_cloud_files(&deb_maf_mib[1])
-    ///    .bim_cloud_files(&deb_maf_mib[2])
+    ///    .map(|url| CloudFile::new(url, EMPTY_OPTIONS))
+    ///    .collect::<Result<Vec<CloudFile>, _>>()?;
+    /// let mut bed_cloud = BedCloud::builder_from_cloud_file(&deb_maf_mib[0])
+    ///    .fam_cloud_file(&deb_maf_mib[1])
+    ///    .bim_cloud_file(&deb_maf_mib[2])
     ///    .build().await?;
     /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray ["iid1", "iid2", "iid3"]
     /// println!("{:?}", bed_cloud.sid().await?); // Outputs ndarray ["sid1", "sid2", "sid3", "sid4"]
@@ -793,9 +784,9 @@ impl BedCloudBuilder {
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
     #[must_use]
-    pub fn bim_cloud_files(mut self, cloud_files: &CloudFiles) -> Self {
-        let cloud_files = cloud_files.clone();
-        self.bim_cloud_files = Some(Some(cloud_files));
+    pub fn bim_cloud_file(mut self, cloud_file: &CloudFile) -> Self {
+        let cloud_file = cloud_file.clone();
+        self.bim_cloud_file = Some(Some(cloud_file));
         self
     }
 
@@ -1018,11 +1009,10 @@ impl BedCloudBuilder {
 }
 
 impl BedCloud {
-    // cmk should there be new and new_ops?
     #[allow(clippy::doc_link_with_quotes)]
     /// Attempts to open a PLINK .bed file in the cloud for reading. The file is specified with a URL string.
     ///
-    /// See ["Cloud URLs and `CloudFiles` Examples"](supplemental_document_cloud_urls/index.html) for details specifying a file.
+    /// See ["Cloud URLs and `CloudFile` Examples"](supplemental_document_cloud_urls/index.html) for details specifying a file.
     ///
     /// You may give [cloud options](supplemental_document_options/index.html#cloud-options) but not
     /// [`BedCloud` options](supplemental_document_options/index.html#bedbedcloud-options) or
@@ -1031,8 +1021,8 @@ impl BedCloud {
     ///
     /// > Also see [`BedCloud::builder`](struct.BedCloud.html#method.builder), which does support
     /// > `BedCloud` options.
-    /// > Alternatively, you can use [`BedCloud::builder_from_cloud_files`](struct.BedCloud.html#method.builder_from_cloud_files)
-    /// > to specify the cloud file via an [`CloudFiles`](struct.CloudFiles.html). For reading local files,
+    /// > Alternatively, you can use [`BedCloud::builder_from_cloud_file`](struct.BedCloud.html#method.builder_from_cloud_file)
+    /// > to specify the cloud file via an [`CloudFile`](struct.CloudFile.html). For reading local files,
     /// > see [`Bed`](struct.Bed.html).
     ///
     /// # Errors
@@ -1093,8 +1083,8 @@ impl BedCloud {
         K: AsRef<str>,
         V: Into<String>,
     {
-        let cloud_files = CloudFiles::new(url, cloud_options)?;
-        let bed_cloud = BedCloud::from_cloud_files(&cloud_files).await?;
+        let cloud_file = CloudFile::new_with_options(url, cloud_options)?;
+        let bed_cloud = BedCloud::from_cloud_file(&cloud_file).await?;
         Ok(bed_cloud)
     }
 
@@ -1103,13 +1093,13 @@ impl BedCloud {
     /// Supports both [cloud options](supplemental_document_options/index.html#cloud-options) and
     /// [`BedCloud` options](supplemental_document_options/index.html#bedbedcloud-options).
     ///
-    /// See ["Cloud URLs and `CloudFiles` Examples"](supplemental_document_cloud_urls/index.html) for details of specifying a file.
+    /// See ["Cloud URLs and `CloudFile` Examples"](supplemental_document_cloud_urls/index.html) for details of specifying a file.
     /// See ["Options, Options, Options"](supplemental_document_options/index.html) for an overview of options types.
     ///
     /// > Also see [`BedCloud::new`](struct.BedCloud.html#method.url),
     /// > which does not support `BedCloud` options.
-    /// > Alternatively, you can use [`BedCloud::builder_from_cloud_files`](struct.BedCloud.html#method.builder_from_cloud_files)
-    /// > to specify the cloud file via an [`CloudFiles`](struct.CloudFiles.html). For reading local files,
+    /// > Alternatively, you can use [`BedCloud::builder_from_cloud_file`](struct.BedCloud.html#method.builder_from_cloud_file)
+    /// > to specify the cloud file via an [`CloudFile`](struct.CloudFile.html). For reading local files,
     /// > see [`Bed`](struct.Bed.html).
     ///
     /// The `BedCloud` options, [listed here](struct.BedCloudBuilder.html#implementations), can:
@@ -1229,12 +1219,12 @@ impl BedCloud {
 }
 
 impl BedCloud {
-    /// Attempts to open a PLINK .bed file in the cloud for reading. Specify the file with an [`CloudFiles`].
+    /// Attempts to open a PLINK .bed file in the cloud for reading. Specify the file with an [`CloudFile`].
     /// Supports `BedCloud` options.
     ///
-    /// See ["Cloud URLs and `CloudFiles` Examples"](supplemental_document_cloud_urls/index.html) for details of specifying a file.
+    /// See ["Cloud URLs and `CloudFile` Examples"](supplemental_document_cloud_urls/index.html) for details of specifying a file.
     ///
-    /// > Also see [`BedCloud::from_cloud_files`](struct.BedCloud.html#method.from_cloud_files)
+    /// > Also see [`BedCloud::from_cloud_file`](struct.BedCloud.html#method.from_cloud_file)
     /// > which does not support `BedCloud` options.
     /// > Alternatively, you can use [`BedCloud::builder`](struct.BedCloud.html#method.builder)
     /// > to specify the cloud file via a URL string. For reading local files,
@@ -1342,17 +1332,17 @@ impl BedCloud {
     /// ```
     ///
     #[must_use]
-    pub fn builder_from_cloud_files(cloud_files: &CloudFiles) -> BedCloudBuilder {
-        BedCloudBuilder::from(cloud_files)
+    pub fn builder_from_cloud_file(cloud_file: &CloudFile) -> BedCloudBuilder {
+        BedCloudBuilder::from(cloud_file)
     }
 
-    /// Attempts to open a PLINK .bed file in the cloud for reading. Specify the file with an [`CloudFiles`].
+    /// Attempts to open a PLINK .bed file in the cloud for reading. Specify the file with an [`CloudFile`].
     ///
-    /// See ["Cloud URLs and `CloudFiles` Examples"](supplemental_document_cloud_urls/index.html) for details specifying a file.
+    /// See ["Cloud URLs and `CloudFile` Examples"](supplemental_document_cloud_urls/index.html) for details specifying a file.
     ///
     /// You may not give
     /// [`BedCloud` options](supplemental_document_options/index.html#bedbedcloud-options).
-    /// See [`BedCloud::builder_from_cloud_files`](struct.BedCloud.html#method.builder_from_cloud_files), which does support
+    /// See [`BedCloud::builder_from_cloud_file`](struct.BedCloud.html#method.builder_from_cloud_file), which does support
     /// `BedCloud` options.
     ///
     /// > Also see, [`BedCloud::builder`](struct.BedCloud.html#method.builder)
@@ -1407,8 +1397,8 @@ impl BedCloud {
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
-    pub async fn from_cloud_files(cloud_files: &CloudFiles) -> Result<Self, Box<BedErrorPlus>> {
-        BedCloudBuilder::from(cloud_files).build().await
+    pub async fn from_cloud_file(cloud_file: &CloudFile) -> Result<Self, Box<BedErrorPlus>> {
+        BedCloudBuilder::from(cloud_file).build().await
     }
 
     /// Number of individuals (samples)
@@ -1437,8 +1427,8 @@ impl BedCloud {
         if let Some(iid_count) = self.iid_count {
             Ok(iid_count)
         } else {
-            let fam_cloud_files = self.fam_cloud_files()?;
-            let iid_count = fam_cloud_files.line_count().await?;
+            let fam_cloud_file = self.fam_cloud_file()?;
+            let iid_count = fam_cloud_file.line_count().await?;
             self.iid_count = Some(iid_count);
             Ok(iid_count)
         }
@@ -1470,8 +1460,8 @@ impl BedCloud {
         if let Some(sid_count) = self.sid_count {
             Ok(sid_count)
         } else {
-            let bim_cloud_files = self.bim_cloud_files()?;
-            let sid_count = bim_cloud_files.line_count().await?;
+            let bim_cloud_file = self.bim_cloud_file()?;
+            let sid_count = bim_cloud_file.line_count().await?;
             self.sid_count = Some(sid_count);
             Ok(sid_count)
         }
@@ -1890,35 +1880,33 @@ impl BedCloud {
         Ok(self.metadata.clone())
     }
 
-    /// Return the `CloudFiles` of the .bed file.
+    /// Return the `CloudFile` of the .bed file.
     #[must_use]
-    pub fn cloud_files(&self) -> CloudFiles {
-        self.cloud_files.clone()
+    pub fn cloud_file(&self) -> CloudFile {
+        self.cloud_file.clone()
     }
 
     /// Return the cloud location of the .fam file.
-    pub fn fam_cloud_files(&mut self) -> Result<CloudFiles, Box<BedErrorPlus>> {
-        // We need to clone the cloud_files because self might mutate later
-        if let Some(fam_cloud_files) = &self.fam_cloud_files {
-            Ok(fam_cloud_files.clone())
+    pub fn fam_cloud_file(&mut self) -> Result<CloudFile, Box<BedErrorPlus>> {
+        // We need to clone the cloud_file because self might mutate later
+        if let Some(fam_cloud_file) = &self.fam_cloud_file {
+            Ok(fam_cloud_file.clone())
         } else {
-            let fam_cloud_files =
-                to_metadata_path(&self.cloud_files, &self.fam_cloud_files, "fam")?;
-            self.fam_cloud_files = Some(fam_cloud_files.clone());
-            Ok(fam_cloud_files)
+            let fam_cloud_file = to_metadata_path(&self.cloud_file, &self.fam_cloud_file, "fam")?;
+            self.fam_cloud_file = Some(fam_cloud_file.clone());
+            Ok(fam_cloud_file)
         }
     }
 
     /// Return the cloud location of the .bim file.
-    pub fn bim_cloud_files(&mut self) -> Result<CloudFiles, Box<BedErrorPlus>> {
-        // We need to clone the cloud_files because self might mutate later
-        if let Some(bim_cloud_files) = &self.bim_cloud_files {
-            Ok(bim_cloud_files.clone())
+    pub fn bim_cloud_file(&mut self) -> Result<CloudFile, Box<BedErrorPlus>> {
+        // We need to clone the cloud_file because self might mutate later
+        if let Some(bim_cloud_file) = &self.bim_cloud_file {
+            Ok(bim_cloud_file.clone())
         } else {
-            let bim_cloud_files =
-                to_metadata_path(&self.cloud_files, &self.bim_cloud_files, "bim")?;
-            self.bim_cloud_files = Some(bim_cloud_files.clone());
-            Ok(bim_cloud_files)
+            let bim_cloud_file = to_metadata_path(&self.cloud_file, &self.bim_cloud_file, "bim")?;
+            self.bim_cloud_file = Some(bim_cloud_file.clone());
+            Ok(bim_cloud_file)
         }
     }
 
@@ -2033,7 +2021,7 @@ impl BedCloud {
         }
 
         read_no_alloc(
-            &self.cloud_files,
+            &self.cloud_file,
             iid_count,
             sid_count,
             read_options.is_a1_counted,
@@ -2163,11 +2151,11 @@ impl BedCloud {
     }
 
     async fn fam(&mut self) -> Result<(), Box<BedErrorPlus>> {
-        let fam_cloud_files = self.fam_cloud_files()?.clone();
+        let fam_cloud_file = self.fam_cloud_file()?.clone();
 
         let (metadata, count) = self
             .metadata
-            .read_fam_cloud(&fam_cloud_files, &self.skip_set)
+            .read_fam_cloud(&fam_cloud_file, &self.skip_set)
             .await?;
         self.metadata = metadata;
 
@@ -2185,11 +2173,11 @@ impl BedCloud {
     }
 
     async fn bim(&mut self) -> Result<(), Box<BedErrorPlus>> {
-        let bim_cloud_files = self.bim_cloud_files()?.clone();
+        let bim_cloud_file = self.bim_cloud_file()?.clone();
 
         let (metadata, count) = self
             .metadata
-            .read_bim_cloud(&bim_cloud_files, &self.skip_set)
+            .read_bim_cloud(&bim_cloud_file, &self.skip_set)
             .await?;
         self.metadata = metadata;
 
@@ -2208,7 +2196,7 @@ impl BedCloud {
 }
 
 // // cmk remove after no longer needed
-// /// Returns the cloud locations of a .bed file as an [`CloudFiles`](struct.CloudFiles.html).
+// /// Returns the cloud locations of a .bed file as an [`CloudFile`](struct.CloudFile.html).
 // ///
 // /// Behind the scenes, the "cloud location" will actually be local.
 // /// If necessary, the file will be downloaded.
@@ -2217,19 +2205,19 @@ impl BedCloud {
 // /// The files will be in a directory determined by environment variable `BED_READER_DATA_DIR`.
 // /// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
 // #[anyinput]
-// pub fn sample_bed_url(bed_path: AnyPath) -> Result<CloudFiles, Box<BedErrorPlus>> {
+// pub fn sample_bed_url(bed_path: AnyPath) -> Result<CloudFile, Box<BedErrorPlus>> {
 //     let mut path_list: Vec<PathBuf> = Vec::new();
 //     for ext in &["bed", "bim", "fam"] {
 //         let file_path = bed_path.with_extension(ext);
 //         path_list.push(file_path);
 //     }
 
-//     let mut vec = sample_cloud_filess(path_list)?;
+//     let mut vec = sample_cloud_files(path_list)?;
 //     debug_assert!(vec.len() == 3);
 //     Ok(vec.swap_remove(0))
 // }
 
-// /// Returns the cloud locations of a file as an [`CloudFiles`](struct.CloudFiles.html).
+// /// Returns the cloud locations of a file as an [`CloudFile`](struct.CloudFile.html).
 // ///
 // /// Behind the scenes, the "cloud location" will actually be local.
 // /// If necessary, the file will be downloaded.
@@ -2237,21 +2225,21 @@ impl BedCloud {
 // /// The file will be in a directory determined by environment variable `BED_READER_DATA_DIR`.
 // /// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
 // #[anyinput]
-// pub fn sample_cloud_files(path: AnyPath) -> Result<CloudFiles, Box<BedErrorPlus>> {
+// pub fn sample_cloud_file(path: AnyPath) -> Result<CloudFile, Box<BedErrorPlus>> {
 //     let object_store = Arc::new(LocalFileSystem::new());
 
 //     let file_path = STATIC_FETCH_DATA
 //         .fetch_file(path)
 //         .map_err(|e| BedError::SampleFetch(e.to_string()))?;
 //     let store_path = StorePath::from_filesystem_path(file_path)?;
-//     let cloud_files = CloudFiles {
+//     let cloud_file = CloudFile {
 //         arc_object_store: &object_store,
 //         store_path,
 //     };
-//     Ok(cloud_files)
+//     Ok(cloud_file)
 // }
 
-// /// Returns the cloud locations of a list of files as [`CloudFiles`](struct.CloudFiles.html)s.
+// /// Returns the cloud locations of a list of files as [`CloudFile`](struct.CloudFile.html)s.
 // ///
 // /// Behind the scenes, the "cloud location" will actually be local.
 // /// If necessary, the file will be downloaded.
@@ -2259,9 +2247,9 @@ impl BedCloud {
 // /// The files will be in a directory determined by environment variable `BED_READER_DATA_DIR`.
 // /// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
 // #[anyinput]
-// pub fn sample_cloud_filess(
+// pub fn sample_cloud_files(
 //     path_list: AnyIter<AnyPath>,
-// ) -> Result<Vec<CloudFiles>, Box<BedErrorPlus>> {
+// ) -> Result<Vec<CloudFile>, Box<BedErrorPlus>> {
 //     let arc_object_store = Arc::new(LocalFileSystem::new());
 
 //     let file_paths = STATIC_FETCH_DATA
@@ -2271,7 +2259,7 @@ impl BedCloud {
 //         .iter()
 //         .map(|file_path| {
 //             let store_path = StorePath::from_filesystem_path(file_path)?;
-//             Ok(CloudFiles {
+//             Ok(CloudFile {
 //                 arc_object_store: arc_object_store.clone(),
 //                 store_path,
 //             })
@@ -2337,15 +2325,15 @@ pub fn sample_urls(path_list: AnyIter<AnyPath>) -> Result<Vec<String>, Box<BedEr
 }
 
 fn to_metadata_path(
-    bed_cloud_files: &CloudFiles,
-    metadata_cloud_files: &Option<CloudFiles>,
+    bed_cloud_file: &CloudFile,
+    metadata_cloud_file: &Option<CloudFile>,
     extension: &str,
-) -> Result<CloudFiles, Box<BedErrorPlus>> {
-    if let Some(metadata_cloud_files) = metadata_cloud_files {
-        Ok(metadata_cloud_files.clone())
+) -> Result<CloudFile, Box<BedErrorPlus>> {
+    if let Some(metadata_cloud_file) = metadata_cloud_file {
+        Ok(metadata_cloud_file.clone())
     } else {
-        let mut meta_cloud_files = bed_cloud_files.clone();
-        meta_cloud_files.set_extension(extension)?;
-        Ok(meta_cloud_files)
+        let mut meta_cloud_file = bed_cloud_file.clone();
+        meta_cloud_file.set_extension(extension)?;
+        Ok(meta_cloud_file)
     }
 }

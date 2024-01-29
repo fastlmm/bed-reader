@@ -14,11 +14,11 @@ use bed_reader::MetadataFields;
 use bed_reader::ReadOptions;
 use bed_reader::SliceInfo1;
 use bed_reader::{sample_url, sample_urls};
+use cloud_file::abs_path_to_url_string;
+use cloud_file::CloudFile;
+use cloud_file::EMPTY_OPTIONS;
 use ndarray as nd;
 use ndarray::s;
-use cloud_files::abs_path_to_url_string;
-use cloud_files::CloudFiles;
-use cloud_files::EMPTY_OPTIONS;
 use std::collections::HashSet;
 use std::panic::catch_unwind;
 use thousands::Separable;
@@ -237,7 +237,7 @@ async fn bad_header_cloud() -> Result<(), Box<BedErrorPlus>> {
         .build()
         .await?;
 
-    println!("{:?}", bed_cloud.cloud_files());
+    println!("{:?}", bed_cloud.cloud_file());
 
     // Attempt to create a new BedCloud instance and handle the error
     let result = BedCloud::new(&url, EMPTY_OPTIONS).await;
@@ -256,7 +256,7 @@ async fn bad_header_cloud_url() -> Result<(), Box<BedErrorPlus>> {
         .build()
         .await?;
 
-    println!("{:?}", bed_cloud.cloud_files());
+    println!("{:?}", bed_cloud.cloud_file());
 
     // Attempt to create a new BedCloud instance and handle the error
     let result = BedCloud::new(&url, EMPTY_OPTIONS).await;
@@ -1846,13 +1846,13 @@ async fn cloud_metadata_read_fam_bim() -> Result<(), Box<BedErrorPlus>> {
     let skip_set = HashSet::<MetadataFields>::new();
     let metadata_empty = Metadata::new();
     let url = sample_url("small.fam")?;
-    let cloud_files = CloudFiles::new(url, EMPTY_OPTIONS)?;
+    let cloud_file = CloudFile::new(url)?;
     let (metadata_fam, iid_count) = metadata_empty
-        .read_fam_cloud(&cloud_files, &skip_set)
+        .read_fam_cloud(&cloud_file, &skip_set)
         .await?;
     let url = sample_url("small.bim")?;
-    let cloud_files = CloudFiles::new(url, EMPTY_OPTIONS)?;
-    let (metadata_bim, sid_count) = metadata_fam.read_bim_cloud(&cloud_files, &skip_set).await?;
+    let cloud_file = CloudFile::new(url)?;
+    let (metadata_bim, sid_count) = metadata_fam.read_bim_cloud(&cloud_file, &skip_set).await?;
     assert_eq!(iid_count, 3);
     assert_eq!(sid_count, 4);
     println!("{0:?}", metadata_bim.iid()); // Outputs optional ndarray Some(["iid1", "iid2", "iid3"]...)
@@ -1946,8 +1946,8 @@ async fn cloud_metadata_inconsistent_count() -> Result<(), Box<BedErrorPlus>> {
 
     // Metadata: iid vs file
     let metadata = Metadata::builder().iid(["i1", "i2", "i3", "i4"]).build()?;
-    let cloud_files = CloudFiles::new(sample_url("small.fam")?, EMPTY_OPTIONS)?;
-    let result = metadata.read_fam_cloud(&cloud_files, &skip_set).await;
+    let cloud_file = CloudFile::new(sample_url("small.fam")?)?;
+    let result = metadata.read_fam_cloud(&cloud_file, &skip_set).await;
     assert_error_variant!(
         result,
         BedErrorPlus::BedError(BedError::InconsistentCount(_, _, _))
@@ -1966,8 +1966,8 @@ async fn cloud_metadata_inconsistent_count() -> Result<(), Box<BedErrorPlus>> {
 
     // Metadata: file vs file:
     let metadata = Metadata::builder().build()?;
-    let cloud_files = CloudFiles::new(sample_url("small.fam_bad")?, EMPTY_OPTIONS)?;
-    let result = metadata.read_fam_cloud(&cloud_files, &skip_set).await;
+    let cloud_file = CloudFile::new(sample_url("small.fam_bad")?)?;
+    let result = metadata.read_fam_cloud(&cloud_file, &skip_set).await;
     println!("{0:?}", result);
     assert_error_variant!(
         result,
@@ -2012,9 +2012,9 @@ async fn cloud_read_fam() -> Result<(), Box<BedErrorPlus>> {
     let skip_set = HashSet::<MetadataFields>::new();
     let metadata_empty = Metadata::new();
     let fam_url = sample_url("small.fam")?;
-    let fam_cloud_files = CloudFiles::new(fam_url, EMPTY_OPTIONS)?;
+    let fam_cloud_file = CloudFile::new(fam_url)?;
     let (metadata_fam, _) = metadata_empty
-        .read_fam_cloud(&fam_cloud_files, &skip_set)
+        .read_fam_cloud(&fam_cloud_file, &skip_set)
         .await?;
     // metadata_empty.read_fam("bed_reader/tests/data/small.fam", &skip_set)?;
     println!("{:?}", metadata_fam.iid()); // Outputs optional ndarray Some(["iid1", "iid2", "iid3"]...)
@@ -2191,7 +2191,7 @@ fn local_file_url_example() -> Result<(), Box<BedErrorPlus>> {
 }
 
 #[test]
-fn local_file_cloud_files_example() -> Result<(), Box<BedErrorPlus>> {
+fn local_file_cloud_file_example() -> Result<(), Box<BedErrorPlus>> {
     use bed_reader::{sample_bed_file, BedCloud, ReadOptions};
     use ndarray as nd;
     use {assert_eq_nan, bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
@@ -2212,7 +2212,7 @@ fn local_file_cloud_files_example() -> Result<(), Box<BedErrorPlus>> {
 }
 
 #[test]
-fn aws_cloud_files_example() -> Result<(), Box<BedErrorPlus>> {
+fn aws_cloud_file_example() -> Result<(), Box<BedErrorPlus>> {
     use bed_reader::BedCloud;
     use rusoto_credential::{CredentialsError, ProfileProvider, ProvideAwsCredentials};
     use {bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
@@ -2461,15 +2461,15 @@ fn http_cloud_urls_md_3() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn doc_test_cloud_1() -> Result<(), Box<BedErrorPlus>> {
-    use bed_reader::{sample_urls, BedCloud, CloudFiles};
+    use bed_reader::{sample_urls, BedCloud, CloudFile};
 
     let deb_maf_mib = sample_urls(["small.deb", "small.maf", "small.mib"])?
         .iter()
-        .map(|url| CloudFiles::new(url, EMPTY_OPTIONS))
-        .collect::<Result<Vec<CloudFiles>, _>>()?;
-    let mut bed_cloud = BedCloud::builder_from_cloud_files(&deb_maf_mib[0])
-        .fam_cloud_files(&deb_maf_mib[1])
-        .bim_cloud_files(&deb_maf_mib[2])
+        .map(CloudFile::new)
+        .collect::<Result<Vec<CloudFile>, _>>()?;
+    let mut bed_cloud = BedCloud::builder_from_cloud_file(&deb_maf_mib[0])
+        .fam_cloud_file(&deb_maf_mib[1])
+        .bim_cloud_file(&deb_maf_mib[2])
         .build()
         .await?;
     println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray ["iid1", "iid2", "iid3"]

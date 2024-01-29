@@ -1,6 +1,6 @@
 #![cfg(feature = "extension-module")]
 
-use crate::{BedCloud, CloudFiles};
+use crate::{BedCloud, CloudFile};
 use crate::{
     BedError, BedErrorPlus, Dist, _file_ata_piece_internal, create_pool, file_aat_piece,
     file_ata_piece, file_b_less_aatbx, impute_and_zero_mean_snps, matrix_subset_no_alloc,
@@ -48,15 +48,11 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     #[pyfn(m)]
     fn url_to_bytes(location: &str, options: HashMap<&str, String>) -> Result<Vec<u8>, PyErr> {
-        let cloud_files = CloudFiles::new(location, options)
-            .map_err(|e| Box::new(BedErrorPlus::CloudFilesError(e)))?;
+        let cloud_file = CloudFile::new_with_options(location, options)
+            .map_err(|e| Box::new(BedErrorPlus::CloudFileError(e)))?;
         let rt = runtime::Runtime::new()?;
         rt.block_on(async {
-            let get_result = cloud_files
-                .get()
-                .await
-                .map_err(|e| Box::new(BedErrorPlus::CloudFilesError(e)))?;
-            let bytes = get_result.bytes().await.map_err(|e| {
+            let bytes = cloud_file.bytes().await.map_err(|e| {
                 PyErr::new::<PyValueError, _>(format!(
                     "Error retrieving bytes for '{location}: {e}"
                 ))

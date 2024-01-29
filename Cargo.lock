@@ -154,7 +154,7 @@ dependencies = [
  "bytecount",
  "byteorder",
  "bytes",
- "cloud-files",
+ "cloud-file",
  "derive_builder",
  "dpc-pariter",
  "fetch-data",
@@ -277,8 +277,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "cloud-files"
-version = "0.1.0"
+name = "cloud-file"
+version = "0.1.0-beta.1"
 dependencies = [
  "bytecount",
  "bytes",

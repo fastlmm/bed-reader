@@ -118,20 +118,18 @@ use anyinput::anyinput;
 #[cfg(feature = "cloud")]
 pub use bed_cloud::{sample_bed_url, sample_url, sample_urls, BedCloud, BedCloudBuilder};
 use byteorder::{LittleEndian, ReadBytesExt};
+pub use cloud_file::abs_path_to_url_string;
+pub use cloud_file::EMPTY_OPTIONS;
+pub use cloud_file::{CloudFile, CloudFileError};
 use core::fmt::Debug;
 use derive_builder::Builder;
 use dpc_pariter::{scope, IteratorExt};
 use fetch_data::FetchData;
 #[cfg(feature = "cloud")]
-use futures_util::{pin_mut, StreamExt};
+use futures_util::StreamExt;
 use nd::ShapeBuilder;
 use ndarray as nd;
 use num_traits::{abs, Float, FromPrimitive, Signed, ToPrimitive};
-pub use cloud_files::abs_path_to_url_string;
-pub use cloud_files::EMPTY_OPTIONS;
-pub use cloud_files::{CloudFiles, CloudFilesError};
-#[cfg(feature = "cloud")] // cmk need more of these
-use object_store::delimited::newline_delimited_stream;
 use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
 use rayon::{iter::ParallelBridge, ThreadPoolBuildError};
 use statrs::distribution::{Beta, Continuous};
@@ -199,7 +197,7 @@ pub enum BedErrorPlus {
     #[cfg(feature = "cloud")]
     #[allow(missing_docs)]
     #[error(transparent)]
-    CloudFilesError(#[from] CloudFilesError),
+    CloudFileError(#[from] CloudFileError),
 
     #[cfg(feature = "cloud")]
     #[allow(missing_docs)]
@@ -464,9 +462,9 @@ impl From<::derive_builder::UninitializedFieldError> for BedErrorPlus {
 }
 
 #[cfg(feature = "cloud")]
-impl From<CloudFilesError> for Box<BedErrorPlus> {
-    fn from(err: CloudFilesError) -> Self {
-        Box::new(BedErrorPlus::CloudFilesError(err))
+impl From<CloudFileError> for Box<BedErrorPlus> {
+    fn from(err: CloudFileError) -> Self {
+        Box::new(BedErrorPlus::CloudFileError(err))
     }
 }
 
@@ -6437,17 +6435,17 @@ impl Metadata {
     /// ```
     /// use ndarray as nd;
     /// use std::collections::HashSet;
-    /// use bed_reader::{Metadata, MetadataFields, sample_url, CloudFiles, EMPTY_OPTIONS};
+    /// use bed_reader::{Metadata, MetadataFields, sample_url, CloudFile, EMPTY_OPTIONS};
     ///
     /// # Runtime::new().unwrap().block_on(async {
     /// let skip_set = HashSet::<MetadataFields>::new();
-    /// let fam_cloud_files = CloudFiles::new(sample_url("small.fam")?, EMPTY_OPTIONS)?;
-    /// let bim_cloud_files = CloudFiles::new(sample_url("small.bim")?, EMPTY_OPTIONS)?;
+    /// let fam_cloud_file = CloudFile::new(sample_url("small.fam")?, EMPTY_OPTIONS)?;
+    /// let bim_cloud_file = CloudFile::new(sample_url("small.bim")?, EMPTY_OPTIONS)?;
     /// let metadata_empty = Metadata::new();
     /// let (metadata_fam, iid_count) =
-    ///     metadata_empty.read_fam_cloud(&fam_cloud_files, &skip_set).await?;
+    ///     metadata_empty.read_fam_cloud(&fam_cloud_file, &skip_set).await?;
     /// let (metadata_bim, sid_count) =
-    ///     metadata_fam.read_bim_cloud(&bim_cloud_files, &skip_set).await?;
+    ///     metadata_fam.read_bim_cloud(&bim_cloud_file, &skip_set).await?;
     /// assert_eq!(iid_count, 3);
     /// assert_eq!(sid_count, 4);
     /// println!("{0:?}", metadata_fam.iid()); // Outputs optional ndarray Some(["iid1", "iid2", "iid3"]...)
@@ -6459,7 +6457,7 @@ impl Metadata {
     #[cfg(feature = "cloud")]
     pub async fn read_fam_cloud(
         &self,
-        cloud_files: &CloudFiles,
+        cloud_file: &CloudFile,
         skip_set: &HashSet<MetadataFields>,
     ) -> Result<(Metadata, usize), Box<BedErrorPlus>> {
         let mut field_vec: Vec<usize> = Vec::new();
@@ -6484,7 +6482,7 @@ impl Metadata {
         }
 
         let (mut vec_of_vec, count) = self
-            .read_fam_or_bim_cloud(&field_vec, true, cloud_files)
+            .read_fam_or_bim_cloud(&field_vec, true, cloud_file)
             .await?;
 
         let mut clone = self.clone();
@@ -6620,17 +6618,17 @@ impl Metadata {
     /// ```
     /// use ndarray as nd;
     /// use std::collections::HashSet;
-    /// use bed_reader::{Metadata, MetadataFields, sample_url, CloudFiles, EMPTY_OPTIONS};
+    /// use bed_reader::{Metadata, MetadataFields, sample_url, CloudFile, EMPTY_OPTIONS};
     ///
     /// # Runtime::new().unwrap().block_on(async {
     /// let skip_set = HashSet::<MetadataFields>::new();
-    /// let fam_cloud_files = CloudFiles::new(sample_url("small.fam")?, EMPTY_OPTIONS)?;
-    /// let bim_cloud_files = CloudFiles::new(sample_url("small.bim")?, EMPTY_OPTIONS)?;
+    /// let fam_cloud_file = CloudFile::new(sample_url("small.fam")?, EMPTY_OPTIONS)?;
+    /// let bim_cloud_file = CloudFile::new(sample_url("small.bim")?, EMPTY_OPTIONS)?;
     /// let metadata_empty = Metadata::new();
     /// let (metadata_fam, iid_count) =
-    ///     metadata_empty.read_fam_cloud(&fam_cloud_files, &skip_set).await?;
+    ///     metadata_empty.read_fam_cloud(&fam_cloud_file, &skip_set).await?;
     /// let (metadata_bim, sid_count) =
-    ///     metadata_fam.read_bim_cloud(&bim_cloud_files, &skip_set).await?;
+    ///     metadata_fam.read_bim_cloud(&bim_cloud_file, &skip_set).await?;
     /// assert_eq!(iid_count, 3);
     /// assert_eq!(sid_count, 4);
     /// println!("{0:?}", metadata_fam.iid()); // Outputs optional ndarray Some(["iid1", "iid2", "iid3"]...)
@@ -6642,7 +6640,7 @@ impl Metadata {
     #[cfg(feature = "cloud")]
     pub async fn read_bim_cloud(
         &self,
-        cloud_files: &CloudFiles,
+        cloud_file: &CloudFile,
         skip_set: &HashSet<MetadataFields>,
     ) -> Result<(Metadata, usize), Box<BedErrorPlus>> {
         let mut field_vec: Vec<usize> = Vec::new();
@@ -6668,7 +6666,7 @@ impl Metadata {
 
         let mut clone = self.clone();
         let (mut vec_of_vec, count) = self
-            .read_fam_or_bim_cloud(&field_vec, false, cloud_files)
+            .read_fam_or_bim_cloud(&field_vec, false, cloud_file)
             .await?;
 
         // unwraps are safe because we pop once for every push
@@ -6754,17 +6752,14 @@ impl Metadata {
         &self,
         field_vec: &[usize],
         is_split_whitespace: bool,
-        cloud_files: &CloudFiles,
+        cloud_file: &CloudFile,
     ) -> Result<(Vec<Vec<String>>, usize), Box<BedErrorPlus>> {
         let mut vec_of_vec = vec![vec![]; field_vec.len()];
         let mut count = 0;
 
-        let stream = cloud_files.get().await?.into_stream();
-        let line_chunk_stream = newline_delimited_stream(stream);
-        pin_mut!(line_chunk_stream);
-
+        let mut line_chunk_stream = cloud_file.line_chunks().await?;
         while let Some(line_chunk) = line_chunk_stream.next().await {
-            let line_chunk = line_chunk.map_err(CloudFilesError::ObjectStoreError)?;
+            let line_chunk = line_chunk.map_err(CloudFileError::ObjectStoreError)?;
             let lines = std::str::from_utf8(&line_chunk)?.split_terminator('\n');
             for line in lines {
                 count += 1; // cmk do the iterator trick here
@@ -6779,7 +6774,7 @@ impl Metadata {
                     Err(BedError::MetadataFieldCount(
                         6,
                         fields.len(),
-                        cloud_files.to_string(),
+                        cloud_file.to_string(),
                     ))?;
                 }
 
