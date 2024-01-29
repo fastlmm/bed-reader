@@ -28,7 +28,7 @@ crate-type = ["cdylib", "rlib"]
 [features]
 extension-module = ["pyo3/extension-module", "pyo3-asyncio", "cloud"]
 cloud = [
-    "cloud-file", # cmk does this imply object_store?
+    "cloud-file",
     "object_store",
     "pyo3-asyncio",
     "tokio/full",

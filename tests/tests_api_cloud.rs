@@ -525,7 +525,7 @@ async fn max_concurrent_requests() -> Result<(), Box<BedErrorPlus>> {
     // Read data with specified number of threads (or equivalent parallel processing setting)
     let val = ReadOptions::builder()
         .max_concurrent_requests(1)
-        .max_chunk_size(1_000_000)
+        .max_chunk_bytes(1_000_000)
         .i8()
         .read_cloud(&mut bed_cloud)
         .await?;
@@ -2429,7 +2429,7 @@ fn http_cloud_urls_md_3() -> Result<(), Box<BedErrorPlus>> {
     Ok::<(), Box<BedErrorPlus>>(())
 }
 
-// cmk removed this test because it is too slow
+// NOTE: removed this test because it is too slow
 // #[tokio::test]
 // async fn http_cloud_column_speed_test() -> Result<(), Box<dyn std::error::Error>> {
 //     let mut bed_cloud = BedCloud::builder(

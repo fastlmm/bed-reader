@@ -71,7 +71,7 @@
 //! | [`is_a1_counted`](struct.ReadOptionsBuilder.html#method.is_a1_counted) | Is allele 1 counted? (defaults to true) |
 //! | [`num_threads`](struct.ReadOptionsBuilder.html#method.num_threads) | Number of threads to use (defaults to all processors) |
 //! | [`max_concurrent_requests`](struct.ReadOptionsBuilder.html#method.max_concurrent_requests) | Maximum number of concurrent async requests (defaults to 10) -- Used by [`BedCloud`](struct.BedCloud.html). |
-//! | [`max_chunk_size`](struct.ReadOptionsBuilder.html#method.max_chunk_size) | Maximum chunk size of async requests (defaults to 8_000_000 bytes) -- Used by [`BedCloud`](struct.BedCloud.html). |
+//! | [`max_chunk_bytes`](struct.ReadOptionsBuilder.html#method.max_chunk_bytes) | Maximum chunk size of async requests (defaults to 8_000_000 bytes) -- Used by [`BedCloud`](struct.BedCloud.html). |
 //!
 //! ### [`Index`](enum.Index.html) Expressions
 //!
@@ -3161,11 +3161,11 @@ fn compute_max_concurrent_requests(
 
 #[allow(clippy::unnecessary_wraps)]
 #[cfg(feature = "cloud")]
-fn compute_max_chunk_size(
-    option_max_chunk_size: Option<usize>,
+fn compute_max_chunk_bytes(
+    option_max_chunk_bytes: Option<usize>,
 ) -> Result<usize, Box<BedErrorPlus>> {
-    let max_chunk_size = if let Some(max_chunk_size) = option_max_chunk_size {
-        max_chunk_size
+    let max_chunk_bytes = if let Some(max_chunk_bytes) = option_max_chunk_bytes {
+        max_chunk_bytes
     // } else if let Ok(num_threads) = env::var("BED_READER_NUM_THREADS") {
     //     num_threads.parse::<usize>()?
     // } else if let Ok(num_threads) = env::var("NUM_THREADS") {
@@ -3173,8 +3173,8 @@ fn compute_max_chunk_size(
     } else {
         8_000_000
     };
-    Ok(max_chunk_size)
-} // cmk rename max_chunk_bytes?
+    Ok(max_chunk_bytes)
+}
 
 impl Index {
     // We can't define a 'From' because we want to add count at the last moment.
@@ -4033,7 +4033,7 @@ pub struct ReadOptions<TVal: BedVal> {
     /// # Runtime::new().unwrap().block_on(async {
     /// let url = sample_bed_url("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(&url, EMPTY_OPTIONS).await?;
-    /// let val = ReadOptions::builder().max_chunk_size(1_000_000).i8().read_cloud(&mut bed_cloud).await?;
+    /// let val = ReadOptions::builder().max_chunk_bytes(1_000_000).i8().read_cloud(&mut bed_cloud).await?;
     ///
     /// assert_eq_nan(
     ///     &val,
@@ -4047,7 +4047,7 @@ pub struct ReadOptions<TVal: BedVal> {
     /// ```
     #[builder(default, setter(strip_option))]
     #[allow(dead_code)]
-    max_chunk_size: Option<usize>,
+    max_chunk_bytes: Option<usize>,
 }
 
 impl<TVal: BedVal> ReadOptions<TVal> {
@@ -6762,7 +6762,7 @@ impl Metadata {
             let line_chunk = line_chunk.map_err(CloudFileError::ObjectStoreError)?;
             let lines = std::str::from_utf8(&line_chunk)?.split_terminator('\n');
             for line in lines {
-                count += 1; // cmk do the iterator trick here
+                count += 1;
 
                 let fields: Vec<&str> = if is_split_whitespace {
                     line.split_whitespace().collect()

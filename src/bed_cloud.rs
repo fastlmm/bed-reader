@@ -15,7 +15,7 @@ use std::ops::Range;
 use std::path::PathBuf;
 
 use crate::{
-    check_and_precompute_iid_index, compute_max_chunk_size, compute_max_concurrent_requests,
+    check_and_precompute_iid_index, compute_max_chunk_bytes, compute_max_concurrent_requests,
     set_up_two_bits_to_value, try_div_4, BedError, BedErrorPlus, BedVal, FromStringArray, Hold,
     Metadata, ReadOptions, BED_FILE_MAGIC1, BED_FILE_MAGIC2, STATIC_FETCH_DATA,
 };
@@ -158,7 +158,7 @@ async fn internal_read_no_alloc<TVal: BedVal>(
     sid_index: &[isize],
     missing_value: TVal,
     max_concurrent_requests: usize,
-    max_chunk_size: usize,
+    max_chunk_bytes: usize,
     out_val: &mut nd::ArrayViewMut2<'_, TVal>,
 ) -> Result<(), Box<BedErrorPlus>> {
     // compute numbers outside of the loop
@@ -168,7 +168,7 @@ async fn internal_read_no_alloc<TVal: BedVal>(
     if i_div_4_len == 0 {
         return Ok(()); // we must return early because the chucks method doesn't work with size 0
     }
-    let chunk_count = max(1, max_chunk_size / i_div_4_len as usize);
+    let chunk_count = max(1, max_chunk_bytes / i_div_4_len as usize);
     let from_two_bits_to_value = set_up_two_bits_to_value(is_a1_counted, missing_value);
     let lower_sid_count = -(in_sid_count as isize);
     let upper_sid_count: isize = (in_sid_count as isize) - 1;
@@ -298,7 +298,7 @@ async fn read_no_alloc<TVal: BedVal>(
     sid_index: &[isize],
     missing_value: TVal,
     max_concurrent_requests: usize,
-    max_chunk_size: usize,
+    max_chunk_bytes: usize,
 
     val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
 ) -> Result<(), Box<BedErrorPlus>> {
@@ -319,7 +319,7 @@ async fn read_no_alloc<TVal: BedVal>(
                 iid_index,
                 missing_value,
                 max_concurrent_requests,
-                max_chunk_size,
+                max_chunk_bytes,
                 &mut val_t,
             )
             .await?;
@@ -335,7 +335,7 @@ async fn read_no_alloc<TVal: BedVal>(
                 sid_index,
                 missing_value,
                 max_concurrent_requests,
-                max_chunk_size,
+                max_chunk_bytes,
                 val,
             )
             .await?;
@@ -2002,7 +2002,7 @@ impl BedCloud {
         let max_concurrent_requests =
             compute_max_concurrent_requests(read_options.max_concurrent_requests)?;
 
-        let max_chunk_size = compute_max_chunk_size(read_options.max_chunk_size)?;
+        let max_chunk_bytes = compute_max_chunk_bytes(read_options.max_chunk_bytes)?;
 
         // If we already have a Vec<isize>, reference it. If we don't, create one and reference it.
         let iid_hold = Hold::new(&read_options.iid_index, iid_count)?;
@@ -2029,7 +2029,7 @@ impl BedCloud {
             sid_index,
             read_options.missing_value,
             max_concurrent_requests,
-            max_chunk_size,
+            max_chunk_bytes,
             &mut val.view_mut(),
         )
         .await
@@ -2194,78 +2194,6 @@ impl BedCloud {
         Ok(())
     }
 }
-
-// // cmk remove after no longer needed
-// /// Returns the cloud locations of a .bed file as an [`CloudFile`](struct.CloudFile.html).
-// ///
-// /// Behind the scenes, the "cloud location" will actually be local.
-// /// If necessary, the file will be downloaded.
-// /// The .fam and .bim files will also be downloaded, if they are not already present.
-// /// SHA256 hashes are used to verify that the files are correct.
-// /// The files will be in a directory determined by environment variable `BED_READER_DATA_DIR`.
-// /// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
-// #[anyinput]
-// pub fn sample_bed_url(bed_path: AnyPath) -> Result<CloudFile, Box<BedErrorPlus>> {
-//     let mut path_list: Vec<PathBuf> = Vec::new();
-//     for ext in &["bed", "bim", "fam"] {
-//         let file_path = bed_path.with_extension(ext);
-//         path_list.push(file_path);
-//     }
-
-//     let mut vec = sample_cloud_files(path_list)?;
-//     debug_assert!(vec.len() == 3);
-//     Ok(vec.swap_remove(0))
-// }
-
-// /// Returns the cloud locations of a file as an [`CloudFile`](struct.CloudFile.html).
-// ///
-// /// Behind the scenes, the "cloud location" will actually be local.
-// /// If necessary, the file will be downloaded.
-// /// A SHA256 hash is used to verify that the file is correct.
-// /// The file will be in a directory determined by environment variable `BED_READER_DATA_DIR`.
-// /// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
-// #[anyinput]
-// pub fn sample_cloud_file(path: AnyPath) -> Result<CloudFile, Box<BedErrorPlus>> {
-//     let object_store = Arc::new(LocalFileSystem::new());
-
-//     let file_path = STATIC_FETCH_DATA
-//         .fetch_file(path)
-//         .map_err(|e| BedError::SampleFetch(e.to_string()))?;
-//     let store_path = StorePath::from_filesystem_path(file_path)?;
-//     let cloud_file = CloudFile {
-//         arc_object_store: &object_store,
-//         store_path,
-//     };
-//     Ok(cloud_file)
-// }
-
-// /// Returns the cloud locations of a list of files as [`CloudFile`](struct.CloudFile.html)s.
-// ///
-// /// Behind the scenes, the "cloud location" will actually be local.
-// /// If necessary, the file will be downloaded.
-// /// SHA256 hashes are used to verify that the files are correct.
-// /// The files will be in a directory determined by environment variable `BED_READER_DATA_DIR`.
-// /// If that environment variable is not set, a cache folder, appropriate to the OS, will be used.
-// #[anyinput]
-// pub fn sample_cloud_files(
-//     path_list: AnyIter<AnyPath>,
-// ) -> Result<Vec<CloudFile>, Box<BedErrorPlus>> {
-//     let arc_object_store = Arc::new(LocalFileSystem::new());
-
-//     let file_paths = STATIC_FETCH_DATA
-//         .fetch_files(path_list)
-//         .map_err(|e| BedError::SampleFetch(e.to_string()))?;
-//     file_paths
-//         .iter()
-//         .map(|file_path| {
-//             let store_path = StorePath::from_filesystem_path(file_path)?;
-//             Ok(CloudFile {
-//                 arc_object_store: arc_object_store.clone(),
-//                 store_path,
-//             })
-//         })
-//         .collect()
-// }
 
 /// Returns the cloud location of a sample .bed file as a URL string.
 ///
