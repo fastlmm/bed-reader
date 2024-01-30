@@ -118,9 +118,8 @@ use anyinput::anyinput;
 #[cfg(feature = "cloud")]
 pub use bed_cloud::{sample_bed_url, sample_url, sample_urls, BedCloud, BedCloudBuilder};
 use byteorder::{LittleEndian, ReadBytesExt};
-pub use cloud_file::abs_path_to_url_string;
-pub use cloud_file::EMPTY_OPTIONS;
-pub use cloud_file::{CloudFile, CloudFileError};
+#[cfg(feature = "cloud")]
+pub use cloud_file::{CloudFile, CloudFileError, EMPTY_OPTIONS};
 use core::fmt::Debug;
 use derive_builder::Builder;
 use dpc_pariter::{scope, IteratorExt};
