@@ -130,7 +130,8 @@ function to do this encoding. When it was the url to `BedCloud`,  no cloud optio
 
 ```rust
 use ndarray as nd;
-use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_file, EMPTY_OPTIONS, abs_path_to_url_string};
+use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_file, EMPTY_OPTIONS};
+use cloud_file::abs_path_to_url_string;
 # use {bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
 # Runtime::new().unwrap().block_on(async {
 

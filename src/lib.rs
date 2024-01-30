@@ -6434,12 +6434,12 @@ impl Metadata {
     /// ```
     /// use ndarray as nd;
     /// use std::collections::HashSet;
-    /// use bed_reader::{Metadata, MetadataFields, sample_url, CloudFile, EMPTY_OPTIONS};
+    /// use bed_reader::{Metadata, MetadataFields, sample_url, CloudFile};
     ///
     /// # Runtime::new().unwrap().block_on(async {
     /// let skip_set = HashSet::<MetadataFields>::new();
-    /// let fam_cloud_file = CloudFile::new(sample_url("small.fam")?, EMPTY_OPTIONS)?;
-    /// let bim_cloud_file = CloudFile::new(sample_url("small.bim")?, EMPTY_OPTIONS)?;
+    /// let fam_cloud_file = CloudFile::new(sample_url("small.fam")?)?;
+    /// let bim_cloud_file = CloudFile::new(sample_url("small.bim")?)?;
     /// let metadata_empty = Metadata::new();
     /// let (metadata_fam, iid_count) =
     ///     metadata_empty.read_fam_cloud(&fam_cloud_file, &skip_set).await?;
@@ -6621,8 +6621,8 @@ impl Metadata {
     ///
     /// # Runtime::new().unwrap().block_on(async {
     /// let skip_set = HashSet::<MetadataFields>::new();
-    /// let fam_cloud_file = CloudFile::new(sample_url("small.fam")?, EMPTY_OPTIONS)?;
-    /// let bim_cloud_file = CloudFile::new(sample_url("small.bim")?, EMPTY_OPTIONS)?;
+    /// let fam_cloud_file = CloudFile::new(sample_url("small.fam")?)?;
+    /// let bim_cloud_file = CloudFile::new(sample_url("small.bim")?)?;
     /// let metadata_empty = Metadata::new();
     /// let (metadata_fam, iid_count) =
     ///     metadata_empty.read_fam_cloud(&fam_cloud_file, &skip_set).await?;
