@@ -34,10 +34,8 @@ use bed_reader::{BedCloud, EMPTY_OPTIONS};
 
 # use {bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
 # Runtime::new().unwrap().block_on(async {
-let mut bed_cloud = BedCloud::new(
-    "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed",
-    EMPTY_OPTIONS,
-).await?;
+let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
+let mut bed_cloud = BedCloud::new(url).await?;
 let val: nd::Array2<f32> = bed_cloud.read().await?;
 let missing_count = val.iter().filter(|x| x.is_nan()).count();
 let missing_fraction = missing_count as f32 / val.len() as f32;
@@ -140,7 +138,7 @@ println!("{file_name:?}"); // For example, "C:\\Users\\carlk\\AppData\\Local\\fa
 let url: String = abs_path_to_url_string(file_name)?;
 println!("{url:?}"); // For example, "file:///C:/Users/carlk/AppData/Local/bed_reader/bed_reader/Cache/small.bed"
 
-let mut bed_cloud = BedCloud::new(url, EMPTY_OPTIONS).await?;
+let mut bed_cloud = BedCloud::new(url).await?;
 let val = ReadOptions::builder().sid_index(2).f64().read_cloud(&mut bed_cloud).await?;
 assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
 # Ok::<(), Box<dyn std::error::Error>>(())
@@ -190,7 +188,7 @@ let options = [
     ("aws_secret_access_key", credentials.aws_secret_access_key()),
 ];
 
-let mut bed_cloud = BedCloud::new(url, options).await?;
+let mut bed_cloud = BedCloud::new_with_options(url, options).await?;
 let val = bed_cloud.read::<i8>().await?;
 assert_eq!(val.shape(), &[500, 10_000]);
 # Ok::<(), Box<BedErrorPlus>>(()) }); Ok::<(), Box<BedErrorPlus>>(())

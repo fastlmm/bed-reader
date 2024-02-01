@@ -6,7 +6,7 @@ repository = "https://github.com/fastlmm/bed-reader"
 readme = "README-rust.md"
 documentation = "https://docs.rs/bed-reader/latest/bed_reader/"
 authors = ["FaST-LMM Team <fastlmm-dev@python.org>"]
-license = "Apache-2.0"
+license = "Apache-2.0" # toml-ignore
 keywords = ["bioinformatics", "plink", "genomics", "genotype", "snps"]
 categories = ["science"]
 edition = "2021"
@@ -26,17 +26,17 @@ crate-type = ["cdylib", "rlib"]
 # https://github.com/PyO3/pyo3/discussions/2271
 # https://pyo3.rs/latest/faq.html#i-cant-run-cargo-test-or-i-cant-build-in-a-cargo-workspace-im-having-linker-issues-like-symbol-not-found-or-undefined-reference-to-_pyexc_systemerror
 [features]
-extension-module = ["pyo3/extension-module", "pyo3-asyncio", "cloud"]
+extension-module = ["pyo3/extension-module", "pyo3-asyncio", "cloud", "tokio/full"]
 cloud = [
     "cloud-file",
     "object_store",
-    "pyo3-asyncio",
-    "tokio/full",
-    "futures-util",
-    "bytecount",
     "itertools",
+    "futures-util",
     "bytes",
-    "url"
+    # "pyo3-asyncio",
+    # "tokio/full",
+    # "bytecount",
+    # "url"
 ]
 default = ["cloud", "extension-module"] # remove extension-module from default
 
@@ -65,7 +65,8 @@ bytecount = { version = "0.6.7", optional = true }
 itertools = { version = "0.12.0", optional = true }
 bytes = { version = "1.5.0", optional = true }
 url = { version = "2.5.0", optional = true }
-cloud-file = { version = "0.1.0-beta.2", optional = true }
+# cmk cloud-file = { version = "0.1.0-beta.2", optional = true }
+cloud-file = {path="../cloud-file", optional = true}
 
 [dev-dependencies]
 ndarray-rand = "0.14.0"

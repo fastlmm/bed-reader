@@ -21,7 +21,7 @@
 //! | Function | Description |
 //! | -------- | ----------- |
 //! | [`Bed::new`](struct.Bed.html#method.new) or [`Bed::builder`](struct.Bed.html#method.builder) | Open a local PLINK .bed file for reading genotype data and metadata. |
-//! | [`BedCloud::new`](struct.BedCloud.html#method.new) or [`BedCloud::builder`](struct.BedCloud.html#method.builder) | Open a cloud PLINK .bed file for reading genotype data and metadata. |
+//! | [`BedCloud::new`](struct.BedCloud.html#method.new), `BedCloud::new_with_options`](struct.BedCloud.html#method.new_with_options) or [`BedCloud::builder`](struct.BedCloud.html#method.builder) | Open a cloud PLINK .bed file for reading genotype data and metadata. |
 //! | [`ReadOptions::builder`](struct.ReadOptions.html#method.builder) | Read genotype data from a local or cloud file. Supports indexing and options. |
 //! | [`WriteOptions::builder`](struct.WriteOptions.html#method.builder) | Write values to a local file in PLINK .bed format. Supports metadata and options. |
 //!
@@ -198,11 +198,10 @@ pub enum BedErrorPlus {
     #[error(transparent)]
     CloudFileError(#[from] CloudFileError),
 
-    #[cfg(feature = "cloud")]
-    #[allow(missing_docs)]
-    #[error(transparent)]
-    JoinError(#[from] tokio::task::JoinError),
-
+    // #[cfg(feature = "cloud")]
+    // #[allow(missing_docs)]
+    // #[error(transparent)]
+    // JoinError(#[from] tokio::task::JoinError),
     #[allow(missing_docs)]
     #[error(transparent)]
     Utf8Error(#[from] Utf8Error),
@@ -4001,7 +4000,7 @@ pub struct ReadOptions<TVal: BedVal> {
     ///
     /// # Runtime::new().unwrap().block_on(async {
     /// let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(&url, EMPTY_OPTIONS).await?;
+    /// let mut bed_cloud = BedCloud::new(&url).await?;
     /// let val = ReadOptions::builder().max_concurrent_requests(1).i8().read_cloud(&mut bed_cloud).await?;
     ///
     /// assert_eq_nan(
@@ -4031,7 +4030,7 @@ pub struct ReadOptions<TVal: BedVal> {
     ///
     /// # Runtime::new().unwrap().block_on(async {
     /// let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(&url, EMPTY_OPTIONS).await?;
+    /// let mut bed_cloud = BedCloud::new(&url).await?;
     /// let val = ReadOptions::builder().max_chunk_bytes(1_000_000).i8().read_cloud(&mut bed_cloud).await?;
     ///
     /// assert_eq_nan(
@@ -4337,7 +4336,7 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     /// # Runtime::new().unwrap().block_on(async {
     /// // Read the SNPs indexed by 2.
     /// let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(&url, EMPTY_OPTIONS).await?;
+    /// let mut bed_cloud = BedCloud::new(&url).await?;
     /// let mut val = ReadOptions::builder()
     ///     .sid_index(2)
     ///     .read_cloud(&mut bed_cloud).await?;
@@ -4419,7 +4418,7 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     /// # Runtime::new().unwrap().block_on(async {
     /// // Read the SNPs indexed by 2.
     /// let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(&url, EMPTY_OPTIONS).await?;
+    /// let mut bed_cloud = BedCloud::new(&url).await?;
     /// let mut val = nd::Array2::<f64>::default((3, 1));
     /// ReadOptions::builder()
     ///     .sid_index(2)
@@ -6759,7 +6758,7 @@ impl Metadata {
         let mut line_chunks = cloud_file.stream_line_chunks().await?;
         while let Some(line_chunk) = line_chunks.next().await {
             let line_chunk = line_chunk.map_err(CloudFileError::ObjectStoreError)?;
-            let lines = std::str::from_utf8(&line_chunk)?.split_terminator('\n');
+            let lines = std::str::from_utf8(&line_chunk)?.lines();
             for line in lines {
                 count += 1;
 

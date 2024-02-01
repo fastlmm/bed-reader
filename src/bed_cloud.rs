@@ -39,7 +39,7 @@ use crate::{MetadataFields, CB_HEADER_U64};
 ///
 /// # Runtime::new().unwrap().block_on(async {
 /// let url = sample_bed_url("small.bed")?;
-/// let mut bed_cloud = BedCloud::new(url, EMPTY_OPTIONS).await?;
+/// let mut bed_cloud = BedCloud::new(url).await?;
 /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray ["iid1", "iid2", "iid3"]
 /// let val = ReadOptions::builder().f64().read_cloud(&mut bed_cloud).await?;
 ///
@@ -349,7 +349,11 @@ async fn open_and_check(cloud_file: &CloudFile) -> Result<(usize, Bytes), Box<Be
     let (bytes, size) = cloud_file
         .read_range_and_file_size(0..CB_HEADER_U64 as usize)
         .await?;
-    if (BED_FILE_MAGIC1 != bytes[0]) || (BED_FILE_MAGIC2 != bytes[1]) {
+    if (bytes.len() as u64) < CB_HEADER_U64
+        || BED_FILE_MAGIC1 != bytes[0]
+        || BED_FILE_MAGIC2 != bytes[1]
+        || (0 != bytes[2] && 1 != bytes[2])
+    {
         Err(BedError::IllFormed(cloud_file.to_string()))?;
     }
     Ok((size, bytes))
@@ -772,7 +776,7 @@ impl BedCloudBuilder {
     ///
     /// let deb_maf_mib = sample_urls(["small.deb", "small.maf", "small.mib"])?
     ///    .iter()
-    ///    .map(|url| CloudFile::new(url, EMPTY_OPTIONS))
+    ///    .map(|url| CloudFile::new(url))
     ///    .collect::<Result<Vec<CloudFile>, _>>()?;
     /// let mut bed_cloud = BedCloud::builder_from_cloud_file(&deb_maf_mib[0])
     ///    .fam_cloud_file(&deb_maf_mib[1])
@@ -1043,7 +1047,7 @@ impl BedCloud {
     /// # Runtime::new().unwrap().block_on(async {
     /// let url = sample_bed_url("small.bed")?;
     /// println!("{url:?}"); // For example, "file:///C:/Users/carlk/AppData/Local/bed_reader/bed_reader/Cache/small.bed"
-    /// let mut bed_cloud = BedCloud::new(url, EMPTY_OPTIONS).await?;
+    /// let mut bed_cloud = BedCloud::new(url,).await?;
     /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray: ["iid1", "iid2", "iid3"]
     /// println!("{:?}", bed_cloud.sid().await?); // Outputs ndarray: ["sid1", "sid2", "sid3", "sid4"]
     /// let val = bed_cloud.read::<f64>().await?;
@@ -1067,14 +1071,14 @@ impl BedCloud {
     /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_url, EMPTY_OPTIONS};
     /// # Runtime::new().unwrap().block_on(async {
     /// # let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(url, EMPTY_OPTIONS).await?;
+    /// let mut bed_cloud = BedCloud::new(url,).await?;
     /// let val = ReadOptions::builder().sid_index(2).f64().read_cloud(&mut bed_cloud).await?;
     ///
     /// assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
-    pub async fn new<I, K, V>(
+    pub async fn new_with_options<I, K, V>(
         url: impl AsRef<str>,
         cloud_options: I,
     ) -> Result<Self, Box<BedErrorPlus>>
@@ -1084,6 +1088,13 @@ impl BedCloud {
         V: Into<String>,
     {
         let cloud_file = CloudFile::new_with_options(url, cloud_options)?;
+        let bed_cloud = BedCloud::from_cloud_file(&cloud_file).await?;
+        Ok(bed_cloud)
+    }
+
+    /// cmk
+    pub async fn new(url: impl AsRef<str>) -> Result<Self, Box<BedErrorPlus>> {
+        let cloud_file = CloudFile::new(url)?;
         let bed_cloud = BedCloud::from_cloud_file(&cloud_file).await?;
         Ok(bed_cloud)
     }
@@ -1365,7 +1376,7 @@ impl BedCloud {
     ///
     /// # Runtime::new().unwrap().block_on(async {
     /// let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(&url, EMPTY_OPTIONS).await?;
+    /// let mut bed_cloud = BedCloud::new(&url).await?;
     /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray: ["iid1", "iid2", "iid3"]
     /// println!("{:?}", bed_cloud.sid().await?); // Outputs ndarray: ["sid1", "sid2", "sid3", "sid4"]
     /// let val = bed_cloud.read::<f64>().await?;
@@ -1390,7 +1401,7 @@ impl BedCloud {
     /// # Runtime::new().unwrap().block_on(async {
     /// # let url = sample_bed_url("small.bed")?;
     ///
-    /// let mut bed_cloud = BedCloud::new(&url, EMPTY_OPTIONS).await?;
+    /// let mut bed_cloud = BedCloud::new(&url).await?;
     /// let val = ReadOptions::builder().sid_index(2).f64().read_cloud(&mut bed_cloud).await?;
     ///
     /// assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
@@ -1417,7 +1428,7 @@ impl BedCloud {
     ///
     /// # Runtime::new().unwrap().block_on(async {
     /// let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(url, EMPTY_OPTIONS).await?;
+    /// let mut bed_cloud = BedCloud::new(url,).await?;
     /// let iid_count = bed_cloud.iid_count().await?;
     ///
     /// assert!(iid_count == 3);
@@ -1450,7 +1461,7 @@ impl BedCloud {
     ///
     /// # Runtime::new().unwrap().block_on(async {
     /// let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(url, EMPTY_OPTIONS).await?;
+    /// let mut bed_cloud = BedCloud::new(url,).await?;
     /// let sid_count = bed_cloud.sid_count().await?;
     ///
     /// assert!(sid_count == 4);
@@ -1484,7 +1495,7 @@ impl BedCloud {
     ///
     /// # Runtime::new().unwrap().block_on(async {
     /// let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(url, EMPTY_OPTIONS).await?;
+    /// let mut bed_cloud = BedCloud::new(url,).await?;
     /// let dim = bed_cloud.dim().await?;
     ///
     /// assert!(dim == (3,4));
@@ -1511,7 +1522,7 @@ impl BedCloud {
     ///
     /// # Runtime::new().unwrap().block_on(async {
     /// let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(url, EMPTY_OPTIONS).await?;
+    /// let mut bed_cloud = BedCloud::new(url,).await?;
     /// let fid = bed_cloud.fid().await?;
     /// println!("{fid:?}"); // Outputs ndarray ["fid1", "fid1", "fid2"]
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
@@ -1538,7 +1549,7 @@ impl BedCloud {
     ///
     /// # Runtime::new().unwrap().block_on(async {
     /// let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(url, EMPTY_OPTIONS).await?;
+    /// let mut bed_cloud = BedCloud::new(url,).await?;
     /// let iid = bed_cloud.iid().await?;    ///
     /// println!("{iid:?}"); // Outputs ndarray ["iid1", "iid2", "iid3"]
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
@@ -1565,7 +1576,7 @@ impl BedCloud {
     ///
     /// # Runtime::new().unwrap().block_on(async {
     /// let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(url, EMPTY_OPTIONS).await?;
+    /// let mut bed_cloud = BedCloud::new(url,).await?;
     /// let father = bed_cloud.father().await?;
     /// println!("{father:?}"); // Outputs ndarray ["iid23", "iid23", "iid22"]
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
@@ -1596,7 +1607,7 @@ impl BedCloud {
     ///
     /// # Runtime::new().unwrap().block_on(async {
     /// let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(url, EMPTY_OPTIONS).await?;
+    /// let mut bed_cloud = BedCloud::new(url,).await?;
     /// let mother = bed_cloud.mother().await?;
     /// println!("{mother:?}"); // Outputs ndarray ["iid34", "iid34", "iid33"]
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
@@ -1629,7 +1640,7 @@ impl BedCloud {
     ///
     /// # Runtime::new().unwrap().block_on(async {
     /// let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(url, EMPTY_OPTIONS).await?;
+    /// let mut bed_cloud = BedCloud::new(url,).await?;
     /// let sex = bed_cloud.sex().await?;
     /// println!("{sex:?}"); // Outputs ndarray [1, 2, 0]
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
@@ -1656,7 +1667,7 @@ impl BedCloud {
     ///
     /// # Runtime::new().unwrap().block_on(async {
     /// let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(url, EMPTY_OPTIONS).await?;
+    /// let mut bed_cloud = BedCloud::new(url,).await?;
     /// let pheno = bed_cloud.pheno().await?;
     /// println!("{pheno:?}"); // Outputs ndarray ["red", "red", "blue"]
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
@@ -1682,12 +1693,12 @@ impl BedCloud {
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url, EMPTY_OPTIONS};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # Runtime::new().unwrap().block_on(async {
     /// let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(url, EMPTY_OPTIONS).await?;
+    /// let mut bed_cloud = BedCloud::new(url,).await?;
     /// let chromosome = bed_cloud.chromosome().await?;
     /// println!("{chromosome:?}"); // Outputs ndarray ["1", "1", "5", "Y"]
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
@@ -1718,7 +1729,7 @@ impl BedCloud {
     ///
     /// # Runtime::new().unwrap().block_on(async {
     /// let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(url, EMPTY_OPTIONS).await?;
+    /// let mut bed_cloud = BedCloud::new(url,).await?;
     /// let sid = bed_cloud.sid().await?;
     /// println!("{sid:?}"); // Outputs ndarray "sid1", "sid2", "sid3", "sid4"]
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
@@ -1745,7 +1756,7 @@ impl BedCloud {
     ///
     /// # Runtime::new().unwrap().block_on(async {
     /// let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(url, EMPTY_OPTIONS).await?;
+    /// let mut bed_cloud = BedCloud::new(url,).await?;
     /// let cm_position = bed_cloud.cm_position().await?;
     /// println!("{cm_position:?}"); // Outputs ndarray [100.4, 2000.5, 4000.7, 7000.9]
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
@@ -1776,7 +1787,7 @@ impl BedCloud {
     ///
     /// # Runtime::new().unwrap().block_on(async {
     /// let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(url, EMPTY_OPTIONS).await?;
+    /// let mut bed_cloud = BedCloud::new(url,).await?;
     /// let bp_position = bed_cloud.bp_position().await?;
     /// println!("{bp_position:?}"); // Outputs ndarray [1, 100, 1000, 1004]
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
@@ -1807,7 +1818,7 @@ impl BedCloud {
     /// # Runtime::new().unwrap().block_on(async {
     ///
     /// let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(url, EMPTY_OPTIONS).await?;
+    /// let mut bed_cloud = BedCloud::new(url,).await?;
     /// let allele_1 = bed_cloud.allele_1().await?;
     /// println!("{allele_1:?}"); // Outputs ndarray ["A", "T", "A", "T"]
     /// # let url = sample_bed_url("small.bed")?;
@@ -1839,7 +1850,7 @@ impl BedCloud {
     /// # Runtime::new().unwrap().block_on(async {
     ///
     /// let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(url, EMPTY_OPTIONS).await?;
+    /// let mut bed_cloud = BedCloud::new(url,).await?;
     /// let allele_2 = bed_cloud.allele_2().await?;
     /// println!("{allele_2:?}"); // Outputs ndarray ["A", "C", "C", "G"]
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
@@ -1868,7 +1879,7 @@ impl BedCloud {
     ///
     /// # Runtime::new().unwrap().block_on(async {
     /// let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(url, EMPTY_OPTIONS).await?;
+    /// let mut bed_cloud = BedCloud::new(url,).await?;
     /// let metadata = bed_cloud.metadata().await?;
     /// println!("{0:?}", metadata.iid()); // Outputs Some(["iid1", "iid2", "iid3"] ...)
     /// println!("{0:?}", metadata.sid()); // Outputs Some(["sid1", "sid2", "sid3", "sid4"] ...)
@@ -1928,7 +1939,7 @@ impl BedCloud {
     ///
     /// # Runtime::new().unwrap().block_on(async {
     /// let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(url, EMPTY_OPTIONS).await?;
+    /// let mut bed_cloud = BedCloud::new(url,).await?;
     /// let val = bed_cloud.read::<f64>().await?;
     ///
     /// assert_eq_nan(
@@ -1980,7 +1991,7 @@ impl BedCloud {
     /// # Runtime::new().unwrap().block_on(async {
     /// // Read the SNPs indexed by 2.
     /// let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(url, EMPTY_OPTIONS).await?;
+    /// let mut bed_cloud = BedCloud::new(url,).await?;
     /// let read_options = ReadOptions::builder().sid_index(2).build()?;
     /// let mut val = nd::Array2::<f64>::default((3, 1));
     /// bed_cloud.read_and_fill_with_options(&mut val.view_mut(), &read_options).await?;
@@ -2052,7 +2063,7 @@ impl BedCloud {
     ///
     /// # Runtime::new().unwrap().block_on(async {
     /// let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(url, EMPTY_OPTIONS).await?;
+    /// let mut bed_cloud = BedCloud::new(url,).await?;
     /// let mut val = nd::Array2::<i8>::default(bed_cloud.dim().await?);
     /// bed_cloud.read_and_fill(&mut val.view_mut()).await?;
     ///
@@ -2093,7 +2104,7 @@ impl BedCloud {
     /// # Runtime::new().unwrap().block_on(async {
     /// // Read the SNPs indexed by 2.
     /// let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::new(url, EMPTY_OPTIONS).await?;
+    /// let mut bed_cloud = BedCloud::new(url,).await?;
     /// let read_options = ReadOptions::builder().sid_index(2).f64().build()?;
     /// let val = bed_cloud.read_with_options(&read_options).await?;
     ///

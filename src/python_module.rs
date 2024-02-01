@@ -174,11 +174,9 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
-    #[allow(clippy::too_many_arguments)]
     fn check_file_cloud(location: &str, options: HashMap<&str, String>) -> Result<(), PyErr> {
-        let rt = runtime::Runtime::new()?;
-        rt.block_on(async {
-            BedCloud::new(location, options).await?;
+        runtime::Runtime::new()?.block_on(async {
+            BedCloud::new_with_options(location, options).await?;
             Ok(())
         })
     }

@@ -109,11 +109,10 @@ for details specifying a file in the cloud.)
 # #[cfg(feature = "cloud")]  // '#' needed for doctest
 # { use {bed_reader::BedErrorPlus, tokio::runtime::Runtime};
 use ndarray as nd;
-use bed_reader::{assert_eq_nan, BedCloud, ReadOptions, EMPTY_OPTIONS};
+use bed_reader::{assert_eq_nan, BedCloud, ReadOptions};
 # Runtime::new().unwrap().block_on(async {
 let mut bed_cloud = BedCloud::new(
-    "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed",
-    EMPTY_OPTIONS,
+    "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed"
 ).await?;
 let val = ReadOptions::builder().sid_index(2).f64().read_cloud(&mut bed_cloud).await?;
 assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);

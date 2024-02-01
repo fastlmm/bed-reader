@@ -1051,7 +1051,7 @@ def test_readme_example():
 def test_http_one():
     with open_bed(
         "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/some_missing.bed",
-        cloud_options={},
+        cloud_options={"timeout": "30s"},
     ) as bed:
         print(bed.iid[:5])
         print(bed.sid[:5])
