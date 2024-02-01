@@ -111,20 +111,16 @@
 //! Any requested sample file will be downloaded to this directory. If the environment variable is not set,
 //! a cache folder, appropriate to the OS, will be used.
 
-#[cfg(feature = "cloud")]
 mod python_module;
 mod tests;
 use anyinput::anyinput;
-#[cfg(feature = "cloud")]
 pub use bed_cloud::{sample_bed_url, sample_url, sample_urls, BedCloud, BedCloudBuilder};
 use byteorder::{LittleEndian, ReadBytesExt};
-#[cfg(feature = "cloud")]
 pub use cloud_file::{CloudFile, CloudFileError, EMPTY_OPTIONS};
 use core::fmt::Debug;
 use derive_builder::Builder;
 use dpc_pariter::{scope, IteratorExt};
 use fetch_data::FetchData;
-#[cfg(feature = "cloud")]
 use futures_util::StreamExt;
 use nd::ShapeBuilder;
 use ndarray as nd;
@@ -152,7 +148,6 @@ use std::{
     path::{Path, PathBuf},
 };
 use thiserror::Error;
-#[cfg(feature = "cloud")]
 mod bed_cloud;
 
 const BED_FILE_MAGIC1: u8 = 0x6C; // 0b01101100 or 'l' (lowercase 'L')
@@ -193,15 +188,10 @@ pub enum BedErrorPlus {
     #[error(transparent)]
     ParseFloatError(#[from] ParseFloatError),
 
-    #[cfg(feature = "cloud")]
     #[allow(missing_docs)]
     #[error(transparent)]
     CloudFileError(#[from] CloudFileError),
 
-    // #[cfg(feature = "cloud")]
-    // #[allow(missing_docs)]
-    // #[error(transparent)]
-    // JoinError(#[from] tokio::task::JoinError),
     #[allow(missing_docs)]
     #[error(transparent)]
     Utf8Error(#[from] Utf8Error),
@@ -459,7 +449,6 @@ impl From<::derive_builder::UninitializedFieldError> for BedErrorPlus {
     }
 }
 
-#[cfg(feature = "cloud")]
 impl From<CloudFileError> for Box<BedErrorPlus> {
     fn from(err: CloudFileError) -> Self {
         Box::new(BedErrorPlus::CloudFileError(err))
@@ -3140,7 +3129,6 @@ fn compute_num_threads(option_num_threads: Option<usize>) -> Result<usize, Box<B
 }
 
 #[allow(clippy::unnecessary_wraps)]
-#[cfg(feature = "cloud")]
 fn compute_max_concurrent_requests(
     option_max_concurrent_requests: Option<usize>,
 ) -> Result<usize, Box<BedErrorPlus>> {
@@ -3158,7 +3146,6 @@ fn compute_max_concurrent_requests(
 }
 
 #[allow(clippy::unnecessary_wraps)]
-#[cfg(feature = "cloud")]
 fn compute_max_chunk_bytes(
     option_max_chunk_bytes: Option<usize>,
 ) -> Result<usize, Box<BedErrorPlus>> {
@@ -3992,7 +3979,6 @@ pub struct ReadOptions<TVal: BedVal> {
     ///
     /// In this example, we read using only request at a time.
     /// ```
-    /// # #[cfg(feature = "cloud")]
     /// # { use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// use ndarray as nd;
     /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url, EMPTY_OPTIONS};
@@ -4022,7 +4008,6 @@ pub struct ReadOptions<TVal: BedVal> {
     ///
     /// In this example, we read using only 1_000_000 bytes per request.
     /// ```
-    /// # #[cfg(feature = "cloud")]
     /// # { use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// use ndarray as nd;
     /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url, EMPTY_OPTIONS};
@@ -4345,7 +4330,6 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
-    #[cfg(feature = "cloud")]
     pub async fn read_cloud(
         &self,
         bed_cloud: &mut BedCloud,
@@ -4428,7 +4412,6 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```    
-    #[cfg(feature = "cloud")]
     pub async fn read_and_fill_cloud(
         &self,
         bed_cloud: &mut BedCloud,
@@ -6452,7 +6435,6 @@ impl Metadata {
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
-    #[cfg(feature = "cloud")]
     pub async fn read_fam_cloud(
         &self,
         cloud_file: &CloudFile,
@@ -6635,7 +6617,6 @@ impl Metadata {
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
     /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
-    #[cfg(feature = "cloud")]
     pub async fn read_bim_cloud(
         &self,
         cloud_file: &CloudFile,
@@ -6745,7 +6726,6 @@ impl Metadata {
         Ok((vec_of_vec, count))
     }
 
-    #[cfg(feature = "cloud")]
     async fn read_fam_or_bim_cloud(
         &self,
         field_vec: &[usize],
@@ -7179,12 +7159,10 @@ where
         .map_err(|e| BedError::SampleFetch(e.to_string()))?)
 }
 
-#[cfg(feature = "cloud")]
 pub mod supplemental_document_options {
     #![doc = include_str!("supplemental_documents/options_etc.md")]
 }
 
-#[cfg(feature = "cloud")]
 pub mod supplemental_document_cloud_urls {
     #![doc = include_str!("supplemental_documents/cloud_urls_etc.md")]
 }

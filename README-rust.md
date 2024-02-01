@@ -106,8 +106,7 @@ at index position 2. (See ["Cloud URLs and `CloudFile` Examples"](supplemental_d
 for details specifying a file in the cloud.)
 
 ```rust
-# #[cfg(feature = "cloud")]  // '#' needed for doctest
-# { use {bed_reader::BedErrorPlus, tokio::runtime::Runtime};
+# { use {bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
 use ndarray as nd;
 use bed_reader::{assert_eq_nan, BedCloud, ReadOptions};
 # Runtime::new().unwrap().block_on(async {

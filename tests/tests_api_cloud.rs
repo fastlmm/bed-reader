@@ -1,5 +1,3 @@
-#![cfg(feature = "cloud")]
-
 use bed_reader::allclose;
 use bed_reader::assert_eq_nan;
 use bed_reader::assert_error_variant;
