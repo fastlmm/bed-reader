@@ -27,7 +27,7 @@ crate-type = ["cdylib", "rlib"]
 # https://pyo3.rs/latest/faq.html#i-cant-run-cargo-test-or-i-cant-build-in-a-cargo-workspace-im-having-linker-issues-like-symbol-not-found-or-undefined-reference-to-_pyexc_systemerror
 [features]
 extension-module = ["pyo3/extension-module", "tokio/full"]
-default = [ "extension-module"] # cmk remove extension-module from default
+default = []
 
 [dependencies]
 thiserror = "1.0.40"

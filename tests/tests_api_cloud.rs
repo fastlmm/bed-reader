@@ -1,3 +1,5 @@
+#![cfg(feature = "tokio/full")]
+
 use bed_reader::allclose;
 use bed_reader::assert_eq_nan;
 use bed_reader::assert_error_variant;
@@ -1045,6 +1047,7 @@ async fn fill_cloud() -> Result<(), Box<BedErrorPlus>> {
     Ok(())
 }
 
+#[cfg(feature = "tokio/full")]
 #[tokio::test]
 async fn read_options_builder_cloud() -> Result<(), Box<BedErrorPlus>> {
     let url = sample_bed_url("small.bed")?;
