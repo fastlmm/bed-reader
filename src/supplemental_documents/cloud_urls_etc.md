@@ -32,8 +32,7 @@ Read an entire file and find the fraction of missing values.
 use ndarray as nd;
 use bed_reader::{BedCloud, EMPTY_OPTIONS};
 
-# use {bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
-# Runtime::new().unwrap().block_on(async {
+# #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async { // '#' needed for doctest
 let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
 let mut bed_cloud = BedCloud::new(url).await?;
 let val: nd::Array2<f32> = bed_cloud.read().await?;
@@ -41,8 +40,8 @@ let missing_count = val.iter().filter(|x| x.is_nan()).count();
 let missing_fraction = missing_count as f32 / val.len() as f32;
 println!("{missing_fraction:.2}"); // Outputs 0.17
 assert_eq!(missing_count, 2);
-# Ok::<(), Box<dyn std::error::Error>>(())
-# }).unwrap();
+# Ok::<(), Box<dyn std::error::Error>>(()) }).unwrap()};  // '#' needed for doctest
+# #[cfg(feature = "tokio")] use {tokio::runtime::Runtime, bed_reader::BedErrorPlus}; // '#' needed for doctest
 ```
 
 When reading a medium-sized file, you may need to set a `timeout` in your options.
@@ -128,11 +127,10 @@ function to do this encoding. When it was the url to `BedCloud`,  no cloud optio
 
 ```rust
 use ndarray as nd;
-use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_file, EMPTY_OPTIONS};
+use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_file};
 use cloud_file::abs_path_to_url_string;
-# use {bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
-# Runtime::new().unwrap().block_on(async {
 
+# #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async { // '#' needed for doc test
 let file_name = sample_bed_file("small.bed")?;
 println!("{file_name:?}"); // For example, "C:\\Users\\carlk\\AppData\\Local\\fastlmm\\bed-reader\\cache\\small.bed"
 let url: String = abs_path_to_url_string(file_name)?;
@@ -141,8 +139,8 @@ println!("{url:?}"); // For example, "file:///C:/Users/carlk/AppData/Local/bed_r
 let mut bed_cloud = BedCloud::new(url).await?;
 let val = ReadOptions::builder().sid_index(2).f64().read_cloud(&mut bed_cloud).await?;
 assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
-# Ok::<(), Box<dyn std::error::Error>>(())
-# }).unwrap();
+# Ok::<(), Box<dyn std::error::Error>>(()) }).unwrap()};  // '#' needed for doctest
+# #[cfg(feature = "tokio")] use {tokio::runtime::Runtime, bed_reader::BedErrorPlus}; // '#' needed for doctest
 ```
 
 ## AWS S3
@@ -168,7 +166,8 @@ See [`GoogleConfigKey`](https://docs.rs/object_store/latest/object_store/gcp/enu
 ```rust
 use bed_reader::{BedCloud,BedErrorPlus};
 use rusoto_credential::{CredentialsError, ProfileProvider, ProvideAwsCredentials};
-# use tokio::runtime::Runtime; Runtime::new().unwrap().block_on(async {
+
+# #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async { // '#' needed for doc test
 // Read my AWS credentials from file ~/.aws/credentials
 let credentials = if let Ok(provider) = ProfileProvider::new() {
     provider.credentials().await
@@ -191,5 +190,6 @@ let options = [
 let mut bed_cloud = BedCloud::new_with_options(url, options).await?;
 let val = bed_cloud.read::<i8>().await?;
 assert_eq!(val.shape(), &[500, 10_000]);
-# Ok::<(), Box<BedErrorPlus>>(()) }); Ok::<(), Box<BedErrorPlus>>(())
+# Ok::<(), Box<dyn std::error::Error>>(()) }).unwrap()};
+# #[cfg(feature = "tokio")] use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
 ```

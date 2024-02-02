@@ -1,4 +1,4 @@
-#![cfg(feature = "tokio/full")]
+#![cfg(feature = "tokio")]
 
 use bed_reader::allclose;
 use bed_reader::assert_eq_nan;
@@ -1047,7 +1047,6 @@ async fn fill_cloud() -> Result<(), Box<BedErrorPlus>> {
     Ok(())
 }
 
-#[cfg(feature = "tokio/full")]
 #[tokio::test]
 async fn read_options_builder_cloud() -> Result<(), Box<BedErrorPlus>> {
     let url = sample_bed_url("small.bed")?;
@@ -2152,9 +2151,9 @@ async fn s3_url_cloud2() -> Result<(), Box<BedErrorPlus>> {
 /// Open the file and read data for one SNP (variant)
 /// at index position 2.
 fn read_me_cloud() -> Result<(), Box<BedErrorPlus>> {
-    use bed_reader::{assert_eq_nan, BedCloud, ReadOptions};
+    use bed_reader::{BedCloud, ReadOptions};
     use ndarray as nd;
-    use {bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
+    use {assert_eq_nan, bed_reader::BedErrorPlus, tokio::runtime::Runtime};
     Runtime::new().unwrap().block_on(async {
         let mut bed_cloud = BedCloud::new_with_options(
             "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed",
@@ -2175,7 +2174,7 @@ fn read_me_cloud() -> Result<(), Box<BedErrorPlus>> {
 fn local_file_url_example() -> Result<(), Box<BedErrorPlus>> {
     use bed_reader::{sample_bed_file, BedCloud, ReadOptions};
     use ndarray as nd;
-    use {assert_eq_nan, bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
+    use {assert_eq_nan, bed_reader::BedErrorPlus, tokio::runtime::Runtime};
     Runtime::new().unwrap().block_on(async {
         let file_name = sample_bed_file("small.bed")?.to_string_lossy().to_string();
         println!("{file_name:?}"); // For example, "C:\\Users\\carlk\\AppData\\Local\\fastlmm\\bed-reader\\cache\\small.bed"

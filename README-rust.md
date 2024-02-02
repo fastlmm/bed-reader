@@ -106,16 +106,15 @@ at index position 2. (See ["Cloud URLs and `CloudFile` Examples"](supplemental_d
 for details specifying a file in the cloud.)
 
 ```rust
-# { use {bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
 use ndarray as nd;
 use bed_reader::{assert_eq_nan, BedCloud, ReadOptions};
-# Runtime::new().unwrap().block_on(async {
-let mut bed_cloud = BedCloud::new(
-    "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed"
-).await?;
+# #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async { // '#' needed for doc test
+let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
+let mut bed_cloud = BedCloud::new(url).await?;
 let val = ReadOptions::builder().sid_index(2).f64().read_cloud(&mut bed_cloud).await?;
 assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
-# Ok::<(), Box<dyn std::error::Error>>(()) }).unwrap()};  // '#' needed for doctest
+# Ok::<(), Box<dyn std::error::Error>>(()) }).unwrap();
+# #[cfg(feature = "tokio")] use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
 ```
 
 Project Links
