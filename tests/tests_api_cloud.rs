@@ -535,7 +535,7 @@ async fn max_concurrent_requests() -> Result<(), Box<BedErrorPlus>> {
     // Read data with specified number of threads (or equivalent parallel processing setting)
     let val = ReadOptions::builder()
         .max_concurrent_requests(1)
-        .max_chunk_size(1_000_000)
+        .max_chunk_bytes(1_000_000)
         .i8()
         .read_cloud(&mut bed_cloud)
         .await?;

@@ -98,9 +98,9 @@ def get_max_concurrent_requests(max_concurrent_requests=None):
     return 10
 
 
-def get_max_chunk_size(max_chunk_size=None):
-    if max_chunk_size is not None:
-        return max_chunk_size
+def get_max_chunk_size(max_chunk_bytes=None):
+    if max_chunk_bytes is not None:
+        return max_chunk_bytes
     return 8_000_000
 
 
@@ -162,7 +162,7 @@ class open_bed:
     max_concurrent_requests: None or int, optional
         The maximum number of concurrent requests to make to the cloud storage service.
         Defaults to 10.
-    max_chunk_size: None or int, optional
+    max_chunk_bytes: None or int, optional
         The maximum number of bytes to read in a single request to the cloud storage
         service. Defaults to 8MB.
     filepath: same as location
@@ -259,7 +259,7 @@ class open_bed:
         bim_location: Union[str, Path, UrlParseResult] = None,
         cloud_options: Mapping[str, str] = {},
         max_concurrent_requests: Optional[int] = None,
-        max_chunk_size: Optional[int] = None,
+        max_chunk_bytes: Optional[int] = None,
         # accept old keywords
         filepath: Union[str, Path] = None,
         fam_filepath: Union[str, Path] = None,
@@ -278,7 +278,7 @@ class open_bed:
         self.count_A1 = count_A1
         self._num_threads = num_threads
         self._max_concurrent_requests = max_concurrent_requests
-        self._max_chunk_size = max_chunk_size
+        self._max_chunk_size = max_chunk_bytes
         self.skip_format_check = skip_format_check
         self._fam_location = (
             self._path_or_url(fam_location)
@@ -362,7 +362,7 @@ class open_bed:
         force_python_only: Optional[bool] = False,
         num_threads=None,
         max_concurrent_requests=None,
-        max_chunk_size=None,
+        max_chunk_bytes=None,
     ) -> np.ndarray:
         """
         Read genotype information.
@@ -398,7 +398,7 @@ class open_bed:
             The maximum number of concurrent requests to make to the cloud storage
             service. Defaults to 10.
 
-        max_chunk_size: None or int, optional
+        max_chunk_bytes: None or int, optional
             The maximum number of bytes to read in a single request to the cloud
             storage service. Defaults to 8MB.
 
@@ -510,8 +510,8 @@ class open_bed:
                 if max_concurrent_requests is None
                 else max_concurrent_requests
             )
-            max_chunk_size = get_max_chunk_size(
-                self._max_chunk_size if max_chunk_size is None else max_chunk_size
+            max_chunk_bytes = get_max_chunk_size(
+                self._max_chunk_size if max_chunk_bytes is None else max_chunk_bytes
             )
 
             val = np.zeros((len(iid_index), len(sid_index)), order=order, dtype=dtype)
@@ -545,7 +545,7 @@ class open_bed:
                         val=val,
                         num_threads=num_threads,
                         max_concurrent_requests=max_concurrent_requests,
-                        max_chunk_size=max_chunk_size,
+                        max_chunk_bytes=max_chunk_bytes,
                     )
 
         else:
@@ -1390,7 +1390,7 @@ class open_bed:
         format: Optional[str] = "csc",
         num_threads=None,
         max_concurrent_requests=None,
-        max_chunk_size=None,
+        max_chunk_bytes=None,
     ) -> (Union[sparse.csc_matrix, sparse.csr_matrix]) if sparse is not None else None:
         """
         Read genotype information into a :mod:`scipy.sparse` matrix. Sparse matrices
@@ -1431,7 +1431,7 @@ class open_bed:
         max_concurrent_requests: None or int, optional
             The maximum number of concurrent requests to make to the cloud storage
             service. Defaults to 10.
-        max_chunk_size: None or int, optional
+        max_chunk_bytes: None or int, optional
             The maximum number of bytes to read in a single request to the cloud
             storage service. Defaults to 8MB.
 
@@ -1587,8 +1587,8 @@ class open_bed:
             if max_concurrent_requests is None
             else max_concurrent_requests
         )
-        max_chunk_size = get_max_chunk_size(
-            self._max_chunk_size if max_chunk_size is None else max_chunk_size
+        max_chunk_bytes = get_max_chunk_size(
+            self._max_chunk_size if max_chunk_bytes is None else max_chunk_bytes
         )
 
         if format == "csc":
@@ -1648,7 +1648,7 @@ class open_bed:
                             val=val,
                             num_threads=num_threads,
                             max_concurrent_requests=max_concurrent_requests,
-                            max_chunk_size=max_chunk_size,
+                            max_chunk_bytes=max_chunk_bytes,
                         )
 
                     self.sparsify(
@@ -1697,7 +1697,7 @@ class open_bed:
                             val=val,
                             num_threads=num_threads,
                             max_concurrent_requests=max_concurrent_requests,
-                            max_chunk_size=max_chunk_size,
+                            max_chunk_bytes=max_chunk_bytes,
                         )
 
                     self.sparsify(
