@@ -4,7 +4,7 @@ pytest-doctestplus
 pytest-datadir
 limix-sphinx-theme>=0.0.4
 pytest-sphinx>=0.2.2
-sphinxL>=6.2.1  # Updated version
+sphinx>=6.2.1  # Updated version
 sphinx-autoapi>=3.0.0  # Added Sphinx-AutoAPI
 maturin>=1.4.0
 isort>=5.11.0
