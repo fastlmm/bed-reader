@@ -98,7 +98,7 @@ def get_max_concurrent_requests(max_concurrent_requests=None):
     return 10
 
 
-def get_max_chunk_size(max_chunk_bytes=None):
+def get_max_chunk_bytes(max_chunk_bytes=None):
     if max_chunk_bytes is not None:
         return max_chunk_bytes
     return 8_000_000
@@ -278,7 +278,7 @@ class open_bed:
         self.count_A1 = count_A1
         self._num_threads = num_threads
         self._max_concurrent_requests = max_concurrent_requests
-        self._max_chunk_size = max_chunk_bytes
+        self._max_chunk_bytes = max_chunk_bytes
         self.skip_format_check = skip_format_check
         self._fam_location = (
             self._path_or_url(fam_location)
@@ -510,8 +510,8 @@ class open_bed:
                 if max_concurrent_requests is None
                 else max_concurrent_requests
             )
-            max_chunk_bytes = get_max_chunk_size(
-                self._max_chunk_size if max_chunk_bytes is None else max_chunk_bytes
+            max_chunk_bytes = get_max_chunk_bytes(
+                self._max_chunk_bytes if max_chunk_bytes is None else max_chunk_bytes
             )
 
             val = np.zeros((len(iid_index), len(sid_index)), order=order, dtype=dtype)
@@ -1587,8 +1587,8 @@ class open_bed:
             if max_concurrent_requests is None
             else max_concurrent_requests
         )
-        max_chunk_bytes = get_max_chunk_size(
-            self._max_chunk_size if max_chunk_bytes is None else max_chunk_bytes
+        max_chunk_bytes = get_max_chunk_bytes(
+            self._max_chunk_bytes if max_chunk_bytes is None else max_chunk_bytes
         )
 
         if format == "csc":
