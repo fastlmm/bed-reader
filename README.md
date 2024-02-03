@@ -83,7 +83,7 @@ chromosome. Then, read every genomic value in chromosome 5.
 ```
 
 Project Links
-==============
+===============
 
 * [**Documentation**](http://fastlmm.github.io/bed-reader)
 * **Questions to**: [fastlmm-dev@python.org](mailto:fastlmm-dev@python.org)
