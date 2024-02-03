@@ -30,7 +30,7 @@ Read an entire file and find the fraction of missing values.
 
 ```rust
 use ndarray as nd;
-use bed_reader::{BedCloud, EMPTY_OPTIONS};
+use bed_reader::{BedCloud};
 
 # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async { // '#' needed for doctest
 let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
@@ -91,7 +91,7 @@ What is the mean value of the SNP (variant) at index position 100,000?
 
 ```rust
 use ndarray as nd;
-use bed_reader::{BedCloud, ReadOptions, EMPTY_OPTIONS};
+use bed_reader::{BedCloud, ReadOptions};
 
 # use {bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
 # Runtime::new().unwrap().block_on(async {

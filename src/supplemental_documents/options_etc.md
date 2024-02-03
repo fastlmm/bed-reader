@@ -56,7 +56,7 @@ We can also read from local files as though they are in the cloud. In that case,
 
 ```rust
 use ndarray as nd;
-use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_url, EMPTY_OPTIONS};
+use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_url};
 # use {bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
 # Runtime::new().unwrap().block_on(async {
 let url = sample_url("small.bed")?;

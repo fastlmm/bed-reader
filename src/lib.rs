@@ -116,7 +116,7 @@ mod tests;
 use anyinput::anyinput;
 pub use bed_cloud::{sample_bed_url, sample_url, sample_urls, BedCloud, BedCloudBuilder};
 use byteorder::{LittleEndian, ReadBytesExt};
-pub use cloud_file::{CloudFile, CloudFileError, EMPTY_OPTIONS};
+pub use cloud_file::{CloudFile, CloudFileError};
 use core::fmt::Debug;
 use derive_builder::Builder;
 use dpc_pariter::{scope, IteratorExt};
@@ -3980,7 +3980,7 @@ pub struct ReadOptions<TVal: BedVal> {
     /// In this example, we read using only request at a time.
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url, EMPTY_OPTIONS};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
@@ -4009,7 +4009,7 @@ pub struct ReadOptions<TVal: BedVal> {
     /// In this example, we read using only 1_000_000 bytes per request.
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url, EMPTY_OPTIONS};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
@@ -4315,7 +4315,7 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     ///
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url, EMPTY_OPTIONS};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
@@ -4396,7 +4396,7 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     ///
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url, EMPTY_OPTIONS};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
@@ -6598,7 +6598,7 @@ impl Metadata {
     /// ```
     /// use ndarray as nd;
     /// use std::collections::HashSet;
-    /// use bed_reader::{Metadata, MetadataFields, sample_url, CloudFile, EMPTY_OPTIONS};
+    /// use bed_reader::{Metadata, MetadataFields, sample_url, CloudFile};
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// let skip_set = HashSet::<MetadataFields>::new();
@@ -7158,6 +7158,21 @@ where
         .fetch_files(path_list)
         .map_err(|e| BedError::SampleFetch(e.to_string()))?)
 }
+
+/// cmk An empty set of cloud options
+///
+/// # Example
+/// ```
+/// use cloud_file::{EMPTY_OPTIONS, CloudFile};
+///
+/// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
+/// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/plink_sim_10s_100v_10pmiss.bed";
+/// let cloud_file = CloudFile::new_with_options(url, EMPTY_OPTIONS)?;
+/// assert_eq!(cloud_file.read_file_size().await?, 303);
+/// # Ok::<(), BedErrorPlus>(())}).unwrap();
+/// # #[cfg(feature = "tokio")] use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
+/// ```
+pub const EMPTY_OPTIONS: [(&str, String); 0] = [];
 
 #[cfg(feature = "tokio/full")]
 pub mod supplemental_document_options {

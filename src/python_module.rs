@@ -206,7 +206,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
         let rt = runtime::Runtime::new()?;
         rt.block_on(async {
-            let mut bed_cloud = BedCloud::builder(location, options)?
+            let mut bed_cloud = BedCloud::builder_with_options(location, options)?
                 .iid_count(iid_count)
                 .sid_count(sid_count)
                 .build()
@@ -251,7 +251,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
         let rt = runtime::Runtime::new()?;
         rt.block_on(async {
-            let mut bed_cloud = BedCloud::builder(location, options)?
+            let mut bed_cloud = BedCloud::builder_with_options(location, options)?
                 .iid_count(iid_count)
                 .sid_count(sid_count)
                 .build()
@@ -296,7 +296,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
         let rt = runtime::Runtime::new()?;
         rt.block_on(async {
-            let mut bed_cloud = BedCloud::builder(location, options)?
+            let mut bed_cloud = BedCloud::builder_with_options(location, options)?
                 .iid_count(iid_count)
                 .sid_count(sid_count)
                 .build()

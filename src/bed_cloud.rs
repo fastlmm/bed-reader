@@ -17,7 +17,7 @@ use std::path::PathBuf;
 use crate::{
     check_and_precompute_iid_index, compute_max_chunk_bytes, compute_max_concurrent_requests,
     set_up_two_bits_to_value, try_div_4, BedError, BedErrorPlus, BedVal, FromStringArray, Hold,
-    Metadata, ReadOptions, BED_FILE_MAGIC1, BED_FILE_MAGIC2, STATIC_FETCH_DATA,
+    Metadata, ReadOptions, BED_FILE_MAGIC1, BED_FILE_MAGIC2, EMPTY_OPTIONS, STATIC_FETCH_DATA,
 };
 use crate::{MetadataFields, CB_HEADER_U64};
 
@@ -35,7 +35,7 @@ use crate::{MetadataFields, CB_HEADER_U64};
 /// and all the genotype data.
 /// ```
 /// use ndarray as nd;
-/// use bed_reader::{BedCloud, ReadOptions, sample_bed_url, assert_eq_nan, EMPTY_OPTIONS};
+/// use bed_reader::{BedCloud, ReadOptions, sample_bed_url, assert_eq_nan};
 ///
 /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
 /// let url = sample_bed_url("small.bed")?;
@@ -384,7 +384,7 @@ impl BedCloudBuilder {
     /// use bed_reader::{BedCloud, ReadOptions, sample_urls, EMPTY_OPTIONS};
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// let deb_maf_mib = sample_urls(["small.deb", "small.maf", "small.mib"])?;
-    /// let mut bed_cloud = BedCloud::builder(&deb_maf_mib[0], EMPTY_OPTIONS)?
+    /// let mut bed_cloud = BedCloud::builder(&deb_maf_mib[0])?
     ///    .fam(&deb_maf_mib[1], EMPTY_OPTIONS)?
     ///    .bim(&deb_maf_mib[2], EMPTY_OPTIONS)?
     ///    .build().await?;
@@ -422,7 +422,7 @@ impl BedCloudBuilder {
     /// use bed_reader::{BedCloud, ReadOptions, sample_urls, EMPTY_OPTIONS};
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// let deb_maf_mib = sample_urls(["small.deb", "small.maf", "small.mib"])?;
-    /// let mut bed_cloud = BedCloud::builder(&deb_maf_mib[0], EMPTY_OPTIONS)?
+    /// let mut bed_cloud = BedCloud::builder(&deb_maf_mib[0])?
     ///    .fam(&deb_maf_mib[1], EMPTY_OPTIONS)?
     ///    .bim(&deb_maf_mib[2], EMPTY_OPTIONS)?
     ///    .build().await?;
@@ -522,11 +522,11 @@ impl BedCloudBuilder {
     /// ```
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, assert_eq_nan, sample_bed_url, EMPTY_OPTIONS};
+    /// use bed_reader::{BedCloud, assert_eq_nan, sample_bed_url};
     /// let url = sample_bed_url("small.bed")?;
     /// use bed_reader::ReadOptions;
     ///
-    /// let mut bed_cloud = BedCloud::builder(url, EMPTY_OPTIONS)?
+    /// let mut bed_cloud = BedCloud::builder(url)?
     ///    .iid(["sample1", "sample2", "sample3"])
     ///    .build().await?;
     /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray ["sample1", "sample2", "sample3"]
@@ -615,10 +615,10 @@ impl BedCloudBuilder {
     /// ```
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_url, EMPTY_OPTIONS};
+    /// use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_url};
     /// let url = sample_bed_url("small.bed")?;
     ///
-    /// let mut bed_cloud = BedCloud::builder(url, EMPTY_OPTIONS)?
+    /// let mut bed_cloud = BedCloud::builder(url)?
     ///    .sid(["SNP1", "SNP2", "SNP3", "SNP4"])
     ///    .build().await?;
     /// println!("{:?}", bed_cloud.sid().await?); // Outputs ndarray ["SNP1", "SNP2", "SNP3", "SNP4"]
@@ -715,9 +715,9 @@ impl BedCloudBuilder {
     /// ```
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// # use ndarray as nd;
-    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_url, EMPTY_OPTIONS};
+    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_url};
     /// # let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::builder(&url, EMPTY_OPTIONS)?.skip_early_check().build().await?;
+    /// let mut bed_cloud = BedCloud::builder(&url)?.skip_early_check().build().await?;
     /// let val = bed_cloud.read::<f64>().await?;
     ///
     /// assert_eq_nan(
@@ -748,7 +748,7 @@ impl BedCloudBuilder {
     /// use bed_reader::{BedCloud, ReadOptions, sample_urls, EMPTY_OPTIONS};
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// let deb_maf_mib = sample_urls(["small.deb", "small.maf", "small.mib"])?;
-    /// let mut bed_cloud = BedCloud::builder(&deb_maf_mib[0], EMPTY_OPTIONS)?
+    /// let mut bed_cloud = BedCloud::builder(&deb_maf_mib[0])?
     ///    .fam(&deb_maf_mib[1], EMPTY_OPTIONS)?
     ///    .bim(&deb_maf_mib[2], EMPTY_OPTIONS)?
     ///    .build().await?;
@@ -772,7 +772,7 @@ impl BedCloudBuilder {
     /// Read .bed, .fam, and .bim files with non-standard names.
     /// ```
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
-    /// use bed_reader::{BedCloud, ReadOptions, sample_urls, CloudFile, EMPTY_OPTIONS};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_urls, CloudFile};
     ///
     /// let deb_maf_mib = sample_urls(["small.deb", "small.maf", "small.mib"])?
     ///    .iter()
@@ -978,7 +978,7 @@ impl BedCloudBuilder {
     /// it is read from the *.bim file.
     ///```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, Metadata, sample_bed_url, EMPTY_OPTIONS};
+    /// use bed_reader::{BedCloud, Metadata, sample_bed_url};
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// let url = sample_bed_url("small.bed")?;
@@ -986,7 +986,7 @@ impl BedCloudBuilder {
     ///     .iid(["i1", "i2", "i3"])
     ///     .sid(["s1", "s2", "s3", "s4"])
     ///     .build()?;
-    /// let mut bed_cloud = BedCloud::builder(url, EMPTY_OPTIONS)?
+    /// let mut bed_cloud = BedCloud::builder(url)?
     ///     .fid(["f1", "f2", "f3"])
     ///     .iid(["x1", "x2", "x3"])
     ///     .metadata(&metadata)
@@ -1042,7 +1042,7 @@ impl BedCloud {
     ///
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, assert_eq_nan, sample_bed_url, EMPTY_OPTIONS};
+    /// use bed_reader::{BedCloud, assert_eq_nan, sample_bed_url};
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// let url = sample_bed_url("small.bed")?;
@@ -1068,7 +1068,7 @@ impl BedCloud {
     /// at index position 2.
     /// ```
     /// # use ndarray as nd;
-    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_url, EMPTY_OPTIONS};
+    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_url};
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// # let url = sample_bed_url("small.bed")?;
     /// let mut bed_cloud = BedCloud::new(url).await?;
@@ -1134,12 +1134,12 @@ impl BedCloud {
     ///
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, assert_eq_nan, sample_bed_url, EMPTY_OPTIONS};
+    /// use bed_reader::{BedCloud, assert_eq_nan, sample_bed_url};
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// let url = sample_bed_url("small.bed")?;
     /// println!("{url:?}"); // For example, "file:///C:/Users/carlk/AppData/Local/bed_reader/bed_reader/Cache/small.bed"
-    /// let mut bed_cloud = BedCloud::builder(url, EMPTY_OPTIONS)?.build().await?;
+    /// let mut bed_cloud = BedCloud::builder(url)?.build().await?;
     /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray ["iid1", "iid2", "iid3"]
     /// println!("{:?}", bed_cloud.sid().await?); // Outputs ndarray ["snp1", "snp2", "snp3", "snp4"]
     /// let val = bed_cloud.read::<f64>().await?;
@@ -1160,9 +1160,9 @@ impl BedCloud {
     /// ```
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// # use ndarray as nd;
-    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_url, EMPTY_OPTIONS};
+    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_url};
     /// # let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::builder(url, EMPTY_OPTIONS)?
+    /// let mut bed_cloud = BedCloud::builder(url)?
     ///    .iid(["sample1", "sample2", "sample3"])
     ///    .build().await?;
     /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray ["sample1", "sample2", "sample3"]
@@ -1175,9 +1175,9 @@ impl BedCloud {
     /// ```
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// # use ndarray as nd;
-    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_url, EMPTY_OPTIONS};
+    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_url};
     /// # let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::builder(&url, EMPTY_OPTIONS)?
+    /// let mut bed_cloud = BedCloud::builder(&url)?
     ///     .iid_count(3)
     ///     .sid_count(4)
     ///     .skip_early_check()
@@ -1200,9 +1200,9 @@ impl BedCloud {
     /// ```
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// # use ndarray as nd;
-    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_url, EMPTY_OPTIONS};
+    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_url};
     /// # let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::builder(url, EMPTY_OPTIONS)?
+    /// let mut bed_cloud = BedCloud::builder(url)?
     ///     .skip_father()
     ///     .skip_mother()
     ///     .skip_sex()
@@ -1216,7 +1216,12 @@ impl BedCloud {
     /// # #[cfg(feature = "tokio")] use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
     ///
-    pub fn builder<I, K, V>(
+    pub fn builder(url: impl AsRef<str>) -> Result<BedCloudBuilder, Box<BedErrorPlus>> {
+        BedCloudBuilder::new(url, EMPTY_OPTIONS)
+    }
+
+    /// cmk
+    pub fn builder_with_options<I, K, V>(
         url: impl AsRef<str>,
         options: I,
     ) -> Result<BedCloudBuilder, Box<BedErrorPlus>>
@@ -1261,11 +1266,11 @@ impl BedCloud {
     ///
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, assert_eq_nan, sample_bed_url, EMPTY_OPTIONS};
+    /// use bed_reader::{BedCloud, assert_eq_nan, sample_bed_url};
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::builder(&url, EMPTY_OPTIONS)?.build().await?;
+    /// let mut bed_cloud = BedCloud::builder(&url)?.build().await?;
     /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray ["iid1", "iid2", "iid3"]
     /// println!("{:?}", bed_cloud.sid().await?); // Outputs ndarray ["snp1", "snp2", "snp3", "snp4"]
     /// let val = bed_cloud.read::<f64>().await?;
@@ -1286,9 +1291,9 @@ impl BedCloud {
     /// ```
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// # use ndarray as nd;
-    /// # use bed_reader::{BedCloud, assert_eq_nan, sample_bed_url, EMPTY_OPTIONS};
+    /// # use bed_reader::{BedCloud, assert_eq_nan, sample_bed_url};
     /// # let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::builder(&url, EMPTY_OPTIONS)?
+    /// let mut bed_cloud = BedCloud::builder(&url)?
     ///    .iid(["sample1", "sample2", "sample3"])
     ///    .build().await?;
     /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray ["sample1", "sample2", "sample3"]
@@ -1301,9 +1306,9 @@ impl BedCloud {
     /// ```
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// # use ndarray as nd;
-    /// # use bed_reader::{BedCloud, assert_eq_nan, sample_bed_url, EMPTY_OPTIONS};
+    /// # use bed_reader::{BedCloud, assert_eq_nan, sample_bed_url};
     /// # let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::builder(&url, EMPTY_OPTIONS)?
+    /// let mut bed_cloud = BedCloud::builder(&url)?
     ///     .iid_count(3)
     ///     .sid_count(4)
     ///     .skip_early_check()
@@ -1326,9 +1331,9 @@ impl BedCloud {
     /// ```
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// # use ndarray as nd;
-    /// # use bed_reader::{BedCloud, assert_eq_nan, sample_bed_url, EMPTY_OPTIONS};
+    /// # use bed_reader::{BedCloud, assert_eq_nan, sample_bed_url};
     /// # let url = sample_bed_url("small.bed")?;
-    /// let mut bed_cloud = BedCloud::builder(&url, EMPTY_OPTIONS)?
+    /// let mut bed_cloud = BedCloud::builder(&url)?
     ///     .skip_father()
     ///     .skip_mother()
     ///     .skip_sex()
@@ -1372,7 +1377,7 @@ impl BedCloud {
     ///
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, assert_eq_nan, sample_bed_url, EMPTY_OPTIONS};
+    /// use bed_reader::{BedCloud, assert_eq_nan, sample_bed_url};
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// let url = sample_bed_url("small.bed")?;
@@ -1397,7 +1402,7 @@ impl BedCloud {
     /// at index position 2.
     /// ```
     /// # use ndarray as nd;
-    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_url, EMPTY_OPTIONS};
+    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_url};
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// # let url = sample_bed_url("small.bed")?;
     ///
@@ -1424,7 +1429,7 @@ impl BedCloud {
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_url, EMPTY_OPTIONS};
+    /// use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_url};
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// let url = sample_bed_url("small.bed")?;
@@ -1457,7 +1462,7 @@ impl BedCloud {
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_url, EMPTY_OPTIONS};
+    /// use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_url};
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// let url = sample_bed_url("small.bed")?;
@@ -1490,7 +1495,7 @@ impl BedCloud {
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url, EMPTY_OPTIONS};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
@@ -1517,7 +1522,7 @@ impl BedCloud {
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url, EMPTY_OPTIONS};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
@@ -1544,7 +1549,7 @@ impl BedCloud {
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url, EMPTY_OPTIONS};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
@@ -1571,7 +1576,7 @@ impl BedCloud {
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url, EMPTY_OPTIONS};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
@@ -1602,7 +1607,7 @@ impl BedCloud {
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url, EMPTY_OPTIONS};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
@@ -1635,7 +1640,7 @@ impl BedCloud {
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url, EMPTY_OPTIONS};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
@@ -1662,7 +1667,7 @@ impl BedCloud {
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url, EMPTY_OPTIONS};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
@@ -1724,7 +1729,7 @@ impl BedCloud {
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url, EMPTY_OPTIONS};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
@@ -1751,7 +1756,7 @@ impl BedCloud {
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url, EMPTY_OPTIONS};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
@@ -1782,7 +1787,7 @@ impl BedCloud {
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url, EMPTY_OPTIONS};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
@@ -1813,7 +1818,7 @@ impl BedCloud {
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url, EMPTY_OPTIONS};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
     /// use bed_reader::assert_eq_nan;
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     ///
@@ -1845,7 +1850,7 @@ impl BedCloud {
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url, EMPTY_OPTIONS};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
     /// use bed_reader::assert_eq_nan;
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     ///
@@ -1875,7 +1880,7 @@ impl BedCloud {
     /// If the needed, the metadata will be read from the .fam and/or .bim files.
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, sample_bed_url, EMPTY_OPTIONS};
+    /// use bed_reader::{BedCloud, sample_bed_url};
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// let url = sample_bed_url("small.bed")?;
@@ -1934,7 +1939,7 @@ impl BedCloud {
     ///
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url, EMPTY_OPTIONS};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
@@ -1985,7 +1990,7 @@ impl BedCloud {
     ///
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url, EMPTY_OPTIONS};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
@@ -2058,7 +2063,7 @@ impl BedCloud {
     ///
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url, EMPTY_OPTIONS};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
@@ -2098,7 +2103,7 @@ impl BedCloud {
     ///
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url, EMPTY_OPTIONS};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
