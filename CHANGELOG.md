@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.1] - 2024-4-16
 
-cmk
+- Add support for cloud files to both Rust and Python.
 
 ## [1.0.0] - 2023-11-5
 

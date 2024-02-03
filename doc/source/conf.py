@@ -3,6 +3,8 @@ from pathlib import Path
 
 from recommonmark.parser import CommonMarkParser
 
+doctest_global_setup = "import bed_reader"
+
 
 def read(filepath):
     import codecs
