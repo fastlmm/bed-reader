@@ -1,15 +1,12 @@
 #![cfg(feature = "extension-module")]
 
-use std::collections::HashMap;
-
-use numpy::{PyArray1, PyArray2, PyArray3};
-
-use crate::{BedCloud, ObjectPath};
+use crate::{BedCloud, CloudFile};
 use crate::{
     BedError, BedErrorPlus, Dist, _file_ata_piece_internal, create_pool, file_aat_piece,
     file_ata_piece, file_b_less_aatbx, impute_and_zero_mean_snps, matrix_subset_no_alloc,
     read_into_f32, read_into_f64, Bed, ReadOptions, WriteOptions,
 };
+use numpy::{PyArray1, PyArray2, PyArray3};
 use pyo3::{
     exceptions::PyIOError,
     exceptions::PyIndexError,
@@ -17,6 +14,7 @@ use pyo3::{
     prelude::{pymodule, PyModule, PyResult, Python},
     PyErr,
 };
+use std::collections::HashMap;
 use tokio::runtime;
 
 #[pymodule]
@@ -50,17 +48,16 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     #[pyfn(m)]
     fn url_to_bytes(location: &str, options: HashMap<&str, String>) -> Result<Vec<u8>, PyErr> {
-        let object_path = ObjectPath::from_url(location, options)?;
-
+        let cloud_file = CloudFile::new_with_options(location, options)
+            .map_err(|e| Box::new(BedErrorPlus::CloudFileError(e)))?;
         let rt = runtime::Runtime::new()?;
         rt.block_on(async {
-            let get_result = object_path.get().await?;
-            let bytes = get_result.bytes().await.map_err(|e| {
+            let all = cloud_file.read_all().await.map_err(|e| {
                 PyErr::new::<PyValueError, _>(format!(
                     "Error retrieving bytes for '{location}: {e}"
                 ))
             })?;
-            let vec: Vec<u8> = bytes.to_vec();
+            let vec: Vec<u8> = all.to_vec();
             Ok(vec)
         })
     }
@@ -177,11 +174,9 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
-    #[allow(clippy::too_many_arguments)]
     fn check_file_cloud(location: &str, options: HashMap<&str, String>) -> Result<(), PyErr> {
-        let rt = runtime::Runtime::new()?;
-        rt.block_on(async {
-            BedCloud::new(location, options).await?;
+        runtime::Runtime::new()?.block_on(async {
+            BedCloud::new_with_options(location, options).await?;
             Ok(())
         })
     }
@@ -199,7 +194,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         val: &PyArray2<i8>,
         num_threads: usize,
         max_concurrent_requests: usize,
-        max_chunk_size: usize,
+        max_chunk_bytes: usize,
     ) -> Result<(), PyErr> {
         let iid_index = iid_index.readonly();
         let sid_index = sid_index.readonly();
@@ -209,11 +204,9 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let mut val = val.readwrite();
         let mut val = val.as_array_mut();
 
-        let object_path = ObjectPath::from_url(location, options)?;
-
         let rt = runtime::Runtime::new()?;
         rt.block_on(async {
-            let mut bed_cloud = BedCloud::builder_from_object_path(&object_path)
+            let mut bed_cloud = BedCloud::builder_with_options(location, options)?
                 .iid_count(iid_count)
                 .sid_count(sid_count)
                 .build()
@@ -225,7 +218,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
                 .is_a1_counted(is_a1_counted)
                 .num_threads(num_threads)
                 .max_concurrent_requests(max_concurrent_requests)
-                .max_chunk_size(max_chunk_size)
+                .max_chunk_bytes(max_chunk_bytes)
                 .read_and_fill_cloud(&mut bed_cloud, &mut val.view_mut())
                 .await?;
 
@@ -246,7 +239,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         val: &PyArray2<f32>,
         num_threads: usize,
         max_concurrent_requests: usize,
-        max_chunk_size: usize,
+        max_chunk_bytes: usize,
     ) -> Result<(), PyErr> {
         let iid_index = iid_index.readonly();
         let sid_index = sid_index.readonly();
@@ -256,11 +249,9 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let mut val = val.readwrite();
         let mut val = val.as_array_mut();
 
-        let object_path = ObjectPath::from_url(location, options)?;
-
         let rt = runtime::Runtime::new()?;
         rt.block_on(async {
-            let mut bed_cloud = BedCloud::builder_from_object_path(&object_path)
+            let mut bed_cloud = BedCloud::builder_with_options(location, options)?
                 .iid_count(iid_count)
                 .sid_count(sid_count)
                 .build()
@@ -272,7 +263,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
                 .is_a1_counted(is_a1_counted)
                 .num_threads(num_threads)
                 .max_concurrent_requests(max_concurrent_requests)
-                .max_chunk_size(max_chunk_size)
+                .max_chunk_bytes(max_chunk_bytes)
                 .read_and_fill_cloud(&mut bed_cloud, &mut val.view_mut())
                 .await?;
 
@@ -293,7 +284,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         val: &PyArray2<f64>,
         num_threads: usize,
         max_concurrent_requests: usize,
-        max_chunk_size: usize,
+        max_chunk_bytes: usize,
     ) -> Result<(), PyErr> {
         let iid_index = iid_index.readonly();
         let sid_index = sid_index.readonly();
@@ -303,11 +294,9 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let mut val = val.readwrite();
         let mut val = val.as_array_mut();
 
-        let object_path = ObjectPath::from_url(location, options)?;
-
         let rt = runtime::Runtime::new()?;
         rt.block_on(async {
-            let mut bed_cloud = BedCloud::builder_from_object_path(&object_path)
+            let mut bed_cloud = BedCloud::builder_with_options(location, options)?
                 .iid_count(iid_count)
                 .sid_count(sid_count)
                 .build()
@@ -319,7 +308,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
                 .is_a1_counted(is_a1_counted)
                 .num_threads(num_threads)
                 .max_concurrent_requests(max_concurrent_requests)
-                .max_chunk_size(max_chunk_size)
+                .max_chunk_bytes(max_chunk_bytes)
                 .read_and_fill_cloud(&mut bed_cloud, &mut val.view_mut())
                 .await?;
 

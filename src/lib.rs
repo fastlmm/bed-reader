@@ -21,7 +21,7 @@
 //! | Function | Description |
 //! | -------- | ----------- |
 //! | [`Bed::new`](struct.Bed.html#method.new) or [`Bed::builder`](struct.Bed.html#method.builder) | Open a local PLINK .bed file for reading genotype data and metadata. |
-//! | [`BedCloud::new`](struct.BedCloud.html#method.new) or [`BedCloud::builder`](struct.BedCloud.html#method.builder) | Open a cloud PLINK .bed file for reading genotype data and metadata. |
+//! | [`BedCloud::new`](struct.BedCloud.html#method.new), `BedCloud::new_with_options`](struct.BedCloud.html#method.new_with_options) or [`BedCloud::builder`](struct.BedCloud.html#method.builder) | Open a cloud PLINK .bed file for reading genotype data and metadata. |
 //! | [`ReadOptions::builder`](struct.ReadOptions.html#method.builder) | Read genotype data from a local or cloud file. Supports indexing and options. |
 //! | [`WriteOptions::builder`](struct.WriteOptions.html#method.builder) | Write values to a local file in PLINK .bed format. Supports metadata and options. |
 //!
@@ -71,7 +71,7 @@
 //! | [`is_a1_counted`](struct.ReadOptionsBuilder.html#method.is_a1_counted) | Is allele 1 counted? (defaults to true) |
 //! | [`num_threads`](struct.ReadOptionsBuilder.html#method.num_threads) | Number of threads to use (defaults to all processors) |
 //! | [`max_concurrent_requests`](struct.ReadOptionsBuilder.html#method.max_concurrent_requests) | Maximum number of concurrent async requests (defaults to 10) -- Used by [`BedCloud`](struct.BedCloud.html). |
-//! | [`max_chunk_size`](struct.ReadOptionsBuilder.html#method.max_chunk_size) | Maximum chunk size of async requests (defaults to 8_000_000 bytes) -- Used by [`BedCloud`](struct.BedCloud.html). |
+//! | [`max_chunk_bytes`](struct.ReadOptionsBuilder.html#method.max_chunk_bytes) | Maximum chunk size of async requests (defaults to 8_000_000 bytes) -- Used by [`BedCloud`](struct.BedCloud.html). |
 //!
 //! ### [`Index`](enum.Index.html) Expressions
 //!
@@ -111,28 +111,20 @@
 //! Any requested sample file will be downloaded to this directory. If the environment variable is not set,
 //! a cache folder, appropriate to the OS, will be used.
 
-#[cfg(feature = "cloud")]
 mod python_module;
 mod tests;
 use anyinput::anyinput;
-#[cfg(feature = "cloud")]
-pub use bed_cloud::{
-    path_to_url_string, sample_bed_object_path, sample_bed_url, sample_object_path,
-    sample_object_paths, sample_url, sample_urls, BedCloud, BedCloudBuilder, ObjectPath,
-    EMPTY_OPTIONS,
-};
+pub use bed_cloud::{sample_bed_url, sample_url, sample_urls, BedCloud, BedCloudBuilder};
 use byteorder::{LittleEndian, ReadBytesExt};
+pub use cloud_file::{CloudFile, CloudFileError};
 use core::fmt::Debug;
 use derive_builder::Builder;
 use dpc_pariter::{scope, IteratorExt};
 use fetch_data::FetchData;
-#[cfg(feature = "cloud")]
-use futures_util::{pin_mut, stream::StreamExt};
+use futures_util::StreamExt;
 use nd::ShapeBuilder;
 use ndarray as nd;
 use num_traits::{abs, Float, FromPrimitive, Signed, ToPrimitive};
-#[cfg(feature = "cloud")]
-use object_store::{delimited::newline_delimited_stream, ObjectStore};
 use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
 use rayon::{iter::ParallelBridge, ThreadPoolBuildError};
 use statrs::distribution::{Beta, Continuous};
@@ -156,7 +148,6 @@ use std::{
     path::{Path, PathBuf},
 };
 use thiserror::Error;
-#[cfg(feature = "cloud")]
 mod bed_cloud;
 
 const BED_FILE_MAGIC1: u8 = 0x6C; // 0b01101100 or 'l' (lowercase 'L')
@@ -197,20 +188,9 @@ pub enum BedErrorPlus {
     #[error(transparent)]
     ParseFloatError(#[from] ParseFloatError),
 
-    #[cfg(feature = "cloud")]
     #[allow(missing_docs)]
     #[error(transparent)]
-    ObjectStoreError(#[from] object_store::Error),
-
-    #[cfg(feature = "cloud")]
-    #[allow(missing_docs)]
-    #[error(transparent)]
-    ObjectStorePathError(#[from] object_store::path::Error),
-
-    #[cfg(feature = "cloud")]
-    #[allow(missing_docs)]
-    #[error(transparent)]
-    JoinError(#[from] tokio::task::JoinError),
+    CloudFileError(#[from] CloudFileError),
 
     #[allow(missing_docs)]
     #[error(transparent)]
@@ -358,10 +338,6 @@ pub enum BedError {
     #[allow(missing_docs)]
     #[error("Sample fetch error: {0}")]
     SampleFetch(String),
-
-    #[allow(missing_docs)]
-    #[error("Cannot create URL from this file path: '{0}'")]
-    CannotCreateUrlFromFilePath(String),
 }
 
 // Trait alias
@@ -473,17 +449,9 @@ impl From<::derive_builder::UninitializedFieldError> for BedErrorPlus {
     }
 }
 
-#[cfg(feature = "cloud")]
-impl From<object_store::Error> for Box<BedErrorPlus> {
-    fn from(err: object_store::Error) -> Self {
-        Box::new(BedErrorPlus::ObjectStoreError(err))
-    }
-}
-
-#[cfg(feature = "cloud")]
-impl From<object_store::path::Error> for Box<BedErrorPlus> {
-    fn from(err: object_store::path::Error) -> Self {
-        Box::new(BedErrorPlus::ObjectStorePathError(err))
+impl From<CloudFileError> for Box<BedErrorPlus> {
+    fn from(err: CloudFileError) -> Self {
+        Box::new(BedErrorPlus::CloudFileError(err))
     }
 }
 
@@ -3161,7 +3129,6 @@ fn compute_num_threads(option_num_threads: Option<usize>) -> Result<usize, Box<B
 }
 
 #[allow(clippy::unnecessary_wraps)]
-#[cfg(feature = "cloud")]
 fn compute_max_concurrent_requests(
     option_max_concurrent_requests: Option<usize>,
 ) -> Result<usize, Box<BedErrorPlus>> {
@@ -3179,12 +3146,11 @@ fn compute_max_concurrent_requests(
 }
 
 #[allow(clippy::unnecessary_wraps)]
-#[cfg(feature = "cloud")]
-fn compute_max_chunk_size(
-    option_max_chunk_size: Option<usize>,
+fn compute_max_chunk_bytes(
+    option_max_chunk_bytes: Option<usize>,
 ) -> Result<usize, Box<BedErrorPlus>> {
-    let max_chunk_size = if let Some(max_chunk_size) = option_max_chunk_size {
-        max_chunk_size
+    let max_chunk_bytes = if let Some(max_chunk_bytes) = option_max_chunk_bytes {
+        max_chunk_bytes
     // } else if let Ok(num_threads) = env::var("BED_READER_NUM_THREADS") {
     //     num_threads.parse::<usize>()?
     // } else if let Ok(num_threads) = env::var("NUM_THREADS") {
@@ -3192,7 +3158,7 @@ fn compute_max_chunk_size(
     } else {
         8_000_000
     };
-    Ok(max_chunk_size)
+    Ok(max_chunk_bytes)
 }
 
 impl Index {
@@ -4013,15 +3979,13 @@ pub struct ReadOptions<TVal: BedVal> {
     ///
     /// In this example, we read using only request at a time.
     /// ```
-    /// # #[cfg(feature = "cloud")]
-    /// # { use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_object_path};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// # Runtime::new().unwrap().block_on(async {
-    /// let object_path = sample_bed_object_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::from_object_path(&object_path).await?;
+    /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
+    /// let url = sample_bed_url("small.bed")?;
+    /// let mut bed_cloud = BedCloud::new(&url).await?;
     /// let val = ReadOptions::builder().max_concurrent_requests(1).i8().read_cloud(&mut bed_cloud).await?;
     ///
     /// assert_eq_nan(
@@ -4032,7 +3996,8 @@ pub struct ReadOptions<TVal: BedVal> {
     ///         [0, 1, 2, 0]
     ///     ],
     /// );
-    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap() };
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # #[cfg(feature = "tokio")] use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     #[builder(default, setter(strip_option))]
     #[allow(dead_code)]
     max_concurrent_requests: Option<usize>,
@@ -4043,16 +4008,14 @@ pub struct ReadOptions<TVal: BedVal> {
     ///
     /// In this example, we read using only 1_000_000 bytes per request.
     /// ```
-    /// # #[cfg(feature = "cloud")]
-    /// # { use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_object_path};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// # Runtime::new().unwrap().block_on(async {
-    /// let object_path = sample_bed_object_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::from_object_path(&object_path).await?;
-    /// let val = ReadOptions::builder().max_chunk_size(1_000_000).i8().read_cloud(&mut bed_cloud).await?;
+    /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
+    /// let url = sample_bed_url("small.bed")?;
+    /// let mut bed_cloud = BedCloud::new(&url).await?;
+    /// let val = ReadOptions::builder().max_chunk_bytes(1_000_000).i8().read_cloud(&mut bed_cloud).await?;
     ///
     /// assert_eq_nan(
     ///     &val,
@@ -4062,11 +4025,12 @@ pub struct ReadOptions<TVal: BedVal> {
     ///         [0, 1, 2, 0]
     ///     ],
     /// );
-    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap() };
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # #[cfg(feature = "tokio")] use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
     #[builder(default, setter(strip_option))]
     #[allow(dead_code)]
-    max_chunk_size: Option<usize>,
+    max_chunk_bytes: Option<usize>,
 }
 
 impl<TVal: BedVal> ReadOptions<TVal> {
@@ -4351,29 +4315,25 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     ///
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_object_path};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// # Runtime::new().unwrap().block_on(async {
+    /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// // Read the SNPs indexed by 2.
-    /// let object_path = sample_bed_object_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::from_object_path(&object_path).await?;
+    /// let url = sample_bed_url("small.bed")?;
+    /// let mut bed_cloud = BedCloud::new(&url).await?;
     /// let mut val = ReadOptions::builder()
     ///     .sid_index(2)
     ///     .read_cloud(&mut bed_cloud).await?;
     ///
     /// assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
-    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
+    /// # #[cfg(feature = "tokio")] use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
-    #[cfg(feature = "cloud")]
-    pub async fn read_cloud<TObjectStore>(
+    pub async fn read_cloud(
         &self,
-        bed_cloud: &mut BedCloud<TObjectStore>,
-    ) -> Result<nd::Array2<TVal>, Box<BedErrorPlus>>
-    where
-        TObjectStore: ObjectStore,
-    {
+        bed_cloud: &mut BedCloud,
+    ) -> Result<nd::Array2<TVal>, Box<BedErrorPlus>> {
         let read_options = self.build()?;
         bed_cloud.read_with_options(&read_options).await
     }
@@ -4436,13 +4396,13 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     ///
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_object_path};
+    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
     /// use bed_reader::assert_eq_nan;
     ///
-    /// # Runtime::new().unwrap().block_on(async {
+    /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// // Read the SNPs indexed by 2.
-    /// let object_path = sample_bed_object_path("small.bed")?;
-    /// let mut bed_cloud = BedCloud::from_object_path(&object_path).await?;
+    /// let url = sample_bed_url("small.bed")?;
+    /// let mut bed_cloud = BedCloud::new(&url).await?;
     /// let mut val = nd::Array2::<f64>::default((3, 1));
     /// ReadOptions::builder()
     ///     .sid_index(2)
@@ -4450,17 +4410,13 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     ///
     /// assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
-    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
+    /// # #[cfg(feature = "tokio")] use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```    
-    #[cfg(feature = "cloud")]
-    pub async fn read_and_fill_cloud<TObjectStore>(
+    pub async fn read_and_fill_cloud(
         &self,
-        bed_cloud: &mut BedCloud<TObjectStore>,
+        bed_cloud: &mut BedCloud,
         val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
-    ) -> Result<(), Box<BedErrorPlus>>
-    where
-        TObjectStore: ObjectStore,
-    {
+    ) -> Result<(), Box<BedErrorPlus>> {
         let read_options = self.build()?;
         bed_cloud
             .read_and_fill_with_options(val, &read_options)
@@ -6460,32 +6416,30 @@ impl Metadata {
     /// ```
     /// use ndarray as nd;
     /// use std::collections::HashSet;
-    /// use bed_reader::{Metadata, MetadataFields, sample_object_path};
+    /// use bed_reader::{Metadata, MetadataFields, sample_url, CloudFile};
     ///
-    /// # Runtime::new().unwrap().block_on(async {
+    /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// let skip_set = HashSet::<MetadataFields>::new();
+    /// let fam_cloud_file = CloudFile::new(sample_url("small.fam")?)?;
+    /// let bim_cloud_file = CloudFile::new(sample_url("small.bim")?)?;
     /// let metadata_empty = Metadata::new();
     /// let (metadata_fam, iid_count) =
-    ///     metadata_empty.read_fam_cloud(&sample_object_path("small.fam")?, &skip_set).await?;
+    ///     metadata_empty.read_fam_cloud(&fam_cloud_file, &skip_set).await?;
     /// let (metadata_bim, sid_count) =
-    ///     metadata_fam.read_bim_cloud(&sample_object_path("small.bim")?, &skip_set).await?;
+    ///     metadata_fam.read_bim_cloud(&bim_cloud_file, &skip_set).await?;
     /// assert_eq!(iid_count, 3);
     /// assert_eq!(sid_count, 4);
     /// println!("{0:?}", metadata_fam.iid()); // Outputs optional ndarray Some(["iid1", "iid2", "iid3"]...)
     /// println!("{0:?}", metadata_bim.sid()); // Outputs optional ndarray Some(["sid1", "sid2", "sid3", "sid4"]...)
     /// println!("{0:?}", metadata_bim.chromosome()); // Outputs optional ndarray Some(["1", "1", "5", "Y"]...)
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
-    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
+    /// # #[cfg(feature = "tokio")] use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
-    #[cfg(feature = "cloud")]
-    pub async fn read_fam_cloud<TObjectStore>(
+    pub async fn read_fam_cloud(
         &self,
-        object_path: &ObjectPath<TObjectStore>,
+        cloud_file: &CloudFile,
         skip_set: &HashSet<MetadataFields>,
-    ) -> Result<(Metadata, usize), Box<BedErrorPlus>>
-    where
-        TObjectStore: ObjectStore,
-    {
+    ) -> Result<(Metadata, usize), Box<BedErrorPlus>> {
         let mut field_vec: Vec<usize> = Vec::new();
 
         if self.fid.is_none() && !skip_set.contains(&MetadataFields::Fid) {
@@ -6508,7 +6462,7 @@ impl Metadata {
         }
 
         let (mut vec_of_vec, count) = self
-            .read_fam_or_bim_cloud(&field_vec, true, object_path)
+            .read_fam_or_bim_cloud(&field_vec, true, cloud_file)
             .await?;
 
         let mut clone = self.clone();
@@ -6644,32 +6598,30 @@ impl Metadata {
     /// ```
     /// use ndarray as nd;
     /// use std::collections::HashSet;
-    /// use bed_reader::{Metadata, MetadataFields, sample_object_path};
+    /// use bed_reader::{Metadata, MetadataFields, sample_url, CloudFile};
     ///
-    /// # Runtime::new().unwrap().block_on(async {
+    /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// let skip_set = HashSet::<MetadataFields>::new();
+    /// let fam_cloud_file = CloudFile::new(sample_url("small.fam")?)?;
+    /// let bim_cloud_file = CloudFile::new(sample_url("small.bim")?)?;
     /// let metadata_empty = Metadata::new();
     /// let (metadata_fam, iid_count) =
-    ///     metadata_empty.read_fam_cloud(&sample_object_path("small.fam")?, &skip_set).await?;
+    ///     metadata_empty.read_fam_cloud(&fam_cloud_file, &skip_set).await?;
     /// let (metadata_bim, sid_count) =
-    ///     metadata_fam.read_bim_cloud(&sample_object_path("small.bim")?, &skip_set).await?;
+    ///     metadata_fam.read_bim_cloud(&bim_cloud_file, &skip_set).await?;
     /// assert_eq!(iid_count, 3);
     /// assert_eq!(sid_count, 4);
     /// println!("{0:?}", metadata_fam.iid()); // Outputs optional ndarray Some(["iid1", "iid2", "iid3"]...)
     /// println!("{0:?}", metadata_bim.sid()); // Outputs optional ndarray Some(["sid1", "sid2", "sid3", "sid4"]...)
     /// println!("{0:?}", metadata_bim.chromosome()); // Outputs optional ndarray Some(["1", "1", "5", "Y"]...)
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
-    /// # use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
+    /// # #[cfg(feature = "tokio")] use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
-    #[cfg(feature = "cloud")]
-    pub async fn read_bim_cloud<TObjectStore>(
+    pub async fn read_bim_cloud(
         &self,
-        object_path: &ObjectPath<TObjectStore>,
+        cloud_file: &CloudFile,
         skip_set: &HashSet<MetadataFields>,
-    ) -> Result<(Metadata, usize), Box<BedErrorPlus>>
-    where
-        TObjectStore: ObjectStore,
-    {
+    ) -> Result<(Metadata, usize), Box<BedErrorPlus>> {
         let mut field_vec: Vec<usize> = Vec::new();
         if self.chromosome.is_none() && !skip_set.contains(&MetadataFields::Chromosome) {
             field_vec.push(0);
@@ -6693,7 +6645,7 @@ impl Metadata {
 
         let mut clone = self.clone();
         let (mut vec_of_vec, count) = self
-            .read_fam_or_bim_cloud(&field_vec, false, object_path)
+            .read_fam_or_bim_cloud(&field_vec, false, cloud_file)
             .await?;
 
         // unwraps are safe because we pop once for every push
@@ -6774,33 +6726,20 @@ impl Metadata {
         Ok((vec_of_vec, count))
     }
 
-    #[cfg(feature = "cloud")]
-    async fn read_fam_or_bim_cloud<TObjectStore>(
+    async fn read_fam_or_bim_cloud(
         &self,
         field_vec: &[usize],
         is_split_whitespace: bool,
-        object_path: &ObjectPath<TObjectStore>,
-    ) -> Result<(Vec<Vec<String>>, usize), Box<BedErrorPlus>>
-    where
-        TObjectStore: ObjectStore,
-    {
+        cloud_file: &CloudFile,
+    ) -> Result<(Vec<Vec<String>>, usize), Box<BedErrorPlus>> {
         let mut vec_of_vec = vec![vec![]; field_vec.len()];
-
-        let stream = object_path.get().await?.into_stream();
-
-        let new_line_stream = newline_delimited_stream(stream);
-        pin_mut!(new_line_stream);
-
         let mut count = 0;
-        while let Some(chunk_result) = new_line_stream.next().await {
-            let chunk = chunk_result?; // Handle the chunk result
 
-            // Assuming chunk is a Bytes that can be converted to a string
-            // Split the chunk into lines
-            let lines = std::str::from_utf8(&chunk)?.split_terminator('\n');
-
+        let mut line_chunks = cloud_file.stream_line_chunks().await?;
+        while let Some(line_chunk) = line_chunks.next().await {
+            let line_chunk = line_chunk.map_err(CloudFileError::ObjectStoreError)?;
+            let lines = std::str::from_utf8(&line_chunk)?.lines();
             for line in lines {
-                // let line = line?;
                 count += 1;
 
                 let fields: Vec<&str> = if is_split_whitespace {
@@ -6813,7 +6752,7 @@ impl Metadata {
                     Err(BedError::MetadataFieldCount(
                         6,
                         fields.len(),
-                        object_path.to_string(),
+                        cloud_file.to_string(),
                     ))?;
                 }
 
@@ -7220,12 +7159,27 @@ where
         .map_err(|e| BedError::SampleFetch(e.to_string()))?)
 }
 
-#[cfg(feature = "cloud")]
+/// cmk An empty set of cloud options
+///
+/// # Example
+/// ```
+/// use cloud_file::{EMPTY_OPTIONS, CloudFile};
+///
+/// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
+/// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/plink_sim_10s_100v_10pmiss.bed";
+/// let cloud_file = CloudFile::new_with_options(url, EMPTY_OPTIONS)?;
+/// assert_eq!(cloud_file.read_file_size().await?, 303);
+/// # Ok::<(), BedErrorPlus>(())}).unwrap();
+/// # #[cfg(feature = "tokio")] use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
+/// ```
+pub const EMPTY_OPTIONS: [(&str, String); 0] = [];
+
+#[cfg(feature = "tokio/full")]
 pub mod supplemental_document_options {
     #![doc = include_str!("supplemental_documents/options_etc.md")]
 }
 
-#[cfg(feature = "cloud")]
+#[cfg(feature = "tokio/full")]
 pub mod supplemental_document_cloud_urls {
     #![doc = include_str!("supplemental_documents/cloud_urls_etc.md")]
 }

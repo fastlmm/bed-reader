@@ -4,7 +4,8 @@ Within this crate, the term "options" can refer to three levels of options: [Clo
 
 ## Cloud options
 
-When specifying a file in the cloud via a URL, we use methods [`BedCloud::new(url, options)`](../struct.BedCloud.html#method.new) and
+When specifying a file in the cloud via a URL, we use methods [`BedCloud::new(url)`](../struct.BedCloud.html#method.new),
+[`BedCloud::new_with_options(url, options)`](../struct.BedCloud.html#method.new_with_options), and
 [`BedCloud::builder(url, options)`](../struct.BedCloud.html#method.builder).
 
 The cloud providers forbid putting some needed information in the URL. Instead, that information must
@@ -14,7 +15,6 @@ about `"aws_region"`, `"aws_access_key_id"`, and `"aws_secret_access_key"` be pl
 See [`ClientConfigKey`](https://docs.rs/object_store/latest/object_store/enum.ClientConfigKey.html) for a list of cloud options, such as `timeout`, that you can always use. See [`AmazonS3ConfigKey`](https://docs.rs/object_store/latest/object_store/aws/enum.AmazonS3ConfigKey.html) for a list of AWS-specific options.
 See [`AzureConfigKey`](https://docs.rs/object_store/latest/object_store/azure/enum.AzureConfigKey.html) for a list of Azure-specific options.
 See [`GoogleConfigKey`](https://docs.rs/object_store/latest/object_store/gcp/enum.GoogleConfigKey.html) for a list of Google-specific options.
-
 
 Here is an AWS example:
 
@@ -45,7 +45,7 @@ let options = [
     ("aws_secret_access_key", credentials.aws_secret_access_key()),
 ];
 
-let mut bed_cloud = BedCloud::new(url, options).await?;
+let mut bed_cloud = BedCloud::new_with_options(url, options).await?;
 let val = bed_cloud.read::<i8>().await?;
 assert_eq!(val.shape(), &[500, 10_000]);
 # Ok::<(), Box<dyn std::error::Error>>(())
@@ -56,13 +56,13 @@ We can also read from local files as though they are in the cloud. In that case,
 
 ```rust
 use ndarray as nd;
-use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_url, EMPTY_OPTIONS};
+use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_url};
 # use {bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
 # Runtime::new().unwrap().block_on(async {
 let url = sample_url("small.bed")?;
 println!("{url:?}"); // For example, "file:///C:/Users/carlk/AppData/Local/bed_reader/bed_reader/Cache/small.bed"
 let options = EMPTY_OPTIONS; // map of authentication keys, etc., if needed.
-let mut bed_cloud = BedCloud::new(url, options).await?;
+let mut bed_cloud = BedCloud::new_with_options(url, options).await?;
 let val = ReadOptions::builder().sid_index(2).f64().read_cloud(&mut bed_cloud).await?;
 assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
 # Ok::<(), Box<dyn std::error::Error>>(())
