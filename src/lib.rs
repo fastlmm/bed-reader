@@ -3980,11 +3980,11 @@ pub struct ReadOptions<TVal: BedVal> {
     /// In this example, we read using only request at a time.
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
+    /// use bed_reader::{BedCloud, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
-    /// let url = sample_bed_url("small.bed")?;
+    /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// let mut bed_cloud = BedCloud::new(&url).await?;
     /// let val = ReadOptions::builder().max_concurrent_requests(1).i8().read_cloud(&mut bed_cloud).await?;
     ///
@@ -4009,11 +4009,11 @@ pub struct ReadOptions<TVal: BedVal> {
     /// In this example, we read using only 1_000_000 bytes per request.
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
+    /// use bed_reader::{BedCloud, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
-    /// let url = sample_bed_url("small.bed")?;
+    /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// let mut bed_cloud = BedCloud::new(&url).await?;
     /// let val = ReadOptions::builder().max_chunk_bytes(1_000_000).i8().read_cloud(&mut bed_cloud).await?;
     ///
@@ -4315,12 +4315,12 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     ///
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
+    /// use bed_reader::{BedCloud, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// // Read the SNPs indexed by 2.
-    /// let url = sample_bed_url("small.bed")?;
+    /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// let mut bed_cloud = BedCloud::new(&url).await?;
     /// let mut val = ReadOptions::builder()
     ///     .sid_index(2)
@@ -4396,12 +4396,12 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     ///
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
+    /// use bed_reader::{BedCloud, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// // Read the SNPs indexed by 2.
-    /// let url = sample_bed_url("small.bed")?;
+    /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// let mut bed_cloud = BedCloud::new(&url).await?;
     /// let mut val = nd::Array2::<f64>::default((3, 1));
     /// ReadOptions::builder()

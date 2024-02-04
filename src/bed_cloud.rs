@@ -35,10 +35,10 @@ use crate::{MetadataFields, CB_HEADER_U64};
 /// and all the genotype data.
 /// ```
 /// use ndarray as nd;
-/// use bed_reader::{BedCloud, ReadOptions, sample_bed_url, assert_eq_nan};
+/// use bed_reader::{BedCloud, ReadOptions, assert_eq_nan};
 ///
 /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
-/// let url = sample_bed_url("small.bed")?;
+/// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
 /// let mut bed_cloud = BedCloud::new(url).await?;
 /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray ["iid1", "iid2", "iid3"]
 /// let val = ReadOptions::builder().f64().read_cloud(&mut bed_cloud).await?;
@@ -522,8 +522,8 @@ impl BedCloudBuilder {
     /// ```
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, assert_eq_nan, sample_bed_url};
-    /// let url = sample_bed_url("small.bed")?;
+    /// use bed_reader::{BedCloud, assert_eq_nan};
+    /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// use bed_reader::ReadOptions;
     ///
     /// let mut bed_cloud = BedCloud::builder(url)?
@@ -615,8 +615,8 @@ impl BedCloudBuilder {
     /// ```
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_url};
-    /// let url = sample_bed_url("small.bed")?;
+    /// use bed_reader::{BedCloud, ReadOptions, assert_eq_nan};
+    /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     ///
     /// let mut bed_cloud = BedCloud::builder(url)?
     ///    .sid(["SNP1", "SNP2", "SNP3", "SNP4"])
@@ -715,8 +715,8 @@ impl BedCloudBuilder {
     /// ```
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// # use ndarray as nd;
-    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_url};
-    /// # let url = sample_bed_url("small.bed")?;
+    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan};
+    /// # let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// let mut bed_cloud = BedCloud::builder(&url)?.skip_early_check().build().await?;
     /// let val = bed_cloud.read::<f64>().await?;
     ///
@@ -978,10 +978,10 @@ impl BedCloudBuilder {
     /// it is read from the *.bim file.
     ///```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, Metadata, sample_bed_url};
+    /// use bed_reader::{BedCloud, Metadata};
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
-    /// let url = sample_bed_url("small.bed")?;
+    /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// let metadata = Metadata::builder()
     ///     .iid(["i1", "i2", "i3"])
     ///     .sid(["s1", "s2", "s3", "s4"])
@@ -1042,10 +1042,10 @@ impl BedCloud {
     ///
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, assert_eq_nan, sample_bed_url};
+    /// use bed_reader::{BedCloud, assert_eq_nan};
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
-    /// let url = sample_bed_url("small.bed")?;
+    /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// println!("{url:?}"); // For example, "file:///C:/Users/carlk/AppData/Local/bed_reader/bed_reader/Cache/small.bed"
     /// let mut bed_cloud = BedCloud::new(url).await?;
     /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray: ["iid1", "iid2", "iid3"]
@@ -1068,9 +1068,9 @@ impl BedCloud {
     /// at index position 2.
     /// ```
     /// # use ndarray as nd;
-    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_url};
+    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan};
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
-    /// # let url = sample_bed_url("small.bed")?;
+    /// # let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// let mut bed_cloud = BedCloud::new(url).await?;
     /// let val = ReadOptions::builder().sid_index(2).f64().read_cloud(&mut bed_cloud).await?;
     ///
@@ -1134,10 +1134,10 @@ impl BedCloud {
     ///
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, assert_eq_nan, sample_bed_url};
+    /// use bed_reader::{BedCloud, assert_eq_nan};
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
-    /// let url = sample_bed_url("small.bed")?;
+    /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// println!("{url:?}"); // For example, "file:///C:/Users/carlk/AppData/Local/bed_reader/bed_reader/Cache/small.bed"
     /// let mut bed_cloud = BedCloud::builder(url)?.build().await?;
     /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray ["iid1", "iid2", "iid3"]
@@ -1160,8 +1160,8 @@ impl BedCloud {
     /// ```
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// # use ndarray as nd;
-    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_url};
-    /// # let url = sample_bed_url("small.bed")?;
+    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan};
+    /// # let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// let mut bed_cloud = BedCloud::builder(url)?
     ///    .iid(["sample1", "sample2", "sample3"])
     ///    .build().await?;
@@ -1175,8 +1175,8 @@ impl BedCloud {
     /// ```
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// # use ndarray as nd;
-    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_url};
-    /// # let url = sample_bed_url("small.bed")?;
+    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan};
+    /// # let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// let mut bed_cloud = BedCloud::builder(&url)?
     ///     .iid_count(3)
     ///     .sid_count(4)
@@ -1200,8 +1200,8 @@ impl BedCloud {
     /// ```
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// # use ndarray as nd;
-    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_url};
-    /// # let url = sample_bed_url("small.bed")?;
+    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan};
+    /// # let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// let mut bed_cloud = BedCloud::builder(url)?
     ///     .skip_father()
     ///     .skip_mother()
@@ -1266,10 +1266,10 @@ impl BedCloud {
     ///
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, assert_eq_nan, sample_bed_url};
+    /// use bed_reader::{BedCloud, assert_eq_nan};
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
-    /// let url = sample_bed_url("small.bed")?;
+    /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// let mut bed_cloud = BedCloud::builder(&url)?.build().await?;
     /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray ["iid1", "iid2", "iid3"]
     /// println!("{:?}", bed_cloud.sid().await?); // Outputs ndarray ["snp1", "snp2", "snp3", "snp4"]
@@ -1291,8 +1291,8 @@ impl BedCloud {
     /// ```
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// # use ndarray as nd;
-    /// # use bed_reader::{BedCloud, assert_eq_nan, sample_bed_url};
-    /// # let url = sample_bed_url("small.bed")?;
+    /// # use bed_reader::{BedCloud, assert_eq_nan};
+    /// # let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// let mut bed_cloud = BedCloud::builder(&url)?
     ///    .iid(["sample1", "sample2", "sample3"])
     ///    .build().await?;
@@ -1306,8 +1306,8 @@ impl BedCloud {
     /// ```
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// # use ndarray as nd;
-    /// # use bed_reader::{BedCloud, assert_eq_nan, sample_bed_url};
-    /// # let url = sample_bed_url("small.bed")?;
+    /// # use bed_reader::{BedCloud, assert_eq_nan};
+    /// # let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// let mut bed_cloud = BedCloud::builder(&url)?
     ///     .iid_count(3)
     ///     .sid_count(4)
@@ -1331,8 +1331,8 @@ impl BedCloud {
     /// ```
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// # use ndarray as nd;
-    /// # use bed_reader::{BedCloud, assert_eq_nan, sample_bed_url};
-    /// # let url = sample_bed_url("small.bed")?;
+    /// # use bed_reader::{BedCloud, assert_eq_nan};
+    /// # let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// let mut bed_cloud = BedCloud::builder(&url)?
     ///     .skip_father()
     ///     .skip_mother()
@@ -1377,10 +1377,10 @@ impl BedCloud {
     ///
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, assert_eq_nan, sample_bed_url};
+    /// use bed_reader::{BedCloud, assert_eq_nan};
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
-    /// let url = sample_bed_url("small.bed")?;
+    /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// let mut bed_cloud = BedCloud::new(&url).await?;
     /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray: ["iid1", "iid2", "iid3"]
     /// println!("{:?}", bed_cloud.sid().await?); // Outputs ndarray: ["sid1", "sid2", "sid3", "sid4"]
@@ -1402,9 +1402,9 @@ impl BedCloud {
     /// at index position 2.
     /// ```
     /// # use ndarray as nd;
-    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_url};
+    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan};
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
-    /// # let url = sample_bed_url("small.bed")?;
+    /// # let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     ///
     /// let mut bed_cloud = BedCloud::new(&url).await?;
     /// let val = ReadOptions::builder().sid_index(2).f64().read_cloud(&mut bed_cloud).await?;
@@ -1429,10 +1429,10 @@ impl BedCloud {
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_url};
+    /// use bed_reader::{BedCloud, ReadOptions, assert_eq_nan};
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
-    /// let url = sample_bed_url("small.bed")?;
+    /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// let mut bed_cloud = BedCloud::new(url).await?;
     /// let iid_count = bed_cloud.iid_count().await?;
     ///
@@ -1462,10 +1462,10 @@ impl BedCloud {
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, assert_eq_nan, sample_bed_url};
+    /// use bed_reader::{BedCloud, ReadOptions, assert_eq_nan};
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
-    /// let url = sample_bed_url("small.bed")?;
+    /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// let mut bed_cloud = BedCloud::new(url).await?;
     /// let sid_count = bed_cloud.sid_count().await?;
     ///
@@ -1495,11 +1495,11 @@ impl BedCloud {
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
+    /// use bed_reader::{BedCloud, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
-    /// let url = sample_bed_url("small.bed")?;
+    /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// let mut bed_cloud = BedCloud::new(url).await?;
     /// let dim = bed_cloud.dim().await?;
     ///
@@ -1522,11 +1522,11 @@ impl BedCloud {
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
+    /// use bed_reader::{BedCloud, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
-    /// let url = sample_bed_url("small.bed")?;
+    /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// let mut bed_cloud = BedCloud::new(url).await?;
     /// let fid = bed_cloud.fid().await?;
     /// println!("{fid:?}"); // Outputs ndarray ["fid1", "fid1", "fid2"]
@@ -1549,11 +1549,11 @@ impl BedCloud {
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
+    /// use bed_reader::{BedCloud, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
-    /// let url = sample_bed_url("small.bed")?;
+    /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// let mut bed_cloud = BedCloud::new(url).await?;
     /// let iid = bed_cloud.iid().await?;    ///
     /// println!("{iid:?}"); // Outputs ndarray ["iid1", "iid2", "iid3"]
@@ -1576,11 +1576,11 @@ impl BedCloud {
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
+    /// use bed_reader::{BedCloud, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
-    /// let url = sample_bed_url("small.bed")?;
+    /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// let mut bed_cloud = BedCloud::new(url).await?;
     /// let father = bed_cloud.father().await?;
     /// println!("{father:?}"); // Outputs ndarray ["iid23", "iid23", "iid22"]
@@ -1607,11 +1607,11 @@ impl BedCloud {
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
+    /// use bed_reader::{BedCloud, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
-    /// let url = sample_bed_url("small.bed")?;
+    /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// let mut bed_cloud = BedCloud::new(url).await?;
     /// let mother = bed_cloud.mother().await?;
     /// println!("{mother:?}"); // Outputs ndarray ["iid34", "iid34", "iid33"]
@@ -1640,11 +1640,11 @@ impl BedCloud {
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
+    /// use bed_reader::{BedCloud, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
-    /// let url = sample_bed_url("small.bed")?;
+    /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// let mut bed_cloud = BedCloud::new(url).await?;
     /// let sex = bed_cloud.sex().await?;
     /// println!("{sex:?}"); // Outputs ndarray [1, 2, 0]
@@ -1667,11 +1667,11 @@ impl BedCloud {
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
+    /// use bed_reader::{BedCloud, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
-    /// let url = sample_bed_url("small.bed")?;
+    /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// let mut bed_cloud = BedCloud::new(url).await?;
     /// let pheno = bed_cloud.pheno().await?;
     /// println!("{pheno:?}"); // Outputs ndarray ["red", "red", "blue"]
@@ -1698,11 +1698,11 @@ impl BedCloud {
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
+    /// use bed_reader::{BedCloud, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
-    /// let url = sample_bed_url("small.bed")?;
+    /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// let mut bed_cloud = BedCloud::new(url).await?;
     /// let chromosome = bed_cloud.chromosome().await?;
     /// println!("{chromosome:?}"); // Outputs ndarray ["1", "1", "5", "Y"]
@@ -1729,11 +1729,11 @@ impl BedCloud {
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
+    /// use bed_reader::{BedCloud, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
-    /// let url = sample_bed_url("small.bed")?;
+    /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// let mut bed_cloud = BedCloud::new(url).await?;
     /// let sid = bed_cloud.sid().await?;
     /// println!("{sid:?}"); // Outputs ndarray "sid1", "sid2", "sid3", "sid4"]
@@ -1756,11 +1756,11 @@ impl BedCloud {
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
+    /// use bed_reader::{BedCloud, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
-    /// let url = sample_bed_url("small.bed")?;
+    /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// let mut bed_cloud = BedCloud::new(url).await?;
     /// let cm_position = bed_cloud.cm_position().await?;
     /// println!("{cm_position:?}"); // Outputs ndarray [100.4, 2000.5, 4000.7, 7000.9]
@@ -1787,11 +1787,11 @@ impl BedCloud {
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
+    /// use bed_reader::{BedCloud, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
-    /// let url = sample_bed_url("small.bed")?;
+    /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// let mut bed_cloud = BedCloud::new(url).await?;
     /// let bp_position = bed_cloud.bp_position().await?;
     /// println!("{bp_position:?}"); // Outputs ndarray [1, 100, 1000, 1004]
@@ -1818,15 +1818,15 @@ impl BedCloud {
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
+    /// use bed_reader::{BedCloud, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     ///
-    /// let url = sample_bed_url("small.bed")?;
+    /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// let mut bed_cloud = BedCloud::new(url).await?;
     /// let allele_1 = bed_cloud.allele_1().await?;
     /// println!("{allele_1:?}"); // Outputs ndarray ["A", "T", "A", "T"]
-    /// # let url = sample_bed_url("small.bed")?;
+    /// # let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
     /// # #[cfg(feature = "tokio")] use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     pub async fn allele_1(&mut self) -> Result<&nd::Array1<String>, Box<BedErrorPlus>> {
@@ -1850,11 +1850,11 @@ impl BedCloud {
     /// # Example:
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
+    /// use bed_reader::{BedCloud, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     ///
-    /// let url = sample_bed_url("small.bed")?;
+    /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// let mut bed_cloud = BedCloud::new(url).await?;
     /// let allele_2 = bed_cloud.allele_2().await?;
     /// println!("{allele_2:?}"); // Outputs ndarray ["A", "C", "C", "G"]
@@ -1880,10 +1880,10 @@ impl BedCloud {
     /// If the needed, the metadata will be read from the .fam and/or .bim files.
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, sample_bed_url};
+    /// use bed_reader::{BedCloud};
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
-    /// let url = sample_bed_url("small.bed")?;
+    /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// let mut bed_cloud = BedCloud::new(url).await?;
     /// let metadata = bed_cloud.metadata().await?;
     /// println!("{0:?}", metadata.iid()); // Outputs Some(["iid1", "iid2", "iid3"] ...)
@@ -1939,11 +1939,11 @@ impl BedCloud {
     ///
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
+    /// use bed_reader::{BedCloud, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
-    /// let url = sample_bed_url("small.bed")?;
+    /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// let mut bed_cloud = BedCloud::new(url).await?;
     /// let val = bed_cloud.read::<f64>().await?;
     ///
@@ -1990,12 +1990,12 @@ impl BedCloud {
     ///
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
+    /// use bed_reader::{BedCloud, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// // Read the SNPs indexed by 2.
-    /// let url = sample_bed_url("small.bed")?;
+    /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// let mut bed_cloud = BedCloud::new(url).await?;
     /// let read_options = ReadOptions::builder().sid_index(2).build()?;
     /// let mut val = nd::Array2::<f64>::default((3, 1));
@@ -2063,11 +2063,11 @@ impl BedCloud {
     ///
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
+    /// use bed_reader::{BedCloud, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
-    /// let url = sample_bed_url("small.bed")?;
+    /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// let mut bed_cloud = BedCloud::new(url).await?;
     /// let mut val = nd::Array2::<i8>::default(bed_cloud.dim().await?);
     /// bed_cloud.read_and_fill(&mut val.view_mut()).await?;
@@ -2103,12 +2103,12 @@ impl BedCloud {
     ///
     /// ```
     /// use ndarray as nd;
-    /// use bed_reader::{BedCloud, ReadOptions, sample_bed_url};
+    /// use bed_reader::{BedCloud, ReadOptions};
     /// use bed_reader::assert_eq_nan;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// // Read the SNPs indexed by 2.
-    /// let url = sample_bed_url("small.bed")?;
+    /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// let mut bed_cloud = BedCloud::new(url).await?;
     /// let read_options = ReadOptions::builder().sid_index(2).f64().build()?;
     /// let val = bed_cloud.read_with_options(&read_options).await?;

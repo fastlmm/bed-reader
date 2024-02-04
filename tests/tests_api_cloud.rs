@@ -248,10 +248,7 @@ async fn bad_header_cloud_url() -> Result<(), Box<BedErrorPlus>> {
     println!("start");
     let url = sample_url("badfile.bed")?;
     println!("{:?}", url);
-    let bed_cloud = BedCloud::builder(&url, EMPTY_OPTIONS)?
-        .skip_early_check()
-        .build()
-        .await?;
+    let bed_cloud = BedCloud::builder(&url)?.skip_early_check().build().await?;
 
     println!("{:?}", bed_cloud.cloud_file());
 
@@ -266,7 +263,7 @@ async fn bad_header_cloud_url() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn doc_test_test_cloud() -> Result<(), Box<BedErrorPlus>> {
-    let url = sample_bed_url("small.bed")?;
+    let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
 
     let mut bed_cloud = BedCloud::new(&url).await?;
     let val = bed_cloud.read::<f64>().await?;
@@ -326,7 +323,7 @@ async fn open_examples_cloud() -> Result<(), Box<BedErrorPlus>> {
     //      [ 0.  1.  2.  0.]]
     //     >>> del bed_cloud  # optional: delete bed_cloud object
 
-    let url = sample_bed_url("small.bed")?;
+    let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     let mut bed_cloud = BedCloud::new(&url).await?;
 
     println!("{:?}", bed_cloud.iid().await?);
@@ -373,7 +370,7 @@ async fn open_examples_cloud() -> Result<(), Box<BedErrorPlus>> {
     //     >>> print(bed_cloud.sid) # same as before
     //     ['sid1' 'sid2' 'sid3' 'sid4']
 
-    let mut bed_cloud = BedCloud::builder(&url, EMPTY_OPTIONS)?
+    let mut bed_cloud = BedCloud::builder(&url)?
         .iid(["sample1", "sample2", "sample3"])
         .build()
         .await?;
@@ -447,7 +444,7 @@ async fn open_examples_cloud() -> Result<(), Box<BedErrorPlus>> {
 #[tokio::test]
 async fn metadata_etc_cloud() -> Result<(), Box<BedErrorPlus>> {
     // Initialize BedCloud with the sample file
-    let url = sample_bed_url("small.bed")?;
+    let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
 
     // Reading sex data
     let mut bed_cloud = BedCloud::new(&url).await?;
@@ -482,7 +479,7 @@ async fn metadata_etc_cloud() -> Result<(), Box<BedErrorPlus>> {
 #[tokio::test]
 async fn hello_father_cloud() -> Result<(), Box<BedErrorPlus>> {
     // Initialize BedCloud with the sample file and custom father metadata
-    let url = sample_bed_url("small.bed")?;
+    let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
 
     let mut bed_cloud = BedCloud::builder(&url)?
         .father(["f1", "f2", "f3"])
@@ -566,7 +563,7 @@ async fn fam_and_bim_cloud_url() -> Result<(), Box<BedErrorPlus>> {
 async fn readme_examples_cloud() -> Result<(), Box<BedErrorPlus>> {
     // Read genomic data from a .bed file.
 
-    let url = sample_bed_url("small.bed")?;
+    let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     let mut bed_cloud = BedCloud::new(&url).await?;
     let val = bed_cloud.read::<f64>().await?;
     println!("{val:?}");
@@ -577,7 +574,7 @@ async fn readme_examples_cloud() -> Result<(), Box<BedErrorPlus>> {
     // Read every second individual and SNPs (variants) from 20 to 30.
 
     let url2 = sample_bed_url("some_missing.bed")?;
-    let mut bed_cloud2 = BedCloud::new_with_options(&url2).await?;
+    let mut bed_cloud2 = BedCloud::new(&url2).await?;
     let val2 = ReadOptions::<f64>::builder()
         .iid_index(s![..;2])
         .sid_index(20..30)
@@ -588,7 +585,7 @@ async fn readme_examples_cloud() -> Result<(), Box<BedErrorPlus>> {
     // List the first 5 individual (sample) ids, the first 5 SNP (variant) ids,
     // and every unique chromosome. Then, read every genomic value in chromosome 5.
 
-    let mut bed_cloud3 = BedCloud::new_with_options(&url2).await?;
+    let mut bed_cloud3 = BedCloud::new(&url2).await?;
     let iid = bed_cloud3.iid().await?;
     let s = iid.slice(s![..5]);
     println!("{:?}", s);
@@ -617,7 +614,7 @@ async fn readme_examples_cloud() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn range_cloud() -> Result<(), Box<BedErrorPlus>> {
-    let url = sample_bed_url("small.bed")?;
+    let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
 
     let mut bed_cloud = BedCloud::new(&url).await?;
     ReadOptions::builder()
@@ -665,7 +662,7 @@ async fn nd_slice_cloud() -> Result<(), Box<BedErrorPlus>> {
     println!("{:?}", ndarray.slice(slice)); // []
 
     // Reading BED file with various slice options
-    let url = sample_bed_url("small.bed")?;
+    let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     let mut bed_cloud = BedCloud::new(&url).await?;
 
     ReadOptions::builder()
@@ -699,7 +696,7 @@ async fn nd_slice_cloud() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn skip_coverage_cloud() -> Result<(), Box<BedErrorPlus>> {
-    let url = sample_bed_url("small.bed")?;
+    let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
 
     let mut bed_cloud = BedCloud::builder(&url)?
         .skip_fid()
@@ -728,7 +725,7 @@ async fn skip_coverage_cloud() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn into_iter_cloud() -> Result<(), Box<BedErrorPlus>> {
-    let url = sample_bed_url("small.bed")?;
+    let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
 
     let mut bed_cloud = BedCloud::builder(&url)?
         .fid(["sample1", "sample2", "sample3"])
@@ -962,7 +959,7 @@ fn nd_slice_same_cloud() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn bool_read_cloud() -> Result<(), Box<BedErrorPlus>> {
-    let url = sample_bed_url("small.bed")?;
+    let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     let mut bed_cloud = BedCloud::new(&url).await?;
 
     let result = ReadOptions::builder()
@@ -986,7 +983,7 @@ async fn bool_read_cloud() -> Result<(), Box<BedErrorPlus>> {
 }
 #[tokio::test]
 async fn i8_etc_cloud() -> Result<(), Box<BedErrorPlus>> {
-    let url = sample_bed_url("small.bed")?;
+    let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     let mut bed_cloud = BedCloud::new(&url).await?;
 
     let _val = ReadOptions::builder()
@@ -1001,7 +998,7 @@ async fn i8_etc_cloud() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn fill_cloud() -> Result<(), Box<BedErrorPlus>> {
-    let url = sample_bed_url("small.bed")?;
+    let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     let mut bed_cloud = BedCloud::new(&url).await?;
 
     let read_options = ReadOptions::builder()
@@ -1031,7 +1028,7 @@ async fn fill_cloud() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn read_options_builder_cloud() -> Result<(), Box<BedErrorPlus>> {
-    let url = sample_bed_url("small.bed")?;
+    let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     let mut bed_cloud = BedCloud::new(&url).await?;
 
     // Read the SNPs indexed by 2.
@@ -1113,7 +1110,7 @@ async fn read_options_builder_cloud() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn bed_builder_cloud() -> Result<(), Box<BedErrorPlus>> {
-    let url = sample_bed_url("small.bed")?;
+    let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
 
     let mut bed_cloud = BedCloud::builder(&url)?.build().await?;
     println!("{:?}", bed_cloud.iid().await?);
@@ -1178,7 +1175,7 @@ async fn bed_builder_cloud() -> Result<(), Box<BedErrorPlus>> {
 #[tokio::test]
 #[allow(clippy::needless_borrows_for_generic_args)]
 async fn negative_indexing_cloud() -> Result<(), Box<BedErrorPlus>> {
-    let url = sample_bed_url("small.bed")?;
+    let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     let mut bed_cloud = BedCloud::new(&url).await?;
 
     // println!("{:?}", bed_cloud.read::<f64>().await?);
@@ -1598,7 +1595,7 @@ async fn cloud_index_options() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn cloud_set_metadata() -> Result<(), Box<BedErrorPlus>> {
-    let url = sample_bed_url("small.bed")?;
+    let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     let metadata = Metadata::builder()
         .iid(["iid1", "iid2", "iid3"])
         .sid(["sid1", "sid2", "sid3", "sid4"])
@@ -1620,7 +1617,7 @@ async fn cloud_set_metadata() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn cloud_metadata_print() -> Result<(), Box<BedErrorPlus>> {
-    let url = sample_bed_url("small.bed")?;
+    let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     let mut bed_cloud = BedCloud::new(&url).await?;
 
     let fid = bed_cloud.fid().await?;
@@ -1730,7 +1727,7 @@ async fn cloud_struct_play() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn cloud_metadata_bed() -> Result<(), Box<BedErrorPlus>> {
-    let url = sample_bed_url("small.bed")?;
+    let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     let mut bed_cloud = BedCloud::new(&url).await?;
     let metadata = bed_cloud.metadata().await?;
     println!("{0:?}", metadata.iid()); // Outputs Some(["iid1", "iid2", "iid3"] ...)
@@ -1744,7 +1741,7 @@ async fn cloud_read_and_fill_with_options() -> Result<(), Box<BedErrorPlus>> {
     use bed_reader::ReadOptions;
     use ndarray as nd;
     // Read the SNPs indexed by 2.
-    let url = sample_bed_url("small.bed")?;
+    let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     let mut bed_cloud = BedCloud::new(&url).await?;
 
     let read_options = ReadOptions::builder().sid_index(2).build()?;
@@ -1755,7 +1752,7 @@ async fn cloud_read_and_fill_with_options() -> Result<(), Box<BedErrorPlus>> {
 
     assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
 
-    let url = sample_bed_url("small.bed")?;
+    let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     let mut bed_cloud = BedCloud::new(&url).await?;
     let mut val = nd::Array2::<f64>::default((3, 1));
     ReadOptions::builder()
@@ -1770,7 +1767,7 @@ async fn cloud_read_and_fill_with_options() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn cloud_bed_builder_metadata() -> Result<(), Box<BedErrorPlus>> {
-    let url = sample_bed_url("small.bed")?;
+    let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
 
     // show that can fine errors
     let metadata = Metadata::builder()
@@ -1848,7 +1845,7 @@ async fn cloud_read_options_properties() -> Result<(), Box<BedErrorPlus>> {
     assert!(read_options.is_a1_counted());
     assert_eq!(read_options.num_threads(), None);
 
-    let url = sample_bed_url("small.bed")?;
+    let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     let mut bed_cloud = BedCloud::new(&url).await?;
     let val = bed_cloud.read_with_options(&read_options).await?;
 
@@ -1862,7 +1859,7 @@ async fn cloud_read_options_properties() -> Result<(), Box<BedErrorPlus>> {
 async fn cloud_bed_inconsistent_count() -> Result<(), Box<BedErrorPlus>> {
     // Bed: fid vs metadata
     let metadata = Metadata::builder().iid(["f1", "f2", "f3", "f4"]).build()?;
-    let url = sample_bed_url("small.bed")?;
+    let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     let result = BedCloud::builder(&url)?
         .fid(["f1", "f2", "f3"])
         .metadata(&metadata)
@@ -1875,15 +1872,17 @@ async fn cloud_bed_inconsistent_count() -> Result<(), Box<BedErrorPlus>> {
 
     // Bed: file vs file:
     let bad_fam_url = sample_url("small.fam_bad")?;
-    let mut bed_cloud = BedCloud::builder(sample_bed_url("small.bed")?)?
-        .fam(bad_fam_url, EMPTY_OPTIONS)?
-        .skip_iid()
-        .skip_father()
-        .skip_mother()
-        .skip_sex()
-        .skip_pheno()
-        .build()
-        .await?;
+    let mut bed_cloud = BedCloud::builder(
+        "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed",
+    )?
+    .fam(bad_fam_url, EMPTY_OPTIONS)?
+    .skip_iid()
+    .skip_father()
+    .skip_mother()
+    .skip_sex()
+    .skip_pheno()
+    .build()
+    .await?;
     let result = bed_cloud.fid().await;
     assert_error_variant!(
         result,
@@ -2034,7 +2033,7 @@ async fn read_index_quick_cloud() -> Result<(), Box<BedErrorPlus>> {
     let val0 = bed.read_with_options(&read_options)?;
     println!("0: {:?}", &val0);
 
-    let url = sample_bed_url("small.bed")?;
+    let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     let mut bed_cloud = BedCloud::new(&url).await?;
     let val1 = bed_cloud.read_with_options(&read_options).await?;
     println!("1: {:?}", &val1);
@@ -2131,9 +2130,8 @@ fn read_me_cloud() -> Result<(), Box<BedErrorPlus>> {
     use ndarray as nd;
     use {assert_eq_nan, bed_reader::BedErrorPlus, tokio::runtime::Runtime};
     Runtime::new().unwrap().block_on(async {
-        let mut bed_cloud = BedCloud::new_with_options(
+        let mut bed_cloud = BedCloud::new(
             "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed",
-            EMPTY_OPTIONS,
         )
         .await?;
         let val = ReadOptions::builder()
@@ -2290,7 +2288,7 @@ async fn http_two() -> Result<(), Box<BedErrorPlus>> {
         .0;
 
     // Open the bed file with a URL and any needed cloud options, then use as before.
-    let mut bed_cloud = BedCloud::builder(
+    let mut bed_cloud = BedCloud::builder_with_options(
         "https://www.ebi.ac.uk/biostudies/files/S-BSST936/genotypes/synthetic_v1_chr-10.bed",
         [("timeout", "100s")],
     )?
@@ -2328,9 +2326,8 @@ fn http_cloud_urls_md_1() -> Result<(), Box<BedErrorPlus>> {
     Runtime::new()
         .unwrap()
         .block_on(async {
-            let mut bed_cloud = BedCloud::new_with_options(
+            let mut bed_cloud = BedCloud::new(
                 "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed",
-                EMPTY_OPTIONS,
             )
             .await?;
             let val: nd::Array2<f32> = bed_cloud.read().await?;
@@ -2352,7 +2349,7 @@ fn http_cloud_urls_md_2() -> Result<(), Box<BedErrorPlus>> {
     Runtime::new()
         .unwrap()
         .block_on(async {
-            let mut bed_cloud = BedCloud::builder(
+            let mut bed_cloud = BedCloud::builder_with_options(
                 "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/toydata.5chrom.bed",
                 [("timeout", "100s")],
             )?.skip_early_check().build().await?;
@@ -2386,7 +2383,7 @@ fn http_cloud_urls_md_3() -> Result<(), Box<BedErrorPlus>> {
     Runtime::new()
         .unwrap()
         .block_on(async {
-            let mut bed_cloud = BedCloud::builder(
+            let mut bed_cloud = BedCloud::builder_with_options(
                 "https://www.ebi.ac.uk/biostudies/files/S-BSST936/genotypes/synthetic_v1_chr-10.bed",
                 [("timeout", "100s")],
             )?
