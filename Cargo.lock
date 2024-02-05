@@ -136,7 +136,7 @@ checksum = "9d297deb1925b89f2ccc13d7635fa0714f12c87adce1c75356b39ca9b7178567"
 
 [[package]]
 name = "bed-reader"
-version = "1.0.1-beta.2"
+version = "1.0.1-beta.3"
 dependencies = [
  "anyhow",
  "anyinput",
@@ -246,9 +246,9 @@ dependencies = [
 
 [[package]]
 name = "cloud-file"
-version = "0.1.0-beta.3"
+version = "0.1.0-beta.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88d6c0ca9e3f9150a16447b438c2dea9b519d1647db1d5ed70371e918043b8c0"
+checksum = "d5d666ee1eac758269a74edcc299662d2c204c3f8ce3af735e8ecfb6b77c942e"
 dependencies = [
  "bytecount",
  "bytes",

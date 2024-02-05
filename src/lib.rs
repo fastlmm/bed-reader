@@ -21,7 +21,7 @@
 //! | Function | Description |
 //! | -------- | ----------- |
 //! | [`Bed::new`](struct.Bed.html#method.new) or [`Bed::builder`](struct.Bed.html#method.builder) | Open a local PLINK .bed file for reading genotype data and metadata. |
-//! | [`BedCloud::new`](struct.BedCloud.html#method.new), `BedCloud::new_with_options`](struct.BedCloud.html#method.new_with_options) or [`BedCloud::builder`](struct.BedCloud.html#method.builder) | Open a cloud PLINK .bed file for reading genotype data and metadata. |
+//! | [`BedCloud::new`](struct.BedCloud.html#method.new), [`BedCloud::new_with_options`](struct.BedCloud.html#method.new_with_options),<br> [`BedCloud::builder`](struct.BedCloud.html#method.builder), [`BedCloud::builder_with_options`](struct.BedCloud.html#method.builder_with_options),<br> [`BedCloud::from_cloud_file`](struct.BedCloud.html#method.from_cloud_file), [`BedCloud::builder_from_cloud_file`](struct.BedCloud.html#method.builder_from_cloud_file) | Open a cloud PLINK .bed file for reading genotype data and metadata. |
 //! | [`ReadOptions::builder`](struct.ReadOptions.html#method.builder) | Read genotype data from a local or cloud file. Supports indexing and options. |
 //! | [`WriteOptions::builder`](struct.WriteOptions.html#method.builder) | Write values to a local file in PLINK .bed format. Supports metadata and options. |
 //!
@@ -7159,7 +7159,7 @@ where
         .map_err(|e| BedError::SampleFetch(e.to_string()))?)
 }
 
-/// cmk An empty set of cloud options
+/// An empty set of cloud options
 ///
 /// # Example
 /// ```

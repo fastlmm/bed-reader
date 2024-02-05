@@ -1014,7 +1014,7 @@ impl BedCloudBuilder {
 
 impl BedCloud {
     #[allow(clippy::doc_link_with_quotes)]
-    /// Attempts to open a PLINK .bed file in the cloud for reading. The file is specified with a URL string.
+    /// Attempts to open a PLINK .bed file in the cloud for reading. The file is specified with a URL string and cloud options can be given.
     ///
     /// See ["Cloud URLs and `CloudFile` Examples"](supplemental_document_cloud_urls/index.html) for details specifying a file.
     ///
@@ -1023,7 +1023,9 @@ impl BedCloud {
     /// [`ReadOptions`](supplemental_document_options/index.html#readoptions).
     /// See ["Options, Options, Options"](supplemental_document_options/index.html) for details.
     ///
-    /// > Also see [`BedCloud::builder`](struct.BedCloud.html#method.builder), which does support
+    /// > Also see [`BedCloud::new`](struct.BedCloud.html#method.new), which does not support cloud options.
+    /// > See [`BedCloud::builder`](struct.BedCloud.html#method.builder) and
+    /// [`BedCloud::builder_with_options`](struct.BedCloud.html#method.builder_with_options), which does support
     /// > `BedCloud` options.
     /// > Alternatively, you can use [`BedCloud::builder_from_cloud_file`](struct.BedCloud.html#method.builder_from_cloud_file)
     /// > to specify the cloud file via an [`CloudFile`](struct.CloudFile.html). For reading local files,
@@ -1046,7 +1048,85 @@ impl BedCloud {
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
-    /// println!("{url:?}"); // For example, "file:///C:/Users/carlk/AppData/Local/bed_reader/bed_reader/Cache/small.bed"
+    /// let cloud_options = [("timeout", "10s")];
+    /// let mut bed_cloud = BedCloud::new_with_options(url, cloud_options).await?;
+    /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray: ["iid1", "iid2", "iid3"]
+    /// println!("{:?}", bed_cloud.sid().await?); // Outputs ndarray: ["sid1", "sid2", "sid3", "sid4"]
+    /// let val = bed_cloud.read::<f64>().await?;
+    ///
+    /// assert_eq_nan(
+    ///     &val,
+    ///     &nd::array![
+    ///         [1.0, 0.0, f64::NAN, 0.0],
+    ///         [2.0, 0.0, f64::NAN, 2.0],
+    ///         [0.0, 1.0, 2.0, 0.0]
+    ///     ],
+    /// );
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # #[cfg(feature = "tokio")] use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
+    /// ```
+    ///
+    /// Open the file and read data for one SNP (variant)
+    /// at index position 2.
+    /// ```
+    /// # use ndarray as nd;
+    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan};
+    /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
+    /// # let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
+    /// # let cloud_options = [("timeout", "10s")];
+    /// let mut bed_cloud = BedCloud::new_with_options(url, cloud_options).await?;
+    /// let val = ReadOptions::builder().sid_index(2).f64().read_cloud(&mut bed_cloud).await?;
+    ///
+    /// assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # #[cfg(feature = "tokio")] use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
+    /// ```
+    pub async fn new_with_options<I, K, V>(
+        url: impl AsRef<str>,
+        cloud_options: I,
+    ) -> Result<Self, Box<BedErrorPlus>>
+    where
+        I: IntoIterator<Item = (K, V)>,
+        K: AsRef<str>,
+        V: Into<String>,
+    {
+        let cloud_file = CloudFile::new_with_options(url, cloud_options)?;
+        let bed_cloud = BedCloud::from_cloud_file(&cloud_file).await?;
+        Ok(bed_cloud)
+    }
+
+    #[allow(clippy::doc_link_with_quotes)]
+    /// Attempts to open a PLINK .bed file in the cloud for reading. The file is specified with a URL string.
+    ///
+    /// See ["Cloud URLs and `CloudFile` Examples"](supplemental_document_cloud_urls/index.html) for details specifying a file.
+    ///
+    /// See ["Options, Options, Options"](supplemental_document_options/index.html) for details of the different option types.
+    ///
+    /// > Also see [`BedCloud::new_with_options`](struct.BedCloud.html#method.new_with_options), which supports cloud options.
+    /// > See [`BedCloud::builder`](struct.BedCloud.html#method.builder) and
+    /// [`BedCloud::builder_with_options`](struct.BedCloud.html#method.builder_with_options), which does support
+    /// > `BedCloud` options.
+    /// > Alternatively, you can use [`BedCloud::builder_from_cloud_file`](struct.BedCloud.html#method.builder_from_cloud_file)
+    /// > to specify the cloud file via an [`CloudFile`](struct.CloudFile.html). For reading local files,
+    /// > see [`Bed`](struct.Bed.html).
+    ///
+    /// # Errors
+    /// URL parsing may return an error.
+    /// Also, by default, this method will return an error if the file is missing or its header
+    /// is ill-formed. See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
+    /// for all possible errors.
+    ///
+    /// # Examples
+    /// List individual (sample) [`iid`](struct.BedCloud.html#method.iid) and
+    /// SNP (variant) [`sid`](struct.BedCloud.html#method.sid),
+    /// then [`read`](struct.BedCloud.html#method.read) the whole file.
+    ///
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{BedCloud, assert_eq_nan};
+    ///
+    /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
+    /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// let mut bed_cloud = BedCloud::new(url).await?;
     /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray: ["iid1", "iid2", "iid3"]
     /// println!("{:?}", bed_cloud.sid().await?); // Outputs ndarray: ["sid1", "sid2", "sid3", "sid4"]
@@ -1078,21 +1158,6 @@ impl BedCloud {
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
     /// # #[cfg(feature = "tokio")] use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
-    pub async fn new_with_options<I, K, V>(
-        url: impl AsRef<str>,
-        cloud_options: I,
-    ) -> Result<Self, Box<BedErrorPlus>>
-    where
-        I: IntoIterator<Item = (K, V)>,
-        K: AsRef<str>,
-        V: Into<String>,
-    {
-        let cloud_file = CloudFile::new_with_options(url, cloud_options)?;
-        let bed_cloud = BedCloud::from_cloud_file(&cloud_file).await?;
-        Ok(bed_cloud)
-    }
-
-    /// cmk
     pub async fn new(url: impl AsRef<str>) -> Result<Self, Box<BedErrorPlus>> {
         let cloud_file = CloudFile::new(url)?;
         let bed_cloud = BedCloud::from_cloud_file(&cloud_file).await?;
@@ -1101,14 +1166,14 @@ impl BedCloud {
 
     #[allow(clippy::doc_link_with_quotes)]
     /// Attempts to open a PLINK .bed file in the cloud for reading. The file is specified with a URL string.
-    /// Supports both [cloud options](supplemental_document_options/index.html#cloud-options) and
-    /// [`BedCloud` options](supplemental_document_options/index.html#bedbedcloud-options).
+    /// Supports [`BedCloud` options](supplemental_document_options/index.html#bedbedcloud-options) but not
+    /// [cloud options](supplemental_document_options/index.html#cloud-options).
     ///
     /// See ["Cloud URLs and `CloudFile` Examples"](supplemental_document_cloud_urls/index.html) for details of specifying a file.
     /// See ["Options, Options, Options"](supplemental_document_options/index.html) for an overview of options types.
     ///
-    /// > Also see [`BedCloud::new`](struct.BedCloud.html#method.url),
-    /// > which does not support `BedCloud` options.
+    /// > Also see [`BedCloud::new`](struct.BedCloud.html#method.new) and [`BedCloud::new_with_options`](struct.BedCloud.html#method.new_with_options),
+    /// > which do not support `BedCloud` options.
     /// > Alternatively, you can use [`BedCloud::builder_from_cloud_file`](struct.BedCloud.html#method.builder_from_cloud_file)
     /// > to specify the cloud file via an [`CloudFile`](struct.CloudFile.html). For reading local files,
     /// > see [`Bed`](struct.Bed.html).
@@ -1138,7 +1203,6 @@ impl BedCloud {
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
-    /// println!("{url:?}"); // For example, "file:///C:/Users/carlk/AppData/Local/bed_reader/bed_reader/Cache/small.bed"
     /// let mut bed_cloud = BedCloud::builder(url)?.build().await?;
     /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray ["iid1", "iid2", "iid3"]
     /// println!("{:?}", bed_cloud.sid().await?); // Outputs ndarray ["snp1", "snp2", "snp3", "snp4"]
@@ -1177,7 +1241,7 @@ impl BedCloud {
     /// # use ndarray as nd;
     /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan};
     /// # let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
-    /// let mut bed_cloud = BedCloud::builder(&url)?
+    /// let mut bed_cloud = BedCloud::builder(url)?
     ///     .iid_count(3)
     ///     .sid_count(4)
     ///     .skip_early_check()
@@ -1215,12 +1279,128 @@ impl BedCloud {
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
     /// # #[cfg(feature = "tokio")] use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
-    ///
     pub fn builder(url: impl AsRef<str>) -> Result<BedCloudBuilder, Box<BedErrorPlus>> {
         BedCloudBuilder::new(url, EMPTY_OPTIONS)
     }
 
-    /// cmk
+    /// Attempts to open a PLINK .bed file in the cloud for reading. The file is specified with a URL string and cloud options can be given.
+    /// Supports both [cloud options](supplemental_document_options/index.html#cloud-options) and
+    /// [`BedCloud` options](supplemental_document_options/index.html#bedbedcloud-options).
+    ///
+    /// See ["Cloud URLs and `CloudFile` Examples"](supplemental_document_cloud_urls/index.html) for details of specifying a file.
+    /// See ["Options, Options, Options"](supplemental_document_options/index.html) for an overview of options types.
+    ///
+    /// > Also see [`BedCloud::new`](struct.BedCloud.html#method.new) and [`BedCloud::new_with_options`](struct.BedCloud.html#method.new_with_options),
+    /// > which do not support `BedCloud` options.
+    /// > Alternatively, you can use [`BedCloud::builder_from_cloud_file`](struct.BedCloud.html#method.builder_from_cloud_file)
+    /// > to specify the cloud file via an [`CloudFile`](struct.CloudFile.html). For reading local files,
+    /// > see [`Bed`](struct.Bed.html).
+    ///
+    /// The `BedCloud` options, [listed here](struct.BedCloudBuilder.html#implementations), can:
+    ///  * set the cloud location of the .fam and/or .bim file
+    ///  * override some metadata, for example, replace the individual ids.
+    ///  * set the number of individuals (samples) or SNPs (variants)
+    ///  * control checking the validity of the .bed file's header
+    ///  * skip reading selected metadata
+    ///
+    /// # Errors
+    /// URL parsing may return an error.
+    /// Also, by default, this method will return an error if the file is missing or its header
+    /// is ill-formed. It will also return an error if the options contradict each other.
+    /// See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
+    /// for all possible errors.
+    ///
+    /// # Examples
+    /// List individual (sample) [`iid`](struct.BedCloud.html#method.iid) and
+    /// SNP (variant) [`sid`](struct.BedCloud.html#method.sid),
+    /// then [`read`](struct.BedCloud.html#method.read) the whole file.
+    ///
+    /// ```
+    /// use ndarray as nd;
+    /// use bed_reader::{BedCloud, assert_eq_nan};
+    ///
+    /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
+    /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
+    /// let cloud_options = [("timeout", "10s")];
+    /// let mut bed_cloud = BedCloud::builder_with_options(url, cloud_options)?.build().await?;
+    /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray ["iid1", "iid2", "iid3"]
+    /// println!("{:?}", bed_cloud.sid().await?); // Outputs ndarray ["snp1", "snp2", "snp3", "snp4"]
+    /// let val = bed_cloud.read::<f64>().await?;
+    ///
+    /// assert_eq_nan(
+    ///     &val,
+    ///     &nd::array![
+    ///         [1.0, 0.0, f64::NAN, 0.0],
+    ///         [2.0, 0.0, f64::NAN, 2.0],
+    ///         [0.0, 1.0, 2.0, 0.0]
+    ///     ],
+    /// );
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # #[cfg(feature = "tokio")] use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
+    /// ```
+    ///
+    /// Replace [`iid`](struct.BedCloud.html#method.iid).
+    /// ```
+    /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
+    /// # use ndarray as nd;
+    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan};
+    /// # let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
+    /// # let cloud_options = [("timeout", "10s")];
+    /// let mut bed_cloud = BedCloud::builder_with_options(url, cloud_options)?
+    ///    .iid(["sample1", "sample2", "sample3"])
+    ///    .build().await?;
+    /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray ["sample1", "sample2", "sample3"]
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # #[cfg(feature = "tokio")] use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
+    /// ```
+    /// Give the number of individuals (samples) and SNPs (variants) so that the .fam and
+    /// .bim files need never be opened. Use `.skip_early_check()` to avoid opening the
+    /// .bed before the first read.
+    /// ```
+    /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
+    /// # use ndarray as nd;
+    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan};
+    /// # let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
+    /// # let cloud_options = [("timeout", "10s")];
+    /// let mut bed_cloud = BedCloud::builder_with_options(url, cloud_options)?
+    ///     .iid_count(3)
+    ///     .sid_count(4)
+    ///     .skip_early_check()
+    ///     .build()
+    ///     .await?;
+    /// let val = bed_cloud.read::<f64>().await?;
+    ///
+    /// assert_eq_nan(
+    ///     &val,
+    ///     &nd::array![
+    ///         [1.0, 0.0, f64::NAN, 0.0],
+    ///         [2.0, 0.0, f64::NAN, 2.0],
+    ///         [0.0, 1.0, 2.0, 0.0]
+    ///     ],
+    /// );
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # #[cfg(feature = "tokio")] use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
+    /// ```
+    /// Mark some properties as "don’t read or offer".
+    /// ```
+    /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
+    /// # use ndarray as nd;
+    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan};
+    /// # let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
+    /// # let cloud_options = [("timeout", "10s")];
+    /// let mut bed_cloud = BedCloud::builder_with_options(url, cloud_options)?
+    ///     .skip_father()
+    ///     .skip_mother()
+    ///     .skip_sex()
+    ///     .skip_pheno()
+    ///     .skip_allele_1()
+    ///     .skip_allele_2()
+    ///     .build().await?;
+    /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray ["iid1", "iid2", "iid3"]
+    /// bed_cloud.allele_2().await.expect_err("Can't be read");
+    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
+    /// # #[cfg(feature = "tokio")] use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
+    /// ```
     pub fn builder_with_options<I, K, V>(
         url: impl AsRef<str>,
         options: I,
@@ -1235,14 +1415,10 @@ impl BedCloud {
 }
 
 impl BedCloud {
-    /// Attempts to open a PLINK .bed file in the cloud for reading. Specify the file with an [`CloudFile`].
-    /// Supports `BedCloud` options.
+    /// Attempts to open a PLINK .bed file in the cloud for reading. Specify the file with an [`CloudFile`](https://docs.rs/cloud-file/).
+    /// Supports [`BedCloud` options](supplemental_document_options/index.html#bedbedcloud-options).
     ///
-    /// See ["Cloud URLs and `CloudFile` Examples"](supplemental_document_cloud_urls/index.html) for details of specifying a file.
-    ///
-    /// > Also see [`BedCloud::from_cloud_file`](struct.BedCloud.html#method.from_cloud_file)
-    /// > which does not support `BedCloud` options.
-    /// > Alternatively, you can use [`BedCloud::builder`](struct.BedCloud.html#method.builder)
+    /// > Alternatively, you can use [`BedCloud::new`](struct.BedCloud.html#method.new) or [`BedCloud::builder`](struct.BedCloud.html#method.builder)
     /// > to specify the cloud file via a URL string. For reading local files,
     /// > see [`Bed`](struct.Bed.html).
     ///
@@ -1267,10 +1443,12 @@ impl BedCloud {
     /// ```
     /// use ndarray as nd;
     /// use bed_reader::{BedCloud, assert_eq_nan};
+    /// use cloud_file::CloudFile;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
-    /// let mut bed_cloud = BedCloud::builder(&url)?.build().await?;
+    /// let cloud_file = CloudFile::new(url)?;
+    /// let mut bed_cloud = BedCloud::builder_from_cloud_file(&cloud_file)?.build().await?;
     /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray ["iid1", "iid2", "iid3"]
     /// println!("{:?}", bed_cloud.sid().await?); // Outputs ndarray ["snp1", "snp2", "snp3", "snp4"]
     /// let val = bed_cloud.read::<f64>().await?;
@@ -1286,67 +1464,6 @@ impl BedCloud {
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
     /// # #[cfg(feature = "tokio")] use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
-    ///
-    /// Replace [`iid`](struct.BedCloud.html#method.iid).
-    /// ```
-    /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
-    /// # use ndarray as nd;
-    /// # use bed_reader::{BedCloud, assert_eq_nan};
-    /// # let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
-    /// let mut bed_cloud = BedCloud::builder(&url)?
-    ///    .iid(["sample1", "sample2", "sample3"])
-    ///    .build().await?;
-    /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray ["sample1", "sample2", "sample3"]
-    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
-    /// # #[cfg(feature = "tokio")] use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
-    /// ```
-    /// Give the number of individuals (samples) and SNPs (variants) so that the .fam and
-    /// .bim files need never be opened. Use `.skip_early_check()` to avoid opening the
-    /// .bed before the first read.
-    /// ```
-    /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
-    /// # use ndarray as nd;
-    /// # use bed_reader::{BedCloud, assert_eq_nan};
-    /// # let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
-    /// let mut bed_cloud = BedCloud::builder(&url)?
-    ///     .iid_count(3)
-    ///     .sid_count(4)
-    ///     .skip_early_check()
-    ///     .build()
-    ///     .await?;
-    /// let val = bed_cloud.read::<f64>().await?;
-    ///
-    /// assert_eq_nan(
-    ///     &val,
-    ///     &nd::array![
-    ///         [1.0, 0.0, f64::NAN, 0.0],
-    ///         [2.0, 0.0, f64::NAN, 2.0],
-    ///         [0.0, 1.0, 2.0, 0.0]
-    ///     ],
-    /// );
-    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
-    /// # #[cfg(feature = "tokio")] use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
-    /// ```
-    /// Mark some properties as "don’t read or offer".
-    /// ```
-    /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
-    /// # use ndarray as nd;
-    /// # use bed_reader::{BedCloud, assert_eq_nan};
-    /// # let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
-    /// let mut bed_cloud = BedCloud::builder(&url)?
-    ///     .skip_father()
-    ///     .skip_mother()
-    ///     .skip_sex()
-    ///     .skip_pheno()
-    ///     .skip_allele_1()
-    ///     .skip_allele_2()
-    ///     .build().await?;
-    /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray ["iid1", "iid2", "iid3"]
-    /// bed_cloud.allele_2().await.expect_err("Can't be read");
-    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
-    /// # #[cfg(feature = "tokio")] use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
-    /// ```
-    ///
     #[must_use]
     pub fn builder_from_cloud_file(cloud_file: &CloudFile) -> BedCloudBuilder {
         BedCloudBuilder::from(cloud_file)
@@ -1354,14 +1471,12 @@ impl BedCloud {
 
     /// Attempts to open a PLINK .bed file in the cloud for reading. Specify the file with an [`CloudFile`].
     ///
-    /// See ["Cloud URLs and `CloudFile` Examples"](supplemental_document_cloud_urls/index.html) for details specifying a file.
-    ///
     /// You may not give
     /// [`BedCloud` options](supplemental_document_options/index.html#bedbedcloud-options).
     /// See [`BedCloud::builder_from_cloud_file`](struct.BedCloud.html#method.builder_from_cloud_file), which does support
     /// `BedCloud` options.
     ///
-    /// > Also see, [`BedCloud::builder`](struct.BedCloud.html#method.builder)
+    /// > Also see, [`BedCloud::new`](struct.BedCloud.html#method.new) and [`BedCloud::builder`](struct.BedCloud.html#method.builder)
     /// > to specify the cloud file via a URL string. For reading local files,
     /// > see [`Bed`](struct.Bed.html).
     ///
@@ -1378,10 +1493,12 @@ impl BedCloud {
     /// ```
     /// use ndarray as nd;
     /// use bed_reader::{BedCloud, assert_eq_nan};
+    /// use cloud_file::CloudFile;
     ///
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
-    /// let mut bed_cloud = BedCloud::new(&url).await?;
+    /// let cloud_file = CloudFile::new(url)?;
+    /// let mut bed_cloud = BedCloud::from_cloud_file(&cloud_file).await?;
     /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray: ["iid1", "iid2", "iid3"]
     /// println!("{:?}", bed_cloud.sid().await?); // Outputs ndarray: ["sid1", "sid2", "sid3", "sid4"]
     /// let val = bed_cloud.read::<f64>().await?;
@@ -1394,22 +1511,6 @@ impl BedCloud {
     ///         [0.0, 1.0, 2.0, 0.0]
     ///     ],
     /// );
-    /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
-    /// # #[cfg(feature = "tokio")] use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
-    /// ```
-    ///
-    /// Open the file and read data for one SNP (variant)
-    /// at index position 2.
-    /// ```
-    /// # use ndarray as nd;
-    /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan};
-    /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
-    /// # let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
-    ///
-    /// let mut bed_cloud = BedCloud::new(&url).await?;
-    /// let val = ReadOptions::builder().sid_index(2).f64().read_cloud(&mut bed_cloud).await?;
-    ///
-    /// assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
     /// # #[cfg(feature = "tokio")] use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
     /// ```
@@ -1708,6 +1809,7 @@ impl BedCloud {
     /// println!("{chromosome:?}"); // Outputs ndarray ["1", "1", "5", "Y"]
     /// # Ok::<(), Box<BedErrorPlus>>(())}).unwrap();
     /// # #[cfg(feature = "tokio")] use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
+    /// ```
     pub async fn chromosome(&mut self) -> Result<&nd::Array1<String>, Box<BedErrorPlus>> {
         self.unlazy_bim::<String>(
             self.metadata.chromosome.is_none(),

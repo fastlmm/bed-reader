@@ -1,5 +1,5 @@
 [package]
-version = "1.0.1-beta.2"
+version = "1.0.1-beta.3"
 name = "bed-reader"
 description = "Read and write the PLINK BED format, simply and efficiently."
 repository = "https://github.com/fastlmm/bed-reader"
@@ -46,8 +46,7 @@ futures-util = { version = "0.3.29"}
 bytecount = { version = "0.6.7"}
 itertools = { version = "0.12.0"}
 bytes = { version = "1.5.0"}
-cloud-file = { version = "0.1.0-beta.3"}
-# cmk cloud-file = {path="../cloud-file"}
+cloud-file = { version = "0.1.0-beta.4"}
 pyo3 = { version = "0.20.0", features = ["extension-module"], optional = true }
 tokio = { version = "1.35.0", features = ["full"], optional = true }
 
