@@ -246,9 +246,9 @@ dependencies = [
 
 [[package]]
 name = "cloud-file"
-version = "0.1.0-beta.4"
+version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d5d666ee1eac758269a74edcc299662d2c204c3f8ce3af735e8ecfb6b77c942e"
+checksum = "ec2326b8411352afa726cf6147ca148ebad554c0d82fb89c4725251da782178d"
 dependencies = [
  "bytecount",
  "bytes",

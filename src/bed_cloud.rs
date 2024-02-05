@@ -1283,6 +1283,7 @@ impl BedCloud {
         BedCloudBuilder::new(url, EMPTY_OPTIONS)
     }
 
+    #[allow(clippy::doc_link_with_quotes)]
     /// Attempts to open a PLINK .bed file in the cloud for reading. The file is specified with a URL string and cloud options can be given.
     /// Supports both [cloud options](supplemental_document_options/index.html#cloud-options) and
     /// [`BedCloud` options](supplemental_document_options/index.html#bedbedcloud-options).

@@ -47,6 +47,7 @@ cargo test --no-default-features
 cargo test --all-features
 cargo check --no-default-features
 maturin develop
+cargo publish --dry-run
 ```
 
 ## CMD
