@@ -520,7 +520,6 @@ class open_bed:
                 reader, location_str, is_cloud = self._pick_reader(dtype)
 
                 if not is_cloud:
-                    # cmk test this
                     reader(
                         location_str,
                         self.cloud_options,
@@ -533,7 +532,6 @@ class open_bed:
                         num_threads=num_threads,
                     )
                 else:
-                    # cmk test this
                     reader(
                         location_str,
                         self.cloud_options,
@@ -1623,7 +1621,6 @@ class open_bed:
                     batch_index = sid_index[batch_slice]
 
                     if not is_cloud:
-                        # cmk test this
                         reader(
                             location_str,
                             self.cloud_options,
@@ -1636,7 +1633,6 @@ class open_bed:
                             num_threads=num_threads,
                         )
                     else:
-                        # cmk test this
                         reader(
                             location_str,
                             self.cloud_options,
@@ -1672,7 +1668,6 @@ class open_bed:
                     batch_index = iid_index[batch_slice]
 
                     if not is_cloud:
-                        # cmk test this
                         reader(
                             location_str,
                             self.cloud_options,
@@ -1685,7 +1680,6 @@ class open_bed:
                             num_threads=num_threads,
                         )
                     else:
-                        # cmk test this
                         reader(
                             location_str,
                             self.cloud_options,
