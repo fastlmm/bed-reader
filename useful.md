@@ -35,7 +35,7 @@ doc> make html & build\html\index.html
 maturin build --release
 ```
 
-### Release
+### Release to PyPi
 
 ```bash
 cd doc
@@ -43,6 +43,12 @@ make.bat html
 build\html\index.html
 xcopy /c /e /s /h build\html ..\docs
 # push changes
+# download artifacts to .e.g. C:\Users\carlk\Downloads\wheels (25)
+twine upload --repository testpypi bed_reader-1*
+pip install --index-url https://test.pypi.org/simple/ "bed-reader"
+pip uninstall bed-reader
+# test with install tests, look at README and web pages
+twine upload bed_reader-1*
 
 
 
