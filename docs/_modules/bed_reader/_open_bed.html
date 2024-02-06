@@ -3,16 +3,16 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>bed_reader._open_bed &mdash; Bed Reader 1.0.1-beta.2 documentation</title>
+  <title>bed_reader._open_bed &mdash; Bed Reader 1.0.1-beta.5 documentation</title>
       <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
-        <script src="../../_static/doctools.js"></script>
-        <script src="../../_static/sphinx_highlight.js"></script>
+        <script src="../../_static/documentation_options.js?v=8c107f28"></script>
+        <script src="../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" /> 
@@ -30,7 +30,7 @@
             Bed Reader
           </a>
               <div class="version">
-                1.0.1-beta.2
+                1.0.1-beta.5
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
@@ -183,7 +183,9 @@
     <span class="k">return</span> <span class="mi">8_000_000</span>
 
 
-<div class="viewcode-block" id="open_bed"><a class="viewcode-back" href="../../index.html#bed_reader.open_bed">[docs]</a><span class="k">class</span> <span class="nc">open_bed</span><span class="p">:</span>
+<div class="viewcode-block" id="open_bed">
+<a class="viewcode-back" href="../../index.html#bed_reader.open_bed">[docs]</a>
+<span class="k">class</span> <span class="nc">open_bed</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Open a PLINK .bed file, local or cloud, for reading.</span>
 
@@ -433,7 +435,9 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
 
-<div class="viewcode-block" id="open_bed.read"><a class="viewcode-back" href="../../index.html#bed_reader.open_bed.read">[docs]</a>    <span class="k">def</span> <span class="nf">read</span><span class="p">(</span>
+<div class="viewcode-block" id="open_bed.read">
+<a class="viewcode-back" href="../../index.html#bed_reader.open_bed.read">[docs]</a>
+    <span class="k">def</span> <span class="nf">read</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">index</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">dtype</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">type</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="s2">&quot;float32&quot;</span><span class="p">,</span>
@@ -599,7 +603,6 @@
                 <span class="n">reader</span><span class="p">,</span> <span class="n">location_str</span><span class="p">,</span> <span class="n">is_cloud</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pick_reader</span><span class="p">(</span><span class="n">dtype</span><span class="p">)</span>
 
                 <span class="k">if</span> <span class="ow">not</span> <span class="n">is_cloud</span><span class="p">:</span>
-                    <span class="c1"># cmk test this</span>
                     <span class="n">reader</span><span class="p">(</span>
                         <span class="n">location_str</span><span class="p">,</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">cloud_options</span><span class="p">,</span>
@@ -612,7 +615,6 @@
                         <span class="n">num_threads</span><span class="o">=</span><span class="n">num_threads</span><span class="p">,</span>
                     <span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="c1"># cmk test this</span>
                     <span class="n">reader</span><span class="p">(</span>
                         <span class="n">location_str</span><span class="p">,</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">cloud_options</span><span class="p">,</span>
@@ -684,6 +686,7 @@
                     <span class="n">val</span> <span class="o">=</span> <span class="n">val</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">order</span><span class="o">=</span><span class="n">order</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">val</span></div>
+
 
     <span class="k">def</span> <span class="nf">_pick_reader</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dtype</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">:</span>
@@ -932,7 +935,9 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">property_item</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties_dict</span>
 
-<div class="viewcode-block" id="open_bed.property_item"><a class="viewcode-back" href="../../index.html#bed_reader.open_bed.property_item">[docs]</a>    <span class="k">def</span> <span class="nf">property_item</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<div class="viewcode-block" id="open_bed.property_item">
+<a class="viewcode-back" href="../../index.html#bed_reader.open_bed.property_item">[docs]</a>
+    <span class="k">def</span> <span class="nf">property_item</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Retrieve one property by name.</span>
 
@@ -968,6 +973,7 @@
             <span class="n">mm</span> <span class="o">=</span> <span class="n">_meta_meta</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_read_fam_or_bim</span><span class="p">(</span><span class="n">suffix</span><span class="o">=</span><span class="n">mm</span><span class="o">.</span><span class="n">suffix</span><span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties_dict</span><span class="p">[</span><span class="n">name</span><span class="p">]</span></div>
+
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">chromosome</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
@@ -1461,7 +1467,9 @@
                     <span class="n">output</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">mm</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">properties_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">output</span>
 
-<div class="viewcode-block" id="open_bed.read_sparse"><a class="viewcode-back" href="../../index.html#bed_reader.open_bed.read_sparse">[docs]</a>    <span class="k">def</span> <span class="nf">read_sparse</span><span class="p">(</span>
+<div class="viewcode-block" id="open_bed.read_sparse">
+<a class="viewcode-back" href="../../index.html#bed_reader.open_bed.read_sparse">[docs]</a>
+    <span class="k">def</span> <span class="nf">read_sparse</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">index</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">dtype</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">type</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="s2">&quot;float32&quot;</span><span class="p">,</span>
@@ -1702,7 +1710,6 @@
                     <span class="n">batch_index</span> <span class="o">=</span> <span class="n">sid_index</span><span class="p">[</span><span class="n">batch_slice</span><span class="p">]</span>
 
                     <span class="k">if</span> <span class="ow">not</span> <span class="n">is_cloud</span><span class="p">:</span>
-                        <span class="c1"># cmk test this</span>
                         <span class="n">reader</span><span class="p">(</span>
                             <span class="n">location_str</span><span class="p">,</span>
                             <span class="bp">self</span><span class="o">.</span><span class="n">cloud_options</span><span class="p">,</span>
@@ -1715,7 +1722,6 @@
                             <span class="n">num_threads</span><span class="o">=</span><span class="n">num_threads</span><span class="p">,</span>
                         <span class="p">)</span>
                     <span class="k">else</span><span class="p">:</span>
-                        <span class="c1"># cmk test this</span>
                         <span class="n">reader</span><span class="p">(</span>
                             <span class="n">location_str</span><span class="p">,</span>
                             <span class="bp">self</span><span class="o">.</span><span class="n">cloud_options</span><span class="p">,</span>
@@ -1751,7 +1757,6 @@
                     <span class="n">batch_index</span> <span class="o">=</span> <span class="n">iid_index</span><span class="p">[</span><span class="n">batch_slice</span><span class="p">]</span>
 
                     <span class="k">if</span> <span class="ow">not</span> <span class="n">is_cloud</span><span class="p">:</span>
-                        <span class="c1"># cmk test this</span>
                         <span class="n">reader</span><span class="p">(</span>
                             <span class="n">location_str</span><span class="p">,</span>
                             <span class="bp">self</span><span class="o">.</span><span class="n">cloud_options</span><span class="p">,</span>
@@ -1764,7 +1769,6 @@
                             <span class="n">num_threads</span><span class="o">=</span><span class="n">num_threads</span><span class="p">,</span>
                         <span class="p">)</span>
                     <span class="k">else</span><span class="p">:</span>
-                        <span class="c1"># cmk test this</span>
                         <span class="n">reader</span><span class="p">(</span>
                             <span class="n">location_str</span><span class="p">,</span>
                             <span class="bp">self</span><span class="o">.</span><span class="n">cloud_options</span><span class="p">,</span>
@@ -1796,6 +1800,7 @@
                 <span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">indptr</span><span class="p">),</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">iid_index</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">sid_index</span><span class="p">))</span>
             <span class="p">)</span></div>
 
+
     <span class="k">def</span> <span class="nf">sparsify</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">order</span><span class="p">,</span> <span class="n">minor_index</span><span class="p">,</span> <span class="n">batch_slice</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">indptr</span><span class="p">):</span>
         <span class="n">flatten</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="n">order</span><span class="p">)</span>
         <span class="n">nz_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">flatten</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
@@ -1810,6 +1815,7 @@
         <span class="n">data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">flatten</span><span class="p">[</span><span class="n">nz_indices</span><span class="p">])</span>
         <span class="n">indices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mod</span><span class="p">(</span><span class="n">nz_indices</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">minor_index</span><span class="p">)))</span>
         <span class="n">indptr</span><span class="p">[</span><span class="mi">1</span><span class="p">:][</span><span class="n">batch_slice</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">counts_with_initial</span><span class="p">)[</span><span class="mi">1</span><span class="p">:]</span></div>
+
 
 
 <span class="k">def</span> <span class="nf">_read_csv</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">usecols</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>

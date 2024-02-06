@@ -35,6 +35,19 @@ doc> make html & build\html\index.html
 maturin build --release
 ```
 
+### Release
+
+```bash
+cd doc
+make.bat html
+build\html\index.html
+xcopy /c /e /s /h build\html ..\docs
+# push changes
+
+
+
+
+
 ## Rust
 
 ```bash
