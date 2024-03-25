@@ -71,7 +71,7 @@ def sample_file(filepath: Union[str, Path]) -> str:
     if pooch is None:
         raise ImportError(
             "The function sample_file() requires pooch. "
-            + "Install it with 'pip install --upgrade bed-reader[sample]'."
+            + "Install it with 'pip install --upgrade bed-reader[samples]'."
         )
 
     filepath = Path(filepath)
