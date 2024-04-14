@@ -140,12 +140,12 @@ class create_bed:
             self.two_code = 0b00
 
         fam_location = (
-            self._path_or_url(fam_location)
+            Path(fam_location)
             if fam_location is not None
             else self._replace_extension(self.location, "fam")
         )
         bim_location = (
-            self._path_or_url(bim_location)
+            Path(bim_location)
             if bim_location is not None
             else self._replace_extension(self.location, "bim")
         )
