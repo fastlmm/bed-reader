@@ -1121,6 +1121,44 @@ def test_convert_to_dtype():
                 assert exp is None
 
 
+def test_stream_i8(shared_datadir, tmp_path):
+    # test major = "SNP" vs "individual"
+    with open_bed(shared_datadir / "some_missing.bed") as bed2:
+        val = bed2.read(dtype=np.int8)
+        properties = bed2.properties
+    for count_A1 in [True, False]:
+        for fam_location, bim_location in [
+            (None, None),
+            (tmp_path / "some_missing.fam2", tmp_path / "some_missing.bim2"),
+        ]:
+            for force_python_only in [True, False]:
+                with create_bed(
+                    tmp_path / "some_missing.bed",
+                    iid_count=val.shape[0],
+                    sid_count=val.shape[1],
+                    properties=properties,
+                    fam_location=fam_location,
+                    bim_location=bim_location,
+                    count_A1=count_A1,
+                    force_python_only=force_python_only,
+                ) as bed_writer:
+                    for column_data in val.T:
+                        bed_writer.write(column_data)
+                with open_bed(
+                    tmp_path / "some_missing.bed",
+                    count_A1=count_A1,
+                    fam_filepath=fam_location,
+                    bim_filepath=bim_location,
+                ) as bed2:
+                    val2 = bed2.read(dtype=np.int8)
+                    assert np.allclose(val, val2, equal_nan=True)
+                    properties2 = bed2.properties
+                    for key, value in properties.items():
+                        assert np.array_equal(value, properties2[key]) or np.allclose(
+                            value, properties2[key]
+                        )
+
+
 def test_stream(shared_datadir, tmp_path):
     # test major = "SNP" vs "individual"
     with open_bed(shared_datadir / "some_missing.bed") as bed2:

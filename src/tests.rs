@@ -6,6 +6,8 @@ use crate::assert_eq_nan;
 #[cfg(test)]
 use crate::assert_error_variant;
 #[cfg(test)]
+use crate::encode1;
+#[cfg(test)]
 use crate::file_aat_piece;
 #[cfg(test)]
 use crate::file_ata_piece;
@@ -1149,5 +1151,15 @@ fn another_bed_read_example() -> Result<(), Box<BedErrorPlus>> {
         .num_threads(1)
         .read(&mut bed)?;
     println!("{:?}", val.dim());
+    Ok(())
+}
+
+#[test]
+fn read_encode1() -> Result<(), Box<BedErrorPlus>> {
+    let val = nd::Array1::from(vec![2i8, 2, 2, 2, -127, -127, 2, 2, 1, -127, -127, -127]);
+    let mut buffer = vec![0u8; 3];
+    encode1(&val.view(), &mut buffer, true, -127)?;
+    assert_eq!(buffer, vec![255, 245, 0]);
+
     Ok(())
 }

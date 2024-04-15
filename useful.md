@@ -1,5 +1,13 @@
 # Useful
 
+**note**
+
+To get some Rust PyO3 debugging to work I had to set this before starting vscode:
+
+```cmd
+set PYO3_PYTHON=C:/Users/carlk/OneDrive/programs/bed-reader/.conda/python.exe
+```
+
 ## Python
 
 ### Benchmarking

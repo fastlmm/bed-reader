@@ -28,5 +28,5 @@ from .bed_reader import (
     write_f32,
     write_f64,
     write_i8,
-    encode_i8,
+    encode1_i8,
 )

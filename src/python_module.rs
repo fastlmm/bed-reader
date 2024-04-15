@@ -2,7 +2,7 @@
 
 use crate::{BedCloud, CloudFile};
 use crate::{
-    BedError, BedErrorPlus, Dist, _file_ata_piece_internal, create_pool, encode, file_aat_piece,
+    BedError, BedErrorPlus, Dist, _file_ata_piece_internal, create_pool, encode1, file_aat_piece,
     file_ata_piece, file_b_less_aatbx, impute_and_zero_mean_snps, matrix_subset_no_alloc,
     read_into_f32, read_into_f64, Bed, ReadOptions, WriteOptions,
 };
@@ -378,22 +378,50 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     // cmk be sure that the output matrix is set to 0's if needed
     #[pyfn(m)]
-    fn encode_i8(
+    fn encode1_i8(
         is_a1_counted: bool,
-        val: &PyArray2<i8>,
-        bytes_matrix: &PyArray2<u8>,
-        num_threads: usize,
+        val: &PyArray1<i8>,
+        bytes_vector: &PyArray1<u8>,
     ) -> Result<(), PyErr> {
-        let mut val = val.readwrite();
-        let val = val.as_array_mut();
-        let mut bytes_matrix = bytes_matrix.readwrite();
-        let mut bytes_matrix = bytes_matrix.as_array_mut();
+        let val = val.readonly();
+        let val = val.as_array();
+        let mut bytes_vector = bytes_vector.readwrite();
+        let mut bytes_vector = bytes_vector.as_array_mut();
 
-        create_pool(num_threads)?
-            .install(|| encode(&val, &mut bytes_matrix, is_a1_counted, -127))?; // cmk const
+        let bytes_vector = bytes_vector.as_slice_mut().ok_or_else(|| {
+            Box::new(
+                BedError::EncodingOutputBuffer(
+                    // fix up the error message
+                    0, 0, 0, 0, 'C',
+                )
+                .into(),
+            )
+        })?;
+
+        encode1(&val, bytes_vector, is_a1_counted, -127)?; // cmk const
 
         Ok(())
     }
+
+    // cmk be sure that the output matrix is set to 0's if needed
+    // cmk
+    // #[pyfn(m)]
+    // fn encode_i8(
+    //     is_a1_counted: bool,
+    //     val: &PyArray2<i8>,
+    //     bytes_matrix: &PyArray2<u8>,
+    //     num_threads: usize,
+    // ) -> Result<(), PyErr> {
+    //     let mut val = val.readwrite();
+    //     let val = val.as_array_mut();
+    //     let mut bytes_matrix = bytes_matrix.readwrite();
+    //     let mut bytes_matrix = bytes_matrix.as_array_mut();
+
+    //     create_pool(num_threads)?
+    //         .install(|| encode(&val, &mut bytes_matrix, is_a1_counted, -127))?; // cmk const
+
+    //     Ok(())
+    // }
 
     #[pyfn(m)]
     fn subset_f64_f64(

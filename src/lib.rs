@@ -785,6 +785,7 @@ where
     .map_err(|_e| BedError::PanickedThread())?
 }
 
+// cmk not tested
 #[allow(dead_code)]
 fn encode<S, TVal>(
     val: &nd::ArrayBase<S, nd::Ix2>,
@@ -849,6 +850,46 @@ where
     Ok::<_, Box<BedErrorPlus>>(())
 }
 
+// cmk not tested
+#[allow(dead_code)]
+fn encode1<TVal>(
+    in_vector: &ndarray::ArrayView1<TVal>,
+    out_vector: &mut [u8],
+    is_a1_counted: bool,
+    missing: TVal,
+) -> Result<(), Box<BedErrorPlus>>
+where
+    TVal: BedVal,
+{
+    #[allow(clippy::eq_op)]
+    let use_nan = missing != missing; // generic NAN test
+    let zero_code = if is_a1_counted { 3u8 } else { 0u8 };
+    let two_code = if is_a1_counted { 0u8 } else { 3u8 };
+
+    let homozygous_primary_allele: TVal = TVal::from(0); // Major Allele
+    let heterozygous_allele = TVal::from(1);
+    let homozygous_secondary_allele = TVal::from(2); // Minor Allele
+
+    let minor_div4 = (in_vector.len() - 1) / 4 + 1;
+    if minor_div4 != out_vector.len() {
+        return Err(Box::new(
+            BedError::EncodingOutputBuffer(minor_div4, 1, out_vector.len(), 1, '?').into(),
+        ));
+    }
+
+    process_genomic_slice(
+        in_vector,
+        out_vector,
+        homozygous_primary_allele,
+        heterozygous_allele,
+        homozygous_secondary_allele,
+        zero_code,
+        two_code,
+        use_nan,
+        missing,
+    )
+}
+
 #[inline]
 #[allow(clippy::eq_op)]
 #[allow(clippy::too_many_arguments)]
@@ -890,6 +931,7 @@ where
     }
     Ok(())
 }
+
 #[anyinput]
 fn count_lines(path: AnyPath) -> Result<usize, Box<BedErrorPlus>> {
     let file = File::open(path)?;
