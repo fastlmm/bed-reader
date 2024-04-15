@@ -7,7 +7,7 @@ import numpy as np
 
 from bed_reader import get_num_threads, open_bed
 
-from .bed_reader import write_f32, write_f64, write_i8  # type: ignore
+from .bed_reader import write_f32, write_f64, write_i8, encode_i8  # type: ignore
 
 
 class create_bed:

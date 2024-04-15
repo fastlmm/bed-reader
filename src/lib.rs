@@ -339,9 +339,9 @@ pub enum BedError {
     #[error("Sample fetch error: {0}")]
     SampleFetch(String),
 
-    #[allow(missing_docs)
-    #[error("Encode dimension error. Expected {0} but found {1}")]
-    DimensionMismatch((usize, usize), (usize, usize)),
+    #[allow(missing_docs)]
+    #[error("Expect encoding output buffer to be ({0},{1}) and Fortran-order. Found ({2},{3}) and {4}-order.")]
+    EncodingOutputBuffer(usize, usize, usize, usize, char),
 }
 
 // Trait alias
@@ -761,25 +761,17 @@ where
                 move |column| {
                     // Convert each column into a bytes_vector
                     let mut bytes_vector: Vec<u8> = vec![0; iid_count_div4_u64 as usize]; // inits to 0
-                    for (iid_i, &v0) in column.iter().enumerate() {
-                        #[allow(clippy::eq_op)]
-                        let genotype_byte = if v0 == homozygous_primary_allele {
-                            zero_code
-                        } else if v0 == heterozygous_allele {
-                            2
-                        } else if v0 == homozygous_secondary_allele {
-                            two_code
-                        //                    v0 !=v0 is generic NAN check
-                        } else if (use_nan && v0 != v0) || (!use_nan && v0 == missing) {
-                            1
-                        } else {
-                            Err(BedError::BadValue(path_ref_to_string(path)))?
-                        };
-                        // Possible optimization: We could pre-compute the conversion, the division, the mod, and the multiply*2
-                        let i_div_4 = iid_i / 4;
-                        let i_mod_4 = iid_i % 4;
-                        bytes_vector[i_div_4] |= genotype_byte << (i_mod_4 * 2);
-                    }
+                    process_genomic_slice(
+                        &column,
+                        &mut bytes_vector,
+                        homozygous_primary_allele,
+                        heterozygous_allele,
+                        homozygous_secondary_allele,
+                        zero_code,
+                        two_code,
+                        use_nan,
+                        missing,
+                    )?;
                     Ok::<_, Box<BedErrorPlus>>(bytes_vector)
                 }
             })
@@ -793,12 +785,10 @@ where
     .map_err(|_e| BedError::PanickedThread())?
 }
 
-// https://www.reddit.com/r/rust/comments/mo4s8e/difference_between_reference_and_view_in_ndarray/
-#[anyinput]
+#[allow(dead_code)]
 fn encode<S, TVal>(
-    // minor_count_div4_u64: u64,
     val: &nd::ArrayBase<S, nd::Ix2>,
-    bytes_matrix: &mut nd::Array2<u8>,
+    bytes_matrix: &mut nd::ArrayViewMut2<u8>,
     is_a1_counted: bool,
     missing: TVal,
 ) -> Result<(), Box<BedErrorPlus>>
@@ -816,39 +806,90 @@ where
     let homozygous_secondary_allele = TVal::from(2); // Minor Allele
 
     let minor_div4 = (val.dim().0 - 1) / 4 + 1;
-    if val.dim().1 != bytes_matrix.dim().1 || minor_div4 != bytes_matrix.dim().0 {
-        return Err(Box::new(BedError::DimensionMismatch((minor_div4, val.dim().1),bytes_matrix.dim())))
+    let major_len = val.dim().1;
+    if major_len != bytes_matrix.dim().1 || minor_div4 != bytes_matrix.dim().0 {
+        return Err(Box::new(
+            BedError::EncodingOutputBuffer(
+                minor_div4,
+                major_len,
+                bytes_matrix.dim().0,
+                bytes_matrix.dim().1,
+                '?',
+            )
+            .into(),
+        ));
     }
 
     val.axis_iter(Axis(1))
         .zip(bytes_matrix.axis_iter_mut(Axis(1)))
         .par_bridge()
         .try_for_each(|(in_vector, mut out_vector)| {
-            for (iid_i, &v0) in in_vector.iter().enumerate() {
-                #[allow(clippy::eq_op)]
-                let genotype_byte = if v0 == homozygous_primary_allele {
-                    zero_code
-                } else if v0 == heterozygous_allele {
-                    2
-                } else if v0 == homozygous_secondary_allele {
-                    two_code
-                //                    v0 !=v0 is generic NAN check
-                } else if (use_nan && v0 != v0) || (!use_nan && v0 == missing) {
-                    1
-                } else {
-                    Err(BedError::BadValue("encode".to_string()))?
-                };
-                // Possible optimization: We could pre-compute the conversion, the division, the mod, and the multiply*2
-                let i_div_4 = iid_i / 4;
-                let i_mod_4 = iid_i % 4;
-                out_vector[i_div_4] |= genotype_byte << (i_mod_4 * 2);
-            }
-            Ok::<_, Box<BedErrorPlus>>(())
+            // cmk is this slow to put in the loop?
+            let out_vector = out_vector.as_slice_mut().ok_or_else(|| {
+                Box::new(
+                    BedError::EncodingOutputBuffer(
+                        minor_div4, major_len, minor_div4, major_len, 'C',
+                    )
+                    .into(),
+                )
+            })?;
+            process_genomic_slice(
+                &in_vector,
+                out_vector,
+                homozygous_primary_allele,
+                heterozygous_allele,
+                homozygous_secondary_allele,
+                zero_code,
+                two_code,
+                use_nan,
+                missing,
+            )
         })?;
 
     Ok::<_, Box<BedErrorPlus>>(())
 }
 
+#[inline]
+#[allow(clippy::eq_op)]
+#[allow(clippy::too_many_arguments)]
+fn process_genomic_slice<TVal>(
+    in_vector: &ndarray::ArrayView1<TVal>,
+    out_vector: &mut [u8],
+    homozygous_primary_allele: TVal,
+    heterozygous_allele: TVal,
+    homozygous_secondary_allele: TVal,
+    zero_code: u8,
+    two_code: u8,
+    use_nan: bool,
+    missing: TVal,
+) -> Result<(), Box<BedErrorPlus>>
+where
+    TVal: PartialEq + Copy, // Ensure TVal supports equality check and can be copied
+{
+    for (iid_i, &v0) in in_vector.iter().enumerate() {
+        let genotype_byte = if v0 == homozygous_primary_allele {
+            zero_code
+        } else if v0 == heterozygous_allele {
+            2
+        } else if v0 == homozygous_secondary_allele {
+            two_code
+        } else if (use_nan && v0 != v0) || (!use_nan && v0 == missing) {
+            1
+        } else {
+            return Err(Box::new(
+                BedError::BadValue(
+                    "Invalid genotype value encountered during encoding.".to_string(),
+                )
+                .into(),
+            ));
+        };
+
+        let i_div_4 = iid_i / 4;
+        let i_mod_4 = iid_i % 4;
+        out_vector[i_div_4] |= genotype_byte << (i_mod_4 * 2);
+    }
+    Ok(())
+}
 #[anyinput]
 fn count_lines(path: AnyPath) -> Result<usize, Box<BedErrorPlus>> {
     let file = File::open(path)?;
