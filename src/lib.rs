@@ -122,7 +122,7 @@ use derive_builder::Builder;
 use dpc_pariter::{scope, IteratorExt};
 use fetch_data::FetchData;
 use futures_util::StreamExt;
-use nd::ShapeBuilder;
+use nd::{Axis, ShapeBuilder};
 use ndarray as nd;
 use num_traits::{abs, Float, FromPrimitive, Signed, ToPrimitive};
 use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
@@ -338,6 +338,10 @@ pub enum BedError {
     #[allow(missing_docs)]
     #[error("Sample fetch error: {0}")]
     SampleFetch(String),
+
+    #[allow(missing_docs)
+    #[error("Encode dimension error. Expected {0} but found {1}")]
+    DimensionMismatch((usize, usize), (usize, usize)),
 }
 
 // Trait alias
@@ -730,7 +734,6 @@ where
 fn write_internal<S, TVal>(
     path: AnyPath,
     iid_count_div4_u64: u64,
-    //val: &nd::ArrayView2<'_, TVal>,
     val: &nd::ArrayBase<S, nd::Ix2>,
     is_a1_counted: bool,
     missing: TVal,
@@ -788,6 +791,62 @@ where
             })
     })
     .map_err(|_e| BedError::PanickedThread())?
+}
+
+// https://www.reddit.com/r/rust/comments/mo4s8e/difference_between_reference_and_view_in_ndarray/
+#[anyinput]
+fn encode<S, TVal>(
+    // minor_count_div4_u64: u64,
+    val: &nd::ArrayBase<S, nd::Ix2>,
+    bytes_matrix: &mut nd::Array2<u8>,
+    is_a1_counted: bool,
+    missing: TVal,
+) -> Result<(), Box<BedErrorPlus>>
+where
+    S: nd::Data<Elem = TVal>,
+    TVal: BedVal,
+{
+    #[allow(clippy::eq_op)]
+    let use_nan = missing != missing; // generic NAN test
+    let zero_code = if is_a1_counted { 3u8 } else { 0u8 };
+    let two_code = if is_a1_counted { 0u8 } else { 3u8 };
+
+    let homozygous_primary_allele: TVal = TVal::from(0); // Major Allele
+    let heterozygous_allele = TVal::from(1);
+    let homozygous_secondary_allele = TVal::from(2); // Minor Allele
+
+    let minor_div4 = (val.dim().0 - 1) / 4 + 1;
+    if val.dim().1 != bytes_matrix.dim().1 || minor_div4 != bytes_matrix.dim().0 {
+        return Err(Box::new(BedError::DimensionMismatch((minor_div4, val.dim().1),bytes_matrix.dim())))
+    }
+
+    val.axis_iter(Axis(1))
+        .zip(bytes_matrix.axis_iter_mut(Axis(1)))
+        .par_bridge()
+        .try_for_each(|(in_vector, mut out_vector)| {
+            for (iid_i, &v0) in in_vector.iter().enumerate() {
+                #[allow(clippy::eq_op)]
+                let genotype_byte = if v0 == homozygous_primary_allele {
+                    zero_code
+                } else if v0 == heterozygous_allele {
+                    2
+                } else if v0 == homozygous_secondary_allele {
+                    two_code
+                //                    v0 !=v0 is generic NAN check
+                } else if (use_nan && v0 != v0) || (!use_nan && v0 == missing) {
+                    1
+                } else {
+                    Err(BedError::BadValue("encode".to_string()))?
+                };
+                // Possible optimization: We could pre-compute the conversion, the division, the mod, and the multiply*2
+                let i_div_4 = iid_i / 4;
+                let i_mod_4 = iid_i % 4;
+                out_vector[i_div_4] |= genotype_byte << (i_mod_4 * 2);
+            }
+            Ok::<_, Box<BedErrorPlus>>(())
+        })?;
+
+    Ok::<_, Box<BedErrorPlus>>(())
 }
 
 #[anyinput]

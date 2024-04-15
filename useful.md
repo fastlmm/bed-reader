@@ -2,6 +2,15 @@
 
 ## Python
 
+### Benchmarking
+
+```cmd
+cd C:\Users\carlk\OneDrive\programs\bed-reader\bed_reader\tests\benchmark
+python benchmark.py
+```
+
+Look in `M:\deldir\bench` for results.
+
 ### install packages, compile Rust for Python
 
 ```bash

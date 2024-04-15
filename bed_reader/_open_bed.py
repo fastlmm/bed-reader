@@ -601,7 +601,7 @@ class open_bed:
                 assert val.dtype == np.dtype(dtype)  # real assert
                 if not open_bed._array_properties_are_ok(val, order):
                     val = val.copy(order=order)
-
+        # cmk need to make Python-only work for individual-major
         return val
 
     def _pick_reader(self, dtype):
@@ -1158,12 +1158,13 @@ class open_bed:
 
     @staticmethod
     def _check_file(filepointer):
-        mode = filepointer.read(2)
-        if mode != b"l\x1b":
+        magic_number = filepointer.read(2)
+        if magic_number != b"l\x1b":
             raise ValueError("Not a valid .bed file")
-        mode = filepointer.read(1)  # \x01 = SNP major \x00 = individual major
-        if mode != b"\x01":
-            raise ValueError("only SNP-major is implemented")
+        mode = filepointer.read(1)
+        # Check if mode is either individual-major or SNP-major
+        if mode not in (b"\x00", b"\x01"):
+            raise ValueError("Not a valid .bed file")
 
     def __del__(self):
         self.__exit__()
@@ -1389,7 +1390,7 @@ class open_bed:
         num_threads=None,
         max_concurrent_requests=None,
         max_chunk_bytes=None,
-    ) -> (Union[sparse.csc_matrix, sparse.csr_matrix]) if sparse is not None else None:
+    ) -> (Union[sparse.csc_matrix, sparse.csr_matrix]) if sparse is not None else None:  # type: ignore
         """
         Read genotype information into a :mod:`scipy.sparse` matrix. Sparse matrices
         may be useful when the data is mostly zeros.

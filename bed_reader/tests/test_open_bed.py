@@ -1157,6 +1157,31 @@ def test_stream(shared_datadir, tmp_path):
                     )
 
 
+def test_stream_individual_major(shared_datadir, tmp_path):
+    with open_bed(shared_datadir / "some_missing.bed") as bed:
+        val = bed.read()
+        properties = bed.properties
+    with create_bed(
+        tmp_path / "some_missing.bed",
+        iid_count=val.shape[0],
+        sid_count=val.shape[1],
+        properties=properties,
+        major="individual",
+    ) as bed_writer:
+        for column_data in val.T:
+            bed_writer.write(column_data)
+    with open_bed(
+        tmp_path / "some_missing.bed",
+    ) as bed2:
+        val2 = bed2.read()
+        assert np.allclose(val, val2, equal_nan=True)
+        properties2 = bed2.properties
+        for key, value in properties.items():
+            assert np.array_equal(value, properties2[key]) or np.allclose(
+                value, properties2[key]
+            )
+
+
 def test_stream_without_with(shared_datadir, tmp_path):
     with open_bed(shared_datadir / "some_missing.bed") as bed2:
         val = bed2.read()
