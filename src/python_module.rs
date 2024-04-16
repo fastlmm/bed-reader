@@ -376,7 +376,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         Ok(())
     }
 
-    // cmk be sure that the output matrix is set to 0's if needed
     #[pyfn(m)]
     #[allow(unused_variables)]
     fn encode1_i8(
@@ -389,44 +388,51 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let val = val.as_array();
         let mut bytes_vector = bytes_vector.readwrite();
         let mut bytes_vector = bytes_vector.as_array_mut();
+        let bytes_vector = bytes_vector
+            .as_slice_mut()
+            .ok_or_else(|| Box::new(BedError::EncodingContiguous().into()))?;
 
-        let bytes_vector = bytes_vector.as_slice_mut().ok_or_else(|| {
-            Box::new(
-                BedError::EncodingOutputBuffer(
-                    // fix up the error message
-                    0, 0, 0, 0, 'C',
-                )
-                .into(),
-            )
-        })?;
+        Ok(encode1(&val, bytes_vector, is_a1_counted, -127)?)
+    }
 
-        // create_pool(num_threads)?.install(|| encode1(&val, bytes_vector, is_a1_counted, -127))?; // cmk const
-        encode1(&val, bytes_vector, is_a1_counted, -127)?;
+    #[pyfn(m)]
+    #[allow(unused_variables)]
+    fn encode1_f32(
+        is_a1_counted: bool,
+        val: &PyArray1<f32>,
+        bytes_vector: &PyArray1<u8>,
+        num_threads: usize,
+    ) -> Result<(), PyErr> {
+        let val = val.readonly();
+        let val = val.as_array();
+        let mut bytes_vector = bytes_vector.readwrite();
+        let mut bytes_vector = bytes_vector.as_array_mut();
+        let bytes_vector = bytes_vector
+            .as_slice_mut()
+            .ok_or_else(|| Box::new(BedError::EncodingContiguous().into()))?;
 
-        Ok(())
+        Ok(encode1(&val, bytes_vector, is_a1_counted, f32::NAN)?)
+    }
+
+    #[pyfn(m)]
+    #[allow(unused_variables)]
+    fn encode1_f64(
+        is_a1_counted: bool,
+        val: &PyArray1<f64>,
+        bytes_vector: &PyArray1<u8>,
+        num_threads: usize,
+    ) -> Result<(), PyErr> {
+        let val = val.readonly();
+        let val = val.as_array();
+        let mut bytes_vector = bytes_vector.readwrite();
+        let mut bytes_vector = bytes_vector.as_array_mut();
+        let bytes_vector = bytes_vector
+            .as_slice_mut()
+            .ok_or_else(|| Box::new(BedError::EncodingContiguous().into()))?;
+
+        Ok(encode1(&val, bytes_vector, is_a1_counted, f64::NAN)?)
     }
     // cmk insure that this only uses non-contiguous arrays when it needs to.
-    // cmk be sure we aren't doing two levels of parallelism
-
-    // cmk be sure that the output matrix is set to 0's if needed
-    // cmk
-    // #[pyfn(m)]
-    // fn encode_i8(
-    //     is_a1_counted: bool,
-    //     val: &PyArray2<i8>,
-    //     bytes_matrix: &PyArray2<u8>,
-    //     num_threads: usize,
-    // ) -> Result<(), PyErr> {
-    //     let mut val = val.readwrite();
-    //     let val = val.as_array_mut();
-    //     let mut bytes_matrix = bytes_matrix.readwrite();
-    //     let mut bytes_matrix = bytes_matrix.as_array_mut();
-
-    //     create_pool(num_threads)?
-    //         .install(|| encode(&val, &mut bytes_matrix, is_a1_counted, -127))?; // cmk const
-
-    //     Ok(())
-    // }
 
     #[pyfn(m)]
     fn subset_f64_f64(

@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any, List, Mapping, Union
 import numpy as np
 from bed_reader import get_num_threads, open_bed
-from .bed_reader import write_f32, write_f64, write_i8, encode1_i8  # type: ignore
+from .bed_reader import write_f32, write_f64, write_i8, encode1_i8, encode1_f32, encode1_f64  # type: ignore
 
 
 class create_bed:
@@ -113,8 +113,6 @@ class create_bed:
         force_python_only: bool = False,
         num_threads=None,
     ):
-        # cmk set this well
-        buffer_size = 8192_000
         self.location = Path(location)
         self.iid_count = iid_count
         self.sid_count = sid_count
@@ -163,7 +161,7 @@ class create_bed:
         open_bed._write_fam_or_bim(self.location, properties, "bim", bim_location)
 
         self.temp_filepath = self.location.with_suffix(".bed_temp")
-        self.file_pointer = open(self.temp_filepath, "wb", buffering=buffer_size)
+        self.file_pointer = open(self.temp_filepath, "wb")
         # see http://zzz.bwh.harvard.edu/plink/binary.shtml
         self.file_pointer.write(bytes(bytearray([0b01101100])))  # magic numbers
         self.file_pointer.write(bytes(bytearray([0b00011011])))  # magic numbers
@@ -235,12 +233,16 @@ class create_bed:
             raise e  # Re-raise the exception to handle it externally
 
     def _internal_write(self, vector):
-        if not self.force_python_only and vector.dtype == np.int8:  # cmk
+        if not self.force_python_only:
             if vector.dtype == np.int8:
                 encode1_i8(self.count_A1, vector, self.buffer, self.num_threads)
+            elif vector.dtype == np.float32:
+                encode1_f32(self.count_A1, vector, self.buffer, self.num_threads)
+            elif vector.dtype == np.float64:
+                encode1_f64(self.count_A1, vector, self.buffer, self.num_threads)
             else:
                 raise ValueError(
-                    f"dtype '{vector.dtype}' not known, only 'int8' is allowed so far cmk."
+                    f"dtype '{vector.dtype}' not known, only 'int8', 'float32', and 'float64' are allowed."
                 )
             self.file_pointer.write(self.buffer)
         else:
@@ -265,7 +267,7 @@ class create_bed:
                             + "Only 0,1,2,missing allowed."
                         )
                     byte |= code << (val_index * 2)
-                # cmk yikes, this is writing one byte at a time
+                # This is writing one byte at a time
                 self.file_pointer.write(bytes(bytearray([byte])))
 
 
@@ -448,7 +450,6 @@ def to_bed(
             zero_code = 0b11
             two_code = 0b00
 
-        # cmk change to buffer writing
         with open(filepath, "wb") as bed_filepointer:
             # see http://zzz.bwh.harvard.edu/plink/binary.shtml
             bed_filepointer.write(bytes(bytearray([0b01101100])))  # magic numbers

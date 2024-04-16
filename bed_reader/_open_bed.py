@@ -601,7 +601,7 @@ class open_bed:
                 assert val.dtype == np.dtype(dtype)  # real assert
                 if not open_bed._array_properties_are_ok(val, order):
                     val = val.copy(order=order)
-        # cmk need to make Python-only work for individual-major
+        # LATER need to make Python-only work for individual-major
         return val
 
     def _pick_reader(self, dtype):

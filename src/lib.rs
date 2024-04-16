@@ -122,7 +122,7 @@ use derive_builder::Builder;
 use dpc_pariter::{scope, IteratorExt};
 use fetch_data::FetchData;
 use futures_util::StreamExt;
-use nd::{Axis, ShapeBuilder};
+use nd::ShapeBuilder;
 use ndarray as nd;
 use num_traits::{abs, Float, FromPrimitive, Signed, ToPrimitive};
 use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
@@ -340,8 +340,12 @@ pub enum BedError {
     SampleFetch(String),
 
     #[allow(missing_docs)]
-    #[error("Expect encoding output buffer to be ({0},{1}) and Fortran-order. Found ({2},{3}) and {4}-order.")]
-    EncodingOutputBuffer(usize, usize, usize, usize, char),
+    #[error("Encoding destination buffer must be contiguous.")]
+    EncodingContiguous(),
+
+    #[allow(missing_docs)]
+    #[error("Encoding destination buffer have length {0}, (in_vector.len() - 1) // 4 + 1, but it has length {1}.")]
+    EncodingLength(usize, usize),
 }
 
 // Trait alias
@@ -787,71 +791,6 @@ where
 
 // cmk not tested
 #[allow(dead_code)]
-fn encode<S, TVal>(
-    val: &nd::ArrayBase<S, nd::Ix2>,
-    bytes_matrix: &mut nd::ArrayViewMut2<u8>,
-    is_a1_counted: bool,
-    missing: TVal,
-) -> Result<(), Box<BedErrorPlus>>
-where
-    S: nd::Data<Elem = TVal>,
-    TVal: BedVal,
-{
-    #[allow(clippy::eq_op)]
-    let use_nan = missing != missing; // generic NAN test
-    let zero_code = if is_a1_counted { 3u8 } else { 0u8 };
-    let two_code = if is_a1_counted { 0u8 } else { 3u8 };
-
-    let homozygous_primary_allele: TVal = TVal::from(0); // Major Allele
-    let heterozygous_allele = TVal::from(1);
-    let homozygous_secondary_allele = TVal::from(2); // Minor Allele
-
-    let minor_div4 = (val.dim().0 - 1) / 4 + 1;
-    let major_len = val.dim().1;
-    if major_len != bytes_matrix.dim().1 || minor_div4 != bytes_matrix.dim().0 {
-        return Err(Box::new(
-            BedError::EncodingOutputBuffer(
-                minor_div4,
-                major_len,
-                bytes_matrix.dim().0,
-                bytes_matrix.dim().1,
-                '?',
-            )
-            .into(),
-        ));
-    }
-
-    val.axis_iter(Axis(1))
-        .zip(bytes_matrix.axis_iter_mut(Axis(1)))
-        .par_bridge()
-        .try_for_each(|(in_vector, mut out_vector)| {
-            // cmk is this slow to put in the loop?
-            let out_vector = out_vector.as_slice_mut().ok_or_else(|| {
-                Box::new(
-                    BedError::EncodingOutputBuffer(
-                        minor_div4, major_len, minor_div4, major_len, 'C',
-                    )
-                    .into(),
-                )
-            })?;
-            process_genomic_slice(
-                &in_vector,
-                out_vector,
-                homozygous_primary_allele,
-                heterozygous_allele,
-                homozygous_secondary_allele,
-                zero_code,
-                two_code,
-                use_nan,
-                missing,
-            )
-        })?;
-
-    Ok::<_, Box<BedErrorPlus>>(())
-}
-
-// cmk not tested
-#[allow(dead_code)]
 fn encode1<TVal>(
     in_vector: &ndarray::ArrayView1<TVal>,
     out_vector: &mut [u8],
@@ -873,7 +812,7 @@ where
     let minor_div4 = (in_vector.len() - 1) / 4 + 1;
     if minor_div4 != out_vector.len() {
         return Err(Box::new(
-            BedError::EncodingOutputBuffer(minor_div4, 1, out_vector.len(), 1, '?').into(),
+            BedError::EncodingLength(minor_div4, out_vector.len()).into(),
         ));
     }
 

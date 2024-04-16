@@ -89,7 +89,7 @@ def meta_test(
     iid_count,
     sid_start=5,
     sid_end=None,
-    point_count=5,  # cmk 30
+    point_count=5,  # 30
     drive_list=["ssd"],
     plot_index=0,
 ):
@@ -107,7 +107,7 @@ def meta_test(
         np.log10(sid_start), np.log10(sid_end), point_count, base=10, dtype=int
     ):
         for drive in drive_list:
-            for num_threads in [1, 12]:  # cmk 1,
+            for num_threads in [1, 12]:
                 for stream in [True, False]:
                     result.append(
                         test_writes(
@@ -137,8 +137,8 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
     plot_count = 0
-    for drive in ["ssd", "hdd"]:
-        for iid_count in [50_000]:  # cmk, 50_000, 500_000]:
+    for drive in ["ssd"]:  # , "hdd"
+        for iid_count in [50_000]:  # 5_000, 500_000]:
             meta_test(
                 iid_count,
                 drive_list=[drive],
