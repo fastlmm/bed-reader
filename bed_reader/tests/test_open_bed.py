@@ -1407,7 +1407,52 @@ def test_stream_modes(shared_datadir, tmp_path):
             )
 
 
-# cmk show can can write different minor-lengths in both modes
+# show can can write different minor-lengths in both modes (including 0)
+def test_stream_modes2(shared_datadir, tmp_path):
+    for iid_count in range(8, -1, -1):
+        for sid_count in range(8, -1, -1):
+            for force_python_only in [False, True]:
+                for order in ["f", "c"]:
+                    rng = np.random.default_rng(0)
+                    # fill values with 0,1, 2
+                    val = rng.integers(3, size=(iid_count, sid_count), dtype=np.int8)
+                    val = np.ascontiguousarray(np.array(val, order=order))
+                    # make random value missing
+                    if iid_count > 0 and sid_count > 0:
+                        val[rng.integers(iid_count), rng.integers(sid_count)] = -127
+                    # write in mode 1
+                    with create_bed(
+                        tmp_path / "mode1.bed",
+                        major="SNP",
+                        iid_count=iid_count,
+                        sid_count=sid_count,
+                        force_python_only=force_python_only,
+                    ) as bed_writer:
+                        for column_data in val.T:
+                            bed_writer.write(column_data)
+                    with open_bed(tmp_path / "mode1.bed") as bed2:
+                        val2 = bed2.read(
+                            force_python_only=force_python_only, dtype=np.int8
+                        )
+                    assert np.allclose(val, val2, equal_nan=True)
+
+                    # write in mode 0
+                    with create_bed(
+                        tmp_path / "mode0.bed",
+                        major="individual",
+                        iid_count=iid_count,
+                        sid_count=sid_count,
+                        force_python_only=force_python_only,
+                    ) as bed_writer:
+                        for snp_data in val:
+                            bed_writer.write(snp_data)
+                    with open_bed(tmp_path / "mode0.bed") as bed3:
+                        val3 = bed3.read(
+                            force_python_only=force_python_only, dtype=np.int8
+                        )
+                    assert np.allclose(val, val3, equal_nan=True)
+
+
 # cmk Show that can write from order-c and order-f in both modes
 # cmk benchmark writing from the "right" order into the right mode.
 # cmk benchmark writing full example with random data (some missing)

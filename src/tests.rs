@@ -1162,3 +1162,12 @@ fn read_encode1() -> Result<(), Box<BedErrorPlus>> {
     assert_eq!(buffer, vec![0, 5, 86]);
     Ok(())
 }
+
+#[test]
+fn zero_length_encode1() -> Result<(), Box<BedErrorPlus>> {
+    let val = nd::Array1::from(vec![0i8; 0]); // zero length
+    let mut buffer = vec![0u8; 0]; // zero length
+    encode1(&val.view(), &mut buffer, true, -127)?;
+    assert_eq!(buffer, vec![0u8; 0]); // zero length
+    Ok(())
+}

@@ -529,7 +529,7 @@ fn try_div_4(in_iid_count: usize, in_sid_count: usize) -> Result<u64, Box<BedErr
     if in_iid_count == 0 {
         return Ok(0);
     }
-    let in_iid_count_div4_u64 = ((in_iid_count - 1) / 4 + 1) as u64;
+    let in_iid_count_div4_u64 = in_iid_count.checked_sub(1).map_or(0, |v| v / 4 + 1) as u64;
     let in_sid_count_u64 = in_sid_count as u64;
 
     if in_sid_count > 0 && (u64::MAX - CB_HEADER_U64) / in_sid_count_u64 < in_iid_count_div4_u64 {
@@ -789,7 +789,6 @@ where
     .map_err(|_e| BedError::PanickedThread())?
 }
 
-// cmk not tested
 #[allow(dead_code)]
 fn encode1<TVal>(
     in_vector: &ndarray::ArrayView1<TVal>,
@@ -809,7 +808,7 @@ where
     let heterozygous_allele = TVal::from(1);
     let homozygous_secondary_allele = TVal::from(2); // Minor Allele
 
-    let minor_div4 = (in_vector.len() - 1) / 4 + 1;
+    let minor_div4 = in_vector.len().checked_sub(1).map_or(0, |v| v / 4 + 1);
     if minor_div4 != out_vector.len() {
         return Err(Box::new(
             BedError::EncodingLength(minor_div4, out_vector.len()).into(),
