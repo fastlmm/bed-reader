@@ -1349,19 +1349,14 @@ def test_stream_expected_errors(shared_datadir, tmp_path):
                 bed_writer.write(3)
 
 
-# cmk Show that can read files of both modes by reading smallmode0.bed and small.bed
+# Show that can read files of both modes by reading smallmode0.bed and small.bed
 def test_mode(shared_datadir, tmp_path):
-    with open_bed(shared_datadir / "small.bed") as bed:
-        val = bed.read()
-        properties = bed.properties
-    with open_bed(shared_datadir / "smallmode0.bed") as bed2:
-        val2 = bed2.read()
-        properties2 = bed2.properties
-    assert np.allclose(val, val2, equal_nan=True)
-    for key, value in properties.items():
-        assert np.array_equal(value, properties2[key]) or np.allclose(
-            value, properties2[key]
-        )
+    for force_python_only in [False, True]:
+        with open_bed(shared_datadir / "small.bed") as bed:
+            val = bed.read(force_python_only=force_python_only)
+        with open_bed(shared_datadir / "smallmode0.bed") as bed2:
+            val2 = bed2.read(force_python_only=force_python_only)
+        assert np.allclose(val, val2.T, equal_nan=True)
 
 
 # cmk repeat with force_python_only=True (or create a good error message)
@@ -1371,6 +1366,7 @@ def test_mode(shared_datadir, tmp_path):
 # cmk benchmark writing from the "right" order into the right mode.
 # cmk benchmark writing full example with random data (some missing)
 # cmk benchmark a large file transposer.
+# cmk make the mode visible
 # cmk write via to_bed with both modes (or documentation or error message)
 
 if __name__ == "__main__":

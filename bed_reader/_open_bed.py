@@ -301,7 +301,7 @@ class open_bed:
                 check_file_cloud(self.location.geturl(), self.cloud_options)
             else:
                 with open(self.location, "rb") as filepointer:
-                    self._check_file(filepointer)
+                    self.mode = self._check_file(filepointer)
 
     # # its an error to set both location and filepath
     # location = self._combined(location, filepath, "location", "filepath")
@@ -547,6 +547,7 @@ class open_bed:
                     )
 
         else:
+
             if not self.count_A1:
                 byteZero = 0
                 byteThree = 2
@@ -563,45 +564,81 @@ class open_bed:
             # Also, note that reading with python will often result in
             # non-contiguous memory
             # logging.warn("using pure python plink parser (might be much slower!!)")
+
+            # if self.mode is not set, set it
+            if not hasattr(self, "mode"):
+                with open(self.location, "rb") as filepointer:
+                    self.mode = self._check_file(filepointer)
+            if self.mode == b"\x01":
+                minor_count = self.iid_count
+                minor_index = iid_index
+                major_index = sid_index
+            else:
+                minor_count = self.sid_count
+                minor_index = sid_index
+                major_index = iid_index
+
             val = np.zeros(
-                ((int(np.ceil(0.25 * self.iid_count)) * 4), len(sid_index)),
+                ((int(np.ceil(0.25 * minor_count)) * 4), len(major_index)),
                 order=order,
                 dtype=dtype,
             )  # allocate it a little big
 
-            nbyte = int(np.ceil(0.25 * self.iid_count))
+            nbyte = int(np.ceil(0.25 * minor_count))
             with open(self.location, "rb") as filepointer:
-                for SNPsIndex, bimIndex in enumerate(sid_index):
-                    startbit = int(np.ceil(0.25 * self.iid_count) * bimIndex + 3)
+                for major_index_value, major_index_index in enumerate(major_index):
+                    startbit = int(np.ceil(0.25 * minor_count) * major_index_index + 3)
                     filepointer.seek(startbit)
                     bytes = np.array(bytearray(filepointer.read(nbyte))).reshape(
-                        (int(np.ceil(0.25 * self.iid_count)), 1), order="F"
+                        (int(np.ceil(0.25 * minor_count)), 1), order="F"
                     )
 
-                    val[3::4, SNPsIndex : SNPsIndex + 1] = byteZero
-                    val[3::4, SNPsIndex : SNPsIndex + 1][bytes >= 64] = missing
-                    val[3::4, SNPsIndex : SNPsIndex + 1][bytes >= 128] = 1
-                    val[3::4, SNPsIndex : SNPsIndex + 1][bytes >= 192] = byteThree
+                    val[3::4, major_index_value : major_index_value + 1] = byteZero
+                    val[3::4, major_index_value : major_index_value + 1][
+                        bytes >= 64
+                    ] = missing
+                    val[3::4, major_index_value : major_index_value + 1][
+                        bytes >= 128
+                    ] = 1
+                    val[3::4, major_index_value : major_index_value + 1][
+                        bytes >= 192
+                    ] = byteThree
                     bytes = np.mod(bytes, 64)
-                    val[2::4, SNPsIndex : SNPsIndex + 1] = byteZero
-                    val[2::4, SNPsIndex : SNPsIndex + 1][bytes >= 16] = missing
-                    val[2::4, SNPsIndex : SNPsIndex + 1][bytes >= 32] = 1
-                    val[2::4, SNPsIndex : SNPsIndex + 1][bytes >= 48] = byteThree
+                    val[2::4, major_index_value : major_index_value + 1] = byteZero
+                    val[2::4, major_index_value : major_index_value + 1][
+                        bytes >= 16
+                    ] = missing
+                    val[2::4, major_index_value : major_index_value + 1][
+                        bytes >= 32
+                    ] = 1
+                    val[2::4, major_index_value : major_index_value + 1][
+                        bytes >= 48
+                    ] = byteThree
                     bytes = np.mod(bytes, 16)
-                    val[1::4, SNPsIndex : SNPsIndex + 1] = byteZero
-                    val[1::4, SNPsIndex : SNPsIndex + 1][bytes >= 4] = missing
-                    val[1::4, SNPsIndex : SNPsIndex + 1][bytes >= 8] = 1
-                    val[1::4, SNPsIndex : SNPsIndex + 1][bytes >= 12] = byteThree
+                    val[1::4, major_index_value : major_index_value + 1] = byteZero
+                    val[1::4, major_index_value : major_index_value + 1][
+                        bytes >= 4
+                    ] = missing
+                    val[1::4, major_index_value : major_index_value + 1][bytes >= 8] = 1
+                    val[1::4, major_index_value : major_index_value + 1][
+                        bytes >= 12
+                    ] = byteThree
                     bytes = np.mod(bytes, 4)
-                    val[0::4, SNPsIndex : SNPsIndex + 1] = byteZero
-                    val[0::4, SNPsIndex : SNPsIndex + 1][bytes >= 1] = missing
-                    val[0::4, SNPsIndex : SNPsIndex + 1][bytes >= 2] = 1
-                    val[0::4, SNPsIndex : SNPsIndex + 1][bytes >= 3] = byteThree
-                val = val[iid_index, :]  # reorder or trim any extra allocation
+                    val[0::4, major_index_value : major_index_value + 1] = byteZero
+                    val[0::4, major_index_value : major_index_value + 1][
+                        bytes >= 1
+                    ] = missing
+                    val[0::4, major_index_value : major_index_value + 1][bytes >= 2] = 1
+                    val[0::4, major_index_value : major_index_value + 1][
+                        bytes >= 3
+                    ] = byteThree
+                val = val[minor_index, :]  # reorder or trim any extra allocation
                 assert val.dtype == np.dtype(dtype)  # real assert
                 if not open_bed._array_properties_are_ok(val, order):
                     val = val.copy(order=order)
-        # LATER need to make Python-only work for individual-major
+            # if in force python mode, and individual-major mode, then we need to transpose
+            if self.mode == b"\x00":
+                val = val.T
         return val
 
     def _pick_reader(self, dtype):
@@ -1165,6 +1202,7 @@ class open_bed:
         # Check if mode is either individual-major or SNP-major
         if mode not in (b"\x00", b"\x01"):
             raise ValueError("Not a valid .bed file")
+        return mode
 
     def __del__(self):
         self.__exit__()
