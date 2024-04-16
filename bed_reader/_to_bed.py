@@ -235,7 +235,7 @@ class create_bed:
             raise e  # Re-raise the exception to handle it externally
 
     def _internal_write(self, vector):
-        if not self.force_python_only:
+        if not self.force_python_only and vector.dtype == np.int8:  # cmk
             if vector.dtype == np.int8:
                 encode1_i8(self.count_A1, vector, self.buffer)
             else:

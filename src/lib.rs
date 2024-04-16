@@ -893,6 +893,43 @@ where
 #[inline]
 #[allow(clippy::eq_op)]
 #[allow(clippy::too_many_arguments)]
+fn encode_genotype_chunk<TVal>(
+    chunk: nd::ArrayView1<TVal>,
+    homozygous_primary_allele: TVal,
+    heterozygous_allele: TVal,
+    homozygous_secondary_allele: TVal,
+    zero_code: u8,
+    two_code: u8,
+    use_nan: bool,
+    missing: TVal,
+) -> Result<u8, BedError>
+where
+    TVal: PartialEq + Copy,
+{
+    let mut output_byte = 0u8;
+    for (within_chunk_index, &v0) in chunk.iter().enumerate() {
+        let genotype_code = if v0 == homozygous_primary_allele {
+            zero_code
+        } else if v0 == heterozygous_allele {
+            2
+        } else if v0 == homozygous_secondary_allele {
+            two_code
+        } else if (use_nan && v0 != v0) || (!use_nan && v0 == missing) {
+            1
+        } else {
+            return Err(BedError::BadValue(
+                "Invalid genotype value encountered during encoding.".to_string(),
+            ));
+        };
+
+        output_byte |= genotype_code << (within_chunk_index * 2);
+    }
+    Ok(output_byte)
+}
+
+#[inline]
+#[allow(clippy::eq_op)]
+#[allow(clippy::too_many_arguments)]
 fn process_genomic_slice<TVal>(
     in_vector: &ndarray::ArrayView1<TVal>,
     out_vector: &mut [u8],
@@ -907,29 +944,44 @@ fn process_genomic_slice<TVal>(
 where
     TVal: PartialEq + Copy, // Ensure TVal supports equality check and can be copied
 {
-    for (iid_i, &v0) in in_vector.iter().enumerate() {
-        let genotype_byte = if v0 == homozygous_primary_allele {
-            zero_code
-        } else if v0 == heterozygous_allele {
-            2
-        } else if v0 == homozygous_secondary_allele {
-            two_code
-        } else if (use_nan && v0 != v0) || (!use_nan && v0 == missing) {
-            1
-        } else {
-            return Err(Box::new(
-                BedError::BadValue(
-                    "Invalid genotype value encountered during encoding.".to_string(),
-                )
-                .into(),
-            ));
-        };
+    // Process each chunk of 4 elements
+    in_vector
+        .exact_chunks(4)
+        .into_par_iter()
+        .zip(out_vector.par_iter_mut())
+        .try_for_each(|(chunk, output_byte)| {
+            *output_byte = encode_genotype_chunk(
+                chunk,
+                homozygous_primary_allele,
+                heterozygous_allele,
+                homozygous_secondary_allele,
+                zero_code,
+                two_code,
+                use_nan,
+                missing,
+            )?;
+            Ok::<(), Box<BedErrorPlus>>(())
+        })?;
 
-        let i_div_4 = iid_i / 4;
-        let i_mod_4 = iid_i % 4;
-        out_vector[i_div_4] |= genotype_byte << (i_mod_4 * 2);
+    // Process the remainder, if any
+    let full_chunks = in_vector.len() / 4;
+    let remainder = in_vector.len() % 4;
+    if remainder != 0 {
+        let remainder_chunk = in_vector.slice(ndarray::s![full_chunks * 4..]);
+        let output_byte = encode_genotype_chunk(
+            remainder_chunk,
+            homozygous_primary_allele,
+            heterozygous_allele,
+            homozygous_secondary_allele,
+            zero_code,
+            two_code,
+            use_nan,
+            missing,
+        )?;
+        out_vector[full_chunks] = output_byte; // Assign the last byte to handle the remainder
     }
-    Ok(())
+
+    Ok::<(), Box<BedErrorPlus>>(())
 }
 
 #[anyinput]

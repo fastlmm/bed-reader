@@ -13,6 +13,7 @@ set PYO3_PYTHON=C:/Users/carlk/OneDrive/programs/bed-reader/.conda/python.exe
 ### Benchmarking
 
 ```cmd
+maturin develop --release
 cd C:\Users\carlk\OneDrive\programs\bed-reader\bed_reader\tests\benchmark
 python benchmark.py
 ```

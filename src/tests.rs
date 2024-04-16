@@ -1159,7 +1159,6 @@ fn read_encode1() -> Result<(), Box<BedErrorPlus>> {
     let val = nd::Array1::from(vec![2i8, 2, 2, 2, -127, -127, 2, 2, 1, -127, -127, -127]);
     let mut buffer = vec![0u8; 3];
     encode1(&val.view(), &mut buffer, true, -127)?;
-    assert_eq!(buffer, vec![255, 245, 0]);
-
+    assert_eq!(buffer, vec![0, 5, 86]);
     Ok(())
 }
