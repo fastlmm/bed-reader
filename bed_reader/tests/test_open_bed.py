@@ -1350,7 +1350,7 @@ def test_stream_expected_errors(shared_datadir, tmp_path):
 
 
 # Show that can read files of both modes by reading smallmode0.bed and small.bed
-def test_mode(shared_datadir, tmp_path):
+def test_mode(shared_datadir):
     for force_python_only in [False, True]:
         with open_bed(shared_datadir / "small.bed") as bed:
             val = bed.read(force_python_only=force_python_only)
@@ -1359,8 +1359,54 @@ def test_mode(shared_datadir, tmp_path):
         assert np.allclose(val, val2.T, equal_nan=True)
 
 
-# cmk repeat with force_python_only=True (or create a good error message)
-# cmk Show that can write via streaming in both modes
+# Show that can write via streaming in both modes
+def test_stream_modes(shared_datadir, tmp_path):
+    for force_python_only in [False, True]:
+        with open_bed(shared_datadir / "small.bed") as bed:
+            val = bed.read(force_python_only=force_python_only)
+
+        # write in mode 1
+        with create_bed(
+            tmp_path / "mode1.bed",
+            major="SNP",
+            iid_count=bed.iid_count,
+            sid_count=bed.sid_count,
+            properties=bed.properties,
+            force_python_only=force_python_only,
+        ) as bed_writer:
+            for column_data in val.T:
+                bed_writer.write(column_data)
+
+        with open_bed(tmp_path / "mode1.bed") as bed2:
+            val2 = bed2.read(force_python_only=force_python_only)
+        assert np.allclose(val, val2, equal_nan=True)
+        properties2 = bed2.properties
+        for key, value in bed.properties.items():
+            assert np.array_equal(value, properties2[key]) or np.allclose(
+                value, properties2[key]
+            )
+
+        # write in mode 0
+        with create_bed(
+            tmp_path / "mode0.bed",
+            major="individual",
+            iid_count=bed.iid_count,
+            sid_count=bed.sid_count,
+            properties=bed.properties,
+            force_python_only=force_python_only,
+        ) as bed_writer:
+            for snp_data in val:
+                bed_writer.write(snp_data)
+        with open_bed(tmp_path / "mode0.bed") as bed3:
+            val3 = bed3.read(force_python_only=force_python_only)
+        assert np.allclose(val, val3, equal_nan=True)
+        properties3 = bed3.properties
+        for key, value in bed.properties.items():
+            assert np.array_equal(value, properties3[key]) or np.allclose(
+                value, properties3[key]
+            )
+
+
 # cmk show can can write different minor-lengths in both modes
 # cmk Show that can write from order-c and order-f in both modes
 # cmk benchmark writing from the "right" order into the right mode.
