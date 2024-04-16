@@ -956,7 +956,6 @@ where
         .exact_chunks(4)
         .into_iter()
         .zip(out_vector.iter_mut())
-        .par_bridge()
         .try_for_each(|(chunk, output_byte)| {
             *output_byte = encode_genotype_chunk(
                 chunk,
@@ -990,6 +989,69 @@ where
 
     Ok::<(), Box<BedErrorPlus>>(())
 }
+// #[inline]
+// #[allow(clippy::eq_op)]
+// #[allow(clippy::too_many_arguments)]
+// fn process_genomic_slice<TVal>(
+//     in_vector: &ndarray::ArrayView1<TVal>,
+//     out_vector: &mut [u8],
+//     homozygous_primary_allele: TVal,
+//     heterozygous_allele: TVal,
+//     homozygous_secondary_allele: TVal,
+//     zero_code: u8,
+//     two_code: u8,
+//     use_nan: bool,
+//     missing: TVal,
+// ) -> Result<(), Box<BedErrorPlus>>
+// where
+//     TVal: PartialEq + Copy + Sync, // Ensure TVal supports equality check and can be copied
+// {
+//     // Calculate the number of full chunks and the remainder
+//     let full_chunks = in_vector.len() / 4;
+//     let remainder = in_vector.len() % 4;
+
+//     // Ensure the output vector is correctly sized
+//     assert_eq!(out_vector.len(), full_chunks + usize::from(remainder > 0));
+
+//     // Zip the exact input chunks with output chunks and process in parallel
+//     in_vector
+//         .exact_chunks(4)
+//         .into_iter()
+//         .zip(out_vector.iter_mut())
+//         .par_bridge()
+//         .try_for_each(|(chunk, output_byte)| {
+//             *output_byte = encode_genotype_chunk(
+//                 chunk,
+//                 homozygous_primary_allele,
+//                 heterozygous_allele,
+//                 homozygous_secondary_allele,
+//                 zero_code,
+//                 two_code,
+//                 use_nan,
+//                 missing,
+//             )?;
+//             Ok::<(), Box<BedErrorPlus>>(())
+//         })?;
+
+//     // Process the remainder sequentially if there is any
+//     if remainder != 0 {
+//         let start = full_chunks * 4;
+//         let chunk = in_vector.slice(ndarray::s![start..]);
+//         let output_byte = &mut out_vector[full_chunks];
+//         *output_byte = encode_genotype_chunk(
+//             chunk,
+//             homozygous_primary_allele,
+//             heterozygous_allele,
+//             homozygous_secondary_allele,
+//             zero_code,
+//             two_code,
+//             use_nan,
+//             missing,
+//         )?;
+//     }
+
+//     Ok::<(), Box<BedErrorPlus>>(())
+// }
 
 #[anyinput]
 fn count_lines(path: AnyPath) -> Result<usize, Box<BedErrorPlus>> {

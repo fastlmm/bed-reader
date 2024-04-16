@@ -115,7 +115,9 @@ def meta_test(
                         )
                     )
     df = pd.concat(result)
-    df.to_csv(ssd_path / "plots" / "bench.csv", index=False)
+    df.to_csv(
+        ssd_path / "plots" / f"bench{plot_index},iid_count{iid_count}.csv", index=False
+    )
     df2 = df.pivot(
         index="sid_count",
         columns=["iid_count", "drive", "num_threads", "stream"],
@@ -135,7 +137,7 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
     plot_count = 0
-    for drive in ["ssd"]:  # cmk , "hdd"]:
+    for drive in ["ssd", "hdd"]:
         for iid_count in [50_000]:  # cmk, 50_000, 500_000]:
             meta_test(
                 iid_count,

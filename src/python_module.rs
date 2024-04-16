@@ -378,6 +378,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     // cmk be sure that the output matrix is set to 0's if needed
     #[pyfn(m)]
+    #[allow(unused_variables)]
     fn encode1_i8(
         is_a1_counted: bool,
         val: &PyArray1<i8>,
@@ -399,7 +400,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
             )
         })?;
 
-        create_pool(num_threads)?.install(|| encode1(&val, bytes_vector, is_a1_counted, -127))?; // cmk const
+        // create_pool(num_threads)?.install(|| encode1(&val, bytes_vector, is_a1_counted, -127))?; // cmk const
+        encode1(&val, bytes_vector, is_a1_counted, -127)?;
 
         Ok(())
     }
