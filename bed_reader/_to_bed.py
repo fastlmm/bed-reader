@@ -237,7 +237,7 @@ class create_bed:
     def _internal_write(self, vector):
         if not self.force_python_only and vector.dtype == np.int8:  # cmk
             if vector.dtype == np.int8:
-                encode1_i8(self.count_A1, vector, self.buffer)
+                encode1_i8(self.count_A1, vector, self.buffer, self.num_threads)
             else:
                 raise ValueError(
                     f"dtype '{vector.dtype}' not known, only 'int8' is allowed so far cmk."

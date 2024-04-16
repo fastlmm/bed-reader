@@ -382,6 +382,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         is_a1_counted: bool,
         val: &PyArray1<i8>,
         bytes_vector: &PyArray1<u8>,
+        num_threads: usize,
     ) -> Result<(), PyErr> {
         let val = val.readonly();
         let val = val.as_array();
@@ -398,10 +399,12 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
             )
         })?;
 
-        encode1(&val, bytes_vector, is_a1_counted, -127)?; // cmk const
+        create_pool(num_threads)?.install(|| encode1(&val, bytes_vector, is_a1_counted, -127))?; // cmk const
 
         Ok(())
     }
+    // cmk insure that this only uses non-contiguous arrays when it needs to.
+    // cmk be sure we aren't doing two levels of parallelism
 
     // cmk be sure that the output matrix is set to 0's if needed
     // cmk
@@ -756,3 +759,4 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 }
 
 // LATER on both rust and python side, when counting bim and fam files, also parse them -- don't read them twice.
+// cmk be sure to test things are aren't divisible by 4

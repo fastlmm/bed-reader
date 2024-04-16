@@ -136,7 +136,7 @@ if __name__ == "__main__":
 
     plot_count = 0
     for drive in ["ssd"]:  # cmk , "hdd"]:
-        for iid_count in [5_000]:  # cmk, 50_000, 500_000]:
+        for iid_count in [50_000]:  # cmk, 50_000, 500_000]:
             meta_test(
                 iid_count,
                 drive_list=[drive],
