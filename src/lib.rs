@@ -844,6 +844,7 @@ fn encode_genotype_chunk<TVal>(
 where
     TVal: PartialEq + Copy,
 {
+    // LATER: Think about unrolling this loop in the usual case of 4 elements
     let mut output_byte = 0u8;
     for (within_chunk_index, &v0) in chunk.iter().enumerate() {
         let genotype_code = if v0 == homozygous_primary_allele {

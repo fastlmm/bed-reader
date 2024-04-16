@@ -1453,8 +1453,6 @@ def test_stream_modes2(shared_datadir, tmp_path):
                     assert np.allclose(val, val3, equal_nan=True)
 
 
-# cmk Show that can write from order-c and order-f in both modes
-# cmk benchmark writing from the "right" order into the right mode.
 # cmk benchmark writing full example with random data (some missing)
 # cmk benchmark a large file transposer.
 # cmk make the mode visible

@@ -24,7 +24,7 @@ def test_writes(iid_count, sid_count, num_threads, stream, drive, include_error)
 
     output_file = path / f"{iid_count}x{sid_count}.bed"
 
-    val = np.full((iid_count, sid_count), 1, dtype=np.int8)
+    val = np.full((iid_count, sid_count), 1, dtype=np.int8, order="F")
     if include_error:
         val[iid_count // 2, sid_count // 2] = 22
 
