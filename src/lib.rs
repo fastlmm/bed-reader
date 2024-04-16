@@ -942,45 +942,44 @@ fn process_genomic_slice<TVal>(
     missing: TVal,
 ) -> Result<(), Box<BedErrorPlus>>
 where
-    TVal: PartialEq + Copy, // Ensure TVal supports equality check and can be copied
+    TVal: PartialEq + Copy + Sync, // Ensure TVal supports equality check and can be copied
 {
-    // Process each chunk of 4 elements
-    in_vector
-        .exact_chunks(4)
-        .into_par_iter()
-        .zip(out_vector.par_iter_mut())
-        .try_for_each(|(chunk, output_byte)| {
-            *output_byte = encode_genotype_chunk(
-                chunk,
-                homozygous_primary_allele,
-                heterozygous_allele,
-                homozygous_secondary_allele,
-                zero_code,
-                two_code,
-                use_nan,
-                missing,
-            )?;
-            Ok::<(), Box<BedErrorPlus>>(())
-        })?;
-
-    // Process the remainder, if any
     let full_chunks = in_vector.len() / 4;
     let remainder = in_vector.len() % 4;
-    if remainder != 0 {
-        let remainder_chunk = in_vector.slice(ndarray::s![full_chunks * 4..]);
-        let output_byte = encode_genotype_chunk(
-            remainder_chunk,
-            homozygous_primary_allele,
-            heterozygous_allele,
-            homozygous_secondary_allele,
-            zero_code,
-            two_code,
-            use_nan,
-            missing,
-        )?;
-        out_vector[full_chunks] = output_byte; // Assign the last byte to handle the remainder
-    }
 
+    // Process each full chunk in parallel
+    out_vector
+        .iter_mut()
+        .enumerate()
+        .par_bridge()
+        .try_for_each(|(idx, output_byte)| {
+            if idx < full_chunks {
+                let chunk = in_vector.slice(ndarray::s![idx * 4..idx * 4 + 4]);
+                *output_byte = encode_genotype_chunk(
+                    chunk,
+                    homozygous_primary_allele,
+                    heterozygous_allele,
+                    homozygous_secondary_allele,
+                    zero_code,
+                    two_code,
+                    use_nan,
+                    missing,
+                )?;
+            } else if idx == full_chunks && remainder != 0 {
+                let chunk = in_vector.slice(ndarray::s![full_chunks * 4..]);
+                *output_byte = encode_genotype_chunk(
+                    chunk,
+                    homozygous_primary_allele,
+                    heterozygous_allele,
+                    homozygous_secondary_allele,
+                    zero_code,
+                    two_code,
+                    use_nan,
+                    missing,
+                )?;
+            }
+            Ok::<(), Box<BedErrorPlus>>(())
+        })?;
     Ok::<(), Box<BedErrorPlus>>(())
 }
 
