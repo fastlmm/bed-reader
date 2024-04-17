@@ -42,10 +42,13 @@ class create_bed:
     bim_filepath: pathlib.Path or str, optional
         Path to the file containing information about each SNP (variant).
         Defaults to replacing the .bed file’s suffix with .bim.
+    major: str, optional
+        "SNP" (default) to write the file is usual SNP-major mode. This makes reading
+        the data SNP-by-SNP faster. Use "individual" to write the file in unusual individual-major
+        mode.
     force_python_only
         If False (default), uses the faster Rust code; otherwise it uses the slower
         pure Python code.
-
     num_threads: None or int, optional
         The number of threads with which to write data.
         Defaults to all available processors.
@@ -448,6 +451,13 @@ def to_bed(
                     f"dtype '{val.dtype}' not known, only "
                     + "'int8', 'float32', and 'float64' are allowed."
                 )
+
+            if major == "individual":
+                # change the 3rd byte in the file to 0b00000000
+                with open(filepath, "r+b") as bed_filepointer:
+                    bed_filepointer.seek(2)
+                    bed_filepointer.write(bytes(bytearray([0b00000000])))
+
         except SystemError as system_error:
             try:
                 os.unlink(filepath)

@@ -323,6 +323,10 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         val: &PyArray2<f64>,
         num_threads: usize,
     ) -> Result<(), PyErr> {
+        // LATER: If these methods are later changed
+        // to support major="individual", be sure to
+        // change python function 'to_bed' which
+        // currently uses a work-around.
         let mut val = val.readwrite();
         let val = val.as_array_mut();
 

@@ -748,6 +748,10 @@ where
     TVal: BedVal,
 {
     let mut writer = BufWriter::new(File::create(path)?);
+    // LATER: If this method is later changed
+    // to support major="individual", be sure to
+    // change write_f64, etc and python function 'to_bed' which
+    // currently uses a work-around.
     writer.write_all(&[BED_FILE_MAGIC1, BED_FILE_MAGIC2, 0x01])?;
 
     #[allow(clippy::eq_op)]

@@ -389,7 +389,7 @@ def reference_val(shared_datadir):
 
 def test_bed_int8(tmp_path, shared_datadir):
     with open_bed(shared_datadir / "some_missing.bed") as bed:
-        for force_python_only in [False, True]:
+        for force_python_only in [True, False]:
             for order, format in [("F", "csc"), ("C", "csr")]:
                 val = bed.read(
                     dtype="int8", force_python_only=force_python_only, order=order
@@ -404,21 +404,21 @@ def test_bed_int8(tmp_path, shared_datadir):
                 assert np.array_equal(ref_val, val)
                 output = str(tmp_path / "int8.bed")
                 for count_A1 in [False, True]:
-                    to_bed(
-                        output,
-                        ref_val,
-                        count_A1=count_A1,
-                        force_python_only=force_python_only,
-                    )
-                    with open_bed(output, count_A1=count_A1) as bed2:
-                        assert np.array_equal(
-                            bed2.read(
-                                dtype="int8", force_python_only=force_python_only
-                            ),
+                    for major in ["individual", "SNP"]:
+                        to_bed(
+                            output,
                             ref_val,
+                            count_A1=count_A1,
+                            major=major,
+                            force_python_only=force_python_only,
                         )
-                        val_sparse = bed2.read_sparse(dtype="int8", format=format)
-                        assert np.allclose(val_sparse.toarray(), ref_val)
+                        with open_bed(output, count_A1=count_A1) as bed2:
+                            val2 = bed2.read(
+                                dtype="int8", force_python_only=force_python_only
+                            )
+                            assert np.array_equal(val2, ref_val)
+                            val_sparse = bed2.read_sparse(dtype="int8", format=format)
+                            assert np.allclose(val_sparse.toarray(), ref_val)
 
 
 def test_write1_bed_f64cpp(tmp_path, shared_datadir):
