@@ -9,18 +9,19 @@ from .bed_reader import write_f32, write_f64, write_i8, encode1_i8, encode1_f32,
 
 class create_bed:
     """
-    cmk update docs
-    Write values to a file in PLINK .bed format.
+    Write values to a file in PLINK .bed format in a SNP-by-SNP manner (or individual-by-individual)
+    manner.
+
+    Requires less memory than :func:`to_bed` for large datasets.
 
     Parameters
     ----------
-    filepath:
-        .bed file to write to.
-    val: array-like:
-        A two-dimension array (or array-like object) of values. The values should
-        be (or be convertible to) all floats or all integers.
-        The values should be 0, 1, 2, or missing.
-        If floats, missing is ``np.nan``. If integers, missing is -127.
+    location: pathlib.Path or str, optional
+        local .bed file to create.
+    iid_count: int:
+        The number of individuals (samples).
+    sid_count: int:
+        The number of SNPs (variants).
     properties: dict, optional
         A dictionary of property names and values to write to the .fam and .bim files.
         Any properties not mentioned will be filled in with default values.
@@ -36,40 +37,46 @@ class create_bed:
     count_A1: bool, optional
         True (default) to count the number of A1 alleles (the PLINK standard).
         False to count the number of A2 alleles.
-    fam_filepath: pathlib.Path or str, optional
+    fam_location: pathlib.Path or str, optional
         Path to the file containing information about each individual (sample).
         Defaults to replacing the .bed file’s suffix with .fam.
-    bim_filepath: pathlib.Path or str, optional
+    bim_location: pathlib.Path or str, optional
         Path to the file containing information about each SNP (variant).
         Defaults to replacing the .bed file’s suffix with .bim.
     major: str, optional
-        "SNP" (default) to write the file is usual SNP-major mode. This makes reading
-        the data SNP-by-SNP faster. Use "individual" to write the file in unusual individual-major
-        mode.
+        Use "SNP" (default) to write the file is usual SNP-major mode. This makes reading
+        the data SNP-by-SNP faster. Use "individual" to write the file in the uncommon
+        individual-major mode.
     force_python_only
         If False (default), uses the faster Rust code; otherwise it uses the slower
         pure Python code.
     num_threads: None or int, optional
-        The number of threads with which to write data.
-        Defaults to all available processors.
-        Can also be set with these environment variables (listed in priority order):
-        'PST_NUM_THREADS', 'NUM_THREADS', 'MKL_NUM_THREADS'.
+        Not currently used.
+
+    Errors
+    ------
+
+    Raises error if you write the wrong number of vectors or if any vector has the wrong length.
+
+    Also, all values must be 0, 1, 2, or missing. If floats, missing is ``np.nan``. If integers, missing is -127.
+
+    Behind the scenes, it first creates a temporary file. At the end, if there are no errors,
+    it renames the temporary file to the final file name. This helps prevent creation
+    of corrupted files.
 
 
     Examples
     --------
 
-    In this example, all properties are given.
+    In this example, all properties are given and we write
+    the data out SNP-by-SNP. The data is floats.
 
     .. doctest::
 
         >>> import numpy as np
-        >>> from bed_reader import to_bed, tmp_path
+        >>> from bed_reader import create_bed, tmp_path
         >>>
         >>> output_file = tmp_path() / "small.bed"
-        >>> val = [[1.0, 0.0, np.nan, 0.0],
-        ...        [2.0, 0.0, np.nan, 2.0],
-        ...        [0.0, 1.0, 2.0, 0.0]]
         >>> properties = {
         ...    "fid": ["fid1", "fid1", "fid2"],
         ...    "iid": ["iid1", "iid2", "iid3"],
@@ -84,17 +91,26 @@ class create_bed:
         ...    "allele_1": ["A", "T", "A", "T"],
         ...    "allele_2": ["A", "C", "C", "G"],
         ... }
-        >>> to_bed(output_file, val, properties=properties)
+        >>> with create_bed(output_file, iid_count=3, sid_count= 4, properties=properties) as bed_writer:
+        ...     bed_writer.write([1.0, 2.0, 0.0])
+        ...     bed_writer.write([0.0, 0.0, 1.0])
+        ...     bed_writer.write([np.nan, np.nan, 2.0])
+        ...     bed_writer.write([0.0, 2.0, 0.0])
+
 
     Here, no properties are given, so default values are assigned.
+
+    We write out int's. Also, we write the data out individual-by-individual.
     If we then read the new file and list the chromosome property,
     it is an array of '0's, the default chromosome value.
 
     .. doctest::
 
         >>> output_file2 = tmp_path() / "small2.bed"
-        >>> val = [[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]]
-        >>> to_bed(output_file2, val)
+        >>> with create_bed(output_file2, iid_count=3, sid_count= 4, major="individual") as bed_writer:
+        ...     bed_writer.write([1, 0, -127, 0])
+        ...     bed_writer.write([2, 0, -127, 2])
+        ...     bed_writer.write([0, 1, 2, 0])
         >>>
         >>> from bed_reader import open_bed
         >>> with open_bed(output_file2) as bed2:
@@ -185,6 +201,12 @@ class create_bed:
         self.close()
 
     def close(self):
+        """
+        Close the bed_writer, writing the file to disk. If you use the 'with' statement,
+        you don't need to use this.
+
+        See :class:`create_bed` for more information.
+        """
         if self.file_pointer is not None:
             try:
                 self.file_pointer.close()
@@ -212,6 +234,11 @@ class create_bed:
             return location.parent / (location.stem + "." + extension)
 
     def write(self, vector):
+        """
+        Write a vector of values to the bed_writer.
+
+        See :class:`create_bed` for more information.
+        """
         if self.file_pointer is None:
             raise RuntimeError("Attempt to write after file was closed for writing.")
 
@@ -299,12 +326,14 @@ def to_bed(
     count_A1: bool = True,
     fam_filepath: Union[str, Path] = None,
     bim_filepath: Union[str, Path] = None,
-    major: str = "SNP",  # cmk update docs
+    major: str = "SNP",
     force_python_only: bool = False,
     num_threads=None,
 ):
     """
     Write values to a file in PLINK .bed format.
+
+    If your data is too large to fit in memory, use :class:`create_bed` instead.
 
     Parameters
     ----------
@@ -336,10 +365,13 @@ def to_bed(
     bim_filepath: pathlib.Path or str, optional
         Path to the file containing information about each SNP (variant).
         Defaults to replacing the .bed file’s suffix with .bim.
+    major: str, optional
+        Use "SNP" (default) to write the file is usual SNP-major mode. This makes reading
+        the data SNP-by-SNP faster. Use "individual" to write the file in the uncommon
+        individual-major mode.
     force_python_only
         If False (default), uses the faster Rust code; otherwise it uses the slower
         pure Python code.
-
     num_threads: None or int, optional
         The number of threads with which to write data.
         Defaults to all available processors.

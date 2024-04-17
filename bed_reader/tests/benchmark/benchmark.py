@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from bed_reader import to_bed, create_bed
+from bed_reader import create_bed, to_bed
 
 if True:
     ssd_path = Path("m:/deldir/bench")

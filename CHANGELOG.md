@@ -5,7 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.1] - 2024-4-16
+## [1.0.2] - 2024-4-17
+
+- On the Python file, add `create-bed`, a method for writing large
+  bed files SNP-by-SNP (or individual-by-individual).
+  Also, add full support for the less common individual-major files.
+
+## [1.0.1] - 2024-3-16
 
 - Add support for cloud files to both Rust and Python.
 
