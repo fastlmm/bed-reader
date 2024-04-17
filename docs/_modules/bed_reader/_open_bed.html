@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>bed_reader._open_bed &mdash; Bed Reader 1.0.1-beta.5 documentation</title>
+  <title>bed_reader._open_bed &mdash; Bed Reader 1.0.3 documentation</title>
       <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-        <script src="../../_static/documentation_options.js?v=8c107f28"></script>
+        <script src="../../_static/documentation_options.js?v=baaebd52"></script>
         <script src="../../_static/doctools.js?v=888ff710"></script>
         <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/js/theme.js"></script>
@@ -30,7 +30,7 @@
             Bed Reader
           </a>
               <div class="version">
-                1.0.1-beta.5
+                1.0.3
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
@@ -382,7 +382,7 @@
                 <span class="n">check_file_cloud</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="o">.</span><span class="n">geturl</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">cloud_options</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">filepointer</span><span class="p">:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">_check_file</span><span class="p">(</span><span class="n">filepointer</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_mode</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_file</span><span class="p">(</span><span class="n">filepointer</span><span class="p">)</span>
 
     <span class="c1"># # its an error to set both location and filepath</span>
     <span class="c1"># location = self._combined(location, filepath, &quot;location&quot;, &quot;filepath&quot;)</span>
@@ -630,6 +630,7 @@
                     <span class="p">)</span>
 
         <span class="k">else</span><span class="p">:</span>
+
             <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">count_A1</span><span class="p">:</span>
                 <span class="n">byteZero</span> <span class="o">=</span> <span class="mi">0</span>
                 <span class="n">byteThree</span> <span class="o">=</span> <span class="mi">2</span>
@@ -646,45 +647,77 @@
             <span class="c1"># Also, note that reading with python will often result in</span>
             <span class="c1"># non-contiguous memory</span>
             <span class="c1"># logging.warn(&quot;using pure python plink parser (might be much slower!!)&quot;)</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">major</span> <span class="o">==</span> <span class="s2">&quot;SNP&quot;</span><span class="p">:</span>
+                <span class="n">minor_count</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">iid_count</span>
+                <span class="n">minor_index</span> <span class="o">=</span> <span class="n">iid_index</span>
+                <span class="n">major_index</span> <span class="o">=</span> <span class="n">sid_index</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">minor_count</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sid_count</span>
+                <span class="n">minor_index</span> <span class="o">=</span> <span class="n">sid_index</span>
+                <span class="n">major_index</span> <span class="o">=</span> <span class="n">iid_index</span>
+
             <span class="n">val</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
-                <span class="p">((</span><span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="mf">0.25</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">iid_count</span><span class="p">))</span> <span class="o">*</span> <span class="mi">4</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">sid_index</span><span class="p">)),</span>
+                <span class="p">((</span><span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="mf">0.25</span> <span class="o">*</span> <span class="n">minor_count</span><span class="p">))</span> <span class="o">*</span> <span class="mi">4</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">major_index</span><span class="p">)),</span>
                 <span class="n">order</span><span class="o">=</span><span class="n">order</span><span class="p">,</span>
                 <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span>
             <span class="p">)</span>  <span class="c1"># allocate it a little big</span>
 
-            <span class="n">nbyte</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="mf">0.25</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">iid_count</span><span class="p">))</span>
+            <span class="n">nbyte</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="mf">0.25</span> <span class="o">*</span> <span class="n">minor_count</span><span class="p">))</span>
             <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">filepointer</span><span class="p">:</span>
-                <span class="k">for</span> <span class="n">SNPsIndex</span><span class="p">,</span> <span class="n">bimIndex</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">sid_index</span><span class="p">):</span>
-                    <span class="n">startbit</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="mf">0.25</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">iid_count</span><span class="p">)</span> <span class="o">*</span> <span class="n">bimIndex</span> <span class="o">+</span> <span class="mi">3</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">major_index_value</span><span class="p">,</span> <span class="n">major_index_index</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">major_index</span><span class="p">):</span>
+                    <span class="n">startbit</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="mf">0.25</span> <span class="o">*</span> <span class="n">minor_count</span><span class="p">)</span> <span class="o">*</span> <span class="n">major_index_index</span> <span class="o">+</span> <span class="mi">3</span><span class="p">)</span>
                     <span class="n">filepointer</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="n">startbit</span><span class="p">)</span>
                     <span class="nb">bytes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">bytearray</span><span class="p">(</span><span class="n">filepointer</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">nbyte</span><span class="p">)))</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
-                        <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="mf">0.25</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">iid_count</span><span class="p">)),</span> <span class="mi">1</span><span class="p">),</span> <span class="n">order</span><span class="o">=</span><span class="s2">&quot;F&quot;</span>
+                        <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="mf">0.25</span> <span class="o">*</span> <span class="n">minor_count</span><span class="p">)),</span> <span class="mi">1</span><span class="p">),</span> <span class="n">order</span><span class="o">=</span><span class="s2">&quot;F&quot;</span>
                     <span class="p">)</span>
 
-                    <span class="n">val</span><span class="p">[</span><span class="mi">3</span><span class="p">::</span><span class="mi">4</span><span class="p">,</span> <span class="n">SNPsIndex</span> <span class="p">:</span> <span class="n">SNPsIndex</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">byteZero</span>
-                    <span class="n">val</span><span class="p">[</span><span class="mi">3</span><span class="p">::</span><span class="mi">4</span><span class="p">,</span> <span class="n">SNPsIndex</span> <span class="p">:</span> <span class="n">SNPsIndex</span> <span class="o">+</span> <span class="mi">1</span><span class="p">][</span><span class="nb">bytes</span> <span class="o">&gt;=</span> <span class="mi">64</span><span class="p">]</span> <span class="o">=</span> <span class="n">missing</span>
-                    <span class="n">val</span><span class="p">[</span><span class="mi">3</span><span class="p">::</span><span class="mi">4</span><span class="p">,</span> <span class="n">SNPsIndex</span> <span class="p">:</span> <span class="n">SNPsIndex</span> <span class="o">+</span> <span class="mi">1</span><span class="p">][</span><span class="nb">bytes</span> <span class="o">&gt;=</span> <span class="mi">128</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
-                    <span class="n">val</span><span class="p">[</span><span class="mi">3</span><span class="p">::</span><span class="mi">4</span><span class="p">,</span> <span class="n">SNPsIndex</span> <span class="p">:</span> <span class="n">SNPsIndex</span> <span class="o">+</span> <span class="mi">1</span><span class="p">][</span><span class="nb">bytes</span> <span class="o">&gt;=</span> <span class="mi">192</span><span class="p">]</span> <span class="o">=</span> <span class="n">byteThree</span>
+                    <span class="n">val</span><span class="p">[</span><span class="mi">3</span><span class="p">::</span><span class="mi">4</span><span class="p">,</span> <span class="n">major_index_value</span> <span class="p">:</span> <span class="n">major_index_value</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">byteZero</span>
+                    <span class="n">val</span><span class="p">[</span><span class="mi">3</span><span class="p">::</span><span class="mi">4</span><span class="p">,</span> <span class="n">major_index_value</span> <span class="p">:</span> <span class="n">major_index_value</span> <span class="o">+</span> <span class="mi">1</span><span class="p">][</span>
+                        <span class="nb">bytes</span> <span class="o">&gt;=</span> <span class="mi">64</span>
+                    <span class="p">]</span> <span class="o">=</span> <span class="n">missing</span>
+                    <span class="n">val</span><span class="p">[</span><span class="mi">3</span><span class="p">::</span><span class="mi">4</span><span class="p">,</span> <span class="n">major_index_value</span> <span class="p">:</span> <span class="n">major_index_value</span> <span class="o">+</span> <span class="mi">1</span><span class="p">][</span>
+                        <span class="nb">bytes</span> <span class="o">&gt;=</span> <span class="mi">128</span>
+                    <span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+                    <span class="n">val</span><span class="p">[</span><span class="mi">3</span><span class="p">::</span><span class="mi">4</span><span class="p">,</span> <span class="n">major_index_value</span> <span class="p">:</span> <span class="n">major_index_value</span> <span class="o">+</span> <span class="mi">1</span><span class="p">][</span>
+                        <span class="nb">bytes</span> <span class="o">&gt;=</span> <span class="mi">192</span>
+                    <span class="p">]</span> <span class="o">=</span> <span class="n">byteThree</span>
                     <span class="nb">bytes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mod</span><span class="p">(</span><span class="nb">bytes</span><span class="p">,</span> <span class="mi">64</span><span class="p">)</span>
-                    <span class="n">val</span><span class="p">[</span><span class="mi">2</span><span class="p">::</span><span class="mi">4</span><span class="p">,</span> <span class="n">SNPsIndex</span> <span class="p">:</span> <span class="n">SNPsIndex</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">byteZero</span>
-                    <span class="n">val</span><span class="p">[</span><span class="mi">2</span><span class="p">::</span><span class="mi">4</span><span class="p">,</span> <span class="n">SNPsIndex</span> <span class="p">:</span> <span class="n">SNPsIndex</span> <span class="o">+</span> <span class="mi">1</span><span class="p">][</span><span class="nb">bytes</span> <span class="o">&gt;=</span> <span class="mi">16</span><span class="p">]</span> <span class="o">=</span> <span class="n">missing</span>
-                    <span class="n">val</span><span class="p">[</span><span class="mi">2</span><span class="p">::</span><span class="mi">4</span><span class="p">,</span> <span class="n">SNPsIndex</span> <span class="p">:</span> <span class="n">SNPsIndex</span> <span class="o">+</span> <span class="mi">1</span><span class="p">][</span><span class="nb">bytes</span> <span class="o">&gt;=</span> <span class="mi">32</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
-                    <span class="n">val</span><span class="p">[</span><span class="mi">2</span><span class="p">::</span><span class="mi">4</span><span class="p">,</span> <span class="n">SNPsIndex</span> <span class="p">:</span> <span class="n">SNPsIndex</span> <span class="o">+</span> <span class="mi">1</span><span class="p">][</span><span class="nb">bytes</span> <span class="o">&gt;=</span> <span class="mi">48</span><span class="p">]</span> <span class="o">=</span> <span class="n">byteThree</span>
+                    <span class="n">val</span><span class="p">[</span><span class="mi">2</span><span class="p">::</span><span class="mi">4</span><span class="p">,</span> <span class="n">major_index_value</span> <span class="p">:</span> <span class="n">major_index_value</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">byteZero</span>
+                    <span class="n">val</span><span class="p">[</span><span class="mi">2</span><span class="p">::</span><span class="mi">4</span><span class="p">,</span> <span class="n">major_index_value</span> <span class="p">:</span> <span class="n">major_index_value</span> <span class="o">+</span> <span class="mi">1</span><span class="p">][</span>
+                        <span class="nb">bytes</span> <span class="o">&gt;=</span> <span class="mi">16</span>
+                    <span class="p">]</span> <span class="o">=</span> <span class="n">missing</span>
+                    <span class="n">val</span><span class="p">[</span><span class="mi">2</span><span class="p">::</span><span class="mi">4</span><span class="p">,</span> <span class="n">major_index_value</span> <span class="p">:</span> <span class="n">major_index_value</span> <span class="o">+</span> <span class="mi">1</span><span class="p">][</span>
+                        <span class="nb">bytes</span> <span class="o">&gt;=</span> <span class="mi">32</span>
+                    <span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+                    <span class="n">val</span><span class="p">[</span><span class="mi">2</span><span class="p">::</span><span class="mi">4</span><span class="p">,</span> <span class="n">major_index_value</span> <span class="p">:</span> <span class="n">major_index_value</span> <span class="o">+</span> <span class="mi">1</span><span class="p">][</span>
+                        <span class="nb">bytes</span> <span class="o">&gt;=</span> <span class="mi">48</span>
+                    <span class="p">]</span> <span class="o">=</span> <span class="n">byteThree</span>
                     <span class="nb">bytes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mod</span><span class="p">(</span><span class="nb">bytes</span><span class="p">,</span> <span class="mi">16</span><span class="p">)</span>
-                    <span class="n">val</span><span class="p">[</span><span class="mi">1</span><span class="p">::</span><span class="mi">4</span><span class="p">,</span> <span class="n">SNPsIndex</span> <span class="p">:</span> <span class="n">SNPsIndex</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">byteZero</span>
-                    <span class="n">val</span><span class="p">[</span><span class="mi">1</span><span class="p">::</span><span class="mi">4</span><span class="p">,</span> <span class="n">SNPsIndex</span> <span class="p">:</span> <span class="n">SNPsIndex</span> <span class="o">+</span> <span class="mi">1</span><span class="p">][</span><span class="nb">bytes</span> <span class="o">&gt;=</span> <span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="n">missing</span>
-                    <span class="n">val</span><span class="p">[</span><span class="mi">1</span><span class="p">::</span><span class="mi">4</span><span class="p">,</span> <span class="n">SNPsIndex</span> <span class="p">:</span> <span class="n">SNPsIndex</span> <span class="o">+</span> <span class="mi">1</span><span class="p">][</span><span class="nb">bytes</span> <span class="o">&gt;=</span> <span class="mi">8</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
-                    <span class="n">val</span><span class="p">[</span><span class="mi">1</span><span class="p">::</span><span class="mi">4</span><span class="p">,</span> <span class="n">SNPsIndex</span> <span class="p">:</span> <span class="n">SNPsIndex</span> <span class="o">+</span> <span class="mi">1</span><span class="p">][</span><span class="nb">bytes</span> <span class="o">&gt;=</span> <span class="mi">12</span><span class="p">]</span> <span class="o">=</span> <span class="n">byteThree</span>
+                    <span class="n">val</span><span class="p">[</span><span class="mi">1</span><span class="p">::</span><span class="mi">4</span><span class="p">,</span> <span class="n">major_index_value</span> <span class="p">:</span> <span class="n">major_index_value</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">byteZero</span>
+                    <span class="n">val</span><span class="p">[</span><span class="mi">1</span><span class="p">::</span><span class="mi">4</span><span class="p">,</span> <span class="n">major_index_value</span> <span class="p">:</span> <span class="n">major_index_value</span> <span class="o">+</span> <span class="mi">1</span><span class="p">][</span>
+                        <span class="nb">bytes</span> <span class="o">&gt;=</span> <span class="mi">4</span>
+                    <span class="p">]</span> <span class="o">=</span> <span class="n">missing</span>
+                    <span class="n">val</span><span class="p">[</span><span class="mi">1</span><span class="p">::</span><span class="mi">4</span><span class="p">,</span> <span class="n">major_index_value</span> <span class="p">:</span> <span class="n">major_index_value</span> <span class="o">+</span> <span class="mi">1</span><span class="p">][</span><span class="nb">bytes</span> <span class="o">&gt;=</span> <span class="mi">8</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+                    <span class="n">val</span><span class="p">[</span><span class="mi">1</span><span class="p">::</span><span class="mi">4</span><span class="p">,</span> <span class="n">major_index_value</span> <span class="p">:</span> <span class="n">major_index_value</span> <span class="o">+</span> <span class="mi">1</span><span class="p">][</span>
+                        <span class="nb">bytes</span> <span class="o">&gt;=</span> <span class="mi">12</span>
+                    <span class="p">]</span> <span class="o">=</span> <span class="n">byteThree</span>
                     <span class="nb">bytes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mod</span><span class="p">(</span><span class="nb">bytes</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
-                    <span class="n">val</span><span class="p">[</span><span class="mi">0</span><span class="p">::</span><span class="mi">4</span><span class="p">,</span> <span class="n">SNPsIndex</span> <span class="p">:</span> <span class="n">SNPsIndex</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">byteZero</span>
-                    <span class="n">val</span><span class="p">[</span><span class="mi">0</span><span class="p">::</span><span class="mi">4</span><span class="p">,</span> <span class="n">SNPsIndex</span> <span class="p">:</span> <span class="n">SNPsIndex</span> <span class="o">+</span> <span class="mi">1</span><span class="p">][</span><span class="nb">bytes</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">missing</span>
-                    <span class="n">val</span><span class="p">[</span><span class="mi">0</span><span class="p">::</span><span class="mi">4</span><span class="p">,</span> <span class="n">SNPsIndex</span> <span class="p">:</span> <span class="n">SNPsIndex</span> <span class="o">+</span> <span class="mi">1</span><span class="p">][</span><span class="nb">bytes</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
-                    <span class="n">val</span><span class="p">[</span><span class="mi">0</span><span class="p">::</span><span class="mi">4</span><span class="p">,</span> <span class="n">SNPsIndex</span> <span class="p">:</span> <span class="n">SNPsIndex</span> <span class="o">+</span> <span class="mi">1</span><span class="p">][</span><span class="nb">bytes</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">byteThree</span>
-                <span class="n">val</span> <span class="o">=</span> <span class="n">val</span><span class="p">[</span><span class="n">iid_index</span><span class="p">,</span> <span class="p">:]</span>  <span class="c1"># reorder or trim any extra allocation</span>
+                    <span class="n">val</span><span class="p">[</span><span class="mi">0</span><span class="p">::</span><span class="mi">4</span><span class="p">,</span> <span class="n">major_index_value</span> <span class="p">:</span> <span class="n">major_index_value</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">byteZero</span>
+                    <span class="n">val</span><span class="p">[</span><span class="mi">0</span><span class="p">::</span><span class="mi">4</span><span class="p">,</span> <span class="n">major_index_value</span> <span class="p">:</span> <span class="n">major_index_value</span> <span class="o">+</span> <span class="mi">1</span><span class="p">][</span>
+                        <span class="nb">bytes</span> <span class="o">&gt;=</span> <span class="mi">1</span>
+                    <span class="p">]</span> <span class="o">=</span> <span class="n">missing</span>
+                    <span class="n">val</span><span class="p">[</span><span class="mi">0</span><span class="p">::</span><span class="mi">4</span><span class="p">,</span> <span class="n">major_index_value</span> <span class="p">:</span> <span class="n">major_index_value</span> <span class="o">+</span> <span class="mi">1</span><span class="p">][</span><span class="nb">bytes</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+                    <span class="n">val</span><span class="p">[</span><span class="mi">0</span><span class="p">::</span><span class="mi">4</span><span class="p">,</span> <span class="n">major_index_value</span> <span class="p">:</span> <span class="n">major_index_value</span> <span class="o">+</span> <span class="mi">1</span><span class="p">][</span>
+                        <span class="nb">bytes</span> <span class="o">&gt;=</span> <span class="mi">3</span>
+                    <span class="p">]</span> <span class="o">=</span> <span class="n">byteThree</span>
+                <span class="n">val</span> <span class="o">=</span> <span class="n">val</span><span class="p">[</span><span class="n">minor_index</span><span class="p">,</span> <span class="p">:]</span>  <span class="c1"># reorder or trim any extra allocation</span>
                 <span class="k">assert</span> <span class="n">val</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="n">dtype</span><span class="p">)</span>  <span class="c1"># real assert</span>
                 <span class="k">if</span> <span class="ow">not</span> <span class="n">open_bed</span><span class="o">.</span><span class="n">_array_properties_are_ok</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">order</span><span class="p">):</span>
                     <span class="n">val</span> <span class="o">=</span> <span class="n">val</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">order</span><span class="o">=</span><span class="n">order</span><span class="p">)</span>
-
+            <span class="c1"># if in force python mode, and individual-major mode, then we need to transpose</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">major</span> <span class="o">==</span> <span class="s2">&quot;individual&quot;</span><span class="p">:</span>
+                <span class="n">val</span> <span class="o">=</span> <span class="n">val</span><span class="o">.</span><span class="n">T</span>
         <span class="k">return</span> <span class="n">val</span></div>
 
 
@@ -716,6 +749,47 @@
 
     <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">(&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="si">}</span><span class="s2">&#39;,...)&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">major</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Major mode of a local .bed file.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        str</span>
+<span class="sd">            &#39;SNP&#39; or &#39;individual&#39;</span>
+
+
+<span class="sd">        Almost all PLINK 1.9 .bed files are &#39;SNP&#39; major. This makes</span>
+<span class="sd">        reading the data by SNP(s) fast.</span>
+
+<span class="sd">        Errors</span>
+<span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            If the file is a cloud file.</span>
+
+<span class="sd">        Example</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        .. doctest::</span>
+
+<span class="sd">            &gt;&gt;&gt; from bed_reader import open_bed, sample_file</span>
+<span class="sd">            &gt;&gt;&gt;</span>
+<span class="sd">            &gt;&gt;&gt; file_name = sample_file(&quot;small.bed&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; with open_bed(file_name) as bed:</span>
+<span class="sd">            ...     print(bed.major)</span>
+<span class="sd">            SNP</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_url</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Cannot determine major mode for cloud files&quot;</span><span class="p">)</span>
+        <span class="c1"># if self._mode is not set, set it</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;mode&quot;</span><span class="p">):</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">filepointer</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_mode</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_file</span><span class="p">(</span><span class="n">filepointer</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="s2">&quot;individual&quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mode</span> <span class="o">==</span> <span class="sa">b</span><span class="s2">&quot;</span><span class="se">\x00</span><span class="s2">&quot;</span> <span class="k">else</span> <span class="s2">&quot;SNP&quot;</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">fid</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
@@ -1245,12 +1319,14 @@
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">_check_file</span><span class="p">(</span><span class="n">filepointer</span><span class="p">):</span>
-        <span class="n">mode</span> <span class="o">=</span> <span class="n">filepointer</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">mode</span> <span class="o">!=</span> <span class="sa">b</span><span class="s2">&quot;l</span><span class="se">\x1b</span><span class="s2">&quot;</span><span class="p">:</span>
+        <span class="n">magic_number</span> <span class="o">=</span> <span class="n">filepointer</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">magic_number</span> <span class="o">!=</span> <span class="sa">b</span><span class="s2">&quot;l</span><span class="se">\x1b</span><span class="s2">&quot;</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Not a valid .bed file&quot;</span><span class="p">)</span>
-        <span class="n">mode</span> <span class="o">=</span> <span class="n">filepointer</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># \x01 = SNP major \x00 = individual major</span>
-        <span class="k">if</span> <span class="n">mode</span> <span class="o">!=</span> <span class="sa">b</span><span class="s2">&quot;</span><span class="se">\x01</span><span class="s2">&quot;</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;only SNP-major is implemented&quot;</span><span class="p">)</span>
+        <span class="n">mode</span> <span class="o">=</span> <span class="n">filepointer</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="c1"># Check if mode is either individual-major or SNP-major</span>
+        <span class="k">if</span> <span class="n">mode</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="sa">b</span><span class="s2">&quot;</span><span class="se">\x00</span><span class="s2">&quot;</span><span class="p">,</span> <span class="sa">b</span><span class="s2">&quot;</span><span class="se">\x01</span><span class="s2">&quot;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Not a valid .bed file&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">mode</span>
 
     <span class="k">def</span> <span class="fm">__del__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="fm">__exit__</span><span class="p">()</span>
@@ -1478,7 +1554,7 @@
         <span class="n">num_threads</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">max_concurrent_requests</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">max_chunk_bytes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="n">Union</span><span class="p">[</span><span class="n">sparse</span><span class="o">.</span><span class="n">csc_matrix</span><span class="p">,</span> <span class="n">sparse</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">])</span> <span class="k">if</span> <span class="n">sparse</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="n">Union</span><span class="p">[</span><span class="n">sparse</span><span class="o">.</span><span class="n">csc_matrix</span><span class="p">,</span> <span class="n">sparse</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">])</span> <span class="k">if</span> <span class="n">sparse</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># type: ignore</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Read genotype information into a :mod:`scipy.sparse` matrix. Sparse matrices</span>
 <span class="sd">        may be useful when the data is mostly zeros.</span>

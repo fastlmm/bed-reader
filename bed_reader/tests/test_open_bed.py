@@ -1453,8 +1453,6 @@ def test_stream_modes2(shared_datadir, tmp_path):
                     assert np.allclose(val, val3, equal_nan=True)
 
 
-# cmk get all tests to pass and get CI to pass
-
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 

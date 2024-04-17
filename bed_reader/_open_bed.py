@@ -676,9 +676,9 @@ class open_bed:
         str
             'SNP' or 'individual'
 
+
         Almost all PLINK 1.9 .bed files are 'SNP' major. This makes
-        reading the data for one (or a few) SNP(s) -- for all individuals --
-        faster.
+        reading the data by SNP(s) fast.
 
         Errors
         ------

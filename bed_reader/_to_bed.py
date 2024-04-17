@@ -19,10 +19,10 @@ from .bed_reader import (  # type: ignore
 
 class create_bed:
     """
-    Write values to a file in PLINK .bed format in a SNP-by-SNP manner (or individual-by-individual)
-    manner.
+    Open a file to write values into PLINK .bed format.
 
-    Requires less memory than :func:`to_bed` for large datasets.
+    Values may be given in a SNP-by-SNP (or individual-by-individual) manner.
+    For large datasets, `create_bed` requires less memory than :func:`to_bed`.
 
     Parameters
     ----------
@@ -58,19 +58,20 @@ class create_bed:
         the data SNP-by-SNP faster. Use "individual" to write the file in the uncommon
         individual-major mode.
     force_python_only
-        If False (default), uses the faster Rust code; otherwise it uses the slower
+        If False (default), uses the faster Rust helper functions; otherwise it uses the slower
         pure Python code.
     num_threads: None or int, optional
         Not currently used.
 
-    Errors
-    ------
 
-    Raises error if you write the wrong number of vectors or if any vector has the wrong length.
+    create_bed Errors
+    -----------------
 
-    Also, all values must be 0, 1, 2, or missing. If floats, missing is ``np.nan``. If integers, missing is -127.
+    Raises an error if you write the wrong number of vectors or if any vector has the wrong length.
 
-    Behind the scenes, it first creates a temporary file. At the end, if there are no errors,
+    Also, all vector values must be 0, 1, 2, or missing. If floats, missing is ``np.nan``. If integers, missing is -127.
+
+    Behind the scenes, `create_bed` first creates a temporary bed file. At the end, if there are no errors,
     it renames the temporary file to the final file name. This helps prevent creation
     of corrupted files.
 
@@ -101,23 +102,23 @@ class create_bed:
         ...    "allele_1": ["A", "T", "A", "T"],
         ...    "allele_2": ["A", "C", "C", "G"],
         ... }
-        >>> with create_bed(output_file, iid_count=3, sid_count= 4, properties=properties) as bed_writer:
+        >>> with create_bed(output_file, iid_count=3, sid_count=4, properties=properties) as bed_writer:
         ...     bed_writer.write([1.0, 2.0, 0.0])
         ...     bed_writer.write([0.0, 0.0, 1.0])
         ...     bed_writer.write([np.nan, np.nan, 2.0])
         ...     bed_writer.write([0.0, 2.0, 0.0])
 
 
-    Here, no properties are given, so default values are assigned.
-
-    We write out int's. Also, we write the data out individual-by-individual.
+    In this next example, no properties are given, so default values are assigned.
+    Also, we write out ints. Finally, we write the same data out as above,
+    but individual-by-individual.
     If we then read the new file and list the chromosome property,
     it is an array of '0's, the default chromosome value.
 
     .. doctest::
 
         >>> output_file2 = tmp_path() / "small2.bed"
-        >>> with create_bed(output_file2, iid_count=3, sid_count= 4, major="individual") as bed_writer:
+        >>> with create_bed(output_file2, iid_count=3, sid_count=4, major="individual") as bed_writer:
         ...     bed_writer.write([1, 0, -127, 0])
         ...     bed_writer.write([2, 0, -127, 2])
         ...     bed_writer.write([0, 1, 2, 0])
@@ -212,7 +213,8 @@ class create_bed:
 
     def close(self):
         """
-        Close the bed_writer, writing the file to disk. If you use the 'with' statement,
+        Close the bed_writer, writing the file to disk. If you use
+        :class:`create_bed` with the `with` statement,
         you don't need to use this.
 
         See :class:`create_bed` for more information.
@@ -380,7 +382,7 @@ def to_bed(
         the data SNP-by-SNP faster. Use "individual" to write the file in the uncommon
         individual-major mode.
     force_python_only
-        If False (default), uses the faster Rust code; otherwise it uses the slower
+        If False (default), uses the faster Rust helper functions; otherwise it uses the slower
         pure Python code.
     num_threads: None or int, optional
         The number of threads with which to write data.

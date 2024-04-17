@@ -123,6 +123,7 @@ Open, Read, and Write
     open_bed.read
     open_bed.read_sparse
     to_bed
+    create_bed
 
 Properties of Individuals (samples) and SNPs (variants)
 ------------------------------------------------------------------
@@ -146,6 +147,7 @@ Properties of Individuals (samples) and SNPs (variants)
     open_bed.allele_1
     open_bed.allele_2
 
+    open_bed.major
     open_bed.properties
     open_bed.property_item
 
@@ -171,6 +173,14 @@ to_bed
 ----------
 
 .. autofunction:: to_bed
+
+
+create_bed
+----------
+
+.. autoclass:: create_bed
+   :members:
+   :inherited-members:
 
 sample_file
 -------------
