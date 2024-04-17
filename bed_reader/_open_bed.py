@@ -301,7 +301,7 @@ class open_bed:
                 check_file_cloud(self.location.geturl(), self.cloud_options)
             else:
                 with open(self.location, "rb") as filepointer:
-                    self.mode = self._check_file(filepointer)
+                    self._mode = self._check_file(filepointer)
 
     # # its an error to set both location and filepath
     # location = self._combined(location, filepath, "location", "filepath")
@@ -565,11 +565,7 @@ class open_bed:
             # non-contiguous memory
             # logging.warn("using pure python plink parser (might be much slower!!)")
 
-            # if self.mode is not set, set it
-            if not hasattr(self, "mode"):
-                with open(self.location, "rb") as filepointer:
-                    self.mode = self._check_file(filepointer)
-            if self.mode == b"\x01":
+            if self.major == "SNP":
                 minor_count = self.iid_count
                 minor_index = iid_index
                 major_index = sid_index
@@ -637,7 +633,7 @@ class open_bed:
                 if not open_bed._array_properties_are_ok(val, order):
                     val = val.copy(order=order)
             # if in force python mode, and individual-major mode, then we need to transpose
-            if self.mode == b"\x00":
+            if self.major == "individual":
                 val = val.T
         return val
 
@@ -669,6 +665,47 @@ class open_bed:
 
     def __str__(self) -> str:
         return f"{self.__class__.__name__}('{self.location}',...)"
+
+    @property
+    def major(self) -> str:
+        """
+        Major mode of a local .bed file.
+
+        Returns
+        -------
+        str
+            'SNP' or 'individual'
+
+        Almost all PLINK 1.9 .bed files are 'SNP' major. This makes
+        reading the data for one (or a few) SNP(s) -- for all individuals --
+        faster.
+
+        Errors
+        ------
+        ValueError
+            If the file is a cloud file.
+
+        Example
+        -------
+
+        .. doctest::
+
+            >>> from bed_reader import open_bed, sample_file
+            >>>
+            >>> file_name = sample_file("small.bed")
+            >>> with open_bed(file_name) as bed:
+            ...     print(bed.major)
+            SNP
+
+        """
+        if self._is_url(self.location):
+            raise ValueError("Cannot determine major mode for cloud files")
+        # if self._mode is not set, set it
+        if not hasattr(self, "mode"):
+            with open(self.location, "rb") as filepointer:
+                self._mode = self._check_file(filepointer)
+
+        return "individual" if self._mode == b"\x00" else "SNP"
 
     @property
     def fid(self) -> np.ndarray:

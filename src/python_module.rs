@@ -432,7 +432,6 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
         Ok(encode1(&val, bytes_vector, is_a1_counted, f64::NAN)?)
     }
-    // cmk insure that this only uses non-contiguous arrays when it needs to.
 
     #[pyfn(m)]
     fn subset_f64_f64(
@@ -767,4 +766,3 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 }
 
 // LATER on both rust and python side, when counting bim and fam files, also parse them -- don't read them twice.
-// cmk be sure to test things are aren't divisible by 4

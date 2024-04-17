@@ -1196,20 +1196,20 @@ def test_stream(shared_datadir, tmp_path):
 
 
 def test_stream_individual_major(shared_datadir, tmp_path):
-    with open_bed(shared_datadir / "some_missing.bed") as bed:
+    with open_bed(shared_datadir / "small.bed") as bed:
         val = bed.read()
         properties = bed.properties
     with create_bed(
-        tmp_path / "some_missing.bed",
+        tmp_path / "small.bed",
         iid_count=val.shape[0],
         sid_count=val.shape[1],
         properties=properties,
         major="individual",
     ) as bed_writer:
-        for column_data in val.T:
-            bed_writer.write(column_data)
+        for row_data in val:
+            bed_writer.write(row_data)
     with open_bed(
-        tmp_path / "some_missing.bed",
+        tmp_path / "small.bed",
     ) as bed2:
         val2 = bed2.read()
         assert np.allclose(val, val2, equal_nan=True)
@@ -1453,10 +1453,8 @@ def test_stream_modes2(shared_datadir, tmp_path):
                     assert np.allclose(val, val3, equal_nan=True)
 
 
-# cmk benchmark writing full example with random data (some missing)
-# cmk benchmark a large file transposer.
-# cmk make the mode visible
 # cmk write via to_bed with both modes (or documentation or error message)
+# cmk get all tests to pass and get CI to pass
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

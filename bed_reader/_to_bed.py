@@ -106,10 +106,10 @@ class create_bed:
         iid_count: int,
         sid_count: int,
         properties: Mapping[str, List[Any]] = {},
-        major: str = "SNP",
         count_A1: bool = True,
         fam_location: Union[str, Path] = None,
         bim_location: Union[str, Path] = None,
+        major: str = "SNP",
         force_python_only: bool = False,
         num_threads=None,
     ):
@@ -296,6 +296,7 @@ def to_bed(
     count_A1: bool = True,
     fam_filepath: Union[str, Path] = None,
     bim_filepath: Union[str, Path] = None,
+    major: str = "SNP",  # cmk update docs
     force_python_only: bool = False,
     num_threads=None,
 ):
@@ -395,6 +396,15 @@ def to_bed(
     iid_count = val.shape[0]
     sid_count = val.shape[1]
 
+    if major == "SNP":
+        major_count = sid_count
+        minor_count = iid_count
+    elif major == "individual":
+        major_count = iid_count
+        minor_count = sid_count
+    else:
+        raise ValueError(f"major must be 'SNP' or 'individual', not '{major}'")
+
     properties, _ = open_bed._fix_up_properties(
         properties, iid_count=iid_count, sid_count=sid_count, use_fill_sequence=True
     )
@@ -408,7 +418,9 @@ def to_bed(
 
         num_threads = get_num_threads(num_threads)
 
-        iid_count, sid_count = val.shape
+        if major == "individual":
+            val = val.T
+
         try:
             if val.dtype == np.float64:
                 write_f64(
@@ -454,17 +466,29 @@ def to_bed(
             # see http://zzz.bwh.harvard.edu/plink/binary.shtml
             bed_filepointer.write(bytes(bytearray([0b01101100])))  # magic numbers
             bed_filepointer.write(bytes(bytearray([0b00011011])))  # magic numbers
-            bed_filepointer.write(bytes(bytearray([0b00000001])))  # snp major
 
-            for sid_index in range(sid_count):
-                if sid_index % 1 == 0:
+            if major == "SNP":
+                bed_filepointer.write(bytes(bytearray([0b00000001])))  # snp major
+            else:
+                assert major == "individual"
+                bed_filepointer.write(
+                    bytes(bytearray([0b00000000]))
+                )  # individual major
+
+            for major_index in range(major_count):
+                if major_index % 1 == 0:
                     logging.info(
-                        "Writing snp # {0} to file '{1}'".format(sid_index, filepath)
+                        f"Writing {major} # {major_index} to file '{filepath}'"
                     )
 
-                col = val[:, sid_index]
-                for iid_by_four in range(0, iid_count, 4):
-                    vals_for_this_byte = col[iid_by_four : iid_by_four + 4]
+                if major == "SNP":
+                    vector = val[:, major_index]
+                else:
+                    assert major == "individual"
+                    vector = val[major_index, :]
+
+                for minor_by_four in range(0, minor_count, 4):
+                    vals_for_this_byte = vector[minor_by_four : minor_by_four + 4]
                     byte = 0b00000000
                     for val_index in range(len(vals_for_this_byte)):
                         val_for_byte = vals_for_this_byte[val_index]
