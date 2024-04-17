@@ -7,9 +7,10 @@
 
 from bed_reader._open_bed import get_num_threads, open_bed
 from bed_reader._sample_data import sample_file, sample_url, tmp_path
-from bed_reader._to_bed import to_bed, create_bed
+from bed_reader._to_bed import create_bed, to_bed
 
 from .bed_reader import (
+    encode1_i8,
     file_aat_piece_f32_orderf,
     file_aat_piece_f64_orderf,
     file_ata_piece_f32_orderf,
@@ -28,5 +29,4 @@ from .bed_reader import (
     write_f32,
     write_f64,
     write_i8,
-    encode1_i8,
 )

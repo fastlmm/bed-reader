@@ -2,9 +2,19 @@ import logging
 import os
 from pathlib import Path
 from typing import Any, List, Mapping, Union
+
 import numpy as np
+
 from bed_reader import get_num_threads, open_bed
-from .bed_reader import write_f32, write_f64, write_i8, encode1_i8, encode1_f32, encode1_f64  # type: ignore
+
+from .bed_reader import (  # type: ignore
+    encode1_f32,
+    encode1_f64,
+    encode1_i8,
+    write_f32,
+    write_f64,
+    write_i8,
+)
 
 
 class create_bed:

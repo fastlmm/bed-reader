@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from bed_reader import open_bed, create_bed, subset_f64_f64, to_bed
+from bed_reader import create_bed, open_bed, subset_f64_f64, to_bed
 
 
 def test_read1(shared_datadir):
