@@ -2,7 +2,7 @@
 
 use crate::{BedCloud, CloudFile};
 use crate::{
-    BedError, BedErrorPlus, Dist, _file_ata_piece_internal, create_pool, file_aat_piece,
+    BedError, BedErrorPlus, Dist, _file_ata_piece_internal, create_pool, encode1, file_aat_piece,
     file_ata_piece, file_b_less_aatbx, impute_and_zero_mean_snps, matrix_subset_no_alloc,
     read_into_f32, read_into_f64, Bed, ReadOptions, WriteOptions,
 };
@@ -323,6 +323,10 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         val: &PyArray2<f64>,
         num_threads: usize,
     ) -> Result<(), PyErr> {
+        // LATER: If these methods are later changed
+        // to support major="individual", be sure to
+        // change python function 'to_bed' which
+        // currently uses a work-around.
         let mut val = val.readwrite();
         let val = val.as_array_mut();
 
@@ -374,6 +378,63 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
             .write(&val)?;
 
         Ok(())
+    }
+
+    #[pyfn(m)]
+    #[allow(unused_variables)]
+    fn encode1_i8(
+        is_a1_counted: bool,
+        val: &PyArray1<i8>,
+        bytes_vector: &PyArray1<u8>,
+        num_threads: usize,
+    ) -> Result<(), PyErr> {
+        let val = val.readonly();
+        let val = val.as_array();
+        let mut bytes_vector = bytes_vector.readwrite();
+        let mut bytes_vector = bytes_vector.as_array_mut();
+        let bytes_vector = bytes_vector
+            .as_slice_mut()
+            .ok_or_else(|| Box::new(BedError::EncodingContiguous().into()))?;
+
+        Ok(encode1(&val, bytes_vector, is_a1_counted, -127)?)
+    }
+
+    #[pyfn(m)]
+    #[allow(unused_variables)]
+    fn encode1_f32(
+        is_a1_counted: bool,
+        val: &PyArray1<f32>,
+        bytes_vector: &PyArray1<u8>,
+        num_threads: usize,
+    ) -> Result<(), PyErr> {
+        let val = val.readonly();
+        let val = val.as_array();
+        let mut bytes_vector = bytes_vector.readwrite();
+        let mut bytes_vector = bytes_vector.as_array_mut();
+        let bytes_vector = bytes_vector
+            .as_slice_mut()
+            .ok_or_else(|| Box::new(BedError::EncodingContiguous().into()))?;
+
+        Ok(encode1(&val, bytes_vector, is_a1_counted, f32::NAN)?)
+    }
+
+    #[pyfn(m)]
+    #[allow(unused_variables)]
+    fn encode1_f64(
+        is_a1_counted: bool,
+        val: &PyArray1<f64>,
+        bytes_vector: &PyArray1<u8>,
+        num_threads: usize,
+    ) -> Result<(), PyErr> {
+        let val = val.readonly();
+        let val = val.as_array();
+        let mut bytes_vector = bytes_vector.readwrite();
+        let mut bytes_vector = bytes_vector.as_array_mut();
+        let bytes_vector = bytes_vector
+            .as_slice_mut()
+            .ok_or_else(|| Box::new(BedError::EncodingContiguous().into()))?;
+
+        Ok(encode1(&val, bytes_vector, is_a1_counted, f64::NAN)?)
     }
 
     #[pyfn(m)]

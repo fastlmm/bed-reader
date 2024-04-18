@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from bed_reader import to_bed
+from bed_reader import create_bed, to_bed
 
 if True:
     ssd_path = Path("m:/deldir/bench")
@@ -14,7 +14,7 @@ else:
     hdd_path = Path("/mnt/e/deldir/bench")
 
 
-def test_writes(iid_count, sid_count, num_threads, drive, include_error):
+def test_writes(iid_count, sid_count, num_threads, stream, drive, include_error):
     if drive == "ssd":
         path = ssd_path
     elif drive == "hdd":
@@ -24,7 +24,7 @@ def test_writes(iid_count, sid_count, num_threads, drive, include_error):
 
     output_file = path / f"{iid_count}x{sid_count}.bed"
 
-    val = np.full((iid_count, sid_count), 1, dtype=np.int8)
+    val = np.full((iid_count, sid_count), 1, dtype=np.int8, order="F")
     if include_error:
         val[iid_count // 2, sid_count // 2] = 22
 
@@ -34,12 +34,23 @@ def test_writes(iid_count, sid_count, num_threads, drive, include_error):
 
     result_list = []
     start = time.time()
-    to_bed(output_file, val, num_threads=num_threads)
+    if not stream:
+        to_bed(output_file, val, num_threads=num_threads)
+    else:
+        with create_bed(
+            output_file,
+            iid_count=iid_count,
+            sid_count=sid_count,
+            num_threads=num_threads,
+        ) as bed_writer:
+            for column_data in val.T:
+                bed_writer.write(column_data)
     delta = time.time() - start
     result = [
         iid_count,
         sid_count,
         num_threads,
+        stream,
         drive,
         include_error,
         True,
@@ -59,6 +70,7 @@ def test_writes(iid_count, sid_count, num_threads, drive, include_error):
             "iid_count",
             "sid_count",
             "num_threads",
+            "stream",
             "drive",
             "include_error",
             "release",
@@ -77,7 +89,7 @@ def meta_test(
     iid_count,
     sid_start=5,
     sid_end=None,
-    point_count=30,
+    point_count=5,  # 30
     drive_list=["ssd"],
     plot_index=0,
 ):
@@ -96,13 +108,19 @@ def meta_test(
     ):
         for drive in drive_list:
             for num_threads in [1, 12]:
-                result.append(
-                    test_writes(iid_count, sid_count, num_threads, drive, False)
-                )
+                for stream in [True, False]:
+                    result.append(
+                        test_writes(
+                            iid_count, sid_count, num_threads, stream, drive, False
+                        )
+                    )
     df = pd.concat(result)
+    df.to_csv(
+        ssd_path / "plots" / f"bench{plot_index},iid_count{iid_count}.csv", index=False
+    )
     df2 = df.pivot(
         index="sid_count",
-        columns=["iid_count", "drive", "num_threads", "version"],
+        columns=["iid_count", "drive", "num_threads", "stream"],
         values="val per second",
     )
     df2.plot(marker=".", logx=True)
@@ -119,8 +137,8 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
     plot_count = 0
-    for drive in ["ssd", "hdd"]:
-        for iid_count in [5_000, 50_000, 500_000]:
+    for drive in ["ssd"]:  # , "hdd"
+        for iid_count in [50_000]:  # 5_000, 500_000]:
             meta_test(
                 iid_count,
                 drive_list=[drive],

@@ -1,6 +1,24 @@
 # Useful
 
+## Note
+
+To get some Rust PyO3 debugging to work I had to set this before starting vscode:
+
+```cmd
+set PYO3_PYTHON=C:/Users/carlk/OneDrive/programs/bed-reader/.conda/python.exe
+```
+
 ## Python
+
+### Benchmarking
+
+```cmd
+maturin develop --release
+cd C:\Users\carlk\OneDrive\programs\bed-reader\bed_reader\tests\benchmark
+python benchmark.py
+```
+
+Look in `M:\deldir\bench` for results.
 
 ### install packages, compile Rust for Python
 

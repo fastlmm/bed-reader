@@ -338,6 +338,14 @@ pub enum BedError {
     #[allow(missing_docs)]
     #[error("Sample fetch error: {0}")]
     SampleFetch(String),
+
+    #[allow(missing_docs)]
+    #[error("Encoding destination buffer must be contiguous.")]
+    EncodingContiguous(),
+
+    #[allow(missing_docs)]
+    #[error("Encoding destination buffer have length {0}, (in_vector.len() - 1) // 4 + 1, but it has length {1}.")]
+    EncodingLength(usize, usize),
 }
 
 // Trait alias
@@ -521,7 +529,7 @@ fn try_div_4(in_iid_count: usize, in_sid_count: usize) -> Result<u64, Box<BedErr
     if in_iid_count == 0 {
         return Ok(0);
     }
-    let in_iid_count_div4_u64 = ((in_iid_count - 1) / 4 + 1) as u64;
+    let in_iid_count_div4_u64 = in_iid_count.checked_sub(1).map_or(0, |v| v / 4 + 1) as u64;
     let in_sid_count_u64 = in_sid_count as u64;
 
     if in_sid_count > 0 && (u64::MAX - CB_HEADER_U64) / in_sid_count_u64 < in_iid_count_div4_u64 {
@@ -730,7 +738,6 @@ where
 fn write_internal<S, TVal>(
     path: AnyPath,
     iid_count_div4_u64: u64,
-    //val: &nd::ArrayView2<'_, TVal>,
     val: &nd::ArrayBase<S, nd::Ix2>,
     is_a1_counted: bool,
     missing: TVal,
@@ -741,6 +748,10 @@ where
     TVal: BedVal,
 {
     let mut writer = BufWriter::new(File::create(path)?);
+    // LATER: If this method is later changed
+    // to support major="individual", be sure to
+    // change write_f64, etc and python function 'to_bed' which
+    // currently uses a work-around.
     writer.write_all(&[BED_FILE_MAGIC1, BED_FILE_MAGIC2, 0x01])?;
 
     #[allow(clippy::eq_op)]
@@ -758,25 +769,17 @@ where
                 move |column| {
                     // Convert each column into a bytes_vector
                     let mut bytes_vector: Vec<u8> = vec![0; iid_count_div4_u64 as usize]; // inits to 0
-                    for (iid_i, &v0) in column.iter().enumerate() {
-                        #[allow(clippy::eq_op)]
-                        let genotype_byte = if v0 == homozygous_primary_allele {
-                            zero_code
-                        } else if v0 == heterozygous_allele {
-                            2
-                        } else if v0 == homozygous_secondary_allele {
-                            two_code
-                        //                    v0 !=v0 is generic NAN check
-                        } else if (use_nan && v0 != v0) || (!use_nan && v0 == missing) {
-                            1
-                        } else {
-                            Err(BedError::BadValue(path_ref_to_string(path)))?
-                        };
-                        // Possible optimization: We could pre-compute the conversion, the division, the mod, and the multiply*2
-                        let i_div_4 = iid_i / 4;
-                        let i_mod_4 = iid_i % 4;
-                        bytes_vector[i_div_4] |= genotype_byte << (i_mod_4 * 2);
-                    }
+                    process_genomic_slice(
+                        &column,
+                        &mut bytes_vector,
+                        homozygous_primary_allele,
+                        heterozygous_allele,
+                        homozygous_secondary_allele,
+                        zero_code,
+                        two_code,
+                        use_nan,
+                        missing,
+                    )?;
                     Ok::<_, Box<BedErrorPlus>>(bytes_vector)
                 }
             })
@@ -789,6 +792,209 @@ where
     })
     .map_err(|_e| BedError::PanickedThread())?
 }
+
+#[allow(dead_code)]
+fn encode1<TVal>(
+    in_vector: &ndarray::ArrayView1<TVal>,
+    out_vector: &mut [u8],
+    is_a1_counted: bool,
+    missing: TVal,
+) -> Result<(), Box<BedErrorPlus>>
+where
+    TVal: BedVal,
+{
+    #[allow(clippy::eq_op)]
+    let use_nan = missing != missing; // generic NAN test
+    let zero_code = if is_a1_counted { 3u8 } else { 0u8 };
+    let two_code = if is_a1_counted { 0u8 } else { 3u8 };
+
+    let homozygous_primary_allele: TVal = TVal::from(0); // Major Allele
+    let heterozygous_allele = TVal::from(1);
+    let homozygous_secondary_allele = TVal::from(2); // Minor Allele
+
+    let minor_div4 = in_vector.len().checked_sub(1).map_or(0, |v| v / 4 + 1);
+    if minor_div4 != out_vector.len() {
+        return Err(Box::new(
+            BedError::EncodingLength(minor_div4, out_vector.len()).into(),
+        ));
+    }
+
+    process_genomic_slice(
+        in_vector,
+        out_vector,
+        homozygous_primary_allele,
+        heterozygous_allele,
+        homozygous_secondary_allele,
+        zero_code,
+        two_code,
+        use_nan,
+        missing,
+    )
+}
+
+#[inline]
+#[allow(clippy::eq_op)]
+#[allow(clippy::too_many_arguments)]
+fn encode_genotype_chunk<TVal>(
+    chunk: nd::ArrayView1<TVal>,
+    homozygous_primary_allele: TVal,
+    heterozygous_allele: TVal,
+    homozygous_secondary_allele: TVal,
+    zero_code: u8,
+    two_code: u8,
+    use_nan: bool,
+    missing: TVal,
+) -> Result<u8, BedError>
+where
+    TVal: PartialEq + Copy,
+{
+    // LATER: Think about unrolling this loop in the usual case of 4 elements
+    let mut output_byte = 0u8;
+    for (within_chunk_index, &v0) in chunk.iter().enumerate() {
+        let genotype_code = if v0 == homozygous_primary_allele {
+            zero_code
+        } else if v0 == heterozygous_allele {
+            2
+        } else if v0 == homozygous_secondary_allele {
+            two_code
+        } else if (use_nan && v0 != v0) || (!use_nan && v0 == missing) {
+            1
+        } else {
+            return Err(BedError::BadValue(
+                "Invalid genotype value encountered during encoding.".to_string(),
+            ));
+        };
+
+        output_byte |= genotype_code << (within_chunk_index * 2);
+    }
+    Ok(output_byte)
+}
+
+#[inline]
+#[allow(clippy::eq_op)]
+#[allow(clippy::too_many_arguments)]
+fn process_genomic_slice<TVal>(
+    in_vector: &ndarray::ArrayView1<TVal>,
+    out_vector: &mut [u8],
+    homozygous_primary_allele: TVal,
+    heterozygous_allele: TVal,
+    homozygous_secondary_allele: TVal,
+    zero_code: u8,
+    two_code: u8,
+    use_nan: bool,
+    missing: TVal,
+) -> Result<(), Box<BedErrorPlus>>
+where
+    TVal: PartialEq + Copy + Sync, // Ensure TVal supports equality check and can be copied
+{
+    // Calculate the number of full chunks and the remainder
+    let full_chunks = in_vector.len() / 4;
+    let remainder = in_vector.len() % 4;
+
+    // Ensure the output vector is correctly sized
+    assert_eq!(out_vector.len(), full_chunks + usize::from(remainder > 0));
+
+    // Zip the exact input chunks with output chunks and process in parallel
+    in_vector
+        .exact_chunks(4)
+        .into_iter()
+        .zip(out_vector.iter_mut())
+        .try_for_each(|(chunk, output_byte)| {
+            *output_byte = encode_genotype_chunk(
+                chunk,
+                homozygous_primary_allele,
+                heterozygous_allele,
+                homozygous_secondary_allele,
+                zero_code,
+                two_code,
+                use_nan,
+                missing,
+            )?;
+            Ok::<(), Box<BedErrorPlus>>(())
+        })?;
+
+    // Process the remainder sequentially if there is any
+    if remainder != 0 {
+        let start = full_chunks * 4;
+        let chunk = in_vector.slice(ndarray::s![start..]);
+        let output_byte = &mut out_vector[full_chunks];
+        *output_byte = encode_genotype_chunk(
+            chunk,
+            homozygous_primary_allele,
+            heterozygous_allele,
+            homozygous_secondary_allele,
+            zero_code,
+            two_code,
+            use_nan,
+            missing,
+        )?;
+    }
+
+    Ok::<(), Box<BedErrorPlus>>(())
+}
+// #[inline]
+// #[allow(clippy::eq_op)]
+// #[allow(clippy::too_many_arguments)]
+// fn process_genomic_slice<TVal>(
+//     in_vector: &ndarray::ArrayView1<TVal>,
+//     out_vector: &mut [u8],
+//     homozygous_primary_allele: TVal,
+//     heterozygous_allele: TVal,
+//     homozygous_secondary_allele: TVal,
+//     zero_code: u8,
+//     two_code: u8,
+//     use_nan: bool,
+//     missing: TVal,
+// ) -> Result<(), Box<BedErrorPlus>>
+// where
+//     TVal: PartialEq + Copy + Sync, // Ensure TVal supports equality check and can be copied
+// {
+//     // Calculate the number of full chunks and the remainder
+//     let full_chunks = in_vector.len() / 4;
+//     let remainder = in_vector.len() % 4;
+
+//     // Ensure the output vector is correctly sized
+//     assert_eq!(out_vector.len(), full_chunks + usize::from(remainder > 0));
+
+//     // Zip the exact input chunks with output chunks and process in parallel
+//     in_vector
+//         .exact_chunks(4)
+//         .into_iter()
+//         .zip(out_vector.iter_mut())
+//         .par_bridge()
+//         .try_for_each(|(chunk, output_byte)| {
+//             *output_byte = encode_genotype_chunk(
+//                 chunk,
+//                 homozygous_primary_allele,
+//                 heterozygous_allele,
+//                 homozygous_secondary_allele,
+//                 zero_code,
+//                 two_code,
+//                 use_nan,
+//                 missing,
+//             )?;
+//             Ok::<(), Box<BedErrorPlus>>(())
+//         })?;
+
+//     // Process the remainder sequentially if there is any
+//     if remainder != 0 {
+//         let start = full_chunks * 4;
+//         let chunk = in_vector.slice(ndarray::s![start..]);
+//         let output_byte = &mut out_vector[full_chunks];
+//         *output_byte = encode_genotype_chunk(
+//             chunk,
+//             homozygous_primary_allele,
+//             heterozygous_allele,
+//             homozygous_secondary_allele,
+//             zero_code,
+//             two_code,
+//             use_nan,
+//             missing,
+//         )?;
+//     }
+
+//     Ok::<(), Box<BedErrorPlus>>(())
+// }
 
 #[anyinput]
 fn count_lines(path: AnyPath) -> Result<usize, Box<BedErrorPlus>> {
