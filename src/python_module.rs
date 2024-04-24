@@ -448,7 +448,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let iid_index = iid_index.readonly();
         let sid_index = sid_index.readonly();
 
-        let val_in = val_in.readwrite();
+        let val_in = val_in.readonly();
         let val_in = val_in.as_array();
         let mut val_out = val_out.readwrite();
         let mut val_out = val_out.as_array_mut();
@@ -473,7 +473,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let iid_index = iid_index.readonly();
         let sid_index = sid_index.readonly();
 
-        let val_in = val_in.readwrite();
+        let val_in = val_in.readonly();
         let val_in = val_in.as_array();
         let mut val_out = val_out.readwrite();
         let mut val_out = val_out.as_array_mut();
@@ -498,7 +498,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let iid_index = iid_index.readonly();
         let sid_index = sid_index.readonly();
 
-        let val_in = val_in.readwrite();
+        let val_in = val_in.readonly();
         let val_in = val_in.as_array();
         let mut val_out = val_out.readwrite();
         let mut val_out = val_out.as_array_mut();

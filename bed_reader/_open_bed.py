@@ -1349,7 +1349,11 @@ class open_bed:
             # This will convert, for example, numerical sids to string sids or
             # floats that happen to be integers into ints,
             # but there will be a warning generated.
-            output = np.array(input, dtype=dtype)
+            try:
+                np.seterr(invalid="warn")
+                output = np.array(input, dtype=dtype)
+            finally:
+                np.seterr(invalid="raise")
         else:
             output = input
 
