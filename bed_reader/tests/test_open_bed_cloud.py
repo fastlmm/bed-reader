@@ -712,12 +712,11 @@ def test_cloud_coverage2(shared_datadir, tmp_path):
 
 
 def test_cloud_coverage3(shared_datadir, tmp_path):
-    with pytest.warns(RuntimeWarning, match="invalid value encountered in cast"):
-        with open_bed(
-            file_to_url(shared_datadir / "small.bed"),
-            properties={"sex": [1.0, np.nan, 1.0, 2.0]},
-        ) as bed:
-            assert np.array_equal(bed.sex, np.array([1, 0, 1, 2]))
+    with open_bed(
+        file_to_url(shared_datadir / "small.bed"),
+        properties={"sex": [1.0, np.nan, 1.0, 2.0]},
+    ) as bed:
+        assert np.array_equal(bed.sex, np.array([1, 0, 1, 2]))
 
     with open_bed(
         file_to_url(shared_datadir / "small.bed"),

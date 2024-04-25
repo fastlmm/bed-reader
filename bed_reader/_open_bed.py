@@ -1345,20 +1345,28 @@ class open_bed:
         if len(input.shape) != 1:
             raise ValueError(f"{key} should be one dimensional")
 
-        if not np.issubdtype(input.dtype, dtype):
+        do_missing_values = True
+        if np.issubdtype(input.dtype, np.floating) and np.issubdtype(dtype, int):
+            input[input != input] = missing_value
+            old_settings = np.seterr(invalid="warn")
+            try:
+                output = np.array(input, dtype=dtype)
+            finally:
+                np.seterr(**old_settings)
+        elif not np.issubdtype(input.dtype, dtype):
             # This will convert, for example, numerical sids to string sids or
             # floats that happen to be integers into ints,
             # but there will be a warning generated.
+            old_settings = np.seterr(invalid="warn")
             try:
-                np.seterr(invalid="warn")
                 output = np.array(input, dtype=dtype)
             finally:
-                np.seterr(invalid="raise")
+                np.seterr(**old_settings)
         else:
             output = input
 
         # Change NaN in input to correct missing value
-        if np.issubdtype(input.dtype, np.floating):
+        if do_missing_values and np.issubdtype(input.dtype, np.floating):
             output[input != input] = missing_value
 
         return output
