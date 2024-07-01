@@ -1,75 +1,41 @@
 // https://stackoverflow.com/questions/32900809/how-to-suppress-function-is-never-used-warning-for-a-function-used-by-tests
-#[cfg(test)]
+
+#![cfg(test)]
+
 use crate::allclose;
-#[cfg(test)]
 use crate::assert_eq_nan;
-#[cfg(test)]
 use crate::assert_error_variant;
-#[cfg(test)]
 use crate::encode1;
-#[cfg(test)]
 use crate::file_aat_piece;
-#[cfg(test)]
 use crate::file_ata_piece;
-#[cfg(test)]
 use crate::file_b_less_aatbx;
-#[cfg(test)]
 use crate::read_into_f64;
-#[cfg(test)]
 use crate::sample_bed_file;
-#[cfg(test)]
 use crate::sample_file;
-#[cfg(test)]
 use crate::sample_files;
-#[cfg(test)]
 use crate::try_div_4;
-#[cfg(test)]
 use crate::Bed;
-#[cfg(test)]
 use crate::Dist;
-#[cfg(test)]
 use crate::Index;
-#[cfg(test)]
 use crate::Metadata;
-#[cfg(test)]
 use crate::ReadOptions;
-#[cfg(test)]
 use crate::SliceInfo1;
-#[cfg(test)]
 use crate::WriteOptions;
-#[cfg(test)]
 use crate::{impute_and_zero_mean_snps, matrix_subset_no_alloc};
-#[cfg(test)]
 use crate::{internal_read_no_alloc, read_no_alloc, BedError, BedErrorPlus};
-#[cfg(test)]
 use anyinput::anyinput;
-#[cfg(test)]
 use nd::s;
-#[cfg(test)]
 use ndarray as nd;
-#[cfg(test)]
 use ndarray::ShapeBuilder;
-#[cfg(test)]
 use ndarray_npy::read_npy;
-#[cfg(test)]
 use num_traits::abs;
-#[cfg(test)]
 use std::f32;
-#[cfg(test)]
 use std::f64;
-#[cfg(test)]
-use std::f64::NAN;
-#[cfg(test)]
 use std::io::BufReader;
-#[cfg(test)]
 use std::ops::Range;
-#[cfg(test)]
 use std::ops::RangeInclusive;
-#[cfg(test)]
 use std::path::Path;
-#[cfg(test)]
 use std::path::PathBuf;
-#[cfg(test)]
 use temp_testdir::TempDir;
 
 #[test]
@@ -88,7 +54,6 @@ fn best_int8() {
     }
 }
 
-#[cfg(test)]
 fn reference_val_i8(is_a1_counted: bool) -> nd::Array2<i8> {
     let ref_val = reference_val(is_a1_counted);
 
@@ -152,7 +117,6 @@ fn rest_reader_bed() -> Result<(), Box<BedErrorPlus>> {
     Ok(())
 }
 
-#[cfg(test)]
 fn reference_val(is_a1_counted: bool) -> nd::Array2<f64> {
     let file = sample_file("some_missing.val.npy").unwrap();
 
@@ -690,7 +654,6 @@ fn file_ata_small() {
     assert!(allclose(&expected.view(), &out_val.view(), 1e-08, true));
 }
 
-#[cfg(test)]
 #[anyinput]
 fn file_ata(
     path: AnyPath,
@@ -726,7 +689,6 @@ fn file_ata(
     Ok(())
 }
 
-#[cfg(test)]
 fn insert_piece(
     sid_range: Range<usize>,
     piece: &nd::Array2<f64>,
@@ -798,7 +760,6 @@ fn file_aat_small2() {
     assert!(allclose(&expected.view(), &out_val.view(), 1e-08, true));
 }
 
-#[cfg(test)]
 #[anyinput]
 fn file_aat(
     path: AnyPath,
@@ -842,11 +803,11 @@ fn file_aat(
 
 #[test]
 fn test_allclose() -> Result<(), Box<BedErrorPlus>> {
-    let val1 = nd::arr2(&[[1.0, 2.000_000_000_001], [3.0, NAN]]);
-    let val2 = nd::arr2(&[[1.0, 2.0], [3.0, NAN]]);
+    let val1 = nd::arr2(&[[1.0, 2.000_000_000_001], [3.0, f64::NAN]]);
+    let val2 = nd::arr2(&[[1.0, 2.0], [3.0, f64::NAN]]);
     assert!(allclose(&val1.view(), &val2.view(), 1e-08, true));
 
-    let val1 = nd::arr2(&[[1.0, 2.0], [3.0, NAN]]);
+    let val1 = nd::arr2(&[[1.0, 2.0], [3.0, f64::NAN]]);
     assert_eq_nan(&val1, &val2);
 
     let output_folder = TempDir::default();
@@ -861,7 +822,6 @@ fn test_allclose() -> Result<(), Box<BedErrorPlus>> {
     Ok(())
 }
 
-#[cfg(test)]
 fn expected_len(index: &Index, count: usize, len: usize) -> Result<(), Box<BedErrorPlus>> {
     assert!(index.to_vec(count)?.len() == len);
     assert!(index.len(count)? == len);

@@ -43,7 +43,7 @@ Read an entire file and find the fraction of missing values.
     ...     missing_count = np.isnan(val).sum()
     ...     missing_fraction = missing_count / val.size
     ...     missing_fraction  # doctest: +ELLIPSIS
-    0.1666...
+    np.float64(0.16666666666666666)
 
 When reading a medium-sized file, you may need to set a `timeout` in your cloud options. With a `timeout`,
 you can give your code more than the default 30 seconds to read metadata from the \*.fam and \*.bim files
@@ -96,7 +96,7 @@ What is the mean value of the SNP (variant) at index position 100,000?
     ...     ) as bed:
     ...     val = bed.read(index=np.s_[:, 100_000], dtype=np.float32)
     ...     np.mean(val) # doctest: +ELLIPSIS
-    0.033913...
+    np.float32(0.03391369)
 
 You can also download the \*.fam and \*.bim metadata files and then read from them locally while continuing to read the \*.bed file from the cloud.
 This gives you almost instant access to the metadata and the \*.bed file. Here is an example:

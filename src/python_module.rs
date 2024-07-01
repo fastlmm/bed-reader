@@ -6,20 +6,22 @@ use crate::{
     file_ata_piece, file_b_less_aatbx, impute_and_zero_mean_snps, matrix_subset_no_alloc,
     read_into_f32, read_into_f64, Bed, ReadOptions, WriteOptions,
 };
+use numpy::PyArrayMethods;
 use numpy::{PyArray1, PyArray2, PyArray3};
 use pyo3::{
     exceptions::PyIOError,
     exceptions::PyIndexError,
     exceptions::PyValueError,
-    prelude::{pymodule, PyModule, PyResult, Python},
-    PyErr,
+    prelude::*,
+    types::{PyDict, PyModule},
+    Bound, PyErr,
 };
 use std::collections::HashMap;
 use tokio::runtime;
 
 #[pymodule]
 #[allow(clippy::too_many_lines, clippy::items_after_statements)]
-fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
+fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // See User's guide: https://pyo3.rs/v0.15.1/
     // mutable example (no return) see https://github.com/PyO3/rust-numpy
     // https://pyo3.rs/v0.13.1/exception.html
@@ -47,7 +49,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
-    fn url_to_bytes(location: &str, options: HashMap<&str, String>) -> Result<Vec<u8>, PyErr> {
+    fn url_to_bytes(location: &str, options: &Bound<'_, PyDict>) -> Result<Vec<u8>, PyErr> {
+        let options: HashMap<String, String> = options.extract()?; // cmk
         let cloud_file = CloudFile::new_with_options(location, options)
             .map_err(|e| Box::new(BedErrorPlus::CloudFileError(e)))?;
         let rt = runtime::Runtime::new()?;
@@ -67,13 +70,13 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[allow(clippy::needless_pass_by_value)]
     fn read_f64(
         filename: &str,
-        _ignore: HashMap<&str, String>,
+        _ignore: &Bound<'_, PyDict>,
         iid_count: usize,
         sid_count: usize,
         is_a1_counted: bool,
-        iid_index: &PyArray1<isize>,
-        sid_index: &PyArray1<isize>,
-        val: &PyArray2<f64>,
+        iid_index: &Bound<'_, PyArray1<isize>>,
+        sid_index: &Bound<'_, PyArray1<isize>>,
+        val: &Bound<'_, PyArray2<f64>>,
         num_threads: usize,
     ) -> Result<(), PyErr> {
         let iid_index = iid_index.readonly();
@@ -104,13 +107,13 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[allow(clippy::needless_pass_by_value)]
     fn read_f32(
         filename: &str,
-        _ignore: HashMap<&str, String>,
+        _ignore: &Bound<'_, PyDict>,
         iid_count: usize,
         sid_count: usize,
         is_a1_counted: bool,
-        iid_index: &PyArray1<isize>,
-        sid_index: &PyArray1<isize>,
-        val: &PyArray2<f32>,
+        iid_index: &Bound<'_, PyArray1<isize>>,
+        sid_index: &Bound<'_, PyArray1<isize>>,
+        val: &Bound<'_, PyArray2<f32>>,
         num_threads: usize,
     ) -> Result<(), PyErr> {
         let iid_index = iid_index.readonly();
@@ -141,13 +144,13 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[allow(clippy::needless_pass_by_value)]
     fn read_i8(
         filename: &str,
-        _ignore: HashMap<&str, String>,
+        _ignore: &Bound<'_, PyDict>,
         iid_count: usize,
         sid_count: usize,
         is_a1_counted: bool,
-        iid_index: &PyArray1<isize>,
-        sid_index: &PyArray1<isize>,
-        val: &PyArray2<i8>,
+        iid_index: &Bound<'_, PyArray1<isize>>,
+        sid_index: &Bound<'_, PyArray1<isize>>,
+        val: &Bound<'_, PyArray2<i8>>,
         num_threads: usize,
     ) -> Result<(), PyErr> {
         let iid_index = iid_index.readonly();
@@ -174,7 +177,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
-    fn check_file_cloud(location: &str, options: HashMap<&str, String>) -> Result<(), PyErr> {
+    fn check_file_cloud(location: &str, options: &Bound<'_, PyDict>) -> Result<(), PyErr> {
+        let options: HashMap<String, String> = options.extract()?; // cmk
         runtime::Runtime::new()?.block_on(async {
             BedCloud::new_with_options(location, options).await?;
             Ok(())
@@ -185,17 +189,19 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[allow(clippy::too_many_arguments)]
     fn read_cloud_i8(
         location: &str,
-        options: HashMap<&str, String>,
+        options: &Bound<'_, PyDict>,
         iid_count: usize,
         sid_count: usize,
         is_a1_counted: bool,
-        iid_index: &PyArray1<isize>,
-        sid_index: &PyArray1<isize>,
-        val: &PyArray2<i8>,
+        iid_index: &Bound<'_, PyArray1<isize>>,
+        sid_index: &Bound<'_, PyArray1<isize>>,
+        val: &Bound<'_, PyArray2<i8>>,
         num_threads: usize,
         max_concurrent_requests: usize,
         max_chunk_bytes: usize,
     ) -> Result<(), PyErr> {
+        let options: HashMap<String, String> = options.extract()?; // cmk
+
         let iid_index = iid_index.readonly();
         let sid_index = sid_index.readonly();
         let ii = &iid_index.as_slice()?;
@@ -230,17 +236,19 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[allow(clippy::too_many_arguments)]
     fn read_cloud_f32(
         location: &str,
-        options: HashMap<&str, String>,
+        options: &Bound<'_, PyDict>,
         iid_count: usize,
         sid_count: usize,
         is_a1_counted: bool,
-        iid_index: &PyArray1<isize>,
-        sid_index: &PyArray1<isize>,
-        val: &PyArray2<f32>,
+        iid_index: &Bound<'_, PyArray1<isize>>,
+        sid_index: &Bound<'_, PyArray1<isize>>,
+        val: &Bound<'_, PyArray2<f32>>,
         num_threads: usize,
         max_concurrent_requests: usize,
         max_chunk_bytes: usize,
     ) -> Result<(), PyErr> {
+        let options: HashMap<String, String> = options.extract()?; // cmk
+
         let iid_index = iid_index.readonly();
         let sid_index = sid_index.readonly();
         let ii = &iid_index.as_slice()?;
@@ -275,17 +283,19 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[allow(clippy::too_many_arguments)]
     fn read_cloud_f64(
         location: &str,
-        options: HashMap<&str, String>,
+        options: &Bound<'_, PyDict>,
         iid_count: usize,
         sid_count: usize,
         is_a1_counted: bool,
-        iid_index: &PyArray1<isize>,
-        sid_index: &PyArray1<isize>,
-        val: &PyArray2<f64>,
+        iid_index: &Bound<'_, PyArray1<isize>>,
+        sid_index: &Bound<'_, PyArray1<isize>>,
+        val: &Bound<'_, PyArray2<f64>>,
         num_threads: usize,
         max_concurrent_requests: usize,
         max_chunk_bytes: usize,
     ) -> Result<(), PyErr> {
+        let options: HashMap<String, String> = options.extract()?; // cmk
+
         let iid_index = iid_index.readonly();
         let sid_index = sid_index.readonly();
         let ii = &iid_index.as_slice()?;
@@ -320,7 +330,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     fn write_f64(
         filename: &str,
         is_a1_counted: bool,
-        val: &PyArray2<f64>,
+        val: &Bound<'_, PyArray2<f64>>,
         num_threads: usize,
     ) -> Result<(), PyErr> {
         // LATER: If these methods are later changed
@@ -344,7 +354,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     fn write_f32(
         filename: &str,
         is_a1_counted: bool,
-        val: &PyArray2<f32>,
+        val: &Bound<'_, PyArray2<f32>>,
         num_threads: usize,
     ) -> Result<(), PyErr> {
         let mut val = val.readwrite();
@@ -364,7 +374,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     fn write_i8(
         filename: &str,
         is_a1_counted: bool,
-        val: &PyArray2<i8>,
+        val: &Bound<'_, PyArray2<i8>>,
         num_threads: usize,
     ) -> Result<(), PyErr> {
         let mut val = val.readwrite();
@@ -384,8 +394,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[allow(unused_variables)]
     fn encode1_i8(
         is_a1_counted: bool,
-        val: &PyArray1<i8>,
-        bytes_vector: &PyArray1<u8>,
+        val: &Bound<'_, PyArray1<i8>>,
+        bytes_vector: &Bound<'_, PyArray1<u8>>,
         num_threads: usize,
     ) -> Result<(), PyErr> {
         let val = val.readonly();
@@ -403,8 +413,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[allow(unused_variables)]
     fn encode1_f32(
         is_a1_counted: bool,
-        val: &PyArray1<f32>,
-        bytes_vector: &PyArray1<u8>,
+        val: &Bound<'_, PyArray1<f32>>,
+        bytes_vector: &Bound<'_, PyArray1<u8>>,
         num_threads: usize,
     ) -> Result<(), PyErr> {
         let val = val.readonly();
@@ -422,8 +432,8 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[allow(unused_variables)]
     fn encode1_f64(
         is_a1_counted: bool,
-        val: &PyArray1<f64>,
-        bytes_vector: &PyArray1<u8>,
+        val: &Bound<'_, PyArray1<f64>>,
+        bytes_vector: &Bound<'_, PyArray1<u8>>,
         num_threads: usize,
     ) -> Result<(), PyErr> {
         let val = val.readonly();
@@ -439,10 +449,10 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     #[pyfn(m)]
     fn subset_f64_f64(
-        val_in: &PyArray3<f64>,
-        iid_index: &PyArray1<usize>,
-        sid_index: &PyArray1<usize>,
-        val_out: &PyArray3<f64>,
+        val_in: &Bound<'_, PyArray3<f64>>,
+        iid_index: &Bound<'_, PyArray1<usize>>,
+        sid_index: &Bound<'_, PyArray1<usize>>,
+        val_out: &Bound<'_, PyArray3<f64>>,
         num_threads: usize,
     ) -> Result<(), PyErr> {
         let iid_index = iid_index.readonly();
@@ -464,10 +474,10 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     #[pyfn(m)]
     fn subset_f32_f64(
-        val_in: &PyArray3<f32>,
-        iid_index: &PyArray1<usize>,
-        sid_index: &PyArray1<usize>,
-        val_out: &PyArray3<f64>,
+        val_in: &Bound<'_, PyArray3<f32>>,
+        iid_index: &Bound<'_, PyArray1<usize>>,
+        sid_index: &Bound<'_, PyArray1<usize>>,
+        val_out: &Bound<'_, PyArray3<f64>>,
         num_threads: usize,
     ) -> Result<(), PyErr> {
         let iid_index = iid_index.readonly();
@@ -489,10 +499,10 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     #[pyfn(m)]
     fn subset_f32_f32(
-        val_in: &PyArray3<f32>,
-        iid_index: &PyArray1<usize>,
-        sid_index: &PyArray1<usize>,
-        val_out: &PyArray3<f32>,
+        val_in: &Bound<'_, PyArray3<f32>>,
+        iid_index: &Bound<'_, PyArray1<usize>>,
+        sid_index: &Bound<'_, PyArray1<usize>>,
+        val_out: &Bound<'_, PyArray3<f32>>,
         num_threads: usize,
     ) -> Result<(), PyErr> {
         let iid_index = iid_index.readonly();
@@ -515,13 +525,13 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[pyfn(m)]
     #[allow(clippy::too_many_arguments)]
     fn standardize_f32(
-        val: &PyArray2<f32>,
+        val: &Bound<'_, PyArray2<f32>>,
         beta_not_unit_variance: bool,
         beta_a: f64,
         beta_b: f64,
         apply_in_place: bool,
         use_stats: bool,
-        stats: &PyArray2<f32>,
+        stats: &Bound<'_, PyArray2<f32>>,
         num_threads: usize,
     ) -> Result<(), PyErr> {
         let mut val = val.readwrite();
@@ -552,13 +562,13 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[pyfn(m)]
     #[allow(clippy::too_many_arguments)]
     fn standardize_f64(
-        val: &PyArray2<f64>,
+        val: &Bound<'_, PyArray2<f64>>,
         beta_not_unit_variance: bool,
         beta_a: f64,
         beta_b: f64,
         apply_in_place: bool,
         use_stats: bool,
-        stats: &PyArray2<f64>,
+        stats: &Bound<'_, PyArray2<f64>>,
         num_threads: usize,
     ) -> Result<(), PyErr> {
         let mut val = val.readwrite();
@@ -587,7 +597,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         row_count: usize,
         col_count: usize,
         col_start: usize,
-        ata_piece: &PyArray2<f32>,
+        ata_piece: &Bound<'_, PyArray2<f32>>,
         num_threads: usize,
         log_frequency: usize,
     ) -> Result<(), PyErr> {
@@ -618,7 +628,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         row_count: usize,
         col_count: usize,
         col_start: usize,
-        ata_piece: &PyArray2<f64>,
+        ata_piece: &Bound<'_, PyArray2<f64>>,
         num_threads: usize,
         log_frequency: usize,
     ) -> Result<(), PyErr> {
@@ -648,7 +658,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         offset: u64,
         row_count: usize,
         col_start: usize,
-        ata_piece: &PyArray2<f64>,
+        ata_piece: &Bound<'_, PyArray2<f64>>,
         num_threads: usize,
         log_frequency: usize,
     ) -> Result<(), PyErr> {
@@ -678,7 +688,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         row_count: usize,
         col_count: usize,
         row_start: usize,
-        aat_piece: &PyArray2<f32>,
+        aat_piece: &Bound<'_, PyArray2<f32>>,
         num_threads: usize,
         log_frequency: usize,
     ) -> Result<(), PyErr> {
@@ -709,7 +719,7 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         row_count: usize,
         col_count: usize,
         row_start: usize,
-        aat_piece: &PyArray2<f64>,
+        aat_piece: &Bound<'_, PyArray2<f64>>,
         num_threads: usize,
         log_frequency: usize,
     ) -> Result<(), PyErr> {
@@ -739,9 +749,9 @@ fn bed_reader(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         a_filename: &str,
         offset: u64,
         iid_count: usize,
-        b1: &PyArray2<f64>,
-        aatb: &PyArray2<f64>,
-        atb: &PyArray2<f64>,
+        b1: &Bound<'_, PyArray2<f64>>,
+        aatb: &Bound<'_, PyArray2<f64>>,
+        atb: &Bound<'_, PyArray2<f64>>,
         num_threads: usize,
         log_frequency: usize,
     ) -> Result<(), PyErr> {

@@ -482,21 +482,21 @@ fn open_and_check(
     Ok((buf_reader, bytes_array))
 }
 
-trait Max {
-    fn max() -> Self;
-}
+// trait Max {
+//     fn max() -> Self;
+// }
 
-impl Max for u8 {
-    fn max() -> u8 {
-        std::u8::MAX
-    }
-}
+// impl Max for u8 {
+//     fn max() -> u8 {
+//         u8::MAX
+//     }
+// }
 
-impl Max for u64 {
-    fn max() -> u64 {
-        std::u64::MAX
-    }
-}
+// impl Max for u64 {
+//     fn max() -> u64 {
+//         u64::MAX
+//     }
+// }
 
 /// A trait alias, used internally, to provide default missing values for i8, f32, f64.
 pub trait Missing {
@@ -3557,11 +3557,7 @@ impl RangeAny {
 
     // https://stackoverflow.com/questions/55925523/array-cannot-be-indexed-by-rangefull
     fn to_range(&self, count: usize) -> Result<Range<usize>, Box<BedErrorPlus>> {
-        let start = if let Some(start) = self.start {
-            start
-        } else {
-            0
-        };
+        let start = self.start.unwrap_or_default();
         let end = if let Some(end) = self.end { end } else { count };
         if start > end {
             Err(BedError::StartGreaterThanEnd(start, end).into())
@@ -4209,10 +4205,10 @@ pub struct ReadOptions<TVal: BedVal> {
     max_concurrent_requests: Option<usize>,
 
     // LATER: Allow this to be set with an environment variable.
-    /// Maximum chunk size of async requests (defaults to 8_000_000 bytes) --
+    /// Maximum chunk size of async requests (defaults to `8_000_000` bytes) --
     /// Used by [`BedCloud`](struct.BedCloud.html).
     ///
-    /// In this example, we read using only 1_000_000 bytes per request.
+    /// In this example, we read using only `1_000_000` bytes per request.
     /// ```
     /// use ndarray as nd;
     /// use bed_reader::{BedCloud, ReadOptions};
@@ -5960,6 +5956,7 @@ where
 }
 
 trait FromStringArray<T> {
+    #[allow(dead_code)]
     fn from_string_array(
         string_array: nd::Array1<String>,
     ) -> Result<nd::Array1<Self>, Box<BedErrorPlus>>
