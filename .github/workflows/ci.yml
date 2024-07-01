@@ -155,6 +155,7 @@ jobs:
         cd bed_reader
         pwd
         python -m pip install --upgrade pip
+        pip install numpy>=2.0.0
         pip install flake8 pytest black isort --upgrade
     - name: Lint with flake8, etc
       run: |
