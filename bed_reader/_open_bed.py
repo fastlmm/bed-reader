@@ -1572,7 +1572,7 @@ class open_bed:
             ...     val_sparse = bed.read_sparse(dtype="int8")
             ...     print(val_sparse) # doctest:+NORMALIZE_WHITESPACE +ELLIPSIS
             (10, 20)
-            ...
+              ...
               (8, 4)   1
               (8, 5)   2
               (0, 8)   2
