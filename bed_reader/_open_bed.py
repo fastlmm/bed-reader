@@ -1573,14 +1573,14 @@ class open_bed:
             ...     print(val_sparse) # doctest:+NORMALIZE_WHITESPACE +ELLIPSIS
             (10, 20)
             ...
-                (8, 4)   1
-                (8, 5)   2
-                (0, 8)   2
-                (4, 9)   1
-                (7, 9)   1
-                (5, 11)  1
-                (2, 12)  1
-                (3, 12)  1
+            (8, 4)   1
+            (8, 5)   2
+            (0, 8)   2
+            (4, 9)   1
+            (7, 9)   1
+            (5, 11)  1
+            (2, 12)  1
+            (3, 12)  1
 
         To read selected individuals (samples) and/or SNPs (variants), set each part of
         a :data:`numpy.s_` to an `int`, a list of `int`, a slice expression, or
