@@ -171,7 +171,7 @@ jobs:
       run: |
         pip install virtualenv
         virtualenv vEnv; source vEnv/bin/activate
-        python -m pip install --upgrade pip maturin
+        python -m pip install --upgrade pip maturin numpy>=2.0.0
         maturin develop
         pip install -r requirements-min-dev.txt
         pytest bed_reader/tests/test_opt_dep.py
@@ -187,7 +187,7 @@ jobs:
         virtualenv vEnv; vEnv\Scripts\activate.ps1
         echo "pwd"
         pwd
-        python -m pip install --upgrade pip maturin
+        python -m pip install --upgrade pip maturin numpy>=2.0.0
         pip install -r requirements-min-dev.txt
         pytest bed_reader/tests/test_opt_dep.py
         echo "requirements"
