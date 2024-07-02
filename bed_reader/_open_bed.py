@@ -1571,16 +1571,8 @@ class open_bed:
             ...     print(bed.shape) # doctest:+NORMALIZE_WHITESPACE +ELLIPSIS
             ...     val_sparse = bed.read_sparse(dtype="int8")
             (10, 20)
-            >>> print("Sparse", val_sparse) # doctest:+NORMALIZE_WHITESPACE +ELLIPSIS
-            Sparse...
-              (8, 4)   1
-              (8, 5)   2
-              (0, 8)   2
-              (4, 9)   1
-              (7, 9)   1
-              (5, 11)  1
-              (2, 12)  1
-              (3, 12)  1
+            >>> print("Nonzero Values", val_sparse.data) # doctest:+NORMALIZE_WHITESPACE +ELLIPSIS
+            Nonzero Values [1 2 2 1 1 1 1 1]
 
         To read selected individuals (samples) and/or SNPs (variants), set each part of
         a :data:`numpy.s_` to an `int`, a list of `int`, a slice expression, or
@@ -1591,50 +1583,27 @@ class open_bed:
 
             >>> import numpy as np
             >>> bed = open_bed(file_name)
-            >>> print("Sparse", bed.read_sparse(np.s_[:,5], dtype="int8"))  # read the SNPs indexed by 5. # doctest:+NORMALIZE_WHITESPACE +ELLIPSIS
-            Sparse...
-            (8, 0)    2
+            >>> print("Nonzero Values", bed.read_sparse(np.s_[:,5], dtype="int8").data)  # read the SNPs indexed by 5.
+            Nonzero Values [2]
             >>> # read the SNPs indexed by 5, 4, and 0
-            >>> print("Sparse", bed.read_sparse(np.s_[:,[5,4,0]], dtype="int8")) # doctest:+NORMALIZE_WHITESPACE +ELLIPSIS
-            Sparse...
-            (8, 0)    2
-            (8, 1)    1
+            >>> print("Nonzero Values", bed.read_sparse(np.s_[:,[5,4,0]], dtype="int8").data)
+            Nonzero Values [2 1]
             >>> # read SNPs from 1 (inclusive) to 11 (exclusive)
-            >>> print("Sparse", bed.read_sparse(np.s_[:,1:11], dtype="int8")) # doctest:+NORMALIZE_WHITESPACE +ELLIPSIS
-            Sparse...
-              (8, 3)   1
-              (8, 4)   2
-              (0, 7)   2
-              (4, 8)   1
-              (7, 8)   1
+            >>> print("Nonzero Values", bed.read_sparse(np.s_[:,1:11], dtype="int8").data)
+            Nonzero Values [1 2 2 1 1]
             >>> print(np.unique(bed.chromosome)) # print unique chrom values
             ['1' '5' 'Y']
             >>> # read all SNPs in chrom 5
-            >>> print("Sparse", bed.read_sparse(np.s_[:,bed.chromosome=='5'], dtype="int8")) # doctest:+NORMALIZE_WHITESPACE +ELLIPSIS
-            Sparse...
-              (8, 0)   1
-              (8, 1)   2
-              (0, 4)   2
-              (4, 5)   1
-              (7, 5)   1
-              (5, 7)   1
-              (2, 8)   1
-              (3, 8)   1
+            >>> print("Nonzero Values", bed.read_sparse(np.s_[:,bed.chromosome=='5'], dtype="int8").data)
+            Nonzero Values [1 2 2 1 1 1 1 1]
             >>> # Read 1st individual (across all SNPs)
-            >>> print("Sparse", bed.read_sparse(np.s_[0,:], dtype="int8")) # doctest:+NORMALIZE_WHITESPACE
-            Sparse...
-              (0, 8)    2
-            >>> print("Sparse", bed.read_sparse(np.s_[::2,:], dtype="int8")) # Read every 2nd individual # doctest:+NORMALIZE_WHITESPACE
-            Sparse...
-            (4, 4)   1
-            (4, 5)   2
-            (0, 8)   2
-            (2, 9)   1
-            (1, 12)  1
+            >>> print("Nonzero Values", bed.read_sparse(np.s_[0,:], dtype="int8").data)
+            Nonzero Values [2]
+            >>> print("Nonzero Values", bed.read_sparse(np.s_[::2,:], dtype="int8").data) # Read every 2nd individual
+            Nonzero Values [1 2 2 1 1]
             >>> # read last and 2nd-to-last individuals and the 15th-from-the-last SNP
-            >>> print("Sparse", bed.read_sparse(np.s_[[-1,-2],-15], dtype="int8")) # doctest:+NORMALIZE_WHITESPACE
-            Sparse...
-             (1, 0)    2
+            >>> print("Nonzero Values", bed.read_sparse(np.s_[[-1,-2],-15], dtype="int8").data)
+            Nonzero Values [2]
         """
         if sparse is None:
             raise ImportError(
