@@ -1570,8 +1570,8 @@ class open_bed:
             >>> with open_bed(file_name) as bed:
             ...     print(bed.shape) # doctest:+NORMALIZE_WHITESPACE +ELLIPSIS
             ...     val_sparse = bed.read_sparse(dtype="int8")
-            ...     print("Sparse", val_sparse) # doctest:+NORMALIZE_WHITESPACE +ELLIPSIS
             (10, 20)
+            >>> print("Sparse", val_sparse) # doctest:+NORMALIZE_WHITESPACE +ELLIPSIS
             Sparse...
               (8, 4)   1
               (8, 5)   2
