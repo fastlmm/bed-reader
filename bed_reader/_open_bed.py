@@ -2,7 +2,6 @@ import logging
 import multiprocessing
 import os
 import re
-import sys
 from dataclasses import dataclass
 from io import BytesIO
 from itertools import repeat, takewhile
@@ -1815,12 +1814,7 @@ def _read_csv(filepath, delimiter=None, dtype=None, usecols=None):
         col = transposed[output_index]
 
         # work around numpy/python bug
-        if (
-            (sys.version_info.major, sys.version_info.minor) <= (3, 9)
-            and int(np.__version__.split(".")[0]) >= 2
-            and len(col) > 0
-            and pattern.fullmatch(col[0])
-        ):
+        if len(col) > 0 and pattern.fullmatch(col[0]):
             col = np.array([pattern.fullmatch(x).group(1) for x in col])
 
         # Find the dtype for this column
@@ -1838,6 +1832,8 @@ def _convert_to_dtype(str_arr, dtype):
         return str_arr
 
     try:
+        if str_arr[0].startswith("np."):
+            raise ValueError("invalid cmk for int: 'np.'")
         new_arr = str_arr.astype(dtype)
     except ValueError as e:
         if dtype == np.float32:
