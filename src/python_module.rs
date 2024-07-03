@@ -50,7 +50,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     #[pyfn(m)]
     fn url_to_bytes(location: &str, options: &Bound<'_, PyDict>) -> Result<Vec<u8>, PyErr> {
-        let options: HashMap<String, String> = options.extract()?; // cmk
+        let options: HashMap<String, String> = options.extract()?;
         let cloud_file = CloudFile::new_with_options(location, options)
             .map_err(|e| Box::new(BedErrorPlus::CloudFileError(e)))?;
         let rt = runtime::Runtime::new()?;
@@ -178,7 +178,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     #[pyfn(m)]
     fn check_file_cloud(location: &str, options: &Bound<'_, PyDict>) -> Result<(), PyErr> {
-        let options: HashMap<String, String> = options.extract()?; // cmk
+        let options: HashMap<String, String> = options.extract()?;
         runtime::Runtime::new()?.block_on(async {
             BedCloud::new_with_options(location, options).await?;
             Ok(())
@@ -200,7 +200,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         max_concurrent_requests: usize,
         max_chunk_bytes: usize,
     ) -> Result<(), PyErr> {
-        let options: HashMap<String, String> = options.extract()?; // cmk
+        let options: HashMap<String, String> = options.extract()?;
 
         let iid_index = iid_index.readonly();
         let sid_index = sid_index.readonly();
@@ -247,7 +247,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         max_concurrent_requests: usize,
         max_chunk_bytes: usize,
     ) -> Result<(), PyErr> {
-        let options: HashMap<String, String> = options.extract()?; // cmk
+        let options: HashMap<String, String> = options.extract()?;
 
         let iid_index = iid_index.readonly();
         let sid_index = sid_index.readonly();
@@ -294,7 +294,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         max_concurrent_requests: usize,
         max_chunk_bytes: usize,
     ) -> Result<(), PyErr> {
-        let options: HashMap<String, String> = options.extract()?; // cmk
+        let options: HashMap<String, String> = options.extract()?;
 
         let iid_index = iid_index.readonly();
         let sid_index = sid_index.readonly();

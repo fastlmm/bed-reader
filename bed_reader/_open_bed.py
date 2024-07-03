@@ -1832,8 +1832,6 @@ def _convert_to_dtype(str_arr, dtype):
         return str_arr
 
     try:
-        if str_arr[0].startswith("np."):
-            raise ValueError("invalid cmk for int: 'np.'")
         new_arr = str_arr.astype(dtype)
     except ValueError as e:
         if dtype == np.float32:
