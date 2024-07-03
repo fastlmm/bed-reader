@@ -66,6 +66,9 @@ jobs:
           
   linux:
     runs-on: ubuntu-latest
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"    
     strategy:
       matrix:
         target: [x86_64, aarch64]
@@ -86,14 +89,9 @@ jobs:
           echo "CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
           echo "/usr/bin/aarch64-linux-gnu-gcc" >> $GITHUB_ENV
 
-      - name: Install sccache
-        run: |
-          curl -L https://github.com/mozilla/sccache/releases/download/v0.2.15/sccache-v0.2.15-x86_64-unknown-linux-musl.tar.gz -o sccache.tar.gz
-          tar -xzf sccache.tar.gz
-          sudo mv sccache-v0.2.15-x86_64-unknown-linux-musl/sccache /usr/local/bin/sccache
-          echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
-          echo "SCCACHE_CC=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
-          
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.5
+        
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
