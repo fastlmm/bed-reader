@@ -87,7 +87,7 @@ jobs:
       - name: Build wheels for aarch64
         if: matrix.target == 'aarch64'
         env:
-          CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
+          CC: aarch64-linux-gnu-gcc
           CFLAGS: -march=armv8-a
         uses: PyO3/maturin-action@v1
         with:
