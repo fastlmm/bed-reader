@@ -87,14 +87,14 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc-aarch64-linux-gnu
-        env:
-          CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
-          CFLAGS: -march=armv8-a
           
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.5
         
       - name: Build wheels
+        env:
+          CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
+          CFLAGS: -march=armv8-a
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
