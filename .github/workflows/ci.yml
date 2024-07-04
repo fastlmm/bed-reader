@@ -88,10 +88,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gcc-aarch64-linux-gnu
           
-      - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.5
-        
-      - name: Build wheels
+      - name: Build wheels for aarch64
+        if: matrix.target == 'aarch64'
         env:
           CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
           CFLAGS: -march=armv8-a
@@ -99,8 +97,16 @@ jobs:
         with:
           target: ${{ matrix.target }}
           args: --release --out dist --find-interpreter
-          sccache: 'true'
           manylinux: auto
+
+      - name: Build wheels for x86_64
+        if: matrix.target == 'x86_64'
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          args: --release --out dist --find-interpreter
+          manylinux: auto
+
       - name: Upload wheels
         uses: actions/upload-artifact@v3
         with:
