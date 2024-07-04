@@ -92,7 +92,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist --find-interpreter
+          args: --release --out dist  --interpreter $(which python3.9) --interpreter $(which python3.10) --interpreter $(which python3.11) --interpreter $(which python3.12)  
           manylinux: auto
 
       - name: Build wheels for x86_64
@@ -100,7 +100,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist --find-interpreter
+          args: --release --out dist  --interpreter $(which python3.9) --interpreter $(which python3.10) --interpreter $(which python3.11) --interpreter $(which python3.12)  
           manylinux: auto
 
       - name: Upload wheels
