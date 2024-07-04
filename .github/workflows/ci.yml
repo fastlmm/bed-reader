@@ -57,7 +57,6 @@ jobs:
         with:
           target: ${{ matrix.target }}
           args: --release --out dist --find-interpreter
-          sccache: 'true'
       - name: Upload wheels
         uses: actions/upload-artifact@v3
         with:
@@ -66,9 +65,6 @@ jobs:
           
   linux:
     runs-on: ubuntu-latest
-    env:
-      SCCACHE_GHA_ENABLED: "true"
-      RUSTC_WRAPPER: "sccache"    
     strategy:
       matrix:
         target: [x86_64, aarch64]
@@ -133,7 +129,6 @@ jobs:
         with:
           target: ${{ matrix.target }}
           args: --release --out dist --find-interpreter
-          sccache: 'true'
       - name: Upload wheels
         uses: actions/upload-artifact@v3
         with:
