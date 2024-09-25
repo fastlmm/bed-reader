@@ -1227,7 +1227,8 @@ class open_bed:
                 else:
                     raise ValueError("real assert")
             else:
-                count = _rawincount(open(location, "rb"))
+                with open(location, "rb") as f:
+                    count = _rawincount(f)
                 self._counts[suffix] = count
         return count
 
