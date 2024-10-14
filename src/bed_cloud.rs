@@ -1025,7 +1025,7 @@ impl BedCloud {
     ///
     /// > Also see [`BedCloud::new`](struct.BedCloud.html#method.new), which does not support cloud options.
     /// > See [`BedCloud::builder`](struct.BedCloud.html#method.builder) and
-    /// [`BedCloud::builder_with_options`](struct.BedCloud.html#method.builder_with_options), which does support
+    /// > [`BedCloud::builder_with_options`](struct.BedCloud.html#method.builder_with_options), which does support
     /// > `BedCloud` options.
     /// > Alternatively, you can use [`BedCloud::builder_from_cloud_file`](struct.BedCloud.html#method.builder_from_cloud_file)
     /// > to specify the cloud file via an [`CloudFile`](struct.CloudFile.html). For reading local files,
@@ -1104,7 +1104,7 @@ impl BedCloud {
     ///
     /// > Also see [`BedCloud::new_with_options`](struct.BedCloud.html#method.new_with_options), which supports cloud options.
     /// > See [`BedCloud::builder`](struct.BedCloud.html#method.builder) and
-    /// [`BedCloud::builder_with_options`](struct.BedCloud.html#method.builder_with_options), which does support
+    /// > [`BedCloud::builder_with_options`](struct.BedCloud.html#method.builder_with_options), which does support
     /// > `BedCloud` options.
     /// > Alternatively, you can use [`BedCloud::builder_from_cloud_file`](struct.BedCloud.html#method.builder_from_cloud_file)
     /// > to specify the cloud file via an [`CloudFile`](struct.CloudFile.html). For reading local files,

@@ -4,6 +4,7 @@
 
 ```cmd
 pip install .[dev]
+ruff check .
 ```
 
 ## Note

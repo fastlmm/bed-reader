@@ -69,9 +69,11 @@ class create_bed:
 
     Raises an error if you write the wrong number of vectors or if any vector has the wrong length.
 
-    Also, all vector values must be 0, 1, 2, or missing. If floats, missing is ``np.nan``. If integers, missing is -127.
+    Also, all vector values must be 0, 1, 2, or missing. If floats, missing is ``np.nan``.
+    If integers, missing is -127.
 
-    Behind the scenes, `create_bed` first creates a temporary bed file. At the end, if there are no errors,
+    Behind the scenes, `create_bed` first creates a temporary bed file. At the end,
+    if there are no errors,
     it renames the temporary file to the final file name. This helps prevent creation
     of corrupted files.
 
@@ -118,7 +120,7 @@ class create_bed:
     .. doctest::
 
         >>> output_file2 = tmp_path() / "small2.bed"
-        >>> with create_bed(output_file2, iid_count=3, sid_count=4, major="individual") as bed_writer:
+        >>> with create_bed(output_file2, iid_count=3, sid_count=4, major="individual") as bed_writer: # noqa: E501
         ...     bed_writer.write([1, 0, -127, 0])
         ...     bed_writer.write([2, 0, -127, 2])
         ...     bed_writer.write([0, 1, 2, 0])
@@ -225,7 +227,8 @@ class create_bed:
                 self.file_pointer = None
                 if self.write_count != self.major_count:
                     raise ValueError(
-                        f"Attempt to write fewer vectors ({self.write_count}) than expected ({self.major_count})"
+                        f"Attempt to write fewer vectors ({self.write_count}) "
+                        f"than expected ({self.major_count})"
                     )
                 os.rename(self.temp_filepath, self.location)
             except Exception as e:
@@ -258,7 +261,8 @@ class create_bed:
             self.write_count += 1
             if self.write_count > self.major_count:
                 raise ValueError(
-                    f"Attempt to write more vectors ({self.write_count}) than expected ({self.major_count})"
+                    f"Attempt to write more vectors ({self.write_count}) "
+                    f"than expected ({self.major_count})"
                 )
 
             vector = _fix_up_vector(vector)
@@ -284,7 +288,8 @@ class create_bed:
                 encode1_f64(self.count_A1, vector, self.buffer, self.num_threads)
             else:
                 raise ValueError(
-                    f"dtype '{vector.dtype}' not known, only 'int8', 'float32', and 'float64' are allowed."
+                    f"dtype '{vector.dtype}' not known, only 'int8', 'float32', "
+                    f"and 'float64' are allowed."
                 )
             self.file_pointer.write(self.buffer)
         else:

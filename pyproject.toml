@@ -8,7 +8,6 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python",
 ]
 dependencies = ["numpy>=1.13.3"]
 
@@ -33,21 +32,21 @@ dev = [
 min_dev = ["numpy>=1.13.3", "pytest", "pytest-datadir"]
 
 [project.urls]
-Homepage = "https://fastlmm.github.io"
-"Source Code" = "https://github.com/fastlmm/bed-reader"
-"Bug Tracker" = "https://github.com/fastlmm/bed-reader/issues"
-Documentation = "http://fastlmm.github.io/bed-reader"
+homepage = "https://fastlmm.github.io"
+source = "https://github.com/fastlmm/bed-reader"
+bug-tracker = "https://github.com/fastlmm/bed-reader/issues"
+documentation = "http://fastlmm.github.io/bed-reader"
 
 [build-system]
 requires = ["maturin>=1.5,<2.0"]
 build-backend = "maturin"
 
-[tool.isort]
-profile = "black"
-multi_line_output = 3
-
-[tool.black]
-line-length = 88
-
 [tool.maturin]
 features = ["extension-module"]
+
+[tool.ruff]
+# cmk
+line-length = 120
+select = ["E", "F", "W"]
+# ignore = ["E501", "E741", "E203", "E743"]
+exclude = ["*.ipynb"]

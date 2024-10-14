@@ -995,7 +995,8 @@ def test_s3_example():
         val = bed.read(np.s_[:10, :10])
         assert val[0, 0] == 1.0
 
-    # See https://docs.rs/object_store/latest/object_store/ for hints on creating URLs for other cloud storage providers.
+    # See https://docs.rs/object_store/latest/object_store/ for hints on creating
+    # URLs for other cloud storage providers.
 
 
 def test_s3_article():

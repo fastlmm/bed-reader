@@ -181,8 +181,8 @@ class open_bed:
     Examples
     --------
 
-    Open a local file and list individual (sample) :attr:`iid` and SNP (variant) :attr:`sid`. Then, :meth:`read`
-    the whole file.
+    Open a local file and list individual (sample) :attr:`iid` and SNP (variant) :attr:`sid`.
+    Then, :meth:`read` the whole file.
 
     .. doctest::
 
@@ -1637,8 +1637,10 @@ class open_bed:
             or len(sid_index) > np.iinfo(np.int32).max
         ):
             raise ValueError(
-                "Too (many Individuals or SNPs (variants) requested. Maximum is {np.iinfo(np.int32).max}."
+                "Too many Individuals or SNPs (variants) requested. "
+                "Maximum is {np.iinfo(np.int32).max}."
             )
+
 
         if batch_size is None:
             batch_size = round(np.sqrt(len(sid_index)))
