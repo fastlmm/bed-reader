@@ -1,5 +1,11 @@
 # Useful
 
+## cmk update
+
+```cmd
+pip install .[dev]
+```
+
 ## Note
 
 To get some Rust PyO3 debugging to work I had to set this before starting vscode:
