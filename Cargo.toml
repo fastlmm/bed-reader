@@ -6,7 +6,7 @@ repository = "https://github.com/fastlmm/bed-reader"
 readme = "README-rust.md"
 documentation = "https://docs.rs/bed-reader/latest/bed_reader/"
 authors = ["FaST-LMM Team <fastlmm-dev@python.org>"]
-license = "Apache-2.0"  # toml-ignore
+license = "Apache-2.0" # toml-ignore
 keywords = ["bioinformatics", "plink", "genomics", "genotype", "snps"]
 categories = ["science"]
 edition = "2021"
@@ -28,8 +28,9 @@ crate-type = ["cdylib", "rlib"]
 # https://github.com/PyO3/pyo3/discussions/2271
 # https://pyo3.rs/latest/faq.html#i-cant-run-cargo-test-or-i-cant-build-in-a-cargo-workspace-im-having-linker-issues-like-symbol-not-found-or-undefined-reference-to-_pyexc_systemerror
 [features]
-extension-module = ["pyo3/extension-module", "tokio/full"]
-default = []
+default = ["tokio"]
+tokio = ["dep:tokio"]
+extension-module = ["pyo3/extension-module", "tokio"]
 
 [dependencies]
 thiserror = "1.0.61"
@@ -40,15 +41,15 @@ numpy = "0.21.0"
 ndarray = { version = "0.15.6", features = ["approx", "rayon"] }
 statrs = "0.17.1"
 byteorder = { version = "1.4.3", default-features = false }
-dpc-pariter = "0.4.0" # //  pariter = "0.5.1"
+dpc-pariter = "0.4.0"                                                           # //  pariter = "0.5.1"
 derive_builder = "0.20.0"
 anyinput = { version = "0.1.6", features = ["ndarray"] }
 fetch-data = "0.1.6"
-futures-util = { version = "0.3.29"}
-bytecount = { version = "0.6.7"}
-itertools = { version = "0.13.0"}
-bytes = { version = "1.5.0"}
-cloud-file = { version = "0.1.0"}
+futures-util = { version = "0.3.29" }
+bytecount = { version = "0.6.7" }
+itertools = { version = "0.13.0" }
+bytes = { version = "1.5.0" }
+cloud-file = { version = "0.1.0" }
 pyo3 = { version = "0.21.0", features = ["extension-module"], optional = true }
 tokio = { version = "1.38.0", features = ["full"], optional = true }
 

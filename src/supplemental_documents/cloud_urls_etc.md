@@ -40,7 +40,7 @@ let missing_count = val.iter().filter(|x| x.is_nan()).count();
 let missing_fraction = missing_count as f32 / val.len() as f32;
 println!("{missing_fraction:.2}"); // Outputs 0.17
 assert_eq!(missing_count, 2);
-# Ok::<(), Box<dyn std::error::Error>>(()) }).unwrap()};  // '#' needed for doctest
+# Ok::<(), Box<dyn std::error::Error>>(()) }).unwrap();  // '#' needed for doctest
 # #[cfg(feature = "tokio")] use {tokio::runtime::Runtime, bed_reader::BedErrorPlus}; // '#' needed for doctest
 ```
 
@@ -64,7 +64,7 @@ use std::collections::BTreeSet;
 
 # use {bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
 # Runtime::new().unwrap().block_on(async {
-let mut bed_cloud = BedCloud::builder(
+let mut bed_cloud = BedCloud::builder_with_options(
     "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/toydata.5chrom.bed",
     [("timeout", "100s")],
 )?.skip_early_check().build().await?;
@@ -91,13 +91,12 @@ What is the mean value of the SNP (variant) at index position 100,000?
 
 ```rust
 use ndarray as nd;
-use bed_reader::{BedCloud, ReadOptions};
+use bed_reader::{BedCloud, ReadOptions, EMPTY_OPTIONS};
 
 # use {bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
 # Runtime::new().unwrap().block_on(async {
 let mut bed_cloud = BedCloud::builder(
-        "https://www.ebi.ac.uk/biostudies/files/S-BSST936/genotypes/synthetic_v1_chr-10.bed",
-        EMPTY_OPTIONS)?
+        "https://www.ebi.ac.uk/biostudies/files/S-BSST936/genotypes/synthetic_v1_chr-10.bed")?
     .skip_early_check()
     .iid_count(1_008_000)
     .sid_count(361_561)
@@ -139,7 +138,7 @@ println!("{url:?}"); // For example, "file:///C:/Users/carlk/AppData/Local/bed_r
 let mut bed_cloud = BedCloud::new(url).await?;
 let val = ReadOptions::builder().sid_index(2).f64().read_cloud(&mut bed_cloud).await?;
 assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
-# Ok::<(), Box<dyn std::error::Error>>(()) }).unwrap()};  // '#' needed for doctest
+# Ok::<(), Box<dyn std::error::Error>>(()) }).unwrap();  // '#' needed for doctest
 # #[cfg(feature = "tokio")] use {tokio::runtime::Runtime, bed_reader::BedErrorPlus}; // '#' needed for doctest
 ```
 
@@ -190,6 +189,6 @@ let options = [
 let mut bed_cloud = BedCloud::new_with_options(url, options).await?;
 let val = bed_cloud.read::<i8>().await?;
 assert_eq!(val.shape(), &[500, 10_000]);
-# Ok::<(), Box<dyn std::error::Error>>(()) }).unwrap()};
-# #[cfg(feature = "tokio")] use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
+# Ok::<(), Box<dyn std::error::Error>>(()) }).unwrap();
+# #[cfg(feature = "tokio")] use tokio::runtime::Runtime;
 ```

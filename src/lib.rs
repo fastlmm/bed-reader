@@ -7377,12 +7377,12 @@ where
 /// ```
 pub const EMPTY_OPTIONS: [(&str, String); 0] = [];
 
-#[cfg(feature = "tokio/full")]
+#[cfg(feature = "tokio")]
 pub mod supplemental_document_options {
     #![doc = include_str!("supplemental_documents/options_etc.md")]
 }
 
-#[cfg(feature = "tokio/full")]
+#[cfg(feature = "tokio")]
 pub mod supplemental_document_cloud_urls {
     #![doc = include_str!("supplemental_documents/cloud_urls_etc.md")]
 }

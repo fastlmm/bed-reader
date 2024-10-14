@@ -24,10 +24,9 @@ dev = [
     "sphinx>=6.2.1",
     "sphinx-autoapi>=3.0.0",
     "maturin>=1.5.0",
-    "isort>=5.11.0",
-    "black==23.3.0",
     "pandas>=0.25.1",
     "recommonmark>=0.7.1",
+    "ruff>=0.1.0",
 ]
 min_dev = ["numpy>=1.13.3", "pytest", "pytest-datadir"]
 

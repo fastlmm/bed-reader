@@ -1449,7 +1449,7 @@ impl BedCloud {
     /// # #[cfg(feature = "tokio")] Runtime::new().unwrap().block_on(async {
     /// let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     /// let cloud_file = CloudFile::new(url)?;
-    /// let mut bed_cloud = BedCloud::builder_from_cloud_file(&cloud_file)?.build().await?;
+    /// let mut bed_cloud = BedCloud::builder_from_cloud_file(&cloud_file).build().await?;
     /// println!("{:?}", bed_cloud.iid().await?); // Outputs ndarray ["iid1", "iid2", "iid3"]
     /// println!("{:?}", bed_cloud.sid().await?); // Outputs ndarray ["snp1", "snp2", "snp3", "snp4"]
     /// let val = bed_cloud.read::<f64>().await?;
