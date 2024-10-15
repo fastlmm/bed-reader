@@ -171,9 +171,9 @@ jobs:
         uvx ruff@0.6.9 check .
         uvx ruff@latest check . || echo "Ignoring warnings from the latest version of ruff"
         uv sync --extra min_dev
-        source .venv/bin/activate
-        ls .venv -R
+        ls ../.venv -R
+        source ../.venv/bin/activate
         pytest tests/test_opt_dep.py
         uv sync --extra dev --extra sparse --extra samples
-        source .venv/bin/activate
+        source ../.venv/bin/activate
         pytest .
