@@ -168,7 +168,7 @@ jobs:
     - name: Setup, Lint, and Test Python
       run: |
         cd bed_reader
-        ls -las
+        ls -R
         uvx ruff@0.6.9 check .
         uvx ruff@latest check . || echo "Ignoring warnings from the latest version of ruff"
         uv sync --extra min_dev
