@@ -169,7 +169,7 @@ jobs:
       run: |
         cd bed_reader
         uvx ruff@0.6.9 check .
-        uvx ruff@latest check . || echo "Ignoring warnings from the latest version of ruff
+        uvx ruff@latest check . || echo "Ignoring warnings from the latest version of ruff"
         uv sync --extra min_dev
         source .venv/Scripts/activate
         pytest bed_reader/tests/test_opt_dep.py
