@@ -44,8 +44,9 @@ build-backend = "maturin"
 features = ["extension-module"]
 
 [tool.ruff]
-# cmk
 line-length = 120
+exclude = ["*.ipynb"]
+
+[tool.ruff.lint]
 select = ["E", "F", "W"]
 # ignore = ["E501", "E741", "E203", "E743"]
-exclude = ["*.ipynb"]

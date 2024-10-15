@@ -370,7 +370,7 @@ async fn open_examples_cloud() -> Result<(), Box<BedErrorPlus>> {
     //     >>> print(bed_cloud.sid) # same as before
     //     ['sid1' 'sid2' 'sid3' 'sid4']
 
-    let mut bed_cloud = BedCloud::builder(&url)?
+    let mut bed_cloud = BedCloud::builder(url)?
         .iid(["sample1", "sample2", "sample3"])
         .build()
         .await?;
@@ -382,21 +382,21 @@ async fn open_examples_cloud() -> Result<(), Box<BedErrorPlus>> {
 
     // Do more testing of Rust
     let iid = nd::array!["sample1", "sample2", "sample3"];
-    let mut _bed_cloud = BedCloud::builder(&url)?.iid(iid).build().await?;
+    let mut _bed_cloud = BedCloud::builder(url)?.iid(iid).build().await?;
     let iid = nd::array![
         "sample1".to_string(),
         "sample2".to_string(),
         "sample3".to_string()
     ];
-    let mut _bed_cloud = BedCloud::builder(&url)?.iid(iid).build().await?;
+    let mut _bed_cloud = BedCloud::builder(url)?.iid(iid).build().await?;
     let iid = vec!["sample1", "sample2", "sample3"];
-    let mut _bed_cloud = BedCloud::builder(&url)?.iid(iid).build().await?;
+    let mut _bed_cloud = BedCloud::builder(url)?.iid(iid).build().await?;
     let iid = vec![
         "sample1".to_string(),
         "sample2".to_string(),
         "sample3".to_string(),
     ];
-    let mut _bed_cloud = BedCloud::builder(&url)?.iid(iid).build().await?;
+    let mut _bed_cloud = BedCloud::builder(url)?.iid(iid).build().await?;
 
     // Give the number of individuals (samples) and SNPs (variants) so that the .fam and
     // .bim files need never be opened.
@@ -407,7 +407,7 @@ async fn open_examples_cloud() -> Result<(), Box<BedErrorPlus>> {
     //      [ 2.  0. nan  2.]
     //      [ 0.  1.  2.  0.]]
 
-    let mut bed_cloud = BedCloud::builder(&url)?
+    let mut bed_cloud = BedCloud::builder(url)?
         .iid_count(3)
         .sid_count(4)
         .skip_early_check()
@@ -429,7 +429,7 @@ async fn open_examples_cloud() -> Result<(), Box<BedErrorPlus>> {
     //     >>> print(bed_cloud.allele_2)   # not read and not offered
     //     None
 
-    let mut bed_cloud = BedCloud::builder(&url)?.skip_allele_2().build().await?;
+    let mut bed_cloud = BedCloud::builder(url)?.skip_allele_2().build().await?;
     println!("{:?}", bed_cloud.iid().await?);
 
     let result = bed_cloud.allele_2().await;
@@ -481,7 +481,7 @@ async fn hello_father_cloud() -> Result<(), Box<BedErrorPlus>> {
     // Initialize BedCloud with the sample file and custom father metadata
     let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
 
-    let mut bed_cloud = BedCloud::builder(&url)?
+    let mut bed_cloud = BedCloud::builder(url)?
         .father(["f1", "f2", "f3"])
         .skip_mother()
         .build()
@@ -698,7 +698,7 @@ async fn nd_slice_cloud() -> Result<(), Box<BedErrorPlus>> {
 async fn skip_coverage_cloud() -> Result<(), Box<BedErrorPlus>> {
     let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
 
-    let mut bed_cloud = BedCloud::builder(&url)?
+    let mut bed_cloud = BedCloud::builder(url)?
         .skip_fid()
         .skip_iid()
         .skip_father()
@@ -727,7 +727,7 @@ async fn skip_coverage_cloud() -> Result<(), Box<BedErrorPlus>> {
 async fn into_iter_cloud() -> Result<(), Box<BedErrorPlus>> {
     let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
 
-    let mut bed_cloud = BedCloud::builder(&url)?
+    let mut bed_cloud = BedCloud::builder(url)?
         .fid(["sample1", "sample2", "sample3"])
         .iid(["sample1", "sample2", "sample3"])
         .father(["sample1", "sample2", "sample3"])
@@ -1112,7 +1112,7 @@ async fn read_options_builder_cloud() -> Result<(), Box<BedErrorPlus>> {
 async fn bed_builder_cloud() -> Result<(), Box<BedErrorPlus>> {
     let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
 
-    let mut bed_cloud = BedCloud::builder(&url)?.build().await?;
+    let mut bed_cloud = BedCloud::builder(url)?.build().await?;
     println!("{:?}", bed_cloud.iid().await?);
     println!("{:?}", bed_cloud.sid().await?);
     let val = bed_cloud.read::<f64>().await?;
@@ -1126,7 +1126,7 @@ async fn bed_builder_cloud() -> Result<(), Box<BedErrorPlus>> {
         ],
     );
 
-    let mut bed_cloud = BedCloud::builder(&url)?.build().await?;
+    let mut bed_cloud = BedCloud::builder(url)?.build().await?;
     let val = ReadOptions::builder()
         .sid_index(2)
         .f64()
@@ -1135,14 +1135,14 @@ async fn bed_builder_cloud() -> Result<(), Box<BedErrorPlus>> {
 
     assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
 
-    let mut bed_cloud = BedCloud::builder(&url)?
+    let mut bed_cloud = BedCloud::builder(url)?
         .iid(["sample1", "sample2", "sample3"])
         .build()
         .await?;
     println!("{:?}", bed_cloud.iid().await?); // replaced
     println!("{:?}", bed_cloud.sid().await?); // same as before
 
-    let mut bed_cloud = BedCloud::builder(&url)?
+    let mut bed_cloud = BedCloud::builder(url)?
         .iid_count(3)
         .sid_count(4)
         .build()
@@ -1157,7 +1157,7 @@ async fn bed_builder_cloud() -> Result<(), Box<BedErrorPlus>> {
         ],
     );
 
-    let mut bed_cloud = BedCloud::builder(&url)?
+    let mut bed_cloud = BedCloud::builder(url)?
         .skip_father()
         .skip_mother()
         .skip_sex()
@@ -1600,7 +1600,7 @@ async fn cloud_set_metadata() -> Result<(), Box<BedErrorPlus>> {
         .iid(["iid1", "iid2", "iid3"])
         .sid(["sid1", "sid2", "sid3", "sid4"])
         .build()?;
-    let mut bed_cloud = BedCloud::builder(&url)?.metadata(&metadata).build().await?;
+    let mut bed_cloud = BedCloud::builder(url)?.metadata(&metadata).build().await?;
     let metadata2 = bed_cloud.metadata().await?;
     println!("{metadata2:?}");
 
@@ -1608,7 +1608,7 @@ async fn cloud_set_metadata() -> Result<(), Box<BedErrorPlus>> {
     let metadata = bed_cloud.metadata().await?;
     println!("{metadata:?}");
 
-    let mut bed_cloud = BedCloud::builder(&url)?.metadata(&metadata).build().await?;
+    let mut bed_cloud = BedCloud::builder(url)?.metadata(&metadata).build().await?;
     let metadata2 = bed_cloud.metadata().await?;
     println!("{metadata2:?}");
 
@@ -1774,7 +1774,7 @@ async fn cloud_bed_builder_metadata() -> Result<(), Box<BedErrorPlus>> {
         .iid(["i1", "i2", "i3"])
         .sid(["s1", "s2", "s3", "s4"])
         .build()?;
-    let result = BedCloud::builder(&url)?
+    let result = BedCloud::builder(url)?
         .fid(["f1", "f2", "f3", "f4"])
         .metadata(&metadata)
         .build()
@@ -1788,7 +1788,7 @@ async fn cloud_bed_builder_metadata() -> Result<(), Box<BedErrorPlus>> {
         .iid(["i1", "i2", "i3"])
         .sid(["s1", "s2", "s3", "s4"])
         .build()?;
-    let mut bed_cloud = BedCloud::builder(&url)?
+    let mut bed_cloud = BedCloud::builder(url)?
         .fid(["f1", "f2", "f3"])
         .iid(["x1", "x2", "x3"])
         .metadata(&metadata)
@@ -1799,7 +1799,7 @@ async fn cloud_bed_builder_metadata() -> Result<(), Box<BedErrorPlus>> {
     println!("{0:?}", bed_cloud.sid().await?); // Outputs ndarray ["s1", "s2", "s3", "s4"]
     println!("{0:?}", bed_cloud.chromosome().await?); // Outputs ndarray ["1", "1", "5", "Y"]
 
-    let mut bed_cloud = BedCloud::builder(&url)?
+    let mut bed_cloud = BedCloud::builder(url)?
         .skip_fid()
         .fid(["f1", "f2", "f3"])
         .iid(["x1", "x2", "x3"])
@@ -1860,7 +1860,7 @@ async fn cloud_bed_inconsistent_count() -> Result<(), Box<BedErrorPlus>> {
     // Bed: fid vs metadata
     let metadata = Metadata::builder().iid(["f1", "f2", "f3", "f4"]).build()?;
     let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
-    let result = BedCloud::builder(&url)?
+    let result = BedCloud::builder(url)?
         .fid(["f1", "f2", "f3"])
         .metadata(&metadata)
         .build()
@@ -1890,7 +1890,7 @@ async fn cloud_bed_inconsistent_count() -> Result<(), Box<BedErrorPlus>> {
     );
 
     // Bed: fid vs iid
-    let result = BedCloud::builder(&url)?
+    let result = BedCloud::builder(url)?
         .fid(["f1", "f2", "f3"])
         .iid(["i1", "i2", "i3", "i4"])
         .build()
@@ -1901,7 +1901,7 @@ async fn cloud_bed_inconsistent_count() -> Result<(), Box<BedErrorPlus>> {
     );
 
     // Bed: iid vs file
-    let mut bed_cloud = BedCloud::builder(&url)?
+    let mut bed_cloud = BedCloud::builder(url)?
         .iid(["i1", "i2", "i3", "i4"])
         .build()
         .await?;
@@ -2050,7 +2050,7 @@ async fn dyn_cloud() -> Result<(), Box<BedErrorPlus>> {
     let iid_count = 3;
     let sid_count = 4;
 
-    let mut bed_cloud = BedCloud::builder(&url)?
+    let mut bed_cloud = BedCloud::builder(url)?
         .iid_count(iid_count)
         .sid_count(sid_count)
         .build()

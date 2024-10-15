@@ -717,7 +717,7 @@ impl BedCloudBuilder {
     /// # use ndarray as nd;
     /// # use bed_reader::{BedCloud, ReadOptions, assert_eq_nan};
     /// # let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
-    /// let mut bed_cloud = BedCloud::builder(&url)?.skip_early_check().build().await?;
+    /// let mut bed_cloud = BedCloud::builder(url)?.skip_early_check().build().await?;
     /// let val = bed_cloud.read::<f64>().await?;
     ///
     /// assert_eq_nan(

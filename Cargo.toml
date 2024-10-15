@@ -37,7 +37,7 @@ thiserror = "1.0.61"
 num-traits = "0.2.19"
 ndarray-npy = { version = "0.8.1", default-features = false }
 rayon = "1.7.0"
-numpy = "0.21.0"
+numpy = "0.22.0"
 ndarray = { version = "0.15.6", features = ["approx", "rayon"] }
 statrs = "0.17.1"
 byteorder = { version = "1.4.3", default-features = false }
@@ -50,7 +50,7 @@ bytecount = { version = "0.6.7" }
 itertools = { version = "0.13.0" }
 bytes = { version = "1.5.0" }
 cloud-file = { version = "0.1.0" }
-pyo3 = { version = "0.21.0", features = ["extension-module"], optional = true }
+pyo3 = { version = "0.22.4", features = ["extension-module"], optional = true }
 tokio = { version = "1.38.0", features = ["full"], optional = true }
 
 [dev-dependencies]

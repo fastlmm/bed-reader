@@ -3,7 +3,8 @@
 ## cmk update
 
 ```cmd
-pip install .[dev]
+uv sync --extra samples --extra sparse --extra dev
+pytest .
 ruff check .
 ```
 

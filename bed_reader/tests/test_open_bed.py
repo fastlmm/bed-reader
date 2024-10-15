@@ -878,7 +878,7 @@ def test_coverage2(shared_datadir, tmp_path):
     with pytest.raises(ValueError):
         to_bed(tmp_path / "ignore", val)
 
-
+@pytest.mark.filterwarnings("ignore:invalid value encountered in cast:RuntimeWarning")
 def test_coverage3(shared_datadir, tmp_path):
     with open_bed(
         shared_datadir / "small.bed", properties={"sex": [1.0, np.nan, 1.0, 2.0]}
