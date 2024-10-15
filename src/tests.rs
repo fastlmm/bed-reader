@@ -26,6 +26,7 @@ use crate::{internal_read_no_alloc, read_no_alloc, BedError, BedErrorPlus};
 use anyinput::anyinput;
 use nd::s;
 use ndarray as nd;
+use ndarray::Order;
 use ndarray::ShapeBuilder;
 use ndarray_npy::read_npy;
 use num_traits::abs;
@@ -598,7 +599,9 @@ fn zeros() -> Result<(), Box<BedErrorPlus>> {
     // Test subset on zero length indexes
 
     let shape = (ref_val_float.dim().0, ref_val_float.dim().1, 1usize);
-    let in_val = ref_val_float.into_shape(shape).unwrap();
+    let in_val = ref_val_float
+        .into_shape_with_order((shape, Order::ColumnMajor))
+        .unwrap();
 
     let mut out_val = nd::Array3::<f64>::zeros((iid_count, 0, 1));
     matrix_subset_no_alloc(

@@ -1,13 +1,5 @@
 # Useful
 
-## cmk update
-
-```cmd
-uv sync --extra samples --extra sparse --extra dev
-pytest .
-ruff check .
-```
-
 ## Note
 
 To get some Rust PyO3 debugging to work I had to set this before starting vscode:
@@ -18,10 +10,29 @@ set PYO3_PYTHON=C:/Users/carlk/OneDrive/programs/bed-reader/.venv\Scripts\python
 
 ## Python
 
+### test
+
+```bash
+uvx ruff check .
+uv sync --extra min_dev
+pytest bed_reader/tests/test_opt_dep.py
+uv sync --extra samples --extra sparse --extra dev
+pytest .
+
+pytest --doctest-modules bed_reader\_open_bed.py
+pytest --doctest-modules README.md
+pytest bed_reader/tests/test_open_bed_cloud.py::test_http_two -s
+pytest bed_reader/tests/test_open_bed_cloud.py::test_http_cloud_urls_rst_1 -s
+pytest --doctest-modules doc/source/index.rst
+
+pytest --collect-only   # check test discovery
+```
+
 ### Benchmarking
 
 ```cmd
-maturin develop --release
+uv sync --extra samples --extra sparse --extra dev
+uv pip install matplotlib
 cd C:\Users\carlk\OneDrive\programs\bed-reader\bed_reader\tests\benchmark
 python benchmark.py
 ```
@@ -31,22 +42,7 @@ Look in `M:\deldir\bench` for results.
 ### install packages, compile Rust for Python
 
 ```bash
-pip install -r requirements.txt
-pip install -r requirements-dev.txt
-maturin develop
-```
-
-### test
-
-```bash
-pytest bed_reader
-pytest --doctest-modules bed_reader\_open_bed.py
-pytest --doctest-modules README.md
-pytest bed_reader/tests/test_open_bed_cloud.py::test_http_two -s
-pytest bed_reader/tests/test_open_bed_cloud.py::test_http_cloud_urls_rst_1 -s
-pytest --doctest-modules doc/index.rst
-
-pytest --collect-only   # check test discovery
+uv sync --extra samples --extra sparse --extra dev
 ```
 
 ### generate doc

@@ -17,7 +17,7 @@ def find_version(filepath):
     import re
 
     version_file = read(filepath)
-    version_match = re.search(r"^version = ['\"]([^'\"]*)['\"]", version_file, re.M)
+    version_match = re.search(r"^version = ['\"]([^'\"]*)['\"]", version_file, re.MULTILINE)
     if version_match:
         return version_match.group(1)
     raise RuntimeError("Unable to find version string.")
@@ -51,7 +51,7 @@ autosectionlabel_prefix_document = True
 source_suffix = ".rst"
 
 master_doc = "index"
-man_pages = [(master_doc, project, "{} documentation".format(project), [author], 1)]
+man_pages = [(master_doc, project, f"{project} documentation", [author], 1)]
 language = "en"
 
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "conf.py"]
@@ -61,11 +61,11 @@ pygments_style = "default"
 html_theme = "sphinx_rtd_theme"
 html_theme_options = {
     "logo_only": False,
-    "display_version": True,
+    # "display_version": True,
     "style_external_links": True,
     "collapse_navigation": False,
 }
-htmlhelp_basename = "{}doc".format(project)
+htmlhelp_basename = f"{project}doc"
 
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),

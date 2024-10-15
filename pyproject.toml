@@ -3,11 +3,10 @@ name = "bed-reader"
 readme = "README.md"
 classifiers = [
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 dependencies = ["numpy>=1.13.3"]
 
@@ -45,11 +44,15 @@ features = ["extension-module"]
 
 [tool.ruff]
 line-length = 120
-exclude = ["*.ipynb"]
+exclude = [
+    "*.ipynb",
+    "doc/source/conf.py",
+    "bed_reader/tests/benchmark/benchmark.py",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "W"]
-# ignore = ["E501", "E741", "E203", "E743"]
+
 
 [tool.pytest.ini_options]
 addopts = "--doctest-modules --doctest-glob=*.rst --doctest-glob=*.md"

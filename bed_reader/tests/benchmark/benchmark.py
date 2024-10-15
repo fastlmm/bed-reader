@@ -97,44 +97,32 @@ def meta_test(
     # 50K vs 50K
     # 500K vs 5K
     if sid_end is None:
-        if iid_count <= 50_000:
-            sid_end = 50_000
-        else:
-            sid_end = 5_000
+        sid_end = 50000 if iid_count <= 50000 else 5000
 
     result = []
-    for sid_count in np.logspace(
-        np.log10(sid_start), np.log10(sid_end), point_count, base=10, dtype=int
-    ):
+    for sid_count in np.logspace(np.log10(sid_start), np.log10(sid_end), point_count, base=10, dtype=int):
         for drive in drive_list:
             for num_threads in [1, 12]:
                 for stream in [True, False]:
-                    result.append(
-                        test_writes(
-                            iid_count, sid_count, num_threads, stream, drive, False
-                        )
-                    )
+                    result.append(test_writes(iid_count, sid_count, num_threads, stream, drive, False))
     df = pd.concat(result)
-    df.to_csv(
-        ssd_path / "plots" / f"bench{plot_index},iid_count{iid_count}.csv", index=False
-    )
+    df.to_csv(ssd_path / "plots" / f"bench{plot_index},iid_count{iid_count}.csv", index=False)
     df2 = df.pivot(
         index="sid_count",
         columns=["iid_count", "drive", "num_threads", "stream"],
         values="val per second",
     )
     df2.plot(marker=".", logx=True)
-    plt.savefig(
-        ssd_path
-        / "plots"
-        / f"plot{plot_index},iid_count{iid_count},{'_'.join(drive_list)}.png"
-    )
+    plt.savefig(ssd_path / "plots" / f"plot{plot_index},iid_count{iid_count},{'_'.join(drive_list)}.png")
     # plt.show()
     return df
 
 
 if __name__ == "__main__":
+    import matplotlib
     import matplotlib.pyplot as plt
+
+    matplotlib.use("Agg")
 
     plot_count = 0
     for drive in ["ssd"]:  # , "hdd"
