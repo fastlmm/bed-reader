@@ -155,7 +155,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.13] #cmk, "3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.13"] #cmk, "3.10", "3.11", "3.12", "3.13"]
         os: [ubuntu-latest] #cmk, windows-latest, macos-13, macos-14]
     runs-on: ${{ matrix.os }}
     steps:
