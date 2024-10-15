@@ -155,7 +155,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.9] #cmk, "3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.13] #cmk, "3.10", "3.11", "3.12", "3.13"]
         os: [ubuntu-latest] #cmk, windows-latest, macos-13, macos-14]
     runs-on: ${{ matrix.os }}
     steps:
@@ -168,6 +168,7 @@ jobs:
     - name: Setup, Lint, and Test Python
       run: |
         cd bed_reader
+        ls -las
         uvx ruff@0.6.9 check .
         uvx ruff@latest check . || echo "Ignoring warnings from the latest version of ruff"
         uv sync --extra min_dev
