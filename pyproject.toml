@@ -50,3 +50,7 @@ exclude = ["*.ipynb"]
 [tool.ruff.lint]
 select = ["E", "F", "W"]
 # ignore = ["E501", "E741", "E203", "E743"]
+
+[tool.pytest.ini_options]
+addopts = "--doctest-modules --doctest-glob=*.rst --doctest-glob=*.md"
+doctest_optionflags = "ELLIPSIS"

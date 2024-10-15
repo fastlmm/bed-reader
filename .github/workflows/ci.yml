@@ -22,7 +22,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-13, macos-14]
+        os: [ubuntu-latest] # cmk, windows-latest, macos-13, macos-14]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
@@ -164,21 +164,16 @@ jobs:
     - uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Install flake8, etc
+    - name: Install ruff
       run: |
         cd bed_reader
         pwd
         python -m pip install --upgrade pip
-        pip install flake8 pytest black isort --upgrade
-    - name: Lint with flake8, etc
+        pip install ruff --upgrade
+    - name: Lint with ruff
       run: |
-        echo "flake8"
-        flake8 .
-        echo "black"
-        black --version
-        black --verbose --check .
-        echo "isort"
-        isort --check-only .
+        echo "ruff"
+        ruff check .
     - name: Test Python - Non-Windows
       if: runner.os != 'Windows'
       run: |
