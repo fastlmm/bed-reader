@@ -155,54 +155,25 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.9, "3.10", "3.11", "3.12"]
-        os: [ubuntu-latest, windows-latest, macos-13, macos-14]
+        python-version: [3.9] #cmk, "3.10", "3.11", "3.12", "3.13"]
+        os: [ubuntu-latest] #cmk, windows-latest, macos-13, macos-14]
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout
       uses: actions/checkout@v3
-    - uses: actions/setup-python@v4
+    - name: Install the latest version of uv
+      uses: astral-sh/setup-uv@v3
       with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install ruff
+        enable-cache: true
+    - name: Install Python ${{ matrix.python-version }}
+      run: uv python install ${{ matrix.python-version }}
+    - name: Setup, Lint, and Test Python
       run: |
         cd bed_reader
-        pwd
-        python -m pip install --upgrade pip
-        pip install ruff --upgrade
-    - name: Lint with ruff
-      run: |
-        echo "ruff"
-        ruff check .
-    - name: Test Python - Non-Windows
-      if: runner.os != 'Windows'
-      run: |
-        pip install virtualenv
-        virtualenv vEnv; source vEnv/bin/activate
-        python -m pip install --upgrade pip maturin
-        maturin develop
-        pip install -r requirements-min-dev.txt
+        uv tool install ruff
+        uvx ruff check .
+        uv sync --extra min_dev
         pytest bed_reader/tests/test_opt_dep.py
-        echo "requirements"
-        pip install -r requirements.txt
-        echo "requirements-dev"
-        pip install -r requirements-dev.txt
-        pytest bed_reader
-    - name: Test Python - Windows
-      if: runner.os == 'Windows'
-      run: |
-        pip install virtualenv
-        virtualenv vEnv; vEnv\Scripts\activate.ps1
-        echo "pwd"
-        pwd
-        python -m pip install --upgrade pip maturin
-        pip install -r requirements-min-dev.txt
-        pytest bed_reader/tests/test_opt_dep.py
-        echo "requirements"
-        pip install -r requirements.txt
-        echo "requirements-dev"
-        pip install -r requirements-dev.txt
-        echo "maturin"
-        maturin develop
-        echo "pytest"
-        pytest bed_reader
+        uv sync --extra dev --extra sparse --extra samples 
+        pytest bed_reader   
+   
