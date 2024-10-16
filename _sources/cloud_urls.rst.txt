@@ -1,0 +1,219 @@
+Cloud URL Examples
+====================
+
+*Table of Contents*:
+
+- `Http <#http-section>`_
+- `local file <#local-file-section>`_
+- `AWS S3 <#aws-section>`_
+
+.. note::
+
+   The `bed-reader` package also supports Azure and GCP, but we don't have examples.
+
+To specify a file in the cloud, you must specify URL string plus optional cloud options.
+
+The exact details depend on the cloud service. We'll look at `http`, at `local files`, and at `AWS S3`.
+
+.. _http-section:
+
+Http
+----
+
+You can read \*.bed files from web sites directly. For small files, access will be fast. For medium-sized files,
+you may need to extend the default `timeout`.
+
+Reading from large files can also be practical and even fast under these conditions:
+
+- You need only some of the information
+- (Optional, but helpful) You can provide some metadata about individuals (samples) and SNPs (variants) locally.
+
+Let's first look at reading a small or medium-sized dataset.
+
+*Example:*
+
+Read an entire file and find the fraction of missing values.
+
+.. code-block:: python
+
+    >>> import numpy as np
+    >>> from bed_reader import open_bed
+    >>> with open_bed("https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed") as bed:
+    ...     val = bed.read()
+    ...     missing_count = np.isnan(val).sum()
+    ...     missing_fraction = missing_count / val.size
+    ...     missing_fraction  # doctest: +ELLIPSIS
+    np.float64(0.16666666666666666)
+
+When reading a medium-sized file, you may need to set a `timeout` in your cloud options. With a `timeout`,
+you can give your code more than the default 30 seconds to read metadata from the \*.fam and \*.bim files
+(or genomic data from \*.bed).
+
+.. note::
+    
+    See `ClientConfigKey <https://docs.rs/object_store/latest/object_store/enum.ClientConfigKey.html>`_
+    for a list of cloud options, such as `timeout`, that you can always use.
+
+You may also wish to use `.skip_format_check=True` to avoid a fast,
+early check of the \*.bed file's header.
+
+Here we print the first five iids (individual or sample ids) and first five sids (SNP or variant ids).
+We then, print all unique chromosome values. Finally, we read all data from chromosome 5 and print its dimensions.
+
+.. code-block:: python
+
+    >>> import numpy as np
+    >>> from bed_reader import open_bed
+    >>> with open_bed(
+    ...     "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/toydata.5chrom.bed",
+    ...     cloud_options={"timeout": "100s"},
+    ...     skip_format_check=True,
+    ...     ) as bed:
+    ...     bed.iid[:5]
+    ...     bed.sid[:5]
+    ...     np.unique(bed.chromosome)
+    ...     val = bed.read(index=np.s_[:, bed.chromosome == "5"])
+    ...     val.shape
+    array(['per0', 'per1', 'per2', 'per3', 'per4'], dtype='<U11')
+    array(['null_0', 'null_1', 'null_2', 'null_3', 'null_4'], dtype='<U9')
+    array(['1', '2', '3', '4', '5'], dtype='<U9')
+    (500, 440)
+
+Now, let's read from a large file containing data from over 1 million individuals (samples) and over 300,000 SNPs (variants). The file size is 91 GB. In this example, we read data for just one SNP (variant). If we know the number of individuals (samples) and SNPs (variants) exactly, we can read this SNP quickly and with just one file access.
+
+What is the mean value of the SNP (variant) at index position 100,000?
+
+.. code-block:: python
+
+    >>> import numpy as np
+    >>> from bed_reader import open_bed
+    >>> with open_bed(
+    ...     "https://www.ebi.ac.uk/biostudies/files/S-BSST936/genotypes/synthetic_v1_chr-10.bed",
+    ...     cloud_options={"timeout": "100s"},
+    ...     skip_format_check=True,
+    ...     iid_count=1_008_000,
+    ...     sid_count=361_561,
+    ...     ) as bed:
+    ...     val = bed.read(index=np.s_[:, 100_000], dtype=np.float32)
+    ...     np.mean(val) # doctest: +ELLIPSIS
+    np.float32(0.03391369)
+
+You can also download the \*.fam and \*.bim metadata files and then read from them locally while continuing to read the \*.bed file from the cloud.
+This gives you almost instant access to the metadata and the \*.bed file. Here is an example:
+
+.. code-block:: python
+
+    >>> from bed_reader import open_bed, sample_file
+    >>> import numpy as np
+    >>> # For this example, assume 'synthetic_v1_chr-10.fam' and 'synthetic_v1_chr-10.bim' are already downloaded
+    >>> # and 'local_fam_file' and 'local_bim_file' variables are set to their local file paths.
+    >>> local_fam_file = sample_file("synthetic_v1_chr-10.fam")
+    >>> local_bim_file = sample_file("synthetic_v1_chr-10.bim")
+    >>> with open_bed(
+    ...     "https://www.ebi.ac.uk/biostudies/files/S-BSST936/genotypes/synthetic_v1_chr-10.bed",
+    ...     fam_filepath=local_fam_file,
+    ...     bim_filepath=local_bim_file,
+    ...     skip_format_check=True,
+    ... ) as bed:
+    ...     print(f"iid_count={bed.iid_count:_}, sid_count={bed.sid_count:_}")
+    ...     print(f"iid={bed.iid[:5]}...")
+    ...     print(f"sid={bed.sid[:5]}...")
+    ...     print(f"unique chromosomes = {np.unique(bed.chromosome)}")
+    ...     val = bed.read(index=np.s_[:10, :: bed.sid_count // 10])
+    ...     print(f"val={val}")
+    iid_count=1_008_000, sid_count=361_561
+    iid=['syn1' 'syn2' 'syn3' 'syn4' 'syn5']...
+    sid=['chr10:10430:C:A' 'chr10:10483:A:C' 'chr10:10501:G:T' 'chr10:10553:C:A'
+     'chr10:10645:G:A']...
+    unique chromosomes = ['10']
+    val=[[0. 1. 0. 2. 0. 1. 0. 0. 0. 0. 0.]
+     [0. 0. 0. 0. 0. 0. 1. 1. 0. 0. 0.]
+     [0. 0. 2. 2. 0. 1. 0. 2. 0. 0. 0.]
+     [0. 1. 1. 1. 0. 0. 0. 0. 0. 0. 0.]
+     [0. 0. 1. 2. 0. 1. 0. 1. 0. 0. 0.]
+     [0. 0. 0. 0. 0. 1. 0. 1. 0. 0. 0.]
+     [0. 0. 0. 1. 0. 0. 0. 0. 0. 0. 0.]
+     [0. 0. 0. 2. 0. 0. 0. 1. 0. 0. 0.]
+     [0. 0. 0. 1. 0. 1. 0. 0. 0. 0. 0.]
+     [0. 0. 0. 2. 0. 1. 0. 1. 0. 0. 0.]]
+
+
+
+.. _local-file-section:
+
+Local File
+----------
+
+We can specify a local file as if it is in the cloud. This is a great way to test cloud functions. For real work and better efficiency, however,
+use the file's path rather than its URL.
+
+Local File URL
+++++++++++++++
+
+The URL for a local file takes the form `file:///{encoded_file_name}`. No cloud options are needed.
+
+*Example:*
+
+.. code-block:: python
+
+    >>> import numpy as np
+    >>> from bed_reader import open_bed, sample_file
+    >>> from urllib.parse import urljoin
+    >>> from pathlib import Path
+    >>> file_name = str(sample_file("small.bed"))
+    >>> print(f"file name: {file_name}")   # doctest: +ELLIPSIS
+    file name: ...small.bed
+    >>> url = urljoin("file:", Path(file_name).as_uri())
+    >>> print(f"url: {url}") # doctest: +ELLIPSIS
+    url: file:///.../small.bed
+    >>> with open_bed(url) as bed:
+    ...     val = bed.read(index=np.s_[:, 2], dtype=np.float64)
+    ...     print(val)
+    [[nan]
+     [nan]
+     [ 2.]]
+
+.. _aws-section:
+
+AWS S3
+------
+
+Let's look next at reading a file (or part of a file) from AWS S3.
+
+The URL for an AWS S3 file takes the form `s3://{bucket_name}/{s3_path}`.
+
+AWS forbids putting some needed information in the URL. Instead, that information must go into a string-to-string
+dictionary of cloud options. Specifically, we'll put `"aws_region"`, `"aws_access_key_id"`, and `"aws_secret_access_key"` in
+the cloud options.
+For security, we pull the last two option values from a file rather than hard-coding them into the program.
+
+See `ClientConfigKey <https://docs.rs/object_store/latest/object_store/enum.ClientConfigKey.html>`_ for a list of cloud options, such as ``timeout``, that you can always use.
+See `AmazonS3ConfigKey <https://docs.rs/object_store/latest/object_store/aws/enum.AmazonS3ConfigKey.html>`_ for a list of AWS-specific options.
+See `AzureConfigKey <https://docs.rs/object_store/latest/object_store/azure/enum.AzureConfigKey.html>`_ for a list of Azure-specific options.
+See `GoogleConfigKey <https://docs.rs/object_store/latest/object_store/gcp/enum.GoogleConfigKey.html>`_ for a list of Google-specific options.
+
+*Example:*
+
+.. note::
+
+   I can run this, but others can't because of the authentication checks.
+
+.. code-block:: python
+
+    import os
+    import configparser
+    from bed_reader import open_bed
+
+    config = configparser.ConfigParser()
+    _ = config.read(os.path.expanduser("~/.aws/credentials"))
+
+    cloud_options = {
+        "aws_region": "us-west-2",
+        "aws_access_key_id": config["default"].get("aws_access_key_id"),
+        "aws_secret_access_key": config["default"].get("aws_secret_access_key"),
+    }
+
+    with open_bed("s3://bedreader/v1/toydata.5chrom.bed", cloud_options=cloud_options) as bed:
+        val = bed.read(dtype="int8")
+        print(val.shape)
+    # Expected output: (500, 10000)
