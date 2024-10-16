@@ -33,7 +33,9 @@ jobs:
           toolchain: 1.81
           override: true
       - name: Run Clippy (strict for this pinned version of Rust)
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: |
+          rustup component add clippy
+          cargo clippy --all-targets --all-features -- -D warnings
       - name: Test Rust no-default-features
         run: cargo test --verbose --no-default-features
       - name: Test Rust default features
