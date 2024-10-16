@@ -32,10 +32,19 @@ jobs:
         with:
           toolchain: 1.81
           override: true
+      - name: Install Clippy (pinned version for this pinned version of Rust)
+        run: rustup component add clippy
       - name: Run Clippy (strict for this pinned version of Rust)
-        run: |
-          rustup component add clippy
-          cargo clippy --all-targets --all-features -- -D warnings
+        run: cargo clippy --all-targets --all-features -- -D warnings
+      - name: Set up Rust (Latest Stable for Tests)
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - name: Install Clippy (Latest)
+        run: rustup component add clippy
+      - name: Run Clippy (lenient for latest version)
+        run: cargo clippy --all-targets --all-features -- -A warnings || echo "Clippy warnings from the latest version"
       - name: Test Rust no-default-features
         run: cargo test --verbose --no-default-features
       - name: Test Rust default features
