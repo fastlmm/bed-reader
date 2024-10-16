@@ -1,0 +1,29 @@
+name: Build and Deploy Documentation
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # This allows manual triggering of the workflo
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v3
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v3
+      - name: Install Python
+        run: uv python install
+      - name: Setup, Lint, and Test Python
+        run: |
+          uv sync --extra dev --extra sparse --extra samples
+          source .venv/bin/activate
+      - name: Build the Sphinx documentation
+        working-directory: ./doc
+        run: make html
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: doc/build/html
