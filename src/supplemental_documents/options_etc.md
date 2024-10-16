@@ -1,6 +1,6 @@
 # Options, Options, Options
 
-Within this crate, the term "options" can refer to three levels of options: [Cloud](#cloud-options), [Bed/BedCloud](#bedbedcloud-options), and [ReadOptions](#readoptions).
+Within this crate, the term "options" can refer to three levels of options: [Cloud](#cloud-options), [Bed/BedCloud](#bedbedcloud-options), and [`ReadOptions`](#readoptions).
 
 ## Cloud options
 
@@ -96,7 +96,7 @@ println!("{:?}", bed.iid()?); // Outputs ndarray ["sample1", "sample2", "sample3
 # Ok::<(), Box<BedErrorPlus>>(())
 ```
 
-## ReadOptions
+## `ReadOptions`
 
 When reading read genotype data, use [`ReadOptions::builder`](../struct.ReadOptions.html#method.builder) to specify:
 

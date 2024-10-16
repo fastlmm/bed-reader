@@ -72,11 +72,15 @@ pip uninstall bed-reader
 # test with install tests, look at README and web pages
 twine upload bed_reader-1*
 
-
-
-
-
 ## Rust
+
+### New Clippy Rules
+```bash
+rustup update
+cargo --version
+# Update ci.yml to this new version
+cargo clippy --all-targets --all-features -- -D warnings
+```
 
 ```bash
 cargo doc --no-deps --open

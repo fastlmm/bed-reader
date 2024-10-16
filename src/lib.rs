@@ -3338,16 +3338,8 @@ fn compute_num_threads(option_num_threads: Option<usize>) -> Result<usize, Box<B
 fn compute_max_concurrent_requests(
     option_max_concurrent_requests: Option<usize>,
 ) -> Result<usize, Box<BedErrorPlus>> {
-    let max_concurrent_requests =
-        if let Some(max_concurrent_requests) = option_max_concurrent_requests {
-            max_concurrent_requests
-        // } else if let Ok(num_threads) = env::var("BED_READER_NUM_THREADS") {
-        //     num_threads.parse::<usize>()?
-        // } else if let Ok(num_threads) = env::var("NUM_THREADS") {
-        //     num_threads.parse::<usize>()?
-        } else {
-            10
-        };
+    // In the future, we might want to set this with an environment variable.
+    let max_concurrent_requests = option_max_concurrent_requests.unwrap_or(10);
     Ok(max_concurrent_requests)
 }
 
@@ -3355,15 +3347,8 @@ fn compute_max_concurrent_requests(
 fn compute_max_chunk_bytes(
     option_max_chunk_bytes: Option<usize>,
 ) -> Result<usize, Box<BedErrorPlus>> {
-    let max_chunk_bytes = if let Some(max_chunk_bytes) = option_max_chunk_bytes {
-        max_chunk_bytes
-    // } else if let Ok(num_threads) = env::var("BED_READER_NUM_THREADS") {
-    //     num_threads.parse::<usize>()?
-    // } else if let Ok(num_threads) = env::var("NUM_THREADS") {
-    //     num_threads.parse::<usize>()?
-    } else {
-        8_000_000
-    };
+    // In the future, we might want to set this with an environment variable.
+    let max_chunk_bytes = option_max_chunk_bytes.unwrap_or(8_000_000);
     Ok(max_chunk_bytes)
 }
 
