@@ -2,8 +2,6 @@ name: Build and Deploy Documentation
 
 on:
   push:
-    branches:
-      - main
   workflow_dispatch:  # This allows manual triggering of the workflo
 jobs:
   build-and-deploy:
