@@ -185,16 +185,6 @@ jobs:
         uvx ruff@0.6.9 check .
         uvx ruff@latest check . || echo "Ignoring warnings from the latest version of ruff"
         uv sync --extra min_dev
-        if [ "$RUNNER_OS" = "Windows" ]; then
-          .\\..\\.venv\\Scripts\\activate
-        else
-          source ../.venv/bin/activate
-        fi
-        pytest tests/test_opt_dep.py
+        python -m pytest tests/test_opt_dep.py
         uv sync --extra dev --extra sparse --extra samples
-        if [ "$RUNNER_OS" = "Windows" ]; then
-          .\\..\\.venv\\Scripts\\activate
-        else
-          source ../.venv/bin/activate
-        fi
-        pytest .
+        python -m pytest .
