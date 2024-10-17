@@ -163,7 +163,7 @@ jobs:
           name: wheels
           path: dist
 
-  test:
+  test_python:
     name: Test Python
     strategy:
       fail-fast: false
@@ -174,17 +174,36 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v3
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
     - name: Install the latest version of uv
       uses: astral-sh/setup-uv@v3
     - name: Install Python ${{ matrix.python-version }}
       run: uv python install ${{ matrix.python-version }}
-    - name: Setup, Lint, and Test Python
-      shell: bash
+    - name: Setup, Lint, and Test Python (Linux/macOS)
+      if: runner.os != 'Windows'
       run: |
         cd bed_reader
         uvx ruff@0.6.9 check .
         uvx ruff@latest check . || echo "Ignoring warnings from the latest version of ruff"
         uv sync --extra min_dev
-        python -m pytest tests/test_opt_dep.py
+        source ../.venv/bin/activate
+        pytest tests/test_opt_dep.py
         uv sync --extra dev --extra sparse --extra samples
-        python -m pytest .
+        source ../.venv/bin/activate
+        pytest .
+    - name: Setup, Lint, and Test Python (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        cd bed_reader
+        uvx ruff@0.6.9 check .
+        uvx ruff@latest check . || echo "Ignoring warnings from the latest version of ruff"
+        uv sync --extra min_dev
+        ../.venv/Scripts/activate
+        pytest tests/test_opt_dep.py
+        uv sync --extra dev --extra sparse --extra samples
+        ../.venv/Scripts/activate
+        pytest .
