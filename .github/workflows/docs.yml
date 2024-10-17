@@ -3,7 +3,7 @@ name: Build and Deploy Documentation
 on:
   push:
     branches:
-      - oct24 # cmk
+      - master
   workflow_dispatch:  # This allows manual triggering of the workflow
 
 jobs:

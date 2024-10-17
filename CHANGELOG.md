@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.06] - 2024-10-17
+
+- Add support for Python 3.13. Fix minor reported bug.
+
 ## [1.05] - 2024-7-1
 
 - Add support for Python's Numpy 2

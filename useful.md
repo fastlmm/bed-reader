@@ -98,3 +98,29 @@ cargo publish --dry-run
 ## CMD
 
 set PROMPT=$P$G
+
+## Publish
+
+* Create new branch.
+* Change version in Cargo.toml.
+
+```bash
+cargo install cargo-audit
+cargo install cargo-semver-checks
+cargo audit
+cargo update
+# set PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 
+cargo semver-checks check-release
+cargo test
+cargo publish --dry-run
+```
+
+* Commit changes and check CI tests.
+* Merge into main and commit (check CI tests again)
+
+```bash
+cargo publish
+# tag version
+git tag -a v0.2.0 -m "v0.2.0"
+git push origin v0.2.0
+```

@@ -49,7 +49,7 @@ futures-util = { version = "0.3.31" }
 bytecount = { version = "0.6.8" }
 itertools = { version = "0.13.0" }
 bytes = { version = "1.7.2" }
-cloud-file = { version = "0.1.2" }
+cloud-file = { version = "0.2.0" }
 pyo3 = { version = "0.22.5", features = ["extension-module"], optional = true }
 tokio = { version = "1.40.0", features = ["full"], optional = true }
 
