@@ -179,13 +179,14 @@ jobs:
     - name: Install Python ${{ matrix.python-version }}
       run: uv python install ${{ matrix.python-version }}
     - name: Setup, Lint, and Test Python
+      shell: bash
       run: |
         cd bed_reader
         uvx ruff@0.6.9 check .
         uvx ruff@latest check . || echo "Ignoring warnings from the latest version of ruff"
         uv sync --extra min_dev
-        source ../.venv/bin/activate
+        [ "$RUNNER_OS" = "Windows" ] && call .\\..\\.venv\\Scripts\\activate || source ../.venv/bin/activate
         pytest tests/test_opt_dep.py
         uv sync --extra dev --extra sparse --extra samples
-        source ../.venv/bin/activate
+        [ "$RUNNER_OS" = "Windows" ] && call .\\..\\.venv\\Scripts\\activate || source ../.venv/bin/activate
         pytest .
