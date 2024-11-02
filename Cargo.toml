@@ -1,5 +1,5 @@
 [package]
-version = "1.0.6-alpha.2"
+version = "1.0.6"
 name = "bed-reader"
 description = "Read and write the PLINK BED format, simply and efficiently."
 repository = "https://github.com/fastlmm/bed-reader"
@@ -43,7 +43,7 @@ statrs = "0.17.1"
 byteorder = { version = "1.5.0", default-features = false }
 dpc-pariter = "0.4.0"                                                           # //  pariter = "0.5.1"
 derive_builder = "0.20.2"
-anyinput = { version = "0.1.7", features = ["ndarray"] }
+anyinput = { version = "0.1.8", features = ["ndarray"] }
 fetch-data = "0.2.0"
 futures-util = { version = "0.3.31" }
 bytecount = { version = "0.6.8" }
