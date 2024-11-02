@@ -1,9 +1,9 @@
-import pytest
+import pytest  # noqa: D100
 
 from bed_reader import open_bed, sample_file
 
 
-def test_optional_dependencies(shared_datadir) -> None:
+def test_optional_dependencies(shared_datadir) -> None:  # noqa: ANN001, D103
     try:
         from scipy import sparse
     except ImportError:

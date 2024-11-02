@@ -200,4 +200,4 @@ jobs:
         else
           source .venv/Scripts/activate
         fi
-        pytest bed_runner
+        pytest .
