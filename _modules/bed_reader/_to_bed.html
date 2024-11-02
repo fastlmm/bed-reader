@@ -5,14 +5,14 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>bed_reader._to_bed &mdash; Bed Reader 1.0.6-alpha.1 documentation</title>
+  <title>bed_reader._to_bed &mdash; Bed Reader 1.0.6 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
 
   
       <script src="../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../../_static/documentation_options.js?v=62a033f1"></script>
+      <script src="../../_static/documentation_options.js?v=e2a723ec"></script>
       <script src="../../_static/doctools.js?v=9bcbadda"></script>
       <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/js/theme.js"></script>
@@ -76,10 +76,11 @@
            <div itemprop="articleBody">
              
   <h1>Source code for bed_reader._to_bed</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span> <span class="nn">logging</span>
+<span></span><span class="kn">import</span> <span class="nn">contextlib</span>
+<span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
 
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 
@@ -98,8 +99,7 @@
 <div class="viewcode-block" id="create_bed">
 <a class="viewcode-back" href="../../index.html#bed_reader.create_bed">[docs]</a>
 <span class="k">class</span> <span class="nc">create_bed</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Open a file to write values into PLINK .bed format.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Open a file to write values into PLINK .bed format.</span>
 
 <span class="sd">    Values may be given in a SNP-by-SNP (or individual-by-individual) manner.</span>
 <span class="sd">    For large datasets, `create_bed` requires less memory than :func:`to_bed`.</span>
@@ -160,7 +160,6 @@
 
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
-
 <span class="sd">    In this example, all properties are given and we write</span>
 <span class="sd">    the data out SNP-by-SNP. The data is floats.</span>
 
@@ -219,12 +218,12 @@
         <span class="n">sid_count</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
         <span class="n">properties</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{},</span>
         <span class="n">count_A1</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-        <span class="n">fam_location</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">bim_location</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">fam_location</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">bim_location</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">major</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;SNP&quot;</span><span class="p">,</span>
         <span class="n">force_python_only</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">num_threads</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-    <span class="p">):</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">location</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">location</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">iid_count</span> <span class="o">=</span> <span class="n">iid_count</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">sid_count</span> <span class="o">=</span> <span class="n">sid_count</span>
@@ -239,7 +238,8 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">major_count</span> <span class="o">=</span> <span class="n">iid_count</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">minor_count</span> <span class="o">=</span> <span class="n">sid_count</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;major must be &#39;SNP&#39; or &#39;individual&#39;, not &#39;</span><span class="si">{</span><span class="n">major</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;major must be &#39;SNP&#39; or &#39;individual&#39;, not &#39;</span><span class="si">{</span><span class="n">major</span><span class="si">}</span><span class="s2">&#39;&quot;</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">major</span> <span class="o">=</span> <span class="n">major</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">minor_count_div4</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">minor_count</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">//</span> <span class="mi">4</span> <span class="o">+</span> <span class="mi">1</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">buffer</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">minor_count_div4</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
@@ -295,9 +295,8 @@
 
 <div class="viewcode-block" id="create_bed.close">
 <a class="viewcode-back" href="../../index.html#bed_reader.create_bed.close">[docs]</a>
-    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Close the bed_writer, writing the file to disk. If you use</span>
+    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Close the bed_writer, writing the file to disk. If you use</span>
 <span class="sd">        :class:`create_bed` with the `with` statement,</span>
 <span class="sd">        you don&#39;t need to use this.</span>
 
@@ -308,63 +307,69 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">file_pointer</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">file_pointer</span> <span class="o">=</span> <span class="kc">None</span>
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_count</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">major_count</span><span class="p">:</span>
-                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
                         <span class="sa">f</span><span class="s2">&quot;Attempt to write fewer vectors (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">write_count</span><span class="si">}</span><span class="s2">) &quot;</span>
                         <span class="sa">f</span><span class="s2">&quot;than expected (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">major_count</span><span class="si">}</span><span class="s2">)&quot;</span>
                     <span class="p">)</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                        <span class="n">msg</span><span class="p">,</span>
+                    <span class="p">)</span>
                 <span class="n">os</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">temp_filepath</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="p">)</span>
-            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_clean_up_error</span><span class="p">()</span>
-                <span class="k">raise</span> <span class="n">e</span>
+                <span class="k">raise</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_clean_up_error</span><span class="p">()</span></div>
 
 
-    <span class="k">def</span> <span class="nf">_clean_up_error</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">try</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">_clean_up_error</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">contextlib</span><span class="o">.</span><span class="n">suppress</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
             <span class="n">os</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">temp_filepath</span><span class="p">)</span>
-        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
-            <span class="k">pass</span>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">_replace_extension</span><span class="p">(</span><span class="n">location</span><span class="p">,</span> <span class="n">extension</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">open_bed</span><span class="o">.</span><span class="n">_is_url</span><span class="p">(</span><span class="n">location</span><span class="p">):</span>
             <span class="k">return</span> <span class="n">location</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="p">(</span><span class="n">location</span><span class="o">.</span><span class="n">stem</span> <span class="o">+</span> <span class="s2">&quot;.&quot;</span> <span class="o">+</span> <span class="n">extension</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
 
 <div class="viewcode-block" id="create_bed.write">
 <a class="viewcode-back" href="../../index.html#bed_reader.create_bed.write">[docs]</a>
-    <span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vector</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Write a vector of values to the bed_writer.</span>
+    <span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vector</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Write a vector of values to the bed_writer.</span>
 
 <span class="sd">        See :class:`create_bed` for more information.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">file_pointer</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Attempt to write after file was closed for writing.&quot;</span><span class="p">)</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Attempt to write after file was closed for writing.&quot;</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
 
         <span class="k">try</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">write_count</span> <span class="o">+=</span> <span class="mi">1</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_count</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">major_count</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
                     <span class="sa">f</span><span class="s2">&quot;Attempt to write more vectors (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">write_count</span><span class="si">}</span><span class="s2">) &quot;</span>
                     <span class="sa">f</span><span class="s2">&quot;than expected (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">major_count</span><span class="si">}</span><span class="s2">)&quot;</span>
+                <span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="n">msg</span><span class="p">,</span>
                 <span class="p">)</span>
 
             <span class="n">vector</span> <span class="o">=</span> <span class="n">_fix_up_vector</span><span class="p">(</span><span class="n">vector</span><span class="p">)</span>
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">vector</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">minor_count</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Expected vector to </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">minor_count</span><span class="si">}</span><span class="s2"> values, got </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">vector</span><span class="p">)</span><span class="si">}</span><span class="s2"> instead&quot;</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;Expected vector to </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">minor_count</span><span class="si">}</span><span class="s2"> values, got </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">vector</span><span class="p">)</span><span class="si">}</span><span class="s2"> instead&quot;</span>
+                    <span class="n">msg</span><span class="p">,</span>
                 <span class="p">)</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">_internal_write</span><span class="p">(</span><span class="n">vector</span><span class="p">)</span>
 
-        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">file_pointer</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">file_pointer</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Prevent further writes</span>
-            <span class="k">raise</span> <span class="n">e</span>  <span class="c1"># Re-raise the exception to handle it externally</span></div>
+            <span class="k">raise</span>  <span class="c1"># Re-raise the exception to handle it externally</span></div>
 
 
-    <span class="k">def</span> <span class="nf">_internal_write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vector</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_internal_write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vector</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">force_python_only</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">vector</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">:</span>
                 <span class="n">encode1_i8</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">count_A1</span><span class="p">,</span> <span class="n">vector</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">buffer</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_threads</span><span class="p">)</span>
@@ -373,9 +378,12 @@
             <span class="k">elif</span> <span class="n">vector</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">:</span>
                 <span class="n">encode1_f64</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">count_A1</span><span class="p">,</span> <span class="n">vector</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">buffer</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_threads</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
                     <span class="sa">f</span><span class="s2">&quot;dtype &#39;</span><span class="si">{</span><span class="n">vector</span><span class="o">.</span><span class="n">dtype</span><span class="si">}</span><span class="s2">&#39; not known, only &#39;int8&#39;, &#39;float32&#39;, &quot;</span>
                     <span class="sa">f</span><span class="s2">&quot;and &#39;float64&#39; are allowed.&quot;</span>
+                <span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="n">msg</span><span class="p">,</span>
                 <span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">file_pointer</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">buffer</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
@@ -391,13 +399,13 @@
                     <span class="k">elif</span> <span class="n">val_for_byte</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
                         <span class="n">code</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">two_code</span>
                     <span class="k">elif</span> <span class="p">(</span><span class="n">vector</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">int8</span> <span class="ow">and</span> <span class="n">val_for_byte</span> <span class="o">==</span> <span class="o">-</span><span class="mi">127</span><span class="p">)</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span>
-                        <span class="n">val_for_byte</span>
+                        <span class="n">val_for_byte</span><span class="p">,</span>
                     <span class="p">):</span>
                         <span class="n">code</span> <span class="o">=</span> <span class="mb">0b01</span>  <span class="c1"># backwards on purpose</span>
                     <span class="k">else</span><span class="p">:</span>
                         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                             <span class="s2">&quot;Attempt to write illegal value to .bed file. &quot;</span>
-                            <span class="o">+</span> <span class="s2">&quot;Only 0,1,2,missing allowed.&quot;</span>
+                            <span class="o">+</span> <span class="s2">&quot;Only 0,1,2,missing allowed.&quot;</span><span class="p">,</span>
                         <span class="p">)</span>
                     <span class="n">byte</span> <span class="o">|=</span> <span class="n">code</span> <span class="o">&lt;&lt;</span> <span class="p">(</span><span class="n">val_index</span> <span class="o">*</span> <span class="mi">2</span><span class="p">)</span>
                 <span class="c1"># This is writing one byte at a time</span>
@@ -411,14 +419,15 @@
 
     <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="nb">input</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">integer</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">input</span><span class="o">.</span><span class="n">dtype</span> <span class="o">!=</span> <span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">_fix_up_vector</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">))</span>
-    <span class="k">elif</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="nb">input</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">input</span><span class="o">.</span><span class="n">dtype</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="nb">input</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">input</span><span class="o">.</span><span class="n">dtype</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span>
         <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
         <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span>
     <span class="p">):</span>
         <span class="k">return</span> <span class="n">_fix_up_vector</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">))</span>
 
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">input</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;vector should be one dimensional&quot;</span><span class="p">)</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;vector should be one dimensional&quot;</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="nb">input</span>
 
@@ -430,14 +439,13 @@
     <span class="n">val</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">properties</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{},</span>
     <span class="n">count_A1</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-    <span class="n">fam_filepath</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">bim_filepath</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">fam_filepath</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">bim_filepath</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">major</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;SNP&quot;</span><span class="p">,</span>
     <span class="n">force_python_only</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="n">num_threads</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-<span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Write values to a file in PLINK .bed format.</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Write values to a file in PLINK .bed format.</span>
 
 <span class="sd">    If your data is too large to fit in memory, use :class:`create_bed` instead.</span>
 
@@ -487,7 +495,6 @@
 
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
-
 <span class="sd">    In this example, all properties are given.</span>
 
 <span class="sd">    .. doctest::</span>
@@ -544,10 +551,11 @@
         <span class="n">major_count</span> <span class="o">=</span> <span class="n">iid_count</span>
         <span class="n">minor_count</span> <span class="o">=</span> <span class="n">sid_count</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;major must be &#39;SNP&#39; or &#39;individual&#39;, not &#39;</span><span class="si">{</span><span class="n">major</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;major must be &#39;SNP&#39; or &#39;individual&#39;, not &#39;</span><span class="si">{</span><span class="n">major</span><span class="si">}</span><span class="s2">&#39;&quot;</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
 
     <span class="n">properties</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">open_bed</span><span class="o">.</span><span class="n">_fix_up_properties</span><span class="p">(</span>
-        <span class="n">properties</span><span class="p">,</span> <span class="n">iid_count</span><span class="o">=</span><span class="n">iid_count</span><span class="p">,</span> <span class="n">sid_count</span><span class="o">=</span><span class="n">sid_count</span><span class="p">,</span> <span class="n">use_fill_sequence</span><span class="o">=</span><span class="kc">True</span>
+        <span class="n">properties</span><span class="p">,</span> <span class="n">iid_count</span><span class="o">=</span><span class="n">iid_count</span><span class="p">,</span> <span class="n">sid_count</span><span class="o">=</span><span class="n">sid_count</span><span class="p">,</span> <span class="n">use_fill_sequence</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
     <span class="p">)</span>
 
     <span class="n">open_bed</span><span class="o">.</span><span class="n">_write_fam_or_bim</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="n">properties</span><span class="p">,</span> <span class="s2">&quot;fam&quot;</span><span class="p">,</span> <span class="n">fam_filepath</span><span class="p">)</span>
@@ -555,7 +563,8 @@
 
     <span class="k">if</span> <span class="ow">not</span> <span class="n">force_python_only</span><span class="p">:</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">val</span><span class="o">.</span><span class="n">flags</span><span class="p">[</span><span class="s2">&quot;C_CONTIGUOUS&quot;</span><span class="p">]</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">val</span><span class="o">.</span><span class="n">flags</span><span class="p">[</span><span class="s2">&quot;F_CONTIGUOUS&quot;</span><span class="p">]:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;val must be contiguous.&quot;</span><span class="p">)</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;val must be contiguous.&quot;</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
 
         <span class="n">num_threads</span> <span class="o">=</span> <span class="n">get_num_threads</span><span class="p">(</span><span class="n">num_threads</span><span class="p">)</span>
 
@@ -587,7 +596,7 @@
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                     <span class="sa">f</span><span class="s2">&quot;dtype &#39;</span><span class="si">{</span><span class="n">val</span><span class="o">.</span><span class="n">dtype</span><span class="si">}</span><span class="s2">&#39; not known, only &quot;</span>
-                    <span class="o">+</span> <span class="s2">&quot;&#39;int8&#39;, &#39;float32&#39;, and &#39;float64&#39; are allowed.&quot;</span>
+                    <span class="o">+</span> <span class="s2">&quot;&#39;int8&#39;, &#39;float32&#39;, and &#39;float64&#39; are allowed.&quot;</span><span class="p">,</span>
                 <span class="p">)</span>
 
             <span class="k">if</span> <span class="n">major</span> <span class="o">==</span> <span class="s2">&quot;individual&quot;</span><span class="p">:</span>
@@ -597,10 +606,8 @@
                     <span class="n">bed_filepointer</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">bytes</span><span class="p">(</span><span class="nb">bytearray</span><span class="p">([</span><span class="mb">0b00000000</span><span class="p">])))</span>
 
         <span class="k">except</span> <span class="ne">SystemError</span> <span class="k">as</span> <span class="n">system_error</span><span class="p">:</span>
-            <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">contextlib</span><span class="o">.</span><span class="n">suppress</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
                 <span class="n">os</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
-            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
-                <span class="k">pass</span>
             <span class="k">raise</span> <span class="n">system_error</span><span class="o">.</span><span class="n">__cause__</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">count_A1</span><span class="p">:</span>
@@ -620,13 +627,13 @@
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">assert</span> <span class="n">major</span> <span class="o">==</span> <span class="s2">&quot;individual&quot;</span>
                 <span class="n">bed_filepointer</span><span class="o">.</span><span class="n">write</span><span class="p">(</span>
-                    <span class="nb">bytes</span><span class="p">(</span><span class="nb">bytearray</span><span class="p">([</span><span class="mb">0b00000000</span><span class="p">]))</span>
+                    <span class="nb">bytes</span><span class="p">(</span><span class="nb">bytearray</span><span class="p">([</span><span class="mb">0b00000000</span><span class="p">])),</span>
                 <span class="p">)</span>  <span class="c1"># individual major</span>
 
             <span class="k">for</span> <span class="n">major_index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">major_count</span><span class="p">):</span>
                 <span class="k">if</span> <span class="n">major_index</span> <span class="o">%</span> <span class="mi">1</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
                     <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;Writing </span><span class="si">{</span><span class="n">major</span><span class="si">}</span><span class="s2"> # </span><span class="si">{</span><span class="n">major_index</span><span class="si">}</span><span class="s2"> to file &#39;</span><span class="si">{</span><span class="n">filepath</span><span class="si">}</span><span class="s2">&#39;&quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;Writing </span><span class="si">{</span><span class="n">major</span><span class="si">}</span><span class="s2"> # </span><span class="si">{</span><span class="n">major_index</span><span class="si">}</span><span class="s2"> to file &#39;</span><span class="si">{</span><span class="n">filepath</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">,</span>
                     <span class="p">)</span>
 
                 <span class="k">if</span> <span class="n">major</span> <span class="o">==</span> <span class="s2">&quot;SNP&quot;</span><span class="p">:</span>
@@ -653,7 +660,7 @@
                         <span class="k">else</span><span class="p">:</span>
                             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                                 <span class="s2">&quot;Attempt to write illegal value to .bed file. &quot;</span>
-                                <span class="o">+</span> <span class="s2">&quot;Only 0,1,2,missing allowed.&quot;</span>
+                                <span class="o">+</span> <span class="s2">&quot;Only 0,1,2,missing allowed.&quot;</span><span class="p">,</span>
                             <span class="p">)</span>
                         <span class="n">byte</span> <span class="o">|=</span> <span class="n">code</span> <span class="o">&lt;&lt;</span> <span class="p">(</span><span class="n">val_index</span> <span class="o">*</span> <span class="mi">2</span><span class="p">)</span>
                     <span class="n">bed_filepointer</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="nb">bytes</span><span class="p">(</span><span class="nb">bytearray</span><span class="p">([</span><span class="n">byte</span><span class="p">])))</span>
@@ -667,14 +674,15 @@
 
     <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="nb">input</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">integer</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">input</span><span class="o">.</span><span class="n">dtype</span> <span class="o">!=</span> <span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">_fix_up_val</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">))</span>
-    <span class="k">elif</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="nb">input</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">input</span><span class="o">.</span><span class="n">dtype</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="nb">input</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">input</span><span class="o">.</span><span class="n">dtype</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span>
         <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
         <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span>
     <span class="p">):</span>
         <span class="k">return</span> <span class="n">_fix_up_val</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">))</span>
 
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">input</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;val should be two dimensional&quot;</span><span class="p">)</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;val should be two dimensional&quot;</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="nb">input</span>
 

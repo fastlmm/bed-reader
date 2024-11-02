@@ -5,14 +5,14 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>bed_reader._open_bed &mdash; Bed Reader 1.0.6-alpha.1 documentation</title>
+  <title>bed_reader._open_bed &mdash; Bed Reader 1.0.6 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
 
   
       <script src="../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../../_static/documentation_options.js?v=62a033f1"></script>
+      <script src="../../_static/documentation_options.js?v=e2a723ec"></script>
       <script src="../../_static/doctools.js?v=9bcbadda"></script>
       <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/js/theme.js"></script>
@@ -84,18 +84,21 @@
 <span class="kn">from</span> <span class="nn">io</span> <span class="kn">import</span> <span class="n">BytesIO</span>
 <span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">repeat</span><span class="p">,</span> <span class="n">takewhile</span>
 <span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
 <span class="kn">from</span> <span class="nn">urllib.parse</span> <span class="kn">import</span> <span class="n">ParseResult</span> <span class="k">as</span> <span class="n">UrlParseResult</span>
 <span class="kn">from</span> <span class="nn">urllib.parse</span> <span class="kn">import</span> <span class="n">urlparse</span>
 
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 
-<span class="k">try</span><span class="p">:</span>
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">sparse</span>
-<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
-    <span class="n">sparse</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">sparse</span>
+    <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+        <span class="n">sparse</span> <span class="o">=</span> <span class="kc">None</span>
 
-<span class="kn">from</span> <span class="nn">.bed_reader</span> <span class="kn">import</span> <span class="p">(</span>  <span class="c1"># type: ignore</span>
+<span class="kn">from</span> <span class="nn">.bed_reader</span> <span class="kn">import</span> <span class="p">(</span>
     <span class="n">check_file_cloud</span><span class="p">,</span>
     <span class="n">read_cloud_f32</span><span class="p">,</span>
     <span class="n">read_cloud_f64</span><span class="p">,</span>
@@ -134,7 +137,7 @@
         <span class="n">longest</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">key</span><span class="si">}{</span><span class="n">length</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="n">dtype</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;&lt;U</span><span class="si">{</span><span class="n">longest</span><span class="si">}</span><span class="s2">&quot;</span>
     <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">fromiter</span><span class="p">(</span>
-        <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">key</span><span class="si">}{</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">length</span><span class="p">)),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">count</span><span class="o">=</span><span class="n">length</span>
+        <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">key</span><span class="si">}{</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">length</span><span class="p">)),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">count</span><span class="o">=</span><span class="n">length</span><span class="p">,</span>
     <span class="p">)</span>
 
 
@@ -186,8 +189,7 @@
 <div class="viewcode-block" id="open_bed">
 <a class="viewcode-back" href="../../index.html#bed_reader.open_bed">[docs]</a>
 <span class="k">class</span> <span class="nc">open_bed</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Open a PLINK .bed file, local or cloud, for reading.</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Open a PLINK .bed file, local or cloud, for reading.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -260,7 +262,6 @@
 
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
-
 <span class="sd">    Open a local file and list individual (sample) :attr:`iid` and SNP (variant) :attr:`sid`.</span>
 <span class="sd">    Then, :meth:`read` the whole file.</span>
 
@@ -325,6 +326,7 @@
 <span class="sd">        None</span>
 
 <span class="sd">    See the :meth:`read` for details of reading batches via slicing and fancy indexing.</span>
+
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
@@ -336,22 +338,22 @@
         <span class="n">count_A1</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
         <span class="n">num_threads</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">skip_format_check</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-        <span class="n">fam_location</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">,</span> <span class="n">UrlParseResult</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">bim_location</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">,</span> <span class="n">UrlParseResult</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">fam_location</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">,</span> <span class="n">UrlParseResult</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">bim_location</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">,</span> <span class="n">UrlParseResult</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">cloud_options</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{},</span>
         <span class="n">max_concurrent_requests</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">max_chunk_bytes</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="c1"># accept old keywords</span>
-        <span class="n">filepath</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">fam_filepath</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">bim_filepath</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="p">):</span>
+        <span class="n">filepath</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">fam_filepath</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">bim_filepath</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">location</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_combined</span><span class="p">(</span><span class="n">location</span><span class="p">,</span> <span class="n">filepath</span><span class="p">,</span> <span class="s2">&quot;location&quot;</span><span class="p">,</span> <span class="s2">&quot;filepath&quot;</span><span class="p">)</span>
         <span class="n">fam_location</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_combined</span><span class="p">(</span>
-            <span class="n">fam_location</span><span class="p">,</span> <span class="n">fam_filepath</span><span class="p">,</span> <span class="s2">&quot;fam_location&quot;</span><span class="p">,</span> <span class="s2">&quot;fam_filepath&quot;</span>
+            <span class="n">fam_location</span><span class="p">,</span> <span class="n">fam_filepath</span><span class="p">,</span> <span class="s2">&quot;fam_location&quot;</span><span class="p">,</span> <span class="s2">&quot;fam_filepath&quot;</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">bim_location</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_combined</span><span class="p">(</span>
-            <span class="n">bim_location</span><span class="p">,</span> <span class="n">bim_filepath</span><span class="p">,</span> <span class="s2">&quot;bim_location&quot;</span><span class="p">,</span> <span class="s2">&quot;bim_filepath&quot;</span>
+            <span class="n">bim_location</span><span class="p">,</span> <span class="n">bim_filepath</span><span class="p">,</span> <span class="s2">&quot;bim_location&quot;</span><span class="p">,</span> <span class="s2">&quot;bim_filepath&quot;</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">location</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_path_or_url</span><span class="p">(</span><span class="n">location</span><span class="p">)</span>
@@ -373,7 +375,7 @@
         <span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">properties_dict</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_counts</span> <span class="o">=</span> <span class="n">open_bed</span><span class="o">.</span><span class="n">_fix_up_properties</span><span class="p">(</span>
-            <span class="n">properties</span><span class="p">,</span> <span class="n">iid_count</span><span class="p">,</span> <span class="n">sid_count</span><span class="p">,</span> <span class="n">use_fill_sequence</span><span class="o">=</span><span class="kc">False</span>
+            <span class="n">properties</span><span class="p">,</span> <span class="n">iid_count</span><span class="p">,</span> <span class="n">sid_count</span><span class="p">,</span> <span class="n">use_fill_sequence</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_iid_range</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_sid_range</span> <span class="o">=</span> <span class="kc">None</span>
@@ -391,7 +393,8 @@
     <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">_combined</span><span class="p">(</span><span class="n">location</span><span class="p">,</span> <span class="n">filepath</span><span class="p">,</span> <span class="n">location_name</span><span class="p">,</span> <span class="n">filepath_name</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">location</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">filepath</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cannot set both </span><span class="si">{</span><span class="n">location_name</span><span class="si">}</span><span class="s2"> and </span><span class="si">{</span><span class="n">filepath_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Cannot set both </span><span class="si">{</span><span class="n">location_name</span><span class="si">}</span><span class="s2"> and </span><span class="si">{</span><span class="n">filepath_name</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
         <span class="c1"># None, None is ok for now</span>
         <span class="k">return</span> <span class="n">location</span> <span class="k">if</span> <span class="n">location</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">filepath</span>
 
@@ -403,7 +406,7 @@
             <span class="n">new_path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="n">extension</span><span class="si">}</span><span class="s2">&quot;</span>
 
             <span class="c1"># Create a new ParseResult with the updated path</span>
-            <span class="n">new_parse_result</span> <span class="o">=</span> <span class="n">UrlParseResult</span><span class="p">(</span>
+            <span class="k">return</span> <span class="n">UrlParseResult</span><span class="p">(</span>
                 <span class="n">scheme</span><span class="o">=</span><span class="n">location</span><span class="o">.</span><span class="n">scheme</span><span class="p">,</span>
                 <span class="n">netloc</span><span class="o">=</span><span class="n">location</span><span class="o">.</span><span class="n">netloc</span><span class="p">,</span>
                 <span class="n">path</span><span class="o">=</span><span class="n">new_path</span><span class="p">,</span>
@@ -411,10 +414,8 @@
                 <span class="n">query</span><span class="o">=</span><span class="n">location</span><span class="o">.</span><span class="n">query</span><span class="p">,</span>
                 <span class="n">fragment</span><span class="o">=</span><span class="n">location</span><span class="o">.</span><span class="n">fragment</span><span class="p">,</span>
             <span class="p">)</span>
-            <span class="k">return</span> <span class="n">new_parse_result</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">location</span><span class="p">,</span> <span class="n">Path</span><span class="p">)</span>  <span class="c1"># real assert</span>
-            <span class="k">return</span> <span class="n">location</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="p">(</span><span class="n">location</span><span class="o">.</span><span class="n">stem</span> <span class="o">+</span> <span class="s2">&quot;.&quot;</span> <span class="o">+</span> <span class="n">extension</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">location</span><span class="p">,</span> <span class="n">Path</span><span class="p">)</span>  <span class="c1"># real assert</span>
+        <span class="k">return</span> <span class="n">location</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="p">(</span><span class="n">location</span><span class="o">.</span><span class="n">stem</span> <span class="o">+</span> <span class="s2">&quot;.&quot;</span> <span class="o">+</span> <span class="n">extension</span><span class="p">)</span>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">_is_url</span><span class="p">(</span><span class="n">location</span><span class="p">):</span>
@@ -427,13 +428,12 @@
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">UrlParseResult</span><span class="p">):</span>
             <span class="k">return</span> <span class="nb">input</span>
         <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span>
-            <span class="nb">input</span><span class="p">,</span> <span class="nb">str</span>
+            <span class="nb">input</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span>
         <span class="p">),</span> <span class="s2">&quot;Expected a string or Path object or UrlParseResult&quot;</span>
         <span class="n">parsed</span> <span class="o">=</span> <span class="n">urlparse</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">parsed</span><span class="o">.</span><span class="n">scheme</span> <span class="ow">and</span> <span class="s2">&quot;://&quot;</span> <span class="ow">in</span> <span class="nb">input</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">parsed</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
 
 <div class="viewcode-block" id="open_bed.read">
 <a class="viewcode-back" href="../../index.html#bed_reader.open_bed.read">[docs]</a>
@@ -447,8 +447,7 @@
         <span class="n">max_concurrent_requests</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">max_chunk_bytes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Read genotype information.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Read genotype information.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
@@ -498,7 +497,6 @@
 
 <span class="sd">        Examples</span>
 <span class="sd">        --------</span>
-
 <span class="sd">        To read all data in a .bed file, set ``index`` to ``None``. This is the default.</span>
 
 <span class="sd">        .. doctest::</span>
@@ -561,13 +559,14 @@
 <span class="sd">             [   2    0 -127    2]</span>
 <span class="sd">             [   0    1    2    0]]</span>
 <span class="sd">            &gt;&gt;&gt; del bed  # optional: delete bed object</span>
-<span class="sd">        &quot;&quot;&quot;</span>
 
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">iid_index_or_slice_etc</span><span class="p">,</span> <span class="n">sid_index_or_slice_etc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_split_index</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
 
         <span class="n">dtype</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="n">dtype</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">order</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;F&quot;</span><span class="p">,</span> <span class="s2">&quot;C&quot;</span><span class="p">}:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;order &#39;</span><span class="si">{</span><span class="n">order</span><span class="si">}</span><span class="s2">&#39; not known, only &#39;F&#39;, &#39;C&#39;&quot;</span><span class="p">)</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;order &#39;</span><span class="si">{</span><span class="n">order</span><span class="si">}</span><span class="s2">&#39; not known, only &#39;F&#39;, &#39;C&#39;&quot;</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
 
         <span class="c1"># Later happy with _iid_range and _sid_range or could it be done with</span>
         <span class="c1"># allocation them?</span>
@@ -581,20 +580,20 @@
             <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;intp&quot;</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">sid_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_sid_range</span><span class="p">[</span><span class="n">sid_index_or_slice_etc</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;intp&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_sid_range</span><span class="p">[</span><span class="n">sid_index_or_slice_etc</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;intp&quot;</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="k">if</span> <span class="ow">not</span> <span class="n">force_python_only</span> <span class="ow">or</span> <span class="n">open_bed</span><span class="o">.</span><span class="n">_is_url</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="p">):</span>
             <span class="n">num_threads</span> <span class="o">=</span> <span class="n">get_num_threads</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_num_threads</span> <span class="k">if</span> <span class="n">num_threads</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">num_threads</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_num_threads</span> <span class="k">if</span> <span class="n">num_threads</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">num_threads</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="n">max_concurrent_requests</span> <span class="o">=</span> <span class="n">get_max_concurrent_requests</span><span class="p">(</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_max_concurrent_requests</span>
                 <span class="k">if</span> <span class="n">max_concurrent_requests</span> <span class="ow">is</span> <span class="kc">None</span>
-                <span class="k">else</span> <span class="n">max_concurrent_requests</span>
+                <span class="k">else</span> <span class="n">max_concurrent_requests</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="n">max_chunk_bytes</span> <span class="o">=</span> <span class="n">get_max_chunk_bytes</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">_max_chunk_bytes</span> <span class="k">if</span> <span class="n">max_chunk_bytes</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">max_chunk_bytes</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_max_chunk_bytes</span> <span class="k">if</span> <span class="n">max_chunk_bytes</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">max_chunk_bytes</span><span class="p">,</span>
             <span class="p">)</span>
 
             <span class="n">val</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">iid_index</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">sid_index</span><span class="p">)),</span> <span class="n">order</span><span class="o">=</span><span class="n">order</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
@@ -637,10 +636,7 @@
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">byteZero</span> <span class="o">=</span> <span class="mi">2</span>
                 <span class="n">byteThree</span> <span class="o">=</span> <span class="mi">0</span>
-            <span class="k">if</span> <span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">:</span>
-                <span class="n">missing</span> <span class="o">=</span> <span class="o">-</span><span class="mi">127</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">missing</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+            <span class="n">missing</span> <span class="o">=</span> <span class="o">-</span><span class="mi">127</span> <span class="k">if</span> <span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">int8</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
             <span class="c1"># An earlier version of this code had a way to read consecutive SNPs of code</span>
             <span class="c1"># in one read. May want</span>
             <span class="c1"># to add that ability back to the code.</span>
@@ -669,7 +665,7 @@
                     <span class="n">startbit</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="mf">0.25</span> <span class="o">*</span> <span class="n">minor_count</span><span class="p">)</span> <span class="o">*</span> <span class="n">major_index_index</span> <span class="o">+</span> <span class="mi">3</span><span class="p">)</span>
                     <span class="n">filepointer</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="n">startbit</span><span class="p">)</span>
                     <span class="nb">bytes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">bytearray</span><span class="p">(</span><span class="n">filepointer</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">nbyte</span><span class="p">)))</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
-                        <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="mf">0.25</span> <span class="o">*</span> <span class="n">minor_count</span><span class="p">)),</span> <span class="mi">1</span><span class="p">),</span> <span class="n">order</span><span class="o">=</span><span class="s2">&quot;F&quot;</span>
+                        <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="mf">0.25</span> <span class="o">*</span> <span class="n">minor_count</span><span class="p">)),</span> <span class="mi">1</span><span class="p">),</span> <span class="n">order</span><span class="o">=</span><span class="s2">&quot;F&quot;</span><span class="p">,</span>
                     <span class="p">)</span>
 
                     <span class="n">val</span><span class="p">[</span><span class="mi">3</span><span class="p">::</span><span class="mi">4</span><span class="p">,</span> <span class="n">major_index_value</span> <span class="p">:</span> <span class="n">major_index_value</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">byteZero</span>
@@ -734,7 +730,7 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                 <span class="sa">f</span><span class="s2">&quot;dtype &#39;</span><span class="si">{</span><span class="n">dtype</span><span class="si">}</span><span class="s2">&#39; not known, only &quot;</span>
-                <span class="o">+</span> <span class="s2">&quot;&#39;int8&#39;, &#39;float32&#39;, and &#39;float64&#39; are allowed.&quot;</span>
+                <span class="o">+</span> <span class="s2">&quot;&#39;int8&#39;, &#39;float32&#39;, and &#39;float64&#39; are allowed.&quot;</span><span class="p">,</span>
             <span class="p">)</span>
 
         <span class="k">if</span> <span class="n">open_bed</span><span class="o">.</span><span class="n">_is_url</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="p">):</span>
@@ -752,10 +748,9 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">major</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Major mode of a local .bed file.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Major mode of a local .bed file.</span>
 
-<span class="sd">        Returns</span>
+<span class="sd">        Returns:</span>
 <span class="sd">        -------</span>
 <span class="sd">        str</span>
 <span class="sd">            &#39;SNP&#39; or &#39;individual&#39;</span>
@@ -769,7 +764,7 @@
 <span class="sd">        ValueError</span>
 <span class="sd">            If the file is a cloud file.</span>
 
-<span class="sd">        Example</span>
+<span class="sd">        Example:</span>
 <span class="sd">        -------</span>
 
 <span class="sd">        .. doctest::</span>
@@ -783,7 +778,8 @@
 
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_url</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Cannot determine major mode for cloud files&quot;</span><span class="p">)</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Cannot determine major mode for cloud files&quot;</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
         <span class="c1"># if self._mode is not set, set it</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;mode&quot;</span><span class="p">):</span>
             <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">filepointer</span><span class="p">:</span>
@@ -793,10 +789,9 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">fid</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Family id of each individual (sample).</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Family id of each individual (sample).</span>
 
-<span class="sd">        Returns</span>
+<span class="sd">        Returns:</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
 <span class="sd">            array of str</span>
@@ -806,7 +801,7 @@
 
 <span class="sd">        If needed, will cause a one-time read of the .fam file.</span>
 
-<span class="sd">        Example</span>
+<span class="sd">        Example:</span>
 <span class="sd">        -------</span>
 
 <span class="sd">        .. doctest::</span>
@@ -819,15 +814,13 @@
 <span class="sd">            [&#39;fid1&#39; &#39;fid1&#39; &#39;fid2&#39;]</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
-
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">property_item</span><span class="p">(</span><span class="s2">&quot;fid&quot;</span><span class="p">)</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">iid</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Individual id of each individual (sample).</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Individual id of each individual (sample).</span>
 
-<span class="sd">        Returns</span>
+<span class="sd">        Returns:</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
 <span class="sd">            array of str</span>
@@ -835,7 +828,7 @@
 
 <span class="sd">        If needed, will cause a one-time read of the .fam file.</span>
 
-<span class="sd">        Example</span>
+<span class="sd">        Example:</span>
 <span class="sd">        -------</span>
 
 <span class="sd">        .. doctest::</span>
@@ -852,10 +845,9 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">father</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Father id of each individual (sample).</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Father id of each individual (sample).</span>
 
-<span class="sd">        Returns</span>
+<span class="sd">        Returns:</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
 <span class="sd">            array of str</span>
@@ -865,7 +857,7 @@
 
 <span class="sd">        If needed, will cause a one-time read of the .fam file.</span>
 
-<span class="sd">        Example</span>
+<span class="sd">        Example:</span>
 <span class="sd">        -------</span>
 
 <span class="sd">        .. doctest::</span>
@@ -882,10 +874,9 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">mother</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Mother id of each individual (sample).</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Mother id of each individual (sample).</span>
 
-<span class="sd">        Returns</span>
+<span class="sd">        Returns:</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
 <span class="sd">            array of str</span>
@@ -895,7 +886,7 @@
 
 <span class="sd">        If needed, will cause a one-time read of the .fam file.</span>
 
-<span class="sd">        Example</span>
+<span class="sd">        Example:</span>
 <span class="sd">        -------</span>
 
 <span class="sd">        .. doctest::</span>
@@ -912,10 +903,9 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">sex</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Sex of each individual (sample).</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Sex of each individual (sample).</span>
 
-<span class="sd">        Returns</span>
+<span class="sd">        Returns:</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
 <span class="sd">            array of 0, 1, or 2</span>
@@ -925,7 +915,7 @@
 
 <span class="sd">        If needed, will cause a one-time read of the .fam file.</span>
 
-<span class="sd">        Example</span>
+<span class="sd">        Example:</span>
 <span class="sd">        -------</span>
 <span class="sd">        .. doctest::</span>
 
@@ -941,11 +931,10 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">pheno</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        A phenotype for each individual (sample)</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;A phenotype for each individual (sample)</span>
 <span class="sd">        (seldom used).</span>
 
-<span class="sd">        Returns</span>
+<span class="sd">        Returns:</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
 <span class="sd">            array of str</span>
@@ -955,7 +944,7 @@
 
 <span class="sd">        If needed, will cause a one-time read of the .fam file.</span>
 
-<span class="sd">        Example</span>
+<span class="sd">        Example:</span>
 <span class="sd">        -------</span>
 
 <span class="sd">        .. doctest::</span>
@@ -972,10 +961,9 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">properties</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        All the properties returned as a dictionary.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;All the properties returned as a dictionary.</span>
 
-<span class="sd">        Returns</span>
+<span class="sd">        Returns:</span>
 <span class="sd">        -------</span>
 <span class="sd">        dict</span>
 <span class="sd">            all the properties</span>
@@ -992,7 +980,7 @@
 
 <span class="sd">        If needed, will cause a one-time read of the .fam and .bim file.</span>
 
-<span class="sd">        Example</span>
+<span class="sd">        Example:</span>
 <span class="sd">        -------</span>
 
 <span class="sd">        .. doctest::</span>
@@ -1012,10 +1000,9 @@
 <div class="viewcode-block" id="open_bed.property_item">
 <a class="viewcode-back" href="../../index.html#bed_reader.open_bed.property_item">[docs]</a>
     <span class="k">def</span> <span class="nf">property_item</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Retrieve one property by name.</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Retrieve one property by name.</span>
 
-<span class="sd">        Returns</span>
+<span class="sd">        Returns:</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
 <span class="sd">            a property value</span>
@@ -1030,7 +1017,7 @@
 
 <span class="sd">        If needed, will cause a one-time read of the .fam or .bim file.</span>
 
-<span class="sd">        Example</span>
+<span class="sd">        Example:</span>
 <span class="sd">        -------</span>
 
 <span class="sd">        .. doctest::</span>
@@ -1051,10 +1038,9 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">chromosome</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Chromosome of each SNP (variant)</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Chromosome of each SNP (variant).</span>
 
-<span class="sd">        Returns</span>
+<span class="sd">        Returns:</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
 <span class="sd">            array of str</span>
@@ -1064,7 +1050,7 @@
 
 <span class="sd">        If needed, will cause a one-time read of the .bim file.</span>
 
-<span class="sd">        Example</span>
+<span class="sd">        Example:</span>
 <span class="sd">        -------</span>
 
 <span class="sd">        .. doctest::</span>
@@ -1081,10 +1067,9 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">sid</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        SNP id of each SNP (variant).</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;SNP id of each SNP (variant).</span>
 
-<span class="sd">        Returns</span>
+<span class="sd">        Returns:</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
 <span class="sd">            array of str</span>
@@ -1092,7 +1077,7 @@
 
 <span class="sd">        If needed, will cause a one-time read of the .bim file.</span>
 
-<span class="sd">        Example</span>
+<span class="sd">        Example:</span>
 <span class="sd">        -------</span>
 
 <span class="sd">        .. doctest::</span>
@@ -1109,10 +1094,9 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">cm_position</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Centimorgan position of each SNP (variant).</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Centimorgan position of each SNP (variant).</span>
 
-<span class="sd">        Returns</span>
+<span class="sd">        Returns:</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
 <span class="sd">            array of float</span>
@@ -1122,7 +1106,7 @@
 
 <span class="sd">        If needed, will cause a one-time read of the .bim file.</span>
 
-<span class="sd">        Example</span>
+<span class="sd">        Example:</span>
 <span class="sd">        -------</span>
 
 <span class="sd">        .. doctest::</span>
@@ -1139,10 +1123,9 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">bp_position</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Base-pair position of each SNP (variant).</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Base-pair position of each SNP (variant).</span>
 
-<span class="sd">        Returns</span>
+<span class="sd">        Returns:</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
 <span class="sd">            array of int</span>
@@ -1152,7 +1135,7 @@
 
 <span class="sd">        If needed, will cause a one-time read of the .bim file.</span>
 
-<span class="sd">        Example</span>
+<span class="sd">        Example:</span>
 <span class="sd">        -------</span>
 
 <span class="sd">        .. doctest::</span>
@@ -1169,10 +1152,9 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">allele_1</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        First allele of each SNP (variant).</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;First allele of each SNP (variant).</span>
 
-<span class="sd">        Returns</span>
+<span class="sd">        Returns:</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
 <span class="sd">            array of str</span>
@@ -1180,7 +1162,7 @@
 
 <span class="sd">        If needed, will cause a one-time read of the .bim file.</span>
 
-<span class="sd">        Example</span>
+<span class="sd">        Example:</span>
 <span class="sd">        -------</span>
 
 <span class="sd">        .. doctest::</span>
@@ -1197,10 +1179,9 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">allele_2</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Second allele of each SNP (variant),</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Second allele of each SNP (variant),.</span>
 
-<span class="sd">        Returns</span>
+<span class="sd">        Returns:</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
 <span class="sd">            array of str</span>
@@ -1208,7 +1189,7 @@
 
 <span class="sd">        If needed, will cause a one-time read of the .bim file.</span>
 
-<span class="sd">        Example</span>
+<span class="sd">        Example:</span>
 <span class="sd">        -------</span>
 
 <span class="sd">        .. doctest::</span>
@@ -1225,10 +1206,9 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">iid_count</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Number of individuals (samples).</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Number of individuals (samples).</span>
 
-<span class="sd">        Returns</span>
+<span class="sd">        Returns:</span>
 <span class="sd">        -------</span>
 <span class="sd">        int</span>
 <span class="sd">            number of individuals</span>
@@ -1236,7 +1216,7 @@
 
 <span class="sd">        If needed, will cause a fast line-count of the .fam file.</span>
 
-<span class="sd">        Example</span>
+<span class="sd">        Example:</span>
 <span class="sd">        -------</span>
 
 <span class="sd">        .. doctest::</span>
@@ -1253,10 +1233,9 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">sid_count</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Number of SNPs (variants).</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Number of SNPs (variants).</span>
 
-<span class="sd">        Returns</span>
+<span class="sd">        Returns:</span>
 <span class="sd">        -------</span>
 <span class="sd">        int</span>
 <span class="sd">            number of SNPs</span>
@@ -1264,7 +1243,7 @@
 
 <span class="sd">        If needed, will cause a fast line-count of the .bim file.</span>
 
-<span class="sd">        Example</span>
+<span class="sd">        Example:</span>
 <span class="sd">        -------</span>
 
 <span class="sd">        .. doctest::</span>
@@ -1282,9 +1261,8 @@
     <span class="k">def</span> <span class="nf">_property_location</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">suffix</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">suffix</span> <span class="o">==</span> <span class="s2">&quot;fam&quot;</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fam_location</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">assert</span> <span class="n">suffix</span> <span class="o">==</span> <span class="s2">&quot;bim&quot;</span>  <span class="c1"># real assert</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bim_location</span>
+        <span class="k">assert</span> <span class="n">suffix</span> <span class="o">==</span> <span class="s2">&quot;bim&quot;</span>  <span class="c1"># real assert</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bim_location</span>
 
     <span class="k">def</span> <span class="nf">_count</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">suffix</span><span class="p">):</span>
         <span class="n">count</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_counts</span><span class="p">[</span><span class="n">suffix</span><span class="p">]</span>
@@ -1296,7 +1274,7 @@
                     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">property_item</span><span class="p">(</span><span class="s2">&quot;iid&quot;</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                         <span class="c1"># ... unless user doesn&#39;t want iid</span>
                         <span class="n">file_bytes</span> <span class="o">=</span> <span class="nb">bytes</span><span class="p">(</span>
-                            <span class="n">url_to_bytes</span><span class="p">(</span><span class="n">location</span><span class="o">.</span><span class="n">geturl</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">cloud_options</span><span class="p">)</span>
+                            <span class="n">url_to_bytes</span><span class="p">(</span><span class="n">location</span><span class="o">.</span><span class="n">geturl</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">cloud_options</span><span class="p">),</span>
                         <span class="p">)</span>
                         <span class="n">count</span> <span class="o">=</span> <span class="n">_rawincount</span><span class="p">(</span><span class="n">BytesIO</span><span class="p">(</span><span class="n">file_bytes</span><span class="p">))</span>
                     <span class="k">else</span><span class="p">:</span>
@@ -1305,13 +1283,14 @@
                     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">property_item</span><span class="p">(</span><span class="s2">&quot;sid&quot;</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                         <span class="c1"># ... unless user doesn&#39;t want sid</span>
                         <span class="n">file_bytes</span> <span class="o">=</span> <span class="nb">bytes</span><span class="p">(</span>
-                            <span class="n">url_to_bytes</span><span class="p">(</span><span class="n">location</span><span class="o">.</span><span class="n">geturl</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">cloud_options</span><span class="p">)</span>
+                            <span class="n">url_to_bytes</span><span class="p">(</span><span class="n">location</span><span class="o">.</span><span class="n">geturl</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">cloud_options</span><span class="p">),</span>
                         <span class="p">)</span>
                         <span class="n">count</span> <span class="o">=</span> <span class="n">_rawincount</span><span class="p">(</span><span class="n">BytesIO</span><span class="p">(</span><span class="n">file_bytes</span><span class="p">))</span>
                     <span class="k">else</span><span class="p">:</span>
                         <span class="n">count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sid</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;real assert&quot;</span><span class="p">)</span>
+                    <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;real assert&quot;</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">location</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
                     <span class="n">count</span> <span class="o">=</span> <span class="n">_rawincount</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
@@ -1322,14 +1301,16 @@
     <span class="k">def</span> <span class="nf">_check_file</span><span class="p">(</span><span class="n">filepointer</span><span class="p">):</span>
         <span class="n">magic_number</span> <span class="o">=</span> <span class="n">filepointer</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">magic_number</span> <span class="o">!=</span> <span class="sa">b</span><span class="s2">&quot;l</span><span class="se">\x1b</span><span class="s2">&quot;</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Not a valid .bed file&quot;</span><span class="p">)</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Not a valid .bed file&quot;</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
         <span class="n">mode</span> <span class="o">=</span> <span class="n">filepointer</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
         <span class="c1"># Check if mode is either individual-major or SNP-major</span>
         <span class="k">if</span> <span class="n">mode</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="sa">b</span><span class="s2">&quot;</span><span class="se">\x00</span><span class="s2">&quot;</span><span class="p">,</span> <span class="sa">b</span><span class="s2">&quot;</span><span class="se">\x01</span><span class="s2">&quot;</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Not a valid .bed file&quot;</span><span class="p">)</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Not a valid .bed file&quot;</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">mode</span>
 
-    <span class="k">def</span> <span class="fm">__del__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__del__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="fm">__exit__</span><span class="p">()</span>
 
     <span class="k">def</span> <span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -1342,16 +1323,14 @@
     <span class="k">def</span> <span class="nf">_array_properties_are_ok</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">order</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">order</span> <span class="o">==</span> <span class="s2">&quot;F&quot;</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">val</span><span class="o">.</span><span class="n">flags</span><span class="p">[</span><span class="s2">&quot;F_CONTIGUOUS&quot;</span><span class="p">]</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">assert</span> <span class="n">order</span> <span class="o">==</span> <span class="s2">&quot;C&quot;</span>  <span class="c1"># real assert</span>
-            <span class="k">return</span> <span class="n">val</span><span class="o">.</span><span class="n">flags</span><span class="p">[</span><span class="s2">&quot;C_CONTIGUOUS&quot;</span><span class="p">]</span>
+        <span class="k">assert</span> <span class="n">order</span> <span class="o">==</span> <span class="s2">&quot;C&quot;</span>  <span class="c1"># real assert</span>
+        <span class="k">return</span> <span class="n">val</span><span class="o">.</span><span class="n">flags</span><span class="p">[</span><span class="s2">&quot;C_CONTIGUOUS&quot;</span><span class="p">]</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">shape</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Number of individuals (samples) and SNPs (variants).</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Number of individuals (samples) and SNPs (variants).</span>
 
-<span class="sd">        Returns</span>
+<span class="sd">        Returns:</span>
 <span class="sd">        -------</span>
 <span class="sd">        (int, int)</span>
 <span class="sd">            number of individuals, number of SNPs</span>
@@ -1359,7 +1338,7 @@
 
 <span class="sd">        If needed, will cause a fast line-count of the .fam and .bim files.</span>
 
-<span class="sd">        Example</span>
+<span class="sd">        Example:</span>
 <span class="sd">        -------</span>
 
 <span class="sd">        .. doctest::</span>
@@ -1395,7 +1374,7 @@
         <span class="k">return</span> <span class="n">index</span>
 
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">_write_fam_or_bim</span><span class="p">(</span><span class="n">base_filepath</span><span class="p">,</span> <span class="n">properties</span><span class="p">,</span> <span class="n">suffix</span><span class="p">,</span> <span class="n">property_filepath</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_write_fam_or_bim</span><span class="p">(</span><span class="n">base_filepath</span><span class="p">,</span> <span class="n">properties</span><span class="p">,</span> <span class="n">suffix</span><span class="p">,</span> <span class="n">property_filepath</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">assert</span> <span class="n">suffix</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;fam&quot;</span><span class="p">,</span> <span class="s2">&quot;bim&quot;</span><span class="p">},</span> <span class="s2">&quot;real assert&quot;</span>
 
         <span class="n">filepath</span> <span class="o">=</span> <span class="p">(</span>
@@ -1415,7 +1394,7 @@
         <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">filepointer</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">fam_bim_list</span><span class="p">[</span><span class="mi">0</span><span class="p">])):</span>
                 <span class="n">filepointer</span><span class="o">.</span><span class="n">write</span><span class="p">(</span>
-                    <span class="n">sep</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">seq</span><span class="p">[</span><span class="n">index</span><span class="p">])</span> <span class="k">for</span> <span class="n">seq</span> <span class="ow">in</span> <span class="n">fam_bim_list</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
+                    <span class="n">sep</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">seq</span><span class="p">[</span><span class="n">index</span><span class="p">])</span> <span class="k">for</span> <span class="n">seq</span> <span class="ow">in</span> <span class="n">fam_bim_list</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span>
                 <span class="p">)</span>
 
     <span class="nd">@staticmethod</span>
@@ -1427,11 +1406,12 @@
 
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
             <span class="k">return</span> <span class="n">open_bed</span><span class="o">.</span><span class="n">_fix_up_properties_array</span><span class="p">(</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">input</span><span class="p">),</span> <span class="n">dtype</span><span class="p">,</span> <span class="n">missing_value</span><span class="p">,</span> <span class="n">key</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">input</span><span class="p">),</span> <span class="n">dtype</span><span class="p">,</span> <span class="n">missing_value</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span>
             <span class="p">)</span>
 
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">input</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2"> should be one dimensional&quot;</span><span class="p">)</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2"> should be one dimensional&quot;</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
 
         <span class="n">do_missing_values</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="nb">input</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">)</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">dtype</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
@@ -1463,7 +1443,8 @@
     <span class="k">def</span> <span class="nf">_fix_up_properties</span><span class="p">(</span><span class="n">properties</span><span class="p">,</span> <span class="n">iid_count</span><span class="p">,</span> <span class="n">sid_count</span><span class="p">,</span> <span class="n">use_fill_sequence</span><span class="p">):</span>
         <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">properties</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_meta_meta</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;properties key &#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39; not known&quot;</span><span class="p">)</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;properties key &#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39; not known&quot;</span>
+                <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
 
         <span class="n">count_dict</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;fam&quot;</span><span class="p">:</span> <span class="n">iid_count</span><span class="p">,</span> <span class="s2">&quot;bim&quot;</span><span class="p">:</span> <span class="n">sid_count</span><span class="p">}</span>
         <span class="n">properties_dict</span> <span class="o">=</span> <span class="p">{}</span>
@@ -1477,26 +1458,25 @@
                     <span class="k">continue</span>  <span class="c1"># Test coverage reaches this, but doesn&#39;t report it.</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">output</span> <span class="o">=</span> <span class="n">open_bed</span><span class="o">.</span><span class="n">_fix_up_properties_array</span><span class="p">(</span>
-                    <span class="n">properties</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="n">mm</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">mm</span><span class="o">.</span><span class="n">missing_value</span><span class="p">,</span> <span class="n">key</span>
+                    <span class="n">properties</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="n">mm</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">mm</span><span class="o">.</span><span class="n">missing_value</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span>
                 <span class="p">)</span>
 
             <span class="k">if</span> <span class="n">output</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="k">if</span> <span class="n">count</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                     <span class="n">count_dict</span><span class="p">[</span><span class="n">mm</span><span class="o">.</span><span class="n">suffix</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="k">if</span> <span class="n">count</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">output</span><span class="p">):</span>
-                        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                            <span class="sa">f</span><span class="s2">&quot;The length of override </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">output</span><span class="p">)</span><span class="si">}</span><span class="s2">, should not &quot;</span>
-                            <span class="o">+</span> <span class="s2">&quot;be different from the current &quot;</span>
-                            <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">_count_name</span><span class="p">[</span><span class="n">mm</span><span class="o">.</span><span class="n">suffix</span><span class="p">]</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">count</span><span class="si">}</span><span class="s2">&quot;</span>
-                        <span class="p">)</span>
+                <span class="k">elif</span> <span class="n">count</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">output</span><span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;The length of override </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">output</span><span class="p">)</span><span class="si">}</span><span class="s2">, should not &quot;</span>
+                        <span class="o">+</span> <span class="s2">&quot;be different from the current &quot;</span>
+                        <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">_count_name</span><span class="p">[</span><span class="n">mm</span><span class="o">.</span><span class="n">suffix</span><span class="p">]</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">count</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                    <span class="p">)</span>
             <span class="n">properties_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">output</span>
         <span class="k">return</span> <span class="n">properties_dict</span><span class="p">,</span> <span class="n">count_dict</span>
 
-    <span class="k">def</span> <span class="nf">_read_fam_or_bim</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">suffix</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_read_fam_or_bim</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">suffix</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">property_location</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_property_location</span><span class="p">(</span><span class="n">suffix</span><span class="p">)</span>
 
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Loading </span><span class="si">{0}</span><span class="s2"> file </span><span class="si">{1}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">suffix</span><span class="p">,</span> <span class="n">property_location</span><span class="p">))</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loading </span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2"> file </span><span class="si">{</span><span class="n">property_location</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
         <span class="n">count</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_counts</span><span class="p">[</span><span class="n">suffix</span><span class="p">]</span>
 
@@ -1515,7 +1495,7 @@
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_url</span><span class="p">(</span><span class="n">property_location</span><span class="p">):</span>
             <span class="n">file_bytes</span> <span class="o">=</span> <span class="nb">bytes</span><span class="p">(</span>
-                <span class="n">url_to_bytes</span><span class="p">(</span><span class="n">property_location</span><span class="o">.</span><span class="n">geturl</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">cloud_options</span><span class="p">)</span>
+                <span class="n">url_to_bytes</span><span class="p">(</span><span class="n">property_location</span><span class="o">.</span><span class="n">geturl</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">cloud_options</span><span class="p">),</span>
             <span class="p">)</span>
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">file_bytes</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="n">columns</span><span class="p">,</span> <span class="n">row_count</span> <span class="o">=</span> <span class="p">[],</span> <span class="mi">0</span>
@@ -1526,26 +1506,24 @@
                     <span class="n">dtype</span><span class="o">=</span><span class="n">dtype_dict</span><span class="p">,</span>
                     <span class="n">usecols</span><span class="o">=</span><span class="n">usecolsdict</span><span class="o">.</span><span class="n">values</span><span class="p">(),</span>
                 <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">getsize</span><span class="p">(</span><span class="n">property_location</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">columns</span><span class="p">,</span> <span class="n">row_count</span> <span class="o">=</span> <span class="p">[],</span> <span class="mi">0</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">getsize</span><span class="p">(</span><span class="n">property_location</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="n">columns</span><span class="p">,</span> <span class="n">row_count</span> <span class="o">=</span> <span class="p">[],</span> <span class="mi">0</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">columns</span><span class="p">,</span> <span class="n">row_count</span> <span class="o">=</span> <span class="n">_read_csv</span><span class="p">(</span>
-                    <span class="n">property_location</span><span class="p">,</span>
-                    <span class="n">delimiter</span><span class="o">=</span><span class="n">delimiter</span><span class="p">,</span>
-                    <span class="n">dtype</span><span class="o">=</span><span class="n">dtype_dict</span><span class="p">,</span>
-                    <span class="n">usecols</span><span class="o">=</span><span class="n">usecolsdict</span><span class="o">.</span><span class="n">values</span><span class="p">(),</span>
-                <span class="p">)</span>
+            <span class="n">columns</span><span class="p">,</span> <span class="n">row_count</span> <span class="o">=</span> <span class="n">_read_csv</span><span class="p">(</span>
+                <span class="n">property_location</span><span class="p">,</span>
+                <span class="n">delimiter</span><span class="o">=</span><span class="n">delimiter</span><span class="p">,</span>
+                <span class="n">dtype</span><span class="o">=</span><span class="n">dtype_dict</span><span class="p">,</span>
+                <span class="n">usecols</span><span class="o">=</span><span class="n">usecolsdict</span><span class="o">.</span><span class="n">values</span><span class="p">(),</span>
+            <span class="p">)</span>
 
         <span class="k">if</span> <span class="n">count</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_counts</span><span class="p">[</span><span class="n">suffix</span><span class="p">]</span> <span class="o">=</span> <span class="n">row_count</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">count</span> <span class="o">!=</span> <span class="n">row_count</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;The number of lines in the *.</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2"> file, </span><span class="si">{</span><span class="n">row_count</span><span class="si">}</span><span class="s2">, &quot;</span>
-                    <span class="o">+</span> <span class="s2">&quot;should not be different from the current &quot;</span>
-                    <span class="o">+</span> <span class="s2">&quot;f</span><span class="si">{_count_name[suffix]}</span><span class="s2">, </span><span class="si">{count}</span><span class="s2">&quot;</span>
-                <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">count</span> <span class="o">!=</span> <span class="n">row_count</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;The number of lines in the *.</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2"> file, </span><span class="si">{</span><span class="n">row_count</span><span class="si">}</span><span class="s2">, &quot;</span>
+                <span class="o">+</span> <span class="s2">&quot;should not be different from the current &quot;</span>
+                <span class="o">+</span> <span class="s2">&quot;f</span><span class="si">{_count_name[suffix]}</span><span class="s2">, </span><span class="si">{count}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
         <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">usecolsdict</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
             <span class="n">mm</span> <span class="o">=</span> <span class="n">_meta_meta</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
             <span class="k">if</span> <span class="n">row_count</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
@@ -1568,8 +1546,7 @@
         <span class="n">max_concurrent_requests</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">max_chunk_bytes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="n">Union</span><span class="p">[</span><span class="n">sparse</span><span class="o">.</span><span class="n">csc_matrix</span><span class="p">,</span> <span class="n">sparse</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">])</span> <span class="k">if</span> <span class="n">sparse</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># type: ignore</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Read genotype information into a :mod:`scipy.sparse` matrix. Sparse matrices</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Read genotype information into a :mod:`scipy.sparse` matrix. Sparse matrices</span>
 <span class="sd">        may be useful when the data is mostly zeros.</span>
 
 <span class="sd">        .. note::</span>
@@ -1646,7 +1623,6 @@
 
 <span class="sd">        Examples</span>
 <span class="sd">        --------</span>
-
 <span class="sd">        Read all data in a .bed file into a :class:`scipy.sparse.csc_matrix`.</span>
 <span class="sd">        The file has 10 individuals (samples) by 20 SNPs (variants).</span>
 <span class="sd">        All but eight values are 0.</span>
@@ -1694,11 +1670,12 @@
 <span class="sd">            &gt;&gt;&gt; # read last and 2nd-to-last individuals and the 15th-from-the-last SNP</span>
 <span class="sd">            &gt;&gt;&gt; print(&quot;Nonzero Values&quot;, bed.read_sparse(np.s_[[-1,-2],-15], dtype=&quot;int8&quot;).data)</span>
 <span class="sd">            Nonzero Values [2]</span>
+
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">sparse</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
                 <span class="s2">&quot;The function read_sparse() requires scipy. &quot;</span>
-                <span class="o">+</span> <span class="s2">&quot;Install it with &#39;pip install --upgrade bed-reader[sparse]&#39;.&quot;</span>
+                <span class="o">+</span> <span class="s2">&quot;Install it with &#39;pip install --upgrade bed-reader[sparse]&#39;.&quot;</span><span class="p">,</span>
             <span class="p">)</span>
         <span class="n">iid_index_or_slice_etc</span><span class="p">,</span> <span class="n">sid_index_or_slice_etc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_split_index</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
 
@@ -1717,16 +1694,19 @@
             <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;intp&quot;</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">sid_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_sid_range</span><span class="p">[</span><span class="n">sid_index_or_slice_etc</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;intp&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_sid_range</span><span class="p">[</span><span class="n">sid_index_or_slice_etc</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;intp&quot;</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="k">if</span> <span class="p">(</span>
             <span class="nb">len</span><span class="p">(</span><span class="n">iid_index</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">iinfo</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span><span class="o">.</span><span class="n">max</span>
             <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">sid_index</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">iinfo</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span><span class="o">.</span><span class="n">max</span>
         <span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
                 <span class="s2">&quot;Too many Individuals or SNPs (variants) requested. &quot;</span>
                 <span class="s2">&quot;Maximum is {np.iinfo(np.int32).max}.&quot;</span>
+            <span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="n">msg</span><span class="p">,</span>
             <span class="p">)</span>
 
 
@@ -1734,15 +1714,15 @@
             <span class="n">batch_size</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">sid_index</span><span class="p">)))</span>
 
         <span class="n">num_threads</span> <span class="o">=</span> <span class="n">get_num_threads</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_num_threads</span> <span class="k">if</span> <span class="n">num_threads</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">num_threads</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_num_threads</span> <span class="k">if</span> <span class="n">num_threads</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">num_threads</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">max_concurrent_requests</span> <span class="o">=</span> <span class="n">get_max_concurrent_requests</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_max_concurrent_requests</span>
             <span class="k">if</span> <span class="n">max_concurrent_requests</span> <span class="ow">is</span> <span class="kc">None</span>
-            <span class="k">else</span> <span class="n">max_concurrent_requests</span>
+            <span class="k">else</span> <span class="n">max_concurrent_requests</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">max_chunk_bytes</span> <span class="o">=</span> <span class="n">get_max_chunk_bytes</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_max_chunk_bytes</span> <span class="k">if</span> <span class="n">max_chunk_bytes</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">max_chunk_bytes</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_max_chunk_bytes</span> <span class="k">if</span> <span class="n">max_chunk_bytes</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">max_chunk_bytes</span><span class="p">,</span>
         <span class="p">)</span>
 
         <span class="k">if</span> <span class="nb">format</span> <span class="o">==</span> <span class="s2">&quot;csc&quot;</span><span class="p">:</span>
@@ -1752,7 +1732,8 @@
             <span class="n">order</span> <span class="o">=</span> <span class="s2">&quot;C&quot;</span>
             <span class="n">indptr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">iid_index</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;format &#39;</span><span class="si">{</span><span class="nb">format</span><span class="si">}</span><span class="s2">&#39; not known. Expected &#39;csc&#39; or &#39;csr&#39;.&quot;</span><span class="p">)</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;format &#39;</span><span class="si">{</span><span class="nb">format</span><span class="si">}</span><span class="s2">&#39; not known. Expected &#39;csc&#39; or &#39;csr&#39;.&quot;</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
 
         <span class="c1"># We init data and indices with zero element arrays to set their dtype.</span>
         <span class="n">data</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)]</span>
@@ -1804,7 +1785,7 @@
                         <span class="p">)</span>
 
                     <span class="bp">self</span><span class="o">.</span><span class="n">sparsify</span><span class="p">(</span>
-                        <span class="n">val</span><span class="p">,</span> <span class="n">order</span><span class="p">,</span> <span class="n">iid_index</span><span class="p">,</span> <span class="n">batch_slice</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">indptr</span>
+                        <span class="n">val</span><span class="p">,</span> <span class="n">order</span><span class="p">,</span> <span class="n">iid_index</span><span class="p">,</span> <span class="n">batch_slice</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">indptr</span><span class="p">,</span>
                     <span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">assert</span> <span class="nb">format</span> <span class="o">==</span> <span class="s2">&quot;csr&quot;</span>  <span class="c1"># real assert</span>
@@ -1851,7 +1832,7 @@
                         <span class="p">)</span>
 
                     <span class="bp">self</span><span class="o">.</span><span class="n">sparsify</span><span class="p">(</span>
-                        <span class="n">val</span><span class="p">,</span> <span class="n">order</span><span class="p">,</span> <span class="n">sid_index</span><span class="p">,</span> <span class="n">batch_slice</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">indptr</span>
+                        <span class="n">val</span><span class="p">,</span> <span class="n">order</span><span class="p">,</span> <span class="n">sid_index</span><span class="p">,</span> <span class="n">batch_slice</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">indptr</span><span class="p">,</span>
                     <span class="p">)</span>
 
         <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
@@ -1859,24 +1840,23 @@
 
         <span class="k">if</span> <span class="nb">format</span> <span class="o">==</span> <span class="s2">&quot;csc&quot;</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">sparse</span><span class="o">.</span><span class="n">csc_matrix</span><span class="p">(</span>
-                <span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">indptr</span><span class="p">),</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">iid_index</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">sid_index</span><span class="p">))</span>
+                <span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">indptr</span><span class="p">),</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">iid_index</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">sid_index</span><span class="p">)),</span>
             <span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">assert</span> <span class="nb">format</span> <span class="o">==</span> <span class="s2">&quot;csr&quot;</span>  <span class="c1"># real assert</span>
-            <span class="k">return</span> <span class="n">sparse</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">(</span>
-                <span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">indptr</span><span class="p">),</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">iid_index</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">sid_index</span><span class="p">))</span>
-            <span class="p">)</span></div>
+        <span class="k">assert</span> <span class="nb">format</span> <span class="o">==</span> <span class="s2">&quot;csr&quot;</span>  <span class="c1"># real assert</span>
+        <span class="k">return</span> <span class="n">sparse</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">indptr</span><span class="p">),</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">iid_index</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">sid_index</span><span class="p">)),</span>
+        <span class="p">)</span></div>
 
 
-    <span class="k">def</span> <span class="nf">sparsify</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">order</span><span class="p">,</span> <span class="n">minor_index</span><span class="p">,</span> <span class="n">batch_slice</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">indptr</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">sparsify</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">order</span><span class="p">,</span> <span class="n">minor_index</span><span class="p">,</span> <span class="n">batch_slice</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">indptr</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">flatten</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="n">order</span><span class="p">)</span>
         <span class="n">nz_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">flatten</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
         <span class="n">column_indexes</span> <span class="o">=</span> <span class="n">nz_indices</span> <span class="o">//</span> <span class="nb">len</span><span class="p">(</span><span class="n">minor_index</span><span class="p">)</span>
         <span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span>
-            <span class="n">column_indexes</span><span class="p">,</span> <span class="n">minlength</span><span class="o">=</span><span class="n">batch_slice</span><span class="o">.</span><span class="n">stop</span> <span class="o">-</span> <span class="n">batch_slice</span><span class="o">.</span><span class="n">start</span>
+            <span class="n">column_indexes</span><span class="p">,</span> <span class="n">minlength</span><span class="o">=</span><span class="n">batch_slice</span><span class="o">.</span><span class="n">stop</span> <span class="o">-</span> <span class="n">batch_slice</span><span class="o">.</span><span class="n">start</span><span class="p">,</span>
         <span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
         <span class="n">counts_with_initial</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">r_</span><span class="p">[</span>
-            <span class="n">indptr</span><span class="p">[</span><span class="n">batch_slice</span><span class="o">.</span><span class="n">start</span> <span class="p">:</span> <span class="n">batch_slice</span><span class="o">.</span><span class="n">start</span> <span class="o">+</span> <span class="mi">1</span><span class="p">],</span> <span class="n">counts</span>
+            <span class="n">indptr</span><span class="p">[</span><span class="n">batch_slice</span><span class="o">.</span><span class="n">start</span> <span class="p">:</span> <span class="n">batch_slice</span><span class="o">.</span><span class="n">start</span> <span class="o">+</span> <span class="mi">1</span><span class="p">],</span> <span class="n">counts</span><span class="p">,</span>
         <span class="p">]</span>
 
         <span class="n">data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">flatten</span><span class="p">[</span><span class="n">nz_indices</span><span class="p">])</span>
@@ -1928,7 +1908,7 @@
         <span class="n">new_arr</span> <span class="o">=</span> <span class="n">str_arr</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">dtype</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">e</span>
+            <span class="k">raise</span>
         <span class="c1"># for backwards compatibility, see if intermediate float helps int conversion</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="k">assert</span> <span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">int32</span>  <span class="c1"># real assert</span>
@@ -1937,8 +1917,9 @@
             <span class="k">raise</span> <span class="n">e</span>
         <span class="n">new_arr</span> <span class="o">=</span> <span class="n">float_arr</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="n">new_arr</span><span class="p">,</span> <span class="n">float_arr</span><span class="p">):</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;invalid literal for int: &#39;</span><span class="si">{</span><span class="n">str_arr</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">new_arr</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">float_arr</span><span class="p">)][:</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">&#39;)&quot;</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;invalid literal for int: &#39;</span><span class="si">{</span><span class="n">str_arr</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">new_arr</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">float_arr</span><span class="p">)][:</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">&#39;)&quot;</span>
+                <span class="n">msg</span><span class="p">,</span>
             <span class="p">)</span>
     <span class="k">return</span> <span class="n">new_arr</span>
 
