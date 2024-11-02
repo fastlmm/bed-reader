@@ -1,7 +1,8 @@
+import contextlib
 import logging
 import os
 from pathlib import Path
-from typing import Any, List, Mapping, Union
+from typing import Any, List, Mapping, Optional, Union
 
 import numpy as np
 
@@ -18,8 +19,7 @@ from .bed_reader import (  # type: ignore
 
 
 class create_bed:
-    """
-    Open a file to write values into PLINK .bed format.
+    """Open a file to write values into PLINK .bed format.
 
     Values may be given in a SNP-by-SNP (or individual-by-individual) manner.
     For large datasets, `create_bed` requires less memory than :func:`to_bed`.
@@ -80,7 +80,6 @@ class create_bed:
 
     Examples
     --------
-
     In this example, all properties are given and we write
     the data out SNP-by-SNP. The data is floats.
 
@@ -139,12 +138,12 @@ class create_bed:
         sid_count: int,
         properties: Mapping[str, List[Any]] = {},
         count_A1: bool = True,
-        fam_location: Union[str, Path] = None,
-        bim_location: Union[str, Path] = None,
+        fam_location: Optional[Union[str, Path]] = None,
+        bim_location: Optional[Union[str, Path]] = None,
         major: str = "SNP",
         force_python_only: bool = False,
         num_threads=None,
-    ):
+    ) -> None:
         self.location = Path(location)
         self.iid_count = iid_count
         self.sid_count = sid_count
@@ -159,7 +158,8 @@ class create_bed:
             self.major_count = iid_count
             self.minor_count = sid_count
         else:
-            raise ValueError(f"major must be 'SNP' or 'individual', not '{major}'")
+            msg = f"major must be 'SNP' or 'individual', not '{major}'"
+            raise ValueError(msg)
         self.major = major
         self.minor_count_div4 = (self.minor_count - 1) // 4 + 1
         self.buffer = np.zeros(self.minor_count_div4, dtype=np.uint8)
@@ -213,9 +213,8 @@ class create_bed:
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
-    def close(self):
-        """
-        Close the bed_writer, writing the file to disk. If you use
+    def close(self) -> None:
+        """Close the bed_writer, writing the file to disk. If you use
         :class:`create_bed` with the `with` statement,
         you don't need to use this.
 
@@ -226,59 +225,65 @@ class create_bed:
                 self.file_pointer.close()
                 self.file_pointer = None
                 if self.write_count != self.major_count:
-                    raise ValueError(
+                    msg = (
                         f"Attempt to write fewer vectors ({self.write_count}) "
                         f"than expected ({self.major_count})"
                     )
+                    raise ValueError(
+                        msg,
+                    )
                 os.rename(self.temp_filepath, self.location)
-            except Exception as e:
+            except Exception:
                 self._clean_up_error()
-                raise e
+                raise
         else:
             self._clean_up_error()
 
-    def _clean_up_error(self):
-        try:
+    def _clean_up_error(self) -> None:
+        with contextlib.suppress(Exception):
             os.unlink(self.temp_filepath)
-        except Exception:
-            pass
 
     @staticmethod
     def _replace_extension(location, extension):
         if open_bed._is_url(location):
             return location.parent / (location.stem + "." + extension)
+        return None
 
-    def write(self, vector):
-        """
-        Write a vector of values to the bed_writer.
+    def write(self, vector) -> None:
+        """Write a vector of values to the bed_writer.
 
         See :class:`create_bed` for more information.
         """
         if self.file_pointer is None:
-            raise RuntimeError("Attempt to write after file was closed for writing.")
+            msg = "Attempt to write after file was closed for writing."
+            raise RuntimeError(msg)
 
         try:
             self.write_count += 1
             if self.write_count > self.major_count:
-                raise ValueError(
+                msg = (
                     f"Attempt to write more vectors ({self.write_count}) "
                     f"than expected ({self.major_count})"
+                )
+                raise ValueError(
+                    msg,
                 )
 
             vector = _fix_up_vector(vector)
             if len(vector) != self.minor_count:
+                msg = f"Expected vector to {self.minor_count} values, got {len(vector)} instead"
                 raise ValueError(
-                    f"Expected vector to {self.minor_count} values, got {len(vector)} instead"
+                    msg,
                 )
 
             self._internal_write(vector)
 
-        except Exception as e:
+        except Exception:
             self.file_pointer.close()
             self.file_pointer = None  # Prevent further writes
-            raise e  # Re-raise the exception to handle it externally
+            raise  # Re-raise the exception to handle it externally
 
-    def _internal_write(self, vector):
+    def _internal_write(self, vector) -> None:
         if not self.force_python_only:
             if vector.dtype == np.int8:
                 encode1_i8(self.count_A1, vector, self.buffer, self.num_threads)
@@ -287,9 +292,12 @@ class create_bed:
             elif vector.dtype == np.float64:
                 encode1_f64(self.count_A1, vector, self.buffer, self.num_threads)
             else:
-                raise ValueError(
+                msg = (
                     f"dtype '{vector.dtype}' not known, only 'int8', 'float32', "
                     f"and 'float64' are allowed."
+                )
+                raise ValueError(
+                    msg,
                 )
             self.file_pointer.write(self.buffer)
         else:
@@ -305,13 +313,13 @@ class create_bed:
                     elif val_for_byte == 2:
                         code = self.two_code
                     elif (vector.dtype == np.int8 and val_for_byte == -127) or np.isnan(
-                        val_for_byte
+                        val_for_byte,
                     ):
                         code = 0b01  # backwards on purpose
                     else:
                         raise ValueError(
                             "Attempt to write illegal value to .bed file. "
-                            + "Only 0,1,2,missing allowed."
+                            + "Only 0,1,2,missing allowed.",
                         )
                     byte |= code << (val_index * 2)
                 # This is writing one byte at a time
@@ -324,14 +332,15 @@ def _fix_up_vector(input):
 
     if np.issubdtype(input.dtype, np.integer) and input.dtype != np.int8:
         return _fix_up_vector(np.array(input, dtype=np.int8))
-    elif np.issubdtype(input.dtype, np.floating) and input.dtype not in (
+    if np.issubdtype(input.dtype, np.floating) and input.dtype not in (
         np.float32,
         np.float64,
     ):
         return _fix_up_vector(np.array(input, dtype=np.float32))
 
     if len(input.shape) != 1:
-        raise ValueError("vector should be one dimensional")
+        msg = "vector should be one dimensional"
+        raise ValueError(msg)
 
     return input
 
@@ -341,14 +350,13 @@ def to_bed(
     val: np.ndarray,
     properties: Mapping[str, List[Any]] = {},
     count_A1: bool = True,
-    fam_filepath: Union[str, Path] = None,
-    bim_filepath: Union[str, Path] = None,
+    fam_filepath: Optional[Union[str, Path]] = None,
+    bim_filepath: Optional[Union[str, Path]] = None,
     major: str = "SNP",
     force_python_only: bool = False,
     num_threads=None,
-):
-    """
-    Write values to a file in PLINK .bed format.
+) -> None:
+    """Write values to a file in PLINK .bed format.
 
     If your data is too large to fit in memory, use :class:`create_bed` instead.
 
@@ -398,7 +406,6 @@ def to_bed(
 
     Examples
     --------
-
     In this example, all properties are given.
 
     .. doctest::
@@ -455,10 +462,11 @@ def to_bed(
         major_count = iid_count
         minor_count = sid_count
     else:
-        raise ValueError(f"major must be 'SNP' or 'individual', not '{major}'")
+        msg = f"major must be 'SNP' or 'individual', not '{major}'"
+        raise ValueError(msg)
 
     properties, _ = open_bed._fix_up_properties(
-        properties, iid_count=iid_count, sid_count=sid_count, use_fill_sequence=True
+        properties, iid_count=iid_count, sid_count=sid_count, use_fill_sequence=True,
     )
 
     open_bed._write_fam_or_bim(filepath, properties, "fam", fam_filepath)
@@ -466,7 +474,8 @@ def to_bed(
 
     if not force_python_only:
         if not val.flags["C_CONTIGUOUS"] and not val.flags["F_CONTIGUOUS"]:
-            raise ValueError("val must be contiguous.")
+            msg = "val must be contiguous."
+            raise ValueError(msg)
 
         num_threads = get_num_threads(num_threads)
 
@@ -498,7 +507,7 @@ def to_bed(
             else:
                 raise ValueError(
                     f"dtype '{val.dtype}' not known, only "
-                    + "'int8', 'float32', and 'float64' are allowed."
+                    + "'int8', 'float32', and 'float64' are allowed.",
                 )
 
             if major == "individual":
@@ -508,10 +517,8 @@ def to_bed(
                     bed_filepointer.write(bytes(bytearray([0b00000000])))
 
         except SystemError as system_error:
-            try:
+            with contextlib.suppress(Exception):
                 os.unlink(filepath)
-            except Exception:
-                pass
             raise system_error.__cause__
     else:
         if not count_A1:
@@ -531,13 +538,13 @@ def to_bed(
             else:
                 assert major == "individual"
                 bed_filepointer.write(
-                    bytes(bytearray([0b00000000]))
+                    bytes(bytearray([0b00000000])),
                 )  # individual major
 
             for major_index in range(major_count):
                 if major_index % 1 == 0:
                     logging.info(
-                        f"Writing {major} # {major_index} to file '{filepath}'"
+                        f"Writing {major} # {major_index} to file '{filepath}'",
                     )
 
                 if major == "SNP":
@@ -564,7 +571,7 @@ def to_bed(
                         else:
                             raise ValueError(
                                 "Attempt to write illegal value to .bed file. "
-                                + "Only 0,1,2,missing allowed."
+                                + "Only 0,1,2,missing allowed.",
                             )
                         byte |= code << (val_index * 2)
                     bed_filepointer.write(bytes(bytearray([byte])))
@@ -577,14 +584,15 @@ def _fix_up_val(input):
 
     if np.issubdtype(input.dtype, np.integer) and input.dtype != np.int8:
         return _fix_up_val(np.array(input, dtype=np.int8))
-    elif np.issubdtype(input.dtype, np.floating) and input.dtype not in (
+    if np.issubdtype(input.dtype, np.floating) and input.dtype not in (
         np.float32,
         np.float64,
     ):
         return _fix_up_val(np.array(input, dtype=np.float32))
 
     if len(input.shape) != 2:
-        raise ValueError("val should be two dimensional")
+        msg = "val should be two dimensional"
+        raise ValueError(msg)
 
     return input
 

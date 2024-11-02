@@ -3,9 +3,9 @@ import pytest
 from bed_reader import open_bed, sample_file
 
 
-def test_optional_dependencies(shared_datadir):
+def test_optional_dependencies(shared_datadir) -> None:
     try:
-        import scipy.sparse as sparse
+        from scipy import sparse
     except ImportError:
         sparse = None
 

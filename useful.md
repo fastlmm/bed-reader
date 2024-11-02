@@ -42,7 +42,7 @@ Look in `M:\deldir\bench` for results.
 ### install packages, compile Rust for Python
 
 ```bash
-uv sync --extra samples --extra sparse --extra dev
+uv sync --all-extras
 ```
 
 ### generate doc
@@ -121,6 +121,13 @@ cargo publish --dry-run
 ```bash
 cargo publish
 # tag version
-git tag -a v0.2.0 -m "v0.2.0"
-git push origin v0.2.0
+git tag -a v1.0.6a1 -m "v1.0.6a1"
+git push origin v1.0.6a1
+```
+
+* Download and extract wheel artifacts from GitHub.
+
+```bash
+cd /d "C:\Users\carlk\Downloads\wheels (43)"
+twine upload bed_reader-1.0.6a1*
 ```

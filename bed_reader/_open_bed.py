@@ -6,18 +6,21 @@ from dataclasses import dataclass
 from io import BytesIO
 from itertools import repeat, takewhile
 from pathlib import Path
-from typing import Any, List, Mapping, Optional, Union
+from typing import TYPE_CHECKING, Any, List, Mapping, Optional, Union
 from urllib.parse import ParseResult as UrlParseResult
 from urllib.parse import urlparse
 
 import numpy as np
 
-try:
+if TYPE_CHECKING:
     from scipy import sparse
-except ImportError:
-    sparse = None
+else:
+    try:
+        from scipy import sparse
+    except ImportError:
+        sparse = None
 
-from .bed_reader import (  # type: ignore
+from .bed_reader import (
     check_file_cloud,
     read_cloud_f32,
     read_cloud_f64,
@@ -56,7 +59,7 @@ def _sequence(key, length, missing, dtype):
         longest = len(f"{key}{length}")
         dtype = f"<U{longest}"
     return np.fromiter(
-        (f"{key}{i + 1}" for i in range(length)), dtype=dtype, count=length
+        (f"{key}{i + 1}" for i in range(length)), dtype=dtype, count=length,
     )
 
 
@@ -106,8 +109,7 @@ def get_max_chunk_bytes(max_chunk_bytes=None):
 
 
 class open_bed:
-    """
-    Open a PLINK .bed file, local or cloud, for reading.
+    """Open a PLINK .bed file, local or cloud, for reading.
 
     Parameters
     ----------
@@ -180,7 +182,6 @@ class open_bed:
 
     Examples
     --------
-
     Open a local file and list individual (sample) :attr:`iid` and SNP (variant) :attr:`sid`.
     Then, :meth:`read` the whole file.
 
@@ -245,6 +246,7 @@ class open_bed:
         None
 
     See the :meth:`read` for details of reading batches via slicing and fancy indexing.
+
     """
 
     def __init__(
@@ -256,22 +258,22 @@ class open_bed:
         count_A1: bool = True,
         num_threads: Optional[int] = None,
         skip_format_check: bool = False,
-        fam_location: Union[str, Path, UrlParseResult] = None,
-        bim_location: Union[str, Path, UrlParseResult] = None,
+        fam_location: Optional[Union[str, Path, UrlParseResult]] = None,
+        bim_location: Optional[Union[str, Path, UrlParseResult]] = None,
         cloud_options: Mapping[str, str] = {},
         max_concurrent_requests: Optional[int] = None,
         max_chunk_bytes: Optional[int] = None,
         # accept old keywords
-        filepath: Union[str, Path] = None,
-        fam_filepath: Union[str, Path] = None,
-        bim_filepath: Union[str, Path] = None,
-    ):
+        filepath: Optional[Union[str, Path]] = None,
+        fam_filepath: Optional[Union[str, Path]] = None,
+        bim_filepath: Optional[Union[str, Path]] = None,
+    ) -> None:
         location = self._combined(location, filepath, "location", "filepath")
         fam_location = self._combined(
-            fam_location, fam_filepath, "fam_location", "fam_filepath"
+            fam_location, fam_filepath, "fam_location", "fam_filepath",
         )
         bim_location = self._combined(
-            bim_location, bim_filepath, "bim_location", "bim_filepath"
+            bim_location, bim_filepath, "bim_location", "bim_filepath",
         )
 
         self.location = self._path_or_url(location)
@@ -293,7 +295,7 @@ class open_bed:
         )
 
         self.properties_dict, self._counts = open_bed._fix_up_properties(
-            properties, iid_count, sid_count, use_fill_sequence=False
+            properties, iid_count, sid_count, use_fill_sequence=False,
         )
         self._iid_range = None
         self._sid_range = None
@@ -311,7 +313,8 @@ class open_bed:
     @staticmethod
     def _combined(location, filepath, location_name, filepath_name):
         if location is not None and filepath is not None:
-            raise ValueError(f"Cannot set both {location_name} and {filepath_name}")
+            msg = f"Cannot set both {location_name} and {filepath_name}"
+            raise ValueError(msg)
         # None, None is ok for now
         return location if location is not None else filepath
 
@@ -323,7 +326,7 @@ class open_bed:
             new_path = f"{path}.{extension}"
 
             # Create a new ParseResult with the updated path
-            new_parse_result = UrlParseResult(
+            return UrlParseResult(
                 scheme=location.scheme,
                 netloc=location.netloc,
                 path=new_path,
@@ -331,10 +334,8 @@ class open_bed:
                 query=location.query,
                 fragment=location.fragment,
             )
-            return new_parse_result
-        else:
-            assert isinstance(location, Path)  # real assert
-            return location.parent / (location.stem + "." + extension)
+        assert isinstance(location, Path)  # real assert
+        return location.parent / (location.stem + "." + extension)
 
     @staticmethod
     def _is_url(location):
@@ -347,13 +348,12 @@ class open_bed:
         if isinstance(input, UrlParseResult):
             return input
         assert isinstance(
-            input, str
+            input, str,
         ), "Expected a string or Path object or UrlParseResult"
         parsed = urlparse(input)
         if parsed.scheme and "://" in input:
             return parsed
-        else:
-            return Path(input)
+        return Path(input)
 
     def read(
         self,
@@ -365,8 +365,7 @@ class open_bed:
         max_concurrent_requests=None,
         max_chunk_bytes=None,
     ) -> np.ndarray:
-        """
-        Read genotype information.
+        """Read genotype information.
 
         Parameters
         ----------
@@ -416,7 +415,6 @@ class open_bed:
 
         Examples
         --------
-
         To read all data in a .bed file, set ``index`` to ``None``. This is the default.
 
         .. doctest::
@@ -479,13 +477,14 @@ class open_bed:
              [   2    0 -127    2]
              [   0    1    2    0]]
             >>> del bed  # optional: delete bed object
-        """
 
+        """
         iid_index_or_slice_etc, sid_index_or_slice_etc = self._split_index(index)
 
         dtype = np.dtype(dtype)
         if order not in {"F", "C"}:
-            raise ValueError(f"order '{order}' not known, only 'F', 'C'")
+            msg = f"order '{order}' not known, only 'F', 'C'"
+            raise ValueError(msg)
 
         # Later happy with _iid_range and _sid_range or could it be done with
         # allocation them?
@@ -499,20 +498,20 @@ class open_bed:
             dtype="intp",
         )
         sid_index = np.ascontiguousarray(
-            self._sid_range[sid_index_or_slice_etc], dtype="intp"
+            self._sid_range[sid_index_or_slice_etc], dtype="intp",
         )
 
         if not force_python_only or open_bed._is_url(self.location):
             num_threads = get_num_threads(
-                self._num_threads if num_threads is None else num_threads
+                self._num_threads if num_threads is None else num_threads,
             )
             max_concurrent_requests = get_max_concurrent_requests(
                 self._max_concurrent_requests
                 if max_concurrent_requests is None
-                else max_concurrent_requests
+                else max_concurrent_requests,
             )
             max_chunk_bytes = get_max_chunk_bytes(
-                self._max_chunk_bytes if max_chunk_bytes is None else max_chunk_bytes
+                self._max_chunk_bytes if max_chunk_bytes is None else max_chunk_bytes,
             )
 
             val = np.zeros((len(iid_index), len(sid_index)), order=order, dtype=dtype)
@@ -555,10 +554,7 @@ class open_bed:
             else:
                 byteZero = 2
                 byteThree = 0
-            if dtype == np.int8:
-                missing = -127
-            else:
-                missing = np.nan
+            missing = -127 if dtype == np.int8 else np.nan
             # An earlier version of this code had a way to read consecutive SNPs of code
             # in one read. May want
             # to add that ability back to the code.
@@ -587,7 +583,7 @@ class open_bed:
                     startbit = int(np.ceil(0.25 * minor_count) * major_index_index + 3)
                     filepointer.seek(startbit)
                     bytes = np.array(bytearray(filepointer.read(nbyte))).reshape(
-                        (int(np.ceil(0.25 * minor_count)), 1), order="F"
+                        (int(np.ceil(0.25 * minor_count)), 1), order="F",
                     )
 
                     val[3::4, major_index_value : major_index_value + 1] = byteZero
@@ -651,7 +647,7 @@ class open_bed:
         else:
             raise ValueError(
                 f"dtype '{dtype}' not known, only "
-                + "'int8', 'float32', and 'float64' are allowed."
+                + "'int8', 'float32', and 'float64' are allowed.",
             )
 
         if open_bed._is_url(self.location):
@@ -669,10 +665,9 @@ class open_bed:
 
     @property
     def major(self) -> str:
-        """
-        Major mode of a local .bed file.
+        """Major mode of a local .bed file.
 
-        Returns
+        Returns:
         -------
         str
             'SNP' or 'individual'
@@ -686,7 +681,7 @@ class open_bed:
         ValueError
             If the file is a cloud file.
 
-        Example
+        Example:
         -------
 
         .. doctest::
@@ -700,7 +695,8 @@ class open_bed:
 
         """
         if self._is_url(self.location):
-            raise ValueError("Cannot determine major mode for cloud files")
+            msg = "Cannot determine major mode for cloud files"
+            raise ValueError(msg)
         # if self._mode is not set, set it
         if not hasattr(self, "mode"):
             with open(self.location, "rb") as filepointer:
@@ -710,10 +706,9 @@ class open_bed:
 
     @property
     def fid(self) -> np.ndarray:
-        """
-        Family id of each individual (sample).
+        """Family id of each individual (sample).
 
-        Returns
+        Returns:
         -------
         numpy.ndarray
             array of str
@@ -723,7 +718,7 @@ class open_bed:
 
         If needed, will cause a one-time read of the .fam file.
 
-        Example
+        Example:
         -------
 
         .. doctest::
@@ -736,15 +731,13 @@ class open_bed:
             ['fid1' 'fid1' 'fid2']
 
         """
-
         return self.property_item("fid")
 
     @property
     def iid(self) -> np.ndarray:
-        """
-        Individual id of each individual (sample).
+        """Individual id of each individual (sample).
 
-        Returns
+        Returns:
         -------
         numpy.ndarray
             array of str
@@ -752,7 +745,7 @@ class open_bed:
 
         If needed, will cause a one-time read of the .fam file.
 
-        Example
+        Example:
         -------
 
         .. doctest::
@@ -769,10 +762,9 @@ class open_bed:
 
     @property
     def father(self) -> np.ndarray:
-        """
-        Father id of each individual (sample).
+        """Father id of each individual (sample).
 
-        Returns
+        Returns:
         -------
         numpy.ndarray
             array of str
@@ -782,7 +774,7 @@ class open_bed:
 
         If needed, will cause a one-time read of the .fam file.
 
-        Example
+        Example:
         -------
 
         .. doctest::
@@ -799,10 +791,9 @@ class open_bed:
 
     @property
     def mother(self) -> np.ndarray:
-        """
-        Mother id of each individual (sample).
+        """Mother id of each individual (sample).
 
-        Returns
+        Returns:
         -------
         numpy.ndarray
             array of str
@@ -812,7 +803,7 @@ class open_bed:
 
         If needed, will cause a one-time read of the .fam file.
 
-        Example
+        Example:
         -------
 
         .. doctest::
@@ -829,10 +820,9 @@ class open_bed:
 
     @property
     def sex(self) -> np.ndarray:
-        """
-        Sex of each individual (sample).
+        """Sex of each individual (sample).
 
-        Returns
+        Returns:
         -------
         numpy.ndarray
             array of 0, 1, or 2
@@ -842,7 +832,7 @@ class open_bed:
 
         If needed, will cause a one-time read of the .fam file.
 
-        Example
+        Example:
         -------
         .. doctest::
 
@@ -858,11 +848,10 @@ class open_bed:
 
     @property
     def pheno(self) -> np.ndarray:
-        """
-        A phenotype for each individual (sample)
+        """A phenotype for each individual (sample)
         (seldom used).
 
-        Returns
+        Returns:
         -------
         numpy.ndarray
             array of str
@@ -872,7 +861,7 @@ class open_bed:
 
         If needed, will cause a one-time read of the .fam file.
 
-        Example
+        Example:
         -------
 
         .. doctest::
@@ -889,10 +878,9 @@ class open_bed:
 
     @property
     def properties(self) -> Mapping[str, np.array]:
-        """
-        All the properties returned as a dictionary.
+        """All the properties returned as a dictionary.
 
-        Returns
+        Returns:
         -------
         dict
             all the properties
@@ -909,7 +897,7 @@ class open_bed:
 
         If needed, will cause a one-time read of the .fam and .bim file.
 
-        Example
+        Example:
         -------
 
         .. doctest::
@@ -927,10 +915,9 @@ class open_bed:
         return self.properties_dict
 
     def property_item(self, name: str) -> np.ndarray:
-        """
-        Retrieve one property by name.
+        """Retrieve one property by name.
 
-        Returns
+        Returns:
         -------
         numpy.ndarray
             a property value
@@ -945,7 +932,7 @@ class open_bed:
 
         If needed, will cause a one-time read of the .fam or .bim file.
 
-        Example
+        Example:
         -------
 
         .. doctest::
@@ -965,10 +952,9 @@ class open_bed:
 
     @property
     def chromosome(self) -> np.ndarray:
-        """
-        Chromosome of each SNP (variant)
+        """Chromosome of each SNP (variant).
 
-        Returns
+        Returns:
         -------
         numpy.ndarray
             array of str
@@ -978,7 +964,7 @@ class open_bed:
 
         If needed, will cause a one-time read of the .bim file.
 
-        Example
+        Example:
         -------
 
         .. doctest::
@@ -995,10 +981,9 @@ class open_bed:
 
     @property
     def sid(self) -> np.ndarray:
-        """
-        SNP id of each SNP (variant).
+        """SNP id of each SNP (variant).
 
-        Returns
+        Returns:
         -------
         numpy.ndarray
             array of str
@@ -1006,7 +991,7 @@ class open_bed:
 
         If needed, will cause a one-time read of the .bim file.
 
-        Example
+        Example:
         -------
 
         .. doctest::
@@ -1023,10 +1008,9 @@ class open_bed:
 
     @property
     def cm_position(self) -> np.ndarray:
-        """
-        Centimorgan position of each SNP (variant).
+        """Centimorgan position of each SNP (variant).
 
-        Returns
+        Returns:
         -------
         numpy.ndarray
             array of float
@@ -1036,7 +1020,7 @@ class open_bed:
 
         If needed, will cause a one-time read of the .bim file.
 
-        Example
+        Example:
         -------
 
         .. doctest::
@@ -1053,10 +1037,9 @@ class open_bed:
 
     @property
     def bp_position(self) -> np.ndarray:
-        """
-        Base-pair position of each SNP (variant).
+        """Base-pair position of each SNP (variant).
 
-        Returns
+        Returns:
         -------
         numpy.ndarray
             array of int
@@ -1066,7 +1049,7 @@ class open_bed:
 
         If needed, will cause a one-time read of the .bim file.
 
-        Example
+        Example:
         -------
 
         .. doctest::
@@ -1083,10 +1066,9 @@ class open_bed:
 
     @property
     def allele_1(self) -> np.ndarray:
-        """
-        First allele of each SNP (variant).
+        """First allele of each SNP (variant).
 
-        Returns
+        Returns:
         -------
         numpy.ndarray
             array of str
@@ -1094,7 +1076,7 @@ class open_bed:
 
         If needed, will cause a one-time read of the .bim file.
 
-        Example
+        Example:
         -------
 
         .. doctest::
@@ -1111,10 +1093,9 @@ class open_bed:
 
     @property
     def allele_2(self) -> np.ndarray:
-        """
-        Second allele of each SNP (variant),
+        """Second allele of each SNP (variant),.
 
-        Returns
+        Returns:
         -------
         numpy.ndarray
             array of str
@@ -1122,7 +1103,7 @@ class open_bed:
 
         If needed, will cause a one-time read of the .bim file.
 
-        Example
+        Example:
         -------
 
         .. doctest::
@@ -1139,10 +1120,9 @@ class open_bed:
 
     @property
     def iid_count(self) -> np.ndarray:
-        """
-        Number of individuals (samples).
+        """Number of individuals (samples).
 
-        Returns
+        Returns:
         -------
         int
             number of individuals
@@ -1150,7 +1130,7 @@ class open_bed:
 
         If needed, will cause a fast line-count of the .fam file.
 
-        Example
+        Example:
         -------
 
         .. doctest::
@@ -1167,10 +1147,9 @@ class open_bed:
 
     @property
     def sid_count(self) -> np.ndarray:
-        """
-        Number of SNPs (variants).
+        """Number of SNPs (variants).
 
-        Returns
+        Returns:
         -------
         int
             number of SNPs
@@ -1178,7 +1157,7 @@ class open_bed:
 
         If needed, will cause a fast line-count of the .bim file.
 
-        Example
+        Example:
         -------
 
         .. doctest::
@@ -1196,9 +1175,8 @@ class open_bed:
     def _property_location(self, suffix):
         if suffix == "fam":
             return self._fam_location
-        else:
-            assert suffix == "bim"  # real assert
-            return self._bim_location
+        assert suffix == "bim"  # real assert
+        return self._bim_location
 
     def _count(self, suffix):
         count = self._counts[suffix]
@@ -1210,7 +1188,7 @@ class open_bed:
                     if self.property_item("iid") is None:
                         # ... unless user doesn't want iid
                         file_bytes = bytes(
-                            url_to_bytes(location.geturl(), self.cloud_options)
+                            url_to_bytes(location.geturl(), self.cloud_options),
                         )
                         count = _rawincount(BytesIO(file_bytes))
                     else:
@@ -1219,13 +1197,14 @@ class open_bed:
                     if self.property_item("sid") is None:
                         # ... unless user doesn't want sid
                         file_bytes = bytes(
-                            url_to_bytes(location.geturl(), self.cloud_options)
+                            url_to_bytes(location.geturl(), self.cloud_options),
                         )
                         count = _rawincount(BytesIO(file_bytes))
                     else:
                         count = len(self.sid)
                 else:
-                    raise ValueError("real assert")
+                    msg = "real assert"
+                    raise ValueError(msg)
             else:
                 with open(location, "rb") as f:
                     count = _rawincount(f)
@@ -1236,14 +1215,16 @@ class open_bed:
     def _check_file(filepointer):
         magic_number = filepointer.read(2)
         if magic_number != b"l\x1b":
-            raise ValueError("Not a valid .bed file")
+            msg = "Not a valid .bed file"
+            raise ValueError(msg)
         mode = filepointer.read(1)
         # Check if mode is either individual-major or SNP-major
         if mode not in (b"\x00", b"\x01"):
-            raise ValueError("Not a valid .bed file")
+            msg = "Not a valid .bed file"
+            raise ValueError(msg)
         return mode
 
-    def __del__(self):
+    def __del__(self) -> None:
         self.__exit__()
 
     def __enter__(self):
@@ -1256,16 +1237,14 @@ class open_bed:
     def _array_properties_are_ok(val, order):
         if order == "F":
             return val.flags["F_CONTIGUOUS"]
-        else:
-            assert order == "C"  # real assert
-            return val.flags["C_CONTIGUOUS"]
+        assert order == "C"  # real assert
+        return val.flags["C_CONTIGUOUS"]
 
     @property
     def shape(self):
-        """
-        Number of individuals (samples) and SNPs (variants).
+        """Number of individuals (samples) and SNPs (variants).
 
-        Returns
+        Returns:
         -------
         (int, int)
             number of individuals, number of SNPs
@@ -1273,7 +1252,7 @@ class open_bed:
 
         If needed, will cause a fast line-count of the .fam and .bim files.
 
-        Example
+        Example:
         -------
 
         .. doctest::
@@ -1309,7 +1288,7 @@ class open_bed:
         return index
 
     @staticmethod
-    def _write_fam_or_bim(base_filepath, properties, suffix, property_filepath):
+    def _write_fam_or_bim(base_filepath, properties, suffix, property_filepath) -> None:
         assert suffix in {"fam", "bim"}, "real assert"
 
         filepath = (
@@ -1329,7 +1308,7 @@ class open_bed:
         with open(filepath, "w") as filepointer:
             for index in range(len(fam_bim_list[0])):
                 filepointer.write(
-                    sep.join(str(seq[index]) for seq in fam_bim_list) + "\n"
+                    sep.join(str(seq[index]) for seq in fam_bim_list) + "\n",
                 )
 
     @staticmethod
@@ -1341,11 +1320,12 @@ class open_bed:
 
         if not isinstance(input, np.ndarray):
             return open_bed._fix_up_properties_array(
-                np.array(input), dtype, missing_value, key
+                np.array(input), dtype, missing_value, key,
             )
 
         if len(input.shape) != 1:
-            raise ValueError(f"{key} should be one dimensional")
+            msg = f"{key} should be one dimensional"
+            raise ValueError(msg)
 
         do_missing_values = True
         if np.issubdtype(input.dtype, np.floating) and np.issubdtype(dtype, int):
@@ -1377,7 +1357,8 @@ class open_bed:
     def _fix_up_properties(properties, iid_count, sid_count, use_fill_sequence):
         for key in properties:
             if key not in _meta_meta:
-                raise KeyError(f"properties key '{key}' not known")
+                msg = f"properties key '{key}' not known"
+                raise KeyError(msg)
 
         count_dict = {"fam": iid_count, "bim": sid_count}
         properties_dict = {}
@@ -1391,26 +1372,25 @@ class open_bed:
                     continue  # Test coverage reaches this, but doesn't report it.
             else:
                 output = open_bed._fix_up_properties_array(
-                    properties[key], mm.dtype, mm.missing_value, key
+                    properties[key], mm.dtype, mm.missing_value, key,
                 )
 
             if output is not None:
                 if count is None:
                     count_dict[mm.suffix] = len(output)
-                else:
-                    if count != len(output):
-                        raise ValueError(
-                            f"The length of override {key}, {len(output)}, should not "
-                            + "be different from the current "
-                            + f"{_count_name[mm.suffix]}, {count}"
-                        )
+                elif count != len(output):
+                    raise ValueError(
+                        f"The length of override {key}, {len(output)}, should not "
+                        + "be different from the current "
+                        + f"{_count_name[mm.suffix]}, {count}",
+                    )
             properties_dict[key] = output
         return properties_dict, count_dict
 
-    def _read_fam_or_bim(self, suffix):
+    def _read_fam_or_bim(self, suffix) -> None:
         property_location = self._property_location(suffix)
 
-        logging.info("Loading {0} file {1}".format(suffix, property_location))
+        logging.info(f"Loading {suffix} file {property_location}")
 
         count = self._counts[suffix]
 
@@ -1429,7 +1409,7 @@ class open_bed:
 
         if self._is_url(property_location):
             file_bytes = bytes(
-                url_to_bytes(property_location.geturl(), self.cloud_options)
+                url_to_bytes(property_location.geturl(), self.cloud_options),
             )
             if len(file_bytes) == 0:
                 columns, row_count = [], 0
@@ -1440,26 +1420,24 @@ class open_bed:
                     dtype=dtype_dict,
                     usecols=usecolsdict.values(),
                 )
+        elif os.path.getsize(property_location) == 0:
+            columns, row_count = [], 0
         else:
-            if os.path.getsize(property_location) == 0:
-                columns, row_count = [], 0
-            else:
-                columns, row_count = _read_csv(
-                    property_location,
-                    delimiter=delimiter,
-                    dtype=dtype_dict,
-                    usecols=usecolsdict.values(),
-                )
+            columns, row_count = _read_csv(
+                property_location,
+                delimiter=delimiter,
+                dtype=dtype_dict,
+                usecols=usecolsdict.values(),
+            )
 
         if count is None:
             self._counts[suffix] = row_count
-        else:
-            if count != row_count:
-                raise ValueError(
-                    f"The number of lines in the *.{suffix} file, {row_count}, "
-                    + "should not be different from the current "
-                    + "f{_count_name[suffix]}, {count}"
-                )
+        elif count != row_count:
+            raise ValueError(
+                f"The number of lines in the *.{suffix} file, {row_count}, "
+                + "should not be different from the current "
+                + "f{_count_name[suffix]}, {count}",
+            )
         for i, key in enumerate(usecolsdict.keys()):
             mm = _meta_meta[key]
             if row_count == 0:
@@ -1480,8 +1458,7 @@ class open_bed:
         max_concurrent_requests=None,
         max_chunk_bytes=None,
     ) -> (Union[sparse.csc_matrix, sparse.csr_matrix]) if sparse is not None else None:  # type: ignore
-        """
-        Read genotype information into a :mod:`scipy.sparse` matrix. Sparse matrices
+        """Read genotype information into a :mod:`scipy.sparse` matrix. Sparse matrices
         may be useful when the data is mostly zeros.
 
         .. note::
@@ -1558,7 +1535,6 @@ class open_bed:
 
         Examples
         --------
-
         Read all data in a .bed file into a :class:`scipy.sparse.csc_matrix`.
         The file has 10 individuals (samples) by 20 SNPs (variants).
         All but eight values are 0.
@@ -1606,11 +1582,12 @@ class open_bed:
             >>> # read last and 2nd-to-last individuals and the 15th-from-the-last SNP
             >>> print("Nonzero Values", bed.read_sparse(np.s_[[-1,-2],-15], dtype="int8").data)
             Nonzero Values [2]
+
         """
         if sparse is None:
             raise ImportError(
                 "The function read_sparse() requires scipy. "
-                + "Install it with 'pip install --upgrade bed-reader[sparse]'."
+                + "Install it with 'pip install --upgrade bed-reader[sparse]'.",
             )
         iid_index_or_slice_etc, sid_index_or_slice_etc = self._split_index(index)
 
@@ -1629,16 +1606,19 @@ class open_bed:
             dtype="intp",
         )
         sid_index = np.ascontiguousarray(
-            self._sid_range[sid_index_or_slice_etc], dtype="intp"
+            self._sid_range[sid_index_or_slice_etc], dtype="intp",
         )
 
         if (
             len(iid_index) > np.iinfo(np.int32).max
             or len(sid_index) > np.iinfo(np.int32).max
         ):
-            raise ValueError(
+            msg = (
                 "Too many Individuals or SNPs (variants) requested. "
                 "Maximum is {np.iinfo(np.int32).max}."
+            )
+            raise ValueError(
+                msg,
             )
 
 
@@ -1646,15 +1626,15 @@ class open_bed:
             batch_size = round(np.sqrt(len(sid_index)))
 
         num_threads = get_num_threads(
-            self._num_threads if num_threads is None else num_threads
+            self._num_threads if num_threads is None else num_threads,
         )
         max_concurrent_requests = get_max_concurrent_requests(
             self._max_concurrent_requests
             if max_concurrent_requests is None
-            else max_concurrent_requests
+            else max_concurrent_requests,
         )
         max_chunk_bytes = get_max_chunk_bytes(
-            self._max_chunk_bytes if max_chunk_bytes is None else max_chunk_bytes
+            self._max_chunk_bytes if max_chunk_bytes is None else max_chunk_bytes,
         )
 
         if format == "csc":
@@ -1664,7 +1644,8 @@ class open_bed:
             order = "C"
             indptr = np.zeros(len(iid_index) + 1, dtype=np.int32)
         else:
-            raise ValueError(f"format '{format}' not known. Expected 'csc' or 'csr'.")
+            msg = f"format '{format}' not known. Expected 'csc' or 'csr'."
+            raise ValueError(msg)
 
         # We init data and indices with zero element arrays to set their dtype.
         data = [np.empty(0, dtype=dtype)]
@@ -1716,7 +1697,7 @@ class open_bed:
                         )
 
                     self.sparsify(
-                        val, order, iid_index, batch_slice, data, indices, indptr
+                        val, order, iid_index, batch_slice, data, indices, indptr,
                     )
             else:
                 assert format == "csr"  # real assert
@@ -1763,7 +1744,7 @@ class open_bed:
                         )
 
                     self.sparsify(
-                        val, order, sid_index, batch_slice, data, indices, indptr
+                        val, order, sid_index, batch_slice, data, indices, indptr,
                     )
 
         data = np.concatenate(data)
@@ -1771,23 +1752,22 @@ class open_bed:
 
         if format == "csc":
             return sparse.csc_matrix(
-                (data, indices, indptr), (len(iid_index), len(sid_index))
+                (data, indices, indptr), (len(iid_index), len(sid_index)),
             )
-        else:
-            assert format == "csr"  # real assert
-            return sparse.csr_matrix(
-                (data, indices, indptr), (len(iid_index), len(sid_index))
-            )
+        assert format == "csr"  # real assert
+        return sparse.csr_matrix(
+            (data, indices, indptr), (len(iid_index), len(sid_index)),
+        )
 
-    def sparsify(self, val, order, minor_index, batch_slice, data, indices, indptr):
+    def sparsify(self, val, order, minor_index, batch_slice, data, indices, indptr) -> None:
         flatten = np.ravel(val, order=order)
         nz_indices = np.flatnonzero(flatten).astype(np.int32)
         column_indexes = nz_indices // len(minor_index)
         counts = np.bincount(
-            column_indexes, minlength=batch_slice.stop - batch_slice.start
+            column_indexes, minlength=batch_slice.stop - batch_slice.start,
         ).astype(np.int32)
         counts_with_initial = np.r_[
-            indptr[batch_slice.start : batch_slice.start + 1], counts
+            indptr[batch_slice.start : batch_slice.start + 1], counts,
         ]
 
         data.append(flatten[nz_indices])
@@ -1838,7 +1818,7 @@ def _convert_to_dtype(str_arr, dtype):
         new_arr = str_arr.astype(dtype)
     except ValueError as e:
         if dtype == np.float32:
-            raise e
+            raise
         # for backwards compatibility, see if intermediate float helps int conversion
         try:
             assert dtype == np.int32  # real assert
@@ -1847,8 +1827,9 @@ def _convert_to_dtype(str_arr, dtype):
             raise e
         new_arr = float_arr.astype(np.int32)
         if not np.array_equal(new_arr, float_arr):
+            msg = f"invalid literal for int: '{str_arr[np.where(new_arr != float_arr)][:1]}')"
             raise ValueError(
-                f"invalid literal for int: '{str_arr[np.where(new_arr != float_arr)][:1]}')"
+                msg,
             )
     return new_arr
 

@@ -26,23 +26,17 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
-      - name: Set up Rust
-        uses: actions-rs/toolchain@v1
+        uses: actions/checkout@v4
+      - name: Set up Rust (Pinned Version)
+        uses: dtolnay/rust-toolchain@1.81.0
         with:
-          toolchain: 1.81
-          override: true
-      - name: Install Clippy (pinned version for this pinned version of Rust)
-        run: rustup component add clippy
+          components: clippy, rustfmt, rust-src
       - name: Run Clippy (strict for this pinned version of Rust)
         run: cargo clippy --all-targets --all-features -- -D warnings
-      - name: Set up Rust (Latest Stable for Tests)
-        uses: actions-rs/toolchain@v1
+      - name: Set up Rust (Latest Stable)
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          override: true
-      - name: Install Clippy (Latest)
-        run: rustup component add clippy
+          components: clippy, rustfmt, rust-src
       - name: Run Clippy (lenient for latest version)
         run: cargo clippy --all-targets --all-features -- -A warnings || echo "Clippy warnings from the latest version"
       - name: Test Rust no-default-features
@@ -183,27 +177,27 @@ jobs:
       uses: astral-sh/setup-uv@v3
     - name: Install Python ${{ matrix.python-version }}
       run: uv python install ${{ matrix.python-version }}
-    - name: Setup, Lint, and Test Python (Linux/macOS)
-      if: runner.os != 'Windows'
+    - name: Pinned Ruff
+      run:  uvx ruff@0.6.9 check bed_reader
+    - name: Lastest Ruff (just to check for warnings)
+      run: uvx ruff@latest check bed_reader || echo "Ignoring warnings from the latest version of ruff"
+    - name: Install minimal dependencies
+      run: uv sync --extra min_dev
+    - name: Run min tests
       run: |
-        cd bed_reader
-        uvx ruff@0.6.9 check .
-        uvx ruff@latest check . || echo "Ignoring warnings from the latest version of ruff"
-        uv sync --extra min_dev
-        source ../.venv/bin/activate
-        pytest tests/test_opt_dep.py
-        uv sync --extra dev --extra sparse --extra samples
-        source ../.venv/bin/activate
-        pytest .
-    - name: Setup, Lint, and Test Python (Windows)
-      if: runner.os == 'Windows'
+        if [[ "$RUNNER_OS" != "Windows" ]]; then
+          source .venv/bin/activate
+        else
+          source .venv/Scripts/activate
+        fi
+        pytest bed_reader/tests/test_opt_dep.py  
+    - name: Install all dependencies
+      run: uv sync --all-extras
+    - name: Run all tests
       run: |
-        cd bed_reader
-        uvx ruff@0.6.9 check .
-        uvx ruff@latest check . || echo "Ignoring warnings from the latest version of ruff"
-        uv sync --extra min_dev
-        ../.venv/Scripts/activate
-        pytest tests/test_opt_dep.py
-        uv sync --extra dev --extra sparse --extra samples
-        ../.venv/Scripts/activate
-        pytest .
+        if [[ "$RUNNER_OS" != "Windows" ]]; then
+          source .venv/bin/activate
+        else
+          source .venv/Scripts/activate
+        fi
+        pytest bed_runner

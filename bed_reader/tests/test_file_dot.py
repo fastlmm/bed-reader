@@ -68,7 +68,7 @@ def file_aat(filename, offset, iid_count, sid_count, iid_step):
     return aat
 
 
-def write_read_test_file_ata(iid_count, sid_count, sid_step, tmp_path):
+def write_read_test_file_ata(iid_count, sid_count, sid_step, tmp_path) -> None:
     offset = 640
     file_path = tmp_path / f"{iid_count}x{sid_count}_o{offset}_array.memmap"
 
@@ -89,7 +89,7 @@ def write_read_test_file_ata(iid_count, sid_count, sid_step, tmp_path):
 
 
 def write_read_test_file_aat(
-    iid_count, sid_count, iid_step, tmp_path, skip_if_there=False
+    iid_count, sid_count, iid_step, tmp_path, skip_if_there=False,
 ):
     offset = 640
     file_path = tmp_path / f"{iid_count}x{sid_count}_o{offset}_array.memmap"
@@ -125,11 +125,11 @@ def write_read_test_file_aat(
     return delta
 
 
-def test_file_ata_medium(tmp_path):
+def test_file_ata_medium(tmp_path) -> None:
     write_read_test_file_ata(100, 1000, 33, tmp_path)
 
 
-def test_file_aat_medium(tmp_path):
+def test_file_aat_medium(tmp_path) -> None:
     write_read_test_file_aat(100, 1000, 34, tmp_path)
 
 
@@ -142,25 +142,21 @@ def test_file_aat_medium(tmp_path):
 #     write_read_test_file_ata(1_000, 10_000, 100, tmp_path)
 
 
-def test_file_ata_small(shared_datadir):
+def test_file_ata_small(shared_datadir) -> None:
     filename = shared_datadir / "small_array.memmap"
 
     out_val = file_ata(filename, 0, 2, 3, 2)
-    print(out_val)
 
     expected = np.array([[17.0, 22.0, 27.0], [22.0, 29.0, 36.0], [27.0, 36.0, 45.0]])
-    print(expected)
     assert np.allclose(expected, out_val, equal_nan=True)
 
 
-def test_file_aat_small(shared_datadir):
+def test_file_aat_small(shared_datadir) -> None:
     filename = shared_datadir / "small_array.memmap"
 
     out_val = file_aat(filename, 0, iid_count=2, sid_count=3, iid_step=1)
-    print(out_val)
 
     expected = np.array([[14.0, 32.0], [32.0, 77.0]])
-    print(expected)
     assert np.allclose(expected, out_val, equal_nan=True)
 
 
@@ -173,7 +169,7 @@ def mmultfile_b_less_aatb(a_snp_mem_map, b, log_frequency=0, force_python_only=F
 
     if force_python_only:
         aTb = np.zeros(
-            (a_snp_mem_map.shape[1], b.shape[1])
+            (a_snp_mem_map.shape[1], b.shape[1]),
         )  # b can be destroyed. Is everything is in best order, i.e. F vs C
         aaTb = b.copy()
         b_mem = np.array(b, order="F")
@@ -181,10 +177,10 @@ def mmultfile_b_less_aatb(a_snp_mem_map, b, log_frequency=0, force_python_only=F
             U_fp.seek(a_snp_mem_map.offset)
             for i in range(a_snp_mem_map.shape[1]):
                 a_mem = np.fromfile(
-                    U_fp, dtype=np.float64, count=a_snp_mem_map.shape[0]
+                    U_fp, dtype=np.float64, count=a_snp_mem_map.shape[0],
                 )
                 if log_frequency > 0 and i % log_frequency == 0:
-                    logging.info("{0}/{1}".format(i, a_snp_mem_map.shape[1]))
+                    logging.info(f"{i}/{a_snp_mem_map.shape[1]}")
                 aTb[i, :] = np.dot(a_mem, b_mem)
                 aaTb -= np.dot(a_mem.reshape(-1, 1), aTb[i : i + 1, :])
     else:
@@ -207,8 +203,8 @@ def mmultfile_b_less_aatb(a_snp_mem_map, b, log_frequency=0, force_python_only=F
 
 
 def write_read_test_file_b_less_aatbx(
-    iid_count, a_sid_count, b_sid_count, log_frequency, tmp_path, do_both=True
-):
+    iid_count, a_sid_count, b_sid_count, log_frequency, tmp_path, do_both=True,
+) -> None:
     offset = 640
     file_path = tmp_path / f"{iid_count}x{a_sid_count}_o{offset}_array.memmap"
     mm = np.memmap(
@@ -224,36 +220,37 @@ def write_read_test_file_b_less_aatbx(
 
     b = np.array(
         np.linspace(0, 1, iid_count * b_sid_count).reshape(
-            (iid_count, b_sid_count), order="F"
-        )
+            (iid_count, b_sid_count), order="F",
+        ),
     )
     b_again = b.copy()
 
     logging.info("Calling Rust")
     aTb, aaTb = mmultfile_b_less_aatb(
-        mm, b_again, log_frequency, force_python_only=False
+        mm, b_again, log_frequency, force_python_only=False,
     )
 
     if do_both:
         logging.info("Calling Python")
         aTb_python, aaTb_python = mmultfile_b_less_aatb(
-            mm, b, log_frequency, force_python_only=True
+            mm, b, log_frequency, force_python_only=True,
         )
 
         if (
             not np.abs(aTb_python - aTb).max() < 1e-8
             or not np.abs(aaTb_python - aaTb).max() < 1e-8
         ):
+            msg = "Expect Python and Rust to get the same mmultfile_b_less_aatb answer"
             raise AssertionError(
-                "Expect Python and Rust to get the same mmultfile_b_less_aatb answer"
+                msg,
             )
 
 
-def test_file_b_less_aatbx_medium(tmp_path):
+def test_file_b_less_aatbx_medium(tmp_path) -> None:
     write_read_test_file_b_less_aatbx(500, 400, 100, 10, tmp_path, do_both=True)
 
 
-def test_file_b_less_aatbx_medium2(tmp_path):
+def test_file_b_less_aatbx_medium2(tmp_path) -> None:
     write_read_test_file_b_less_aatbx(5_000, 400, 100, 100, tmp_path, do_both=True)
 
 
@@ -280,7 +277,6 @@ if __name__ == "__main__":
             order="F",
         )
         mm[:] = small2_array[:]
-        print(mm.offset)
         mm.flush()
 
     if False:
@@ -293,7 +289,6 @@ if __name__ == "__main__":
             order="F",
         )
         mm[:] = small_array[:]
-        print(mm.offset)
         mm.flush()
 
     if False:
@@ -309,7 +304,6 @@ if __name__ == "__main__":
         lin = np.linspace(0, 1, total).reshape(mm.shape)
 
         mm[:] = lin[:]
-        print(mm.offset)
         mm.flush()
 
     if False:
@@ -325,7 +319,6 @@ if __name__ == "__main__":
         lin = np.linspace(0, 1, total).reshape(mm.shape)
 
         mm[:] = lin[:]
-        print(mm.offset)
         mm.flush()
 
     if False:
@@ -341,7 +334,6 @@ if __name__ == "__main__":
         lin = np.linspace(0, 1, total).reshape(mm.shape)
 
         mm[:] = lin[:]
-        print(mm.offset)
         mm.flush()
 
     if False:
@@ -357,7 +349,6 @@ if __name__ == "__main__":
         lin = np.linspace(0, 1, total).reshape(mm.shape)
 
         mm[:] = lin[:]
-        print(mm.offset)
         mm.flush()
 
     # test_file_b_less_aatbx_2(tmp_path)

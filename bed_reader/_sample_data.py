@@ -30,8 +30,7 @@ except ImportError:
 
 
 def sample_file(filepath: Union[str, Path]) -> str:
-    """
-    Retrieve a sample .bed file. (Also retrieves associated .fam and .bim files).
+    """Retrieve a sample .bed file. (Also retrieves associated .fam and .bim files).
 
     Parameters
     ----------
@@ -67,11 +66,12 @@ def sample_file(filepath: Union[str, Path]) -> str:
         >>> file_name = sample_file("small.bed")
         >>> print(f"The local file name is '{file_name}'")
         The local file name is '...small.bed'
+
     """
     if pooch is None:
         raise ImportError(
             "The function sample_file() requires pooch. "
-            + "Install it with 'pip install --upgrade bed-reader[samples]'."
+            + "Install it with 'pip install --upgrade bed-reader[samples]'.",
         )
 
     filepath = Path(filepath)
@@ -83,8 +83,7 @@ def sample_file(filepath: Union[str, Path]) -> str:
 
 
 def sample_url(filepath: Union[str, Path]) -> str:
-    """
-    Retrieve a URL to a sample .bed file. (Also makes ready associated .fam and .bim files).
+    """Retrieve a URL to a sample .bed file. (Also makes ready associated .fam and .bim files).
 
     Parameters
     ----------
@@ -120,23 +119,22 @@ def sample_url(filepath: Union[str, Path]) -> str:
         >>> url = sample_url("small.bed")
         >>> print(f"The url is '{url}'")
         The url is 'file:///.../small.bed'
+
     """
     file_name = sample_file(filepath)
-    url = PurePath(file_name).as_uri()
-    return url
+    return PurePath(file_name).as_uri()
 
 
 def tmp_path() -> Path:
-    """
-    Return a :class:`pathlib.Path` to a temporary directory.
+    """Return a :class:`pathlib.Path` to a temporary directory.
 
-    Returns
+    Returns:
     -------
     pathlib.Path
         a temporary directory
 
-    Example
-    --------
+    Example:
+    -------
 
     .. doctest::
 

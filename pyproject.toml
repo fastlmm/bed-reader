@@ -52,8 +52,12 @@ exclude = [
 
 [tool.ruff.lint]
 select = ["E", "F", "W"]
+ignore = ["ANN202"]
 
 
 [tool.pytest.ini_options]
 addopts = "--doctest-modules --doctest-glob=*.rst --doctest-glob=*.md"
 doctest_optionflags = "ELLIPSIS"
+
+[tool.uv]
+dev-dependencies = ["twine>=5.1.1"]

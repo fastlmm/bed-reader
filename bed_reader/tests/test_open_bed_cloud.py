@@ -1,9 +1,9 @@
 import configparser
+import contextlib
 import logging
 import math
 import os
 import platform
-import sys
 from pathlib import Path, PurePath
 
 import numpy as np
@@ -13,7 +13,7 @@ from bed_reader import open_bed, subset_f64_f64, to_bed
 from bed_reader.tests.test_open_bed import reference_val, setting_generator
 
 
-def test_cloud_read1(shared_datadir):
+def test_cloud_read1(shared_datadir) -> None:
     file = shared_datadir / "plink_sim_10s_100v_10pmiss.bed"
     file = PurePath(file).as_uri()
 
@@ -32,7 +32,7 @@ def test_cloud_read1(shared_datadir):
         assert bed.bp_position[-1] == 100
 
 
-def test_cloud_write(tmp_path, shared_datadir):
+def test_cloud_write(tmp_path, shared_datadir) -> None:
     in_file = shared_datadir / "plink_sim_10s_100v_10pmiss.bed"
     in_file = PurePath(in_file).as_uri()
 
@@ -84,7 +84,7 @@ def test_cloud_write(tmp_path, shared_datadir):
             )
 
 
-def test_cloud_overrides(shared_datadir):
+def test_cloud_overrides(shared_datadir) -> None:
     file = PurePath(shared_datadir / "some_missing.bed").as_uri()
     with open_bed(file) as bed:
         fid = bed.fid
@@ -141,7 +141,7 @@ def test_cloud_overrides(shared_datadir):
 
     with open_bed(
         file,
-        properties={"sid": [i for i in range(len(sid))]},
+        properties={"sid": list(range(len(sid)))},
     ) as bed1:
         assert np.issubdtype(bed1.sid.dtype, np.str_)
         assert bed1.sid[0] == "0"
@@ -152,7 +152,7 @@ def test_cloud_overrides(shared_datadir):
         )  # Sex must be coded as a number
     with open_bed(
         file,
-        properties={"sid": np.array([i for i in range(len(sid))])},
+        properties={"sid": np.array(list(range(len(sid))))},
     ) as bed1:
         assert np.issubdtype(bed1.sid.dtype, np.str_)
         assert bed1.sid[0] == "0"
@@ -161,38 +161,37 @@ def test_cloud_overrides(shared_datadir):
             file,
             properties={"sid": np.array([(i, i) for i in range(len(sid))])},
         )
-    with open_bed(file, properties={"sid": [1, 2, 3]}) as bed1:
-        with pytest.raises(ValueError):
-            bed1.chromosome
+    with open_bed(file, properties={"sid": [1, 2, 3]}) as bed1, pytest.raises(ValueError):
+        bed1.chromosome
 
 
 def file_to_url(file):
     return PurePath(file).as_uri()
 
 
-def test_cloud_str(shared_datadir):
+def test_cloud_str(shared_datadir) -> None:
     with open_bed(file_to_url(shared_datadir / "some_missing.bed")) as bed:
         assert "open_bed(" in str(bed)
 
 
-def test_cloud_bad_bed(shared_datadir):
+def test_cloud_bad_bed(shared_datadir) -> None:
     with pytest.raises(ValueError):
         open_bed(file_to_url(shared_datadir / "badfile.bed"))
     open_bed(file_to_url(shared_datadir / "badfile.bed"), skip_format_check=True)
 
 
-def test_cloud_bad_dtype_or_order(shared_datadir):
+def test_cloud_bad_dtype_or_order(shared_datadir) -> None:
     with pytest.raises(ValueError):
         open_bed(file_to_url(shared_datadir / "some_missing.bed")).read(dtype=np.int32)
     with pytest.raises(ValueError):
         open_bed(file_to_url(shared_datadir / "some_missing.bed")).read(order="X")
     with pytest.raises(ValueError):
         open_bed(file_to_url(shared_datadir / "some_missing.bed")).read_sparse(
-            dtype=np.int32
+            dtype=np.int32,
         )
 
 
-def test_cloud_properties(shared_datadir):
+def test_cloud_properties(shared_datadir) -> None:
     file = file_to_url(shared_datadir / "plink_sim_10s_100v_10pmiss.bed")
     with open_bed(file) as bed:
         iid_list = bed.iid.tolist()
@@ -270,7 +269,7 @@ def test_cloud_properties(shared_datadir):
             # bed._assert_iid_sid_chromosome()
 
 
-def test_cloud_c_reader_bed(shared_datadir):
+def test_cloud_c_reader_bed(shared_datadir) -> None:
     for force_python_only, format in [(False, "csc"), (True, "csr")]:
         bed = open_bed(file_to_url(shared_datadir / "some_missing.bed"), count_A1=False)
 
@@ -283,7 +282,7 @@ def test_cloud_c_reader_bed(shared_datadir):
         val_sparse = bed.read_sparse(format=format)
         assert val_sparse.dtype == np.float32
         assert np.allclose(
-            ref_val, val_sparse.toarray(), rtol=1e-05, atol=1e-05, equal_nan=True
+            ref_val, val_sparse.toarray(), rtol=1e-05, atol=1e-05, equal_nan=True,
         )
 
         val = bed.read(order="F", dtype="int8", force_python_only=False)
@@ -296,22 +295,22 @@ def test_cloud_c_reader_bed(shared_datadir):
 
         with open_bed(file_to_url(shared_datadir / "some_missing.bed")) as bed:
             val = bed.read(
-                order="F", dtype="float64", force_python_only=force_python_only
+                order="F", dtype="float64", force_python_only=force_python_only,
             )
             ref_val = reference_val(shared_datadir)
             assert np.allclose(ref_val, val, rtol=1e-05, atol=1e-05, equal_nan=True)
             val_sparse = bed.read_sparse(dtype="float64")
             assert np.allclose(
-                ref_val, val_sparse.toarray(), rtol=1e-05, atol=1e-05, equal_nan=True
+                ref_val, val_sparse.toarray(), rtol=1e-05, atol=1e-05, equal_nan=True,
             )
 
 
-def test_cloud_bed_int8(tmp_path, shared_datadir):
+def test_cloud_bed_int8(tmp_path, shared_datadir) -> None:
     with open_bed(file_to_url(shared_datadir / "some_missing.bed")) as bed:
         for force_python_only in [False, True]:
             for order, format in [("F", "csc"), ("C", "csr")]:
                 val = bed.read(
-                    dtype="int8", force_python_only=force_python_only, order=order
+                    dtype="int8", force_python_only=force_python_only, order=order,
                 )
                 assert val.dtype == np.int8
                 assert (val.flags["C_CONTIGUOUS"] and order == "C") or (
@@ -332,7 +331,7 @@ def test_cloud_bed_int8(tmp_path, shared_datadir):
                     with open_bed(output, count_A1=count_A1) as bed2:
                         assert np.array_equal(
                             bed2.read(
-                                dtype="int8", force_python_only=force_python_only
+                                dtype="int8", force_python_only=force_python_only,
                             ),
                             ref_val,
                         )
@@ -340,12 +339,12 @@ def test_cloud_bed_int8(tmp_path, shared_datadir):
                         assert np.allclose(val_sparse.toarray(), ref_val)
 
 
-def test_cloud_write1_bed_f64cpp(tmp_path, shared_datadir):
+def test_cloud_write1_bed_f64cpp(tmp_path, shared_datadir) -> None:
     with open_bed(file_to_url(shared_datadir / "some_missing.bed")) as bed:
         for iid_index in [0, 1, 5]:
             for force_python_only, format in [(False, "csc"), (True, "csr")]:
                 val_sparse = bed.read_sparse(
-                    np.s_[0:iid_index, :], dtype=np.float64, format=format
+                    np.s_[0:iid_index, :], dtype=np.float64, format=format,
                 )
                 assert val_sparse.shape == (iid_index, 100)
                 val = bed.read(
@@ -362,10 +361,10 @@ def test_cloud_write1_bed_f64cpp(tmp_path, shared_datadir):
             assert np.allclose(val_sparse.toarray(), val2, equal_nan=True)
 
 
-def test_cloud_write1_x_x_cpp(tmp_path, shared_datadir):
+def test_cloud_write1_x_x_cpp(tmp_path, shared_datadir) -> None:
     for count_A1 in [False, True]:
         with open_bed(
-            file_to_url(shared_datadir / "some_missing.bed"), count_A1=count_A1
+            file_to_url(shared_datadir / "some_missing.bed"), count_A1=count_A1,
         ) as bed:
             for order, format in [("F", "csc"), ("C", "csr")]:
                 for dtype in [np.float32, np.float64]:
@@ -374,21 +373,21 @@ def test_cloud_write1_x_x_cpp(tmp_path, shared_datadir):
                     val[-1, 0] = float("NAN")
                     output = str(
                         tmp_path
-                        / "toydata.{0}{1}.cpp".format(
-                            order, "32" if dtype == np.float32 else "64"
-                        )
+                        / "toydata.{}{}.cpp".format(
+                            order, "32" if dtype == np.float32 else "64",
+                        ),
                     )
                     to_bed(output, val, properties=properties, count_A1=count_A1)
                     val2 = open_bed(output, count_A1=count_A1).read(dtype=dtype)
                     assert np.allclose(val, val2, equal_nan=True)
                     val_sparse = open_bed(output, count_A1=count_A1).read_sparse(
-                        dtype=dtype, format=format
+                        dtype=dtype, format=format,
                     )
                     assert np.allclose(val, val_sparse.toarray(), equal_nan=True)
 
 
-def test_cloud_respect_read_inputs(shared_datadir):
-    import scipy.sparse as sparse
+def test_cloud_respect_read_inputs(shared_datadir) -> None:
+    from scipy import sparse
 
     ref_val_float = reference_val(shared_datadir)
     ref_val_float2 = ref_val_float.copy()
@@ -400,12 +399,13 @@ def test_cloud_respect_read_inputs(shared_datadir):
             for dtype in [np.int8, np.float32, np.float64]:
                 for force_python_only in [True, False]:
                     val = bed.read(
-                        order=order, dtype=dtype, force_python_only=force_python_only
+                        order=order, dtype=dtype, force_python_only=force_python_only,
                     )
                     has_right_order = (order == "C" and val.flags["C_CONTIGUOUS"]) or (
                         order == "F" and val.flags["F_CONTIGUOUS"]
                     )
-                    assert val.dtype == dtype and has_right_order
+                    assert val.dtype == dtype
+                    assert has_right_order
                     ref_val = ref_val_int8 if dtype == np.int8 else ref_val_float
                     assert np.allclose(ref_val, val, equal_nan=True)
 
@@ -413,11 +413,12 @@ def test_cloud_respect_read_inputs(shared_datadir):
                 has_right_format = (
                     format == "csc" and isinstance(val_sparse, sparse.csc_matrix)
                 ) or (format == "csr" and isinstance(val_sparse, sparse.csr_matrix))
-                assert val_sparse.dtype == dtype and has_right_format
+                assert val_sparse.dtype == dtype
+                assert has_right_format
                 assert np.allclose(ref_val, val_sparse.toarray(), equal_nan=True)
 
 
-def test_cloud_threads(shared_datadir):
+def test_cloud_threads(shared_datadir) -> None:
     ref_val_float = reference_val(shared_datadir)
     ref_val_float2 = ref_val_float.copy()
     ref_val_float2[ref_val_float != ref_val_float] = -127
@@ -425,7 +426,7 @@ def test_cloud_threads(shared_datadir):
 
     for num_threads in [1, 4]:
         with open_bed(
-            file_to_url(shared_datadir / "some_missing.bed"), num_threads=num_threads
+            file_to_url(shared_datadir / "some_missing.bed"), num_threads=num_threads,
         ) as bed:
             val = bed.read(dtype="int8")
             assert np.allclose(ref_val_int8, val, equal_nan=True)
@@ -433,7 +434,7 @@ def test_cloud_threads(shared_datadir):
             assert np.allclose(ref_val_int8, val_sparse.toarray(), equal_nan=True)
 
 
-def test_cloud_write12(tmp_path):
+def test_cloud_write12(tmp_path) -> None:
     # ===================================
     #    Starting main function
     # ===================================
@@ -451,7 +452,7 @@ def test_cloud_write12(tmp_path):
             for is_none in [True, False]:
                 properties = {"fid": row0, "iid": row1, "sid": col}
                 if is_none:
-                    col_prop012 = [x for x in range(5)][:col_count]
+                    col_prop012 = list(range(5))[:col_count]
                     properties["chromosome"] = col_prop012
                     properties["bp_position"] = col_prop012
                     properties["cm_position"] = col_prop012
@@ -465,32 +466,27 @@ def test_cloud_write12(tmp_path):
                 for subsetter in [None, np.s_[::2, ::3]]:
                     with open_bed(filename) as bed:
                         val2 = bed.read(index=subsetter, order="C", dtype="float32")
-                        if subsetter is None:
-                            expected = val
-                        else:
-                            expected = val[subsetter[0], :][:, subsetter[1]]
+                        expected = val if subsetter is None else val[subsetter[0], :][:, subsetter[1]]
                         assert np.allclose(val2, expected, equal_nan=True)
                         assert np.array_equal(bed.fid, np.array(row0, dtype="str"))
                         assert np.array_equal(bed.iid, np.array(row1, dtype="str"))
                         assert np.array_equal(bed.sid, np.array(col, dtype="str"))
                         if col_prop012 is not None:
                             assert np.array_equal(
-                                bed.chromosome, np.array(col_prop012, dtype="str")
+                                bed.chromosome, np.array(col_prop012, dtype="str"),
                             )
                             assert np.array_equal(
-                                bed.bp_position, np.array(col_prop012)
+                                bed.bp_position, np.array(col_prop012),
                             )
                             assert np.array_equal(
-                                bed.cm_position, np.array(col_prop012)
+                                bed.cm_position, np.array(col_prop012),
                             )
-                try:
+                with contextlib.suppress(Exception):
                     os.remove(filename)
-                except Exception:
-                    pass
     logging.info("done with 'test_writes'")
 
 
-def test_cloud_writes_small(tmp_path):
+def test_cloud_writes_small(tmp_path) -> None:
     output_file = tmp_path / "small.bed"
 
     val = [[1.0, 0, np.nan, 0], [2, 0, np.nan, 2], [0, 1, 2, 0]]
@@ -516,11 +512,11 @@ def test_cloud_writes_small(tmp_path):
         assert np.allclose(bed.read(), val, equal_nan=True)
         for key, value in bed.properties.items():
             assert np.array_equal(value, properties[key]) or np.allclose(
-                value, properties[key]
+                value, properties[key],
             )
 
 
-def test_cloud_index(shared_datadir):
+def test_cloud_index(shared_datadir) -> None:
     ref_val_float = reference_val(shared_datadir)
 
     with open_bed(file_to_url(shared_datadir / "some_missing.bed")) as bed:
@@ -534,9 +530,9 @@ def test_cloud_index(shared_datadir):
         val_sparse = bed.read_sparse(2)
         assert np.allclose(ref_val_float[:, [2]], val_sparse.toarray(), equal_nan=True)
 
-        val = bed.read((2))
+        val = bed.read(2)
         assert np.allclose(ref_val_float[:, [2]], val, equal_nan=True)
-        val_sparse = bed.read_sparse((2))
+        val_sparse = bed.read_sparse(2)
         assert np.allclose(ref_val_float[:, [2]], val_sparse.toarray(), equal_nan=True)
 
         val = bed.read((None, 2))
@@ -548,21 +544,21 @@ def test_cloud_index(shared_datadir):
         assert np.allclose(ref_val_float[[1], [2]], val, equal_nan=True)
         val_sparse = bed.read_sparse((1, 2))
         assert np.allclose(
-            ref_val_float[[1], [2]], val_sparse.toarray(), equal_nan=True
+            ref_val_float[[1], [2]], val_sparse.toarray(), equal_nan=True,
         )
 
         val = bed.read([2, -2])
         assert np.allclose(ref_val_float[:, [2, -2]], val, equal_nan=True)
         val_sparse = bed.read_sparse([2, -2])
         assert np.allclose(
-            ref_val_float[:, [2, -2]], val_sparse.toarray(), equal_nan=True
+            ref_val_float[:, [2, -2]], val_sparse.toarray(), equal_nan=True,
         )
 
         val = bed.read(([1, -1], [2, -2]))
         assert np.allclose(ref_val_float[[1, -1], :][:, [2, -2]], val, equal_nan=True)
         val_sparse = bed.read_sparse(([1, -1], [2, -2]))
         assert np.allclose(
-            ref_val_float[[1, -1], :][:, [2, -2]], val_sparse.toarray(), equal_nan=True
+            ref_val_float[[1, -1], :][:, [2, -2]], val_sparse.toarray(), equal_nan=True,
         )
 
         iid_bool = ([False, False, True] * bed.iid_count)[: bed.iid_count]
@@ -571,7 +567,7 @@ def test_cloud_index(shared_datadir):
         assert np.allclose(ref_val_float[:, sid_bool], val, equal_nan=True)
         val_sparse = bed.read_sparse(sid_bool)
         assert np.allclose(
-            ref_val_float[:, sid_bool], val_sparse.toarray(), equal_nan=True
+            ref_val_float[:, sid_bool], val_sparse.toarray(), equal_nan=True,
         )
 
         val = bed.read((iid_bool, sid_bool))
@@ -582,7 +578,7 @@ def test_cloud_index(shared_datadir):
         assert np.allclose(ref_val_float[[1], :][:, sid_bool], val, equal_nan=True)
         val_sparse = bed.read_sparse((1, sid_bool))
         assert np.allclose(
-            ref_val_float[[1], :][:, sid_bool], val_sparse.toarray(), equal_nan=True
+            ref_val_float[[1], :][:, sid_bool], val_sparse.toarray(), equal_nan=True,
         )
 
         slicer = np.s_[::2, ::3]
@@ -590,7 +586,7 @@ def test_cloud_index(shared_datadir):
         assert np.allclose(ref_val_float[:, slicer[1]], val, equal_nan=True)
         val_sparse = bed.read_sparse(slicer[1])
         assert np.allclose(
-            ref_val_float[:, slicer[1]], val_sparse.toarray(), equal_nan=True
+            ref_val_float[:, slicer[1]], val_sparse.toarray(), equal_nan=True,
         )
 
         val = bed.read(slicer)
@@ -602,18 +598,18 @@ def test_cloud_index(shared_datadir):
         assert np.allclose(ref_val_float[[1], slicer[1]], val, equal_nan=True)
         val_sparse = bed.read_sparse((1, slicer[1]))
         assert np.allclose(
-            ref_val_float[[1], slicer[1]], val_sparse.toarray(), equal_nan=True
+            ref_val_float[[1], slicer[1]], val_sparse.toarray(), equal_nan=True,
         )
 
 
-def test_cloud_shape(shared_datadir):
+def test_cloud_shape(shared_datadir) -> None:
     with open_bed(
-        file_to_url(shared_datadir / "plink_sim_10s_100v_10pmiss.bed")
+        file_to_url(shared_datadir / "plink_sim_10s_100v_10pmiss.bed"),
     ) as bed:
         assert bed.shape == (10, 100)
 
 
-def test_cloud_zero_files(tmp_path):
+def test_cloud_zero_files(tmp_path) -> None:
     for force_python_only, format in [(False, "csc"), (True, "csr")]:
         for iid_count in [3, 0]:
             for sid_count in [0, 5]:
@@ -661,9 +657,9 @@ def test_cloud_zero_files(tmp_path):
                             assert np.array_equal(value_list2, value_list3)
 
 
-def test_cloud_iid_sid_count(shared_datadir):
+def test_cloud_iid_sid_count(shared_datadir) -> None:
     iid_count_ref, sid_count_ref = open_bed(
-        file_to_url(shared_datadir / "plink_sim_10s_100v_10pmiss.bed")
+        file_to_url(shared_datadir / "plink_sim_10s_100v_10pmiss.bed"),
     ).shape
     assert (iid_count_ref, sid_count_ref) == open_bed(
         file_to_url(shared_datadir / "plink_sim_10s_100v_10pmiss.bed"),
@@ -680,18 +676,15 @@ def test_cloud_iid_sid_count(shared_datadir):
     ).shape
 
 
-def test_cloud_sample_file():
+def test_cloud_sample_file() -> None:
     from bed_reader import open_bed, sample_file
 
     file_name = sample_file("small.bed")
-    with open_bed(file_name) as bed:
-        print(bed.iid)
-        print(bed.sid)
-        print(bed.read())
-        print(bed.read_sparse())
+    with open_bed(file_name):
+        pass
 
 
-def test_cloud_coverage2(shared_datadir, tmp_path):
+def test_cloud_coverage2(shared_datadir, tmp_path) -> None:
     with open_bed(
         file_to_url(shared_datadir / "plink_sim_10s_100v_10pmiss.bed"),
         properties={"iid": None},
@@ -703,7 +696,8 @@ def test_cloud_coverage2(shared_datadir, tmp_path):
             properties={"iid": [1, 2, 3], "mother": [1, 2]},
         )
     val = np.zeros((3, 5))[::2]
-    assert not val.flags["C_CONTIGUOUS"] and not val.flags["F_CONTIGUOUS"]
+    assert not val.flags["C_CONTIGUOUS"]
+    assert not val.flags["F_CONTIGUOUS"]
     with pytest.raises(ValueError):
         to_bed(tmp_path / "ignore", val)
     val = np.zeros((3, 5), dtype=np.str_)
@@ -711,7 +705,7 @@ def test_cloud_coverage2(shared_datadir, tmp_path):
         to_bed(tmp_path / "ignore", val)
 
 @pytest.mark.filterwarnings("ignore:invalid value encountered in cast:RuntimeWarning")
-def test_cloud_coverage3(shared_datadir, tmp_path):
+def test_cloud_coverage3(shared_datadir, tmp_path) -> None:
     with open_bed(
         file_to_url(shared_datadir / "small.bed"),
         properties={"sex": [1.0, np.nan, 1.0, 2.0]},
@@ -734,7 +728,7 @@ def test_cloud_coverage3(shared_datadir, tmp_path):
         assert np.allclose(bed.read_sparse().toarray(), [list], equal_nan=True)
 
 
-def test_cloud_nones(shared_datadir, tmp_path):
+def test_cloud_nones(shared_datadir, tmp_path) -> None:
     properties = {
         "father": None,
         "mother": None,
@@ -745,7 +739,7 @@ def test_cloud_nones(shared_datadir, tmp_path):
     }
 
     with open_bed(
-        file_to_url(shared_datadir / "small.bed"), properties=properties
+        file_to_url(shared_datadir / "small.bed"), properties=properties,
     ) as bed:
         assert np.array_equal(bed.iid, ["iid1", "iid2", "iid3"])
         assert bed.father is None
@@ -755,7 +749,7 @@ def test_cloud_nones(shared_datadir, tmp_path):
     to_bed(out_file, val, properties=properties)
 
 
-def test_cloud_fam_bim_filepath(shared_datadir, tmp_path):
+def test_cloud_fam_bim_filepath(shared_datadir, tmp_path) -> None:
     with open_bed(file_to_url(shared_datadir / "small.bed")) as bed:
         val = bed.read()
         properties = bed.properties
@@ -769,7 +763,9 @@ def test_cloud_fam_bim_filepath(shared_datadir, tmp_path):
         fam_filepath=fam_file,
         bim_filepath=bim_file,
     )
-    assert output_file.exists() and fam_file.exists() and bim_file.exists()
+    assert output_file.exists()
+    assert fam_file.exists()
+    assert bim_file.exists()
 
     output_file = file_to_url(output_file)
     fam_file = file_to_url(fam_file)
@@ -785,7 +781,7 @@ def test_cloud_fam_bim_filepath(shared_datadir, tmp_path):
             np.array_equal(properties[key], properties2[key])
 
 
-def test_cloud_write_nan_properties(shared_datadir, tmp_path):
+def test_cloud_write_nan_properties(shared_datadir, tmp_path) -> None:
     with open_bed(file_to_url(shared_datadir / "small.bed")) as bed:
         val = bed.read()
         properties = bed.properties
@@ -816,7 +812,7 @@ def test_cloud_write_nan_properties(shared_datadir, tmp_path):
         assert np.array_equal(bed3.cm_position, cm_p)
 
 
-def test_cloud_env(shared_datadir):
+def test_cloud_env(shared_datadir) -> None:
     if platform.system() == "Darwin":
         return
 
@@ -832,12 +828,10 @@ def test_cloud_env(shared_datadir):
             _ = bed.read(np.s_[:100, :100])
             _ = bed.read_sparse(np.s_[:100, :100])
         os.environ[key] = "BADVALUE"
-        with pytest.raises(ValueError):
-            with open_bed(file_to_url(shared_datadir / "some_missing.bed")) as bed:
-                _ = bed.read(np.s_[:100, :100])
-        with pytest.raises(ValueError):
-            with open_bed(file_to_url(shared_datadir / "some_missing.bed")) as bed:
-                _ = bed.read_sparse(np.s_[:100, :100])
+        with pytest.raises(ValueError), open_bed(file_to_url(shared_datadir / "some_missing.bed")) as bed:
+            _ = bed.read(np.s_[:100, :100])
+        with pytest.raises(ValueError), open_bed(file_to_url(shared_datadir / "some_missing.bed")) as bed:
+            _ = bed.read_sparse(np.s_[:100, :100])
     finally:
         if original_val is None:
             if key in os.environ:
@@ -846,7 +840,7 @@ def test_cloud_env(shared_datadir):
             os.environ[key] = original_val
 
 
-def test_cloud_noncontig_indexes(shared_datadir):
+def test_cloud_noncontig_indexes(shared_datadir) -> None:
     with open_bed(file_to_url(shared_datadir / "some_missing.bed")) as bed:
         whole_iid_index = np.arange(bed.iid_count)
         assert whole_iid_index.flags["C_CONTIGUOUS"]
@@ -861,33 +855,31 @@ def test_cloud_noncontig_indexes(shared_datadir):
         val_out = np.zeros((len(every_other), 0))
         with pytest.raises(ValueError):
             subset_f64_f64(
-                val.reshape(-1, bed.sid_count, 1), every_other, [], val_out, 1
+                val.reshape(-1, bed.sid_count, 1), every_other, [], val_out, 1,
             )
 
 
-def test_cloud_bed_reading_example():
+def test_cloud_bed_reading_example() -> None:
     import numpy as np
 
     from bed_reader import open_bed, sample_file
 
     file_name = sample_file("small.bed")
     with open_bed(file_name, count_A1=False) as bed:
-        val = bed.read(index=np.s_[:, :3], dtype="int8", order="C", num_threads=1)
-        print(val.shape)
+        bed.read(index=np.s_[:, :3], dtype="int8", order="C", num_threads=1)
 
 
-def test_cloud_sparse():
+def test_cloud_sparse() -> None:
     import numpy as np
 
     from bed_reader import open_bed, sample_file
 
     file_name = sample_file("small.bed")
     with open_bed(file_name, count_A1=False) as bed:
-        val_sparse = bed.read_sparse(index=np.s_[:, :3], dtype="int8")
-        print(val_sparse.shape)
+        bed.read_sparse(index=np.s_[:, :3], dtype="int8")
 
 
-def test_cloud_convert_to_dtype():
+def test_cloud_convert_to_dtype() -> None:
     from bed_reader._open_bed import _convert_to_dtype
 
     input = [
@@ -915,14 +907,12 @@ def test_cloud_convert_to_dtype():
             try:
                 actual = _convert_to_dtype(ori, dtype)
                 assert np.array_equal(actual, exp)
-            except ValueError as e:
-                print(e)
+            except ValueError:
                 assert exp is None
 
 
 def load_aws_credentials(profile_name="default"):
-    """
-    Load AWS credentials from the default ~/.aws/credentials file.
+    """Load AWS credentials from the default ~/.aws/credentials file.
 
     :param profile_name: Name of the profile to load. Defaults to 'default'.
     :return: A dictionary with 'aws_access_key_id' and 'aws_secret_access_key'.
@@ -942,7 +932,7 @@ def load_aws_credentials(profile_name="default"):
     }
 
 
-def test_s3(shared_datadir):
+def test_s3(shared_datadir) -> None:
     # local file
     file = shared_datadir / "toydata.5chrom.bed"
     with open_bed(file) as bed:
@@ -958,7 +948,6 @@ def test_s3(shared_datadir):
     # s3 url sans format check
     aws_credentials = load_aws_credentials()
     if aws_credentials is None:
-        print("No AWS credentials found. Skipping test_s3.")
         return
     aws_credentials["aws_region"] = "us-west-2"
     url = "s3://bedreader/v1/toydata.5chrom.bed"
@@ -972,13 +961,12 @@ def test_s3(shared_datadir):
         assert val.shape == (500, 10_000)
 
 
-def test_s3_example():
+def test_s3_example() -> None:
     # Somehow, get your AWS credentials
     config = configparser.ConfigParser()
     _ = config.read(os.path.expanduser("~/.aws/credentials"))
 
     if "default" not in config:
-        print("No AWS credentials found. Skipping test_s3_example.")
         return
 
     # Create a dictionary with your AWS credentials and the AWS region.
@@ -990,7 +978,7 @@ def test_s3_example():
 
     # Open the bed file with a URL and any needed cloud options, then use as before.
     with open_bed(
-        "s3://bedreader/v1/toydata.5chrom.bed", cloud_options=cloud_options
+        "s3://bedreader/v1/toydata.5chrom.bed", cloud_options=cloud_options,
     ) as bed:
         val = bed.read(np.s_[:10, :10])
         assert val[0, 0] == 1.0
@@ -999,12 +987,11 @@ def test_s3_example():
     # URLs for other cloud storage providers.
 
 
-def test_s3_article():
+def test_s3_article() -> None:
     # Somehow, get AWS credentials
     config = configparser.ConfigParser()
     _ = config.read(os.path.expanduser("~/.aws/credentials"))
     if "default" not in config:
-        print("No AWS credentials found. Skipping.", file=sys.stderr)
         return
 
     # Create a dictionary with your AWS region and credentials and the AWS region.
@@ -1016,16 +1003,12 @@ def test_s3_article():
 
     # Open the bed file with a URL and any needed cloud options, then use as before.
     with open_bed(
-        "s3://bedreader/v1/some_missing.bed", cloud_options=cloud_options
+        "s3://bedreader/v1/some_missing.bed", cloud_options=cloud_options,
     ) as bed:
-        print(bed.iid[:5])
-        print(bed.sid[:5])
-        print(np.unique(bed.chromosome))
-        val = bed.read(index=np.s_[:, bed.chromosome == "5"])
-        print(val.shape)
+        bed.read(index=np.s_[:, bed.chromosome == "5"])
 
 
-def test_url_errors(shared_datadir):
+def test_url_errors(shared_datadir) -> None:
     with pytest.raises(ValueError, match=r".*Unable to recogni[sz]e URL.*"):
         open_bed("not://not_a_url")
 
@@ -1037,30 +1020,25 @@ def test_url_errors(shared_datadir):
         open_bed("s3://bedreader/v1/toydata.5chrom.bed", cloud_options={})
 
 
-def test_readme_example():
+def test_readme_example() -> None:
     with open_bed(
         "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed",
     ) as bed:
-        val = bed.read(index=np.s_[:, 2], dtype="float64")
-        print(val)
+        bed.read(index=np.s_[:, 2], dtype="float64")
     # [[nan]
     #  [nan]
     #  [ 2.]]
 
 
-def test_http_one():
+def test_http_one() -> None:
     with open_bed(
         "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/some_missing.bed",
         cloud_options={"timeout": "30s"},
     ) as bed:
-        print(bed.iid[:5])
-        print(bed.sid[:5])
-        print(np.unique(bed.chromosome))
-        val = bed.read(index=np.s_[:, bed.chromosome == "5"])
-        print(val.shape)
+        bed.read(index=np.s_[:, bed.chromosome == "5"])
 
 
-def test_http_two():
+def test_http_two() -> None:
     from bed_reader import open_bed, sample_file
 
     local_fam_file = sample_file("synthetic_v1_chr-10.fam")
@@ -1071,16 +1049,11 @@ def test_http_two():
         bim_filepath=local_bim_file,
         skip_format_check=True,
     ) as bed:
-        print(f"iid_count={bed.iid_count:_}, sid_count={bed.sid_count:_}")
-        print(f"iid={bed.iid[:5]}...")
-        print(f"sid={bed.sid[:5]}...")
-        print(f"unique chromosomes = {np.unique(bed.chromosome)}")
         val = bed.read(index=np.s_[:10, :: bed.sid_count // 10])
-        print(f"val={val}")
-        assert val.shape == (10, 10) or val.shape == (10, 11)
+        assert val.shape in ((10, 10), (10, 11))
 
 
-def test_http_cloud_urls_rst_1():
+def test_http_cloud_urls_rst_1() -> None:
     from bed_reader import open_bed
 
     with open_bed(
@@ -1088,12 +1061,11 @@ def test_http_cloud_urls_rst_1():
     ) as bed:
         val = bed.read()
         missing_count = np.isnan(val).sum()
-        missing_fraction = missing_count / val.size
-        print(f"{missing_fraction:.2}")  # Outputs 0.17
+        missing_count / val.size
         assert missing_count == 2
 
 
-def test_http_cloud_urls_rst_2():
+def test_http_cloud_urls_rst_2() -> None:
     import numpy as np
 
     from bed_reader import open_bed
@@ -1103,18 +1075,14 @@ def test_http_cloud_urls_rst_2():
         cloud_options={"timeout": "100s"},
         skip_format_check=True,
     ) as bed:
-        print(bed.iid[:5])
         # ['per0' 'per1' 'per2' 'per3' 'per4']
-        print(bed.sid[:5])
         # ['null_0' 'null_1' 'null_2' 'null_3' 'null_4']
-        print(np.unique(bed.chromosome))
         # ['1' '2' '3' '4' '5']
         val = bed.read(index=np.s_[:, bed.chromosome == "5"])
-        print(val.shape)
         assert val.shape == (500, 440)
 
 
-def test_http_cloud_urls_rst_3():
+def test_http_cloud_urls_rst_3() -> None:
     with open_bed(
         "https://www.ebi.ac.uk/biostudies/files/S-BSST936/genotypes/synthetic_v1_chr-10.bed",
         cloud_options={"timeout": "100s"},
@@ -1126,7 +1094,7 @@ def test_http_cloud_urls_rst_3():
         assert np.isclose(np.mean(val), 0.03391369, atol=1e-5)
 
 
-def test_http_cloud_urls_rst_4():
+def test_http_cloud_urls_rst_4() -> None:
     from bed_reader import open_bed, sample_file
 
     # Instead of 'sample_file', manually download
@@ -1143,16 +1111,11 @@ def test_http_cloud_urls_rst_4():
         bim_filepath=local_bim_file,
         skip_format_check=True,
     ) as bed:
-        print(f"iid_count={bed.iid_count:_}, sid_count={bed.sid_count:_}")
-        print(f"iid={bed.iid[:5]}...")
-        print(f"sid={bed.sid[:5]}...")
-        print(f"unique chromosomes = {np.unique(bed.chromosome)}")
         val = bed.read(index=np.s_[:10, :: bed.sid_count // 10])
-        print(f"val={val}")
-        assert val.shape == (10, 10) or val.shape == (10, 11)
+        assert val.shape in ((10, 10), (10, 11))
 
 
-def test_local_cloud_urls_rst_1():
+def test_local_cloud_urls_rst_1() -> None:
     from pathlib import Path
     from urllib.parse import urljoin
 
@@ -1161,23 +1124,19 @@ def test_local_cloud_urls_rst_1():
     from bed_reader import open_bed, sample_file
 
     file_name = str(sample_file("small.bed"))
-    print(f"{file_name}")
     url = urljoin("file:", Path(file_name).as_uri())
-    print(f"{url}")  # Outputs file URL
 
     with open_bed(url) as bed:
         val = bed.read(index=np.s_[:, 2], dtype=np.float64)
-        print(val)
         expected_val = np.array([[np.nan], [np.nan], [2.0]])
         assert np.allclose(val, expected_val, equal_nan=True)
 
 
-def test_aws_cloud_urls_rst_1():
+def test_aws_cloud_urls_rst_1() -> None:
     config = configparser.ConfigParser()
     _ = config.read(os.path.expanduser("~/.aws/credentials"))
 
     if "default" not in config:
-        print("No AWS credentials found. Skipping example.")
         return
 
     cloud_options = {
@@ -1187,10 +1146,9 @@ def test_aws_cloud_urls_rst_1():
     }
 
     with open_bed(
-        "s3://bedreader/v1/toydata.5chrom.bed", cloud_options=cloud_options
+        "s3://bedreader/v1/toydata.5chrom.bed", cloud_options=cloud_options,
     ) as bed:
         val = bed.read(dtype="int8")
-        print(val.shape)
         assert val.shape == (500, 10_000)
 
 
