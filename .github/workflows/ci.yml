@@ -184,6 +184,7 @@ jobs:
     - name: Install minimal dependencies
       run: uv sync --extra min_dev
     - name: Run min tests
+      shell: bash
       run: |
         if [[ "$RUNNER_OS" != "Windows" ]]; then
           source .venv/bin/activate
@@ -194,6 +195,7 @@ jobs:
     - name: Install all dependencies
       run: uv sync --all-extras
     - name: Run all tests
+      shell: bash
       run: |
         if [[ "$RUNNER_OS" != "Windows" ]]; then
           source .venv/bin/activate
