@@ -7,7 +7,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Cloud URL Examples &mdash; Bed Reader 1.0.6 documentation</title>
-      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
 
   
@@ -103,13 +103,13 @@ you may need to extend the default <cite>timeout</cite>.</p>
 <p>Let’s first look at reading a small or medium-sized dataset.</p>
 <p><em>Example:</em></p>
 <p>Read an entire file and find the fraction of missing values.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="kn">import</span> <span class="n">open_bed</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">bed_reader</span><span class="w"> </span><span class="kn">import</span> <span class="n">open_bed</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">open_bed</span><span class="p">(</span><span class="s2">&quot;https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">bed</span><span class="p">:</span>
 <span class="gp">... </span>    <span class="n">val</span> <span class="o">=</span> <span class="n">bed</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
 <span class="gp">... </span>    <span class="n">missing_count</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">val</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
 <span class="gp">... </span>    <span class="n">missing_fraction</span> <span class="o">=</span> <span class="n">missing_count</span> <span class="o">/</span> <span class="n">val</span><span class="o">.</span><span class="n">size</span>
-<span class="gp">... </span>    <span class="n">missing_fraction</span>  
+<span class="gp">... </span>    <span class="n">missing_fraction</span>
 <span class="go">np.float64(0.16666666666666666)</span>
 </pre></div>
 </div>
@@ -125,8 +125,8 @@ for a list of cloud options, such as <cite>timeout</cite>, that you can always u
 early check of the *.bed file’s header.</p>
 <p>Here we print the first five iids (individual or sample ids) and first five sids (SNP or variant ids).
 We then, print all unique chromosome values. Finally, we read all data from chromosome 5 and print its dimensions.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="kn">import</span> <span class="n">open_bed</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">bed_reader</span><span class="w"> </span><span class="kn">import</span> <span class="n">open_bed</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">open_bed</span><span class="p">(</span>
 <span class="gp">... </span>    <span class="s2">&quot;https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/toydata.5chrom.bed&quot;</span><span class="p">,</span>
 <span class="gp">... </span>    <span class="n">cloud_options</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;timeout&quot;</span><span class="p">:</span> <span class="s2">&quot;100s&quot;</span><span class="p">},</span>
@@ -145,8 +145,8 @@ We then, print all unique chromosome values. Finally, we read all data from chro
 </div>
 <p>Now, let’s read from a large file containing data from over 1 million individuals (samples) and over 300,000 SNPs (variants). The file size is 91 GB. In this example, we read data for just one SNP (variant). If we know the number of individuals (samples) and SNPs (variants) exactly, we can read this SNP quickly and with just one file access.</p>
 <p>What is the mean value of the SNP (variant) at index position 100,000?</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="kn">import</span> <span class="n">open_bed</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">bed_reader</span><span class="w"> </span><span class="kn">import</span> <span class="n">open_bed</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">open_bed</span><span class="p">(</span>
 <span class="gp">... </span>    <span class="s2">&quot;https://www.ebi.ac.uk/biostudies/files/S-BSST936/genotypes/synthetic_v1_chr-10.bed&quot;</span><span class="p">,</span>
 <span class="gp">... </span>    <span class="n">cloud_options</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;timeout&quot;</span><span class="p">:</span> <span class="s2">&quot;100s&quot;</span><span class="p">},</span>
@@ -155,14 +155,14 @@ We then, print all unique chromosome values. Finally, we read all data from chro
 <span class="gp">... </span>    <span class="n">sid_count</span><span class="o">=</span><span class="mi">361_561</span><span class="p">,</span>
 <span class="gp">... </span>    <span class="p">)</span> <span class="k">as</span> <span class="n">bed</span><span class="p">:</span>
 <span class="gp">... </span>    <span class="n">val</span> <span class="o">=</span> <span class="n">bed</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">s_</span><span class="p">[:,</span> <span class="mi">100_000</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
-<span class="gp">... </span>    <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">val</span><span class="p">)</span> 
+<span class="gp">... </span>    <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
 <span class="go">np.float32(0.03391369)</span>
 </pre></div>
 </div>
 <p>You can also download the *.fam and *.bim metadata files and then read from them locally while continuing to read the *.bed file from the cloud.
 This gives you almost instant access to the metadata and the *.bed file. Here is an example:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="kn">import</span> <span class="n">open_bed</span><span class="p">,</span> <span class="n">sample_file</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">bed_reader</span><span class="w"> </span><span class="kn">import</span> <span class="n">open_bed</span><span class="p">,</span> <span class="n">sample_file</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="c1"># For this example, assume &#39;synthetic_v1_chr-10.fam&#39; and &#39;synthetic_v1_chr-10.bim&#39; are already downloaded</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="c1"># and &#39;local_fam_file&#39; and &#39;local_bim_file&#39; variables are set to their local file paths.</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">local_fam_file</span> <span class="o">=</span> <span class="n">sample_file</span><span class="p">(</span><span class="s2">&quot;synthetic_v1_chr-10.fam&quot;</span><span class="p">)</span>
@@ -205,15 +205,15 @@ use the file’s path rather than its URL.</p>
 <h3>Local File URL<a class="headerlink" href="#local-file-url" title="Link to this heading"></a></h3>
 <p>The URL for a local file takes the form <cite>file:///{encoded_file_name}</cite>. No cloud options are needed.</p>
 <p><em>Example:</em></p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">bed_reader</span> <span class="kn">import</span> <span class="n">open_bed</span><span class="p">,</span> <span class="n">sample_file</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">urllib.parse</span> <span class="kn">import</span> <span class="n">urljoin</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">bed_reader</span><span class="w"> </span><span class="kn">import</span> <span class="n">open_bed</span><span class="p">,</span> <span class="n">sample_file</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">urllib.parse</span><span class="w"> </span><span class="kn">import</span> <span class="n">urljoin</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">file_name</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">sample_file</span><span class="p">(</span><span class="s2">&quot;small.bed&quot;</span><span class="p">))</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;file name: </span><span class="si">{</span><span class="n">file_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>   
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;file name: </span><span class="si">{</span><span class="n">file_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="go">file name: ...small.bed</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">url</span> <span class="o">=</span> <span class="n">urljoin</span><span class="p">(</span><span class="s2">&quot;file:&quot;</span><span class="p">,</span> <span class="n">Path</span><span class="p">(</span><span class="n">file_name</span><span class="p">)</span><span class="o">.</span><span class="n">as_uri</span><span class="p">())</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;url: </span><span class="si">{</span><span class="n">url</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> 
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;url: </span><span class="si">{</span><span class="n">url</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="go">url: file:///.../small.bed</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">open_bed</span><span class="p">(</span><span class="n">url</span><span class="p">)</span> <span class="k">as</span> <span class="n">bed</span><span class="p">:</span>
 <span class="gp">... </span>    <span class="n">val</span> <span class="o">=</span> <span class="n">bed</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">s_</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
@@ -242,9 +242,9 @@ See <a class="reference external" href="https://docs.rs/object_store/latest/obje
 <p class="admonition-title">Note</p>
 <p>I can run this, but others can’t because of the authentication checks.</p>
 </div>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
-<span class="kn">import</span> <span class="nn">configparser</span>
-<span class="kn">from</span> <span class="nn">bed_reader</span> <span class="kn">import</span> <span class="n">open_bed</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">configparser</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">bed_reader</span><span class="w"> </span><span class="kn">import</span> <span class="n">open_bed</span>
 
 <span class="n">config</span> <span class="o">=</span> <span class="n">configparser</span><span class="o">.</span><span class="n">ConfigParser</span><span class="p">()</span>
 <span class="n">_</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~/.aws/credentials&quot;</span><span class="p">))</span>

@@ -6,7 +6,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>bed_reader._open_bed &mdash; Bed Reader 1.0.6 documentation</title>
-      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
 
   
@@ -76,29 +76,29 @@
            <div itemprop="articleBody">
              
   <h1>Source code for bed_reader._open_bed</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span> <span class="nn">logging</span>
-<span class="kn">import</span> <span class="nn">multiprocessing</span>
-<span class="kn">import</span> <span class="nn">os</span>
-<span class="kn">import</span> <span class="nn">re</span>
-<span class="kn">from</span> <span class="nn">dataclasses</span> <span class="kn">import</span> <span class="n">dataclass</span>
-<span class="kn">from</span> <span class="nn">io</span> <span class="kn">import</span> <span class="n">BytesIO</span>
-<span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">repeat</span><span class="p">,</span> <span class="n">takewhile</span>
-<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
-<span class="kn">from</span> <span class="nn">urllib.parse</span> <span class="kn">import</span> <span class="n">ParseResult</span> <span class="k">as</span> <span class="n">UrlParseResult</span>
-<span class="kn">from</span> <span class="nn">urllib.parse</span> <span class="kn">import</span> <span class="n">urlparse</span>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">multiprocessing</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">io</span><span class="w"> </span><span class="kn">import</span> <span class="n">BytesIO</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">itertools</span><span class="w"> </span><span class="kn">import</span> <span class="n">repeat</span><span class="p">,</span> <span class="n">takewhile</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">urllib.parse</span><span class="w"> </span><span class="kn">import</span> <span class="n">ParseResult</span> <span class="k">as</span> <span class="n">UrlParseResult</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">urllib.parse</span><span class="w"> </span><span class="kn">import</span> <span class="n">urlparse</span>
 
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
 <span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
-    <span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">sparse</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">sparse</span>
 <span class="k">else</span><span class="p">:</span>
     <span class="k">try</span><span class="p">:</span>
-        <span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">sparse</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">sparse</span>
     <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
         <span class="n">sparse</span> <span class="o">=</span> <span class="kc">None</span>
 
-<span class="kn">from</span> <span class="nn">.bed_reader</span> <span class="kn">import</span> <span class="p">(</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.bed_reader</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">check_file_cloud</span><span class="p">,</span>
     <span class="n">read_cloud_f32</span><span class="p">,</span>
     <span class="n">read_cloud_f64</span><span class="p">,</span>
@@ -111,14 +111,14 @@
 
 
 <span class="c1"># https://stackoverflow.com/questions/845058/how-to-get-line-count-of-a-large-file-cheaply-in-python</span>
-<span class="k">def</span> <span class="nf">_rawincount</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_rawincount</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
     <span class="n">f</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
     <span class="n">bufgen</span> <span class="o">=</span> <span class="n">takewhile</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">repeat</span><span class="p">(</span><span class="kc">None</span><span class="p">)))</span>
     <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="n">buf</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="sa">b</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">buf</span> <span class="ow">in</span> <span class="n">bufgen</span><span class="p">)</span>
 
 
 <span class="nd">@dataclass</span>
-<span class="k">class</span> <span class="nc">_MetaMeta</span><span class="p">:</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">_MetaMeta</span><span class="p">:</span>
     <span class="n">suffix</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">column</span><span class="p">:</span> <span class="nb">int</span>
     <span class="n">dtype</span><span class="p">:</span> <span class="nb">type</span>
@@ -126,13 +126,13 @@
     <span class="n">fill_sequence</span><span class="p">:</span> <span class="nb">object</span>
 
 
-<span class="k">def</span> <span class="nf">_all_same</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">length</span><span class="p">,</span> <span class="n">missing</span><span class="p">,</span> <span class="n">dtype</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_all_same</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">length</span><span class="p">,</span> <span class="n">missing</span><span class="p">,</span> <span class="n">dtype</span><span class="p">):</span>
     <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">str_</span><span class="p">):</span>
         <span class="n">dtype</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;&lt;U</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">missing</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
     <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">length</span><span class="p">,</span> <span class="n">missing</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
 
 
-<span class="k">def</span> <span class="nf">_sequence</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">length</span><span class="p">,</span> <span class="n">missing</span><span class="p">,</span> <span class="n">dtype</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_sequence</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">length</span><span class="p">,</span> <span class="n">missing</span><span class="p">,</span> <span class="n">dtype</span><span class="p">):</span>
     <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">str_</span><span class="p">):</span>
         <span class="n">longest</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">key</span><span class="si">}{</span><span class="n">length</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="n">dtype</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;&lt;U</span><span class="si">{</span><span class="n">longest</span><span class="si">}</span><span class="s2">&quot;</span>
@@ -162,7 +162,7 @@
 <span class="p">}</span>
 
 
-<span class="k">def</span> <span class="nf">get_num_threads</span><span class="p">(</span><span class="n">num_threads</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_num_threads</span><span class="p">(</span><span class="n">num_threads</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="k">if</span> <span class="n">num_threads</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">num_threads</span>
     <span class="k">if</span> <span class="s2">&quot;PST_NUM_THREADS&quot;</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">:</span>
@@ -174,13 +174,13 @@
     <span class="k">return</span> <span class="n">multiprocessing</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">()</span>
 
 
-<span class="k">def</span> <span class="nf">get_max_concurrent_requests</span><span class="p">(</span><span class="n">max_concurrent_requests</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_max_concurrent_requests</span><span class="p">(</span><span class="n">max_concurrent_requests</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="k">if</span> <span class="n">max_concurrent_requests</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">max_concurrent_requests</span>
     <span class="k">return</span> <span class="mi">10</span>
 
 
-<span class="k">def</span> <span class="nf">get_max_chunk_bytes</span><span class="p">(</span><span class="n">max_chunk_bytes</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_max_chunk_bytes</span><span class="p">(</span><span class="n">max_chunk_bytes</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="k">if</span> <span class="n">max_chunk_bytes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">max_chunk_bytes</span>
     <span class="k">return</span> <span class="mi">8_000_000</span>
@@ -188,7 +188,7 @@
 
 <div class="viewcode-block" id="open_bed">
 <a class="viewcode-back" href="../../index.html#bed_reader.open_bed">[docs]</a>
-<span class="k">class</span> <span class="nc">open_bed</span><span class="p">:</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">open_bed</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Open a PLINK .bed file, local or cloud, for reading.</span>
 
 <span class="sd">    Parameters</span>
@@ -329,7 +329,7 @@
 
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">location</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">,</span> <span class="n">UrlParseResult</span><span class="p">],</span>
         <span class="n">iid_count</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
@@ -391,7 +391,7 @@
     <span class="c1"># fam_location = self._combined(fam_location, fam_filepath, &quot;fam_location&quot;, &quot;fam_filepath&quot;)</span>
     <span class="c1"># bim_location = self._combined(bim_location, bim_filepath, &quot;bim_location&quot;, &quot;bim_filepath&quot;)</span>
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">_combined</span><span class="p">(</span><span class="n">location</span><span class="p">,</span> <span class="n">filepath</span><span class="p">,</span> <span class="n">location_name</span><span class="p">,</span> <span class="n">filepath_name</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_combined</span><span class="p">(</span><span class="n">location</span><span class="p">,</span> <span class="n">filepath</span><span class="p">,</span> <span class="n">location_name</span><span class="p">,</span> <span class="n">filepath_name</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">location</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">filepath</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Cannot set both </span><span class="si">{</span><span class="n">location_name</span><span class="si">}</span><span class="s2"> and </span><span class="si">{</span><span class="n">filepath_name</span><span class="si">}</span><span class="s2">&quot;</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
@@ -399,7 +399,7 @@
         <span class="k">return</span> <span class="n">location</span> <span class="k">if</span> <span class="n">location</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">filepath</span>
 
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">_replace_extension</span><span class="p">(</span><span class="n">location</span><span class="p">,</span> <span class="n">extension</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_replace_extension</span><span class="p">(</span><span class="n">location</span><span class="p">,</span> <span class="n">extension</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">open_bed</span><span class="o">.</span><span class="n">_is_url</span><span class="p">(</span><span class="n">location</span><span class="p">):</span>
             <span class="c1"># Split the path and change the extension</span>
             <span class="n">path</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">location</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
@@ -418,11 +418,11 @@
         <span class="k">return</span> <span class="n">location</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="p">(</span><span class="n">location</span><span class="o">.</span><span class="n">stem</span> <span class="o">+</span> <span class="s2">&quot;.&quot;</span> <span class="o">+</span> <span class="n">extension</span><span class="p">)</span>
 
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">_is_url</span><span class="p">(</span><span class="n">location</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_is_url</span><span class="p">(</span><span class="n">location</span><span class="p">):</span>
         <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">location</span><span class="p">,</span> <span class="n">UrlParseResult</span><span class="p">)</span>
 
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">_path_or_url</span><span class="p">(</span><span class="nb">input</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_path_or_url</span><span class="p">(</span><span class="nb">input</span><span class="p">):</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">Path</span><span class="p">):</span>
             <span class="k">return</span> <span class="nb">input</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">UrlParseResult</span><span class="p">):</span>
@@ -437,7 +437,7 @@
 
 <div class="viewcode-block" id="open_bed.read">
 <a class="viewcode-back" href="../../index.html#bed_reader.open_bed.read">[docs]</a>
-    <span class="k">def</span> <span class="nf">read</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">read</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">index</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">dtype</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">type</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="s2">&quot;float32&quot;</span><span class="p">,</span>
@@ -717,7 +717,7 @@
         <span class="k">return</span> <span class="n">val</span></div>
 
 
-    <span class="k">def</span> <span class="nf">_pick_reader</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dtype</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_pick_reader</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dtype</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">:</span>
             <span class="n">file_reader</span> <span class="o">=</span> <span class="n">read_i8</span>
             <span class="n">cloud_reader</span> <span class="o">=</span> <span class="n">read_cloud_i8</span>
@@ -743,11 +743,11 @@
             <span class="n">is_cloud</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="k">return</span> <span class="n">reader</span><span class="p">,</span> <span class="n">location_str</span><span class="p">,</span> <span class="n">is_cloud</span>
 
-    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">(&#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="si">}</span><span class="s2">&#39;,...)&quot;</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">major</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">major</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Major mode of a local .bed file.</span>
 
 <span class="sd">        Returns:</span>
@@ -788,7 +788,7 @@
         <span class="k">return</span> <span class="s2">&quot;individual&quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mode</span> <span class="o">==</span> <span class="sa">b</span><span class="s2">&quot;</span><span class="se">\x00</span><span class="s2">&quot;</span> <span class="k">else</span> <span class="s2">&quot;SNP&quot;</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">fid</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">fid</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Family id of each individual (sample).</span>
 
 <span class="sd">        Returns:</span>
@@ -817,7 +817,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">property_item</span><span class="p">(</span><span class="s2">&quot;fid&quot;</span><span class="p">)</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">iid</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">iid</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Individual id of each individual (sample).</span>
 
 <span class="sd">        Returns:</span>
@@ -844,7 +844,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">property_item</span><span class="p">(</span><span class="s2">&quot;iid&quot;</span><span class="p">)</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">father</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">father</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Father id of each individual (sample).</span>
 
 <span class="sd">        Returns:</span>
@@ -873,7 +873,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">property_item</span><span class="p">(</span><span class="s2">&quot;father&quot;</span><span class="p">)</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">mother</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">mother</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Mother id of each individual (sample).</span>
 
 <span class="sd">        Returns:</span>
@@ -902,7 +902,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">property_item</span><span class="p">(</span><span class="s2">&quot;mother&quot;</span><span class="p">)</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">sex</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">sex</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Sex of each individual (sample).</span>
 
 <span class="sd">        Returns:</span>
@@ -930,7 +930,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">property_item</span><span class="p">(</span><span class="s2">&quot;sex&quot;</span><span class="p">)</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">pheno</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">pheno</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;A phenotype for each individual (sample)</span>
 <span class="sd">        (seldom used).</span>
 
@@ -960,7 +960,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">property_item</span><span class="p">(</span><span class="s2">&quot;pheno&quot;</span><span class="p">)</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">properties</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">]:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">properties</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;All the properties returned as a dictionary.</span>
 
 <span class="sd">        Returns:</span>
@@ -999,7 +999,7 @@
 
 <div class="viewcode-block" id="open_bed.property_item">
 <a class="viewcode-back" href="../../index.html#bed_reader.open_bed.property_item">[docs]</a>
-    <span class="k">def</span> <span class="nf">property_item</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">property_item</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Retrieve one property by name.</span>
 
 <span class="sd">        Returns:</span>
@@ -1037,7 +1037,7 @@
 
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">chromosome</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">chromosome</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Chromosome of each SNP (variant).</span>
 
 <span class="sd">        Returns:</span>
@@ -1066,7 +1066,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">property_item</span><span class="p">(</span><span class="s2">&quot;chromosome&quot;</span><span class="p">)</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">sid</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">sid</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;SNP id of each SNP (variant).</span>
 
 <span class="sd">        Returns:</span>
@@ -1093,7 +1093,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">property_item</span><span class="p">(</span><span class="s2">&quot;sid&quot;</span><span class="p">)</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">cm_position</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cm_position</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Centimorgan position of each SNP (variant).</span>
 
 <span class="sd">        Returns:</span>
@@ -1122,7 +1122,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">property_item</span><span class="p">(</span><span class="s2">&quot;cm_position&quot;</span><span class="p">)</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">bp_position</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">bp_position</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Base-pair position of each SNP (variant).</span>
 
 <span class="sd">        Returns:</span>
@@ -1151,7 +1151,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">property_item</span><span class="p">(</span><span class="s2">&quot;bp_position&quot;</span><span class="p">)</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">allele_1</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">allele_1</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;First allele of each SNP (variant).</span>
 
 <span class="sd">        Returns:</span>
@@ -1178,7 +1178,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">property_item</span><span class="p">(</span><span class="s2">&quot;allele_1&quot;</span><span class="p">)</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">allele_2</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">allele_2</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Second allele of each SNP (variant),.</span>
 
 <span class="sd">        Returns:</span>
@@ -1205,7 +1205,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">property_item</span><span class="p">(</span><span class="s2">&quot;allele_2&quot;</span><span class="p">)</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">iid_count</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">iid_count</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Number of individuals (samples).</span>
 
 <span class="sd">        Returns:</span>
@@ -1232,7 +1232,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_count</span><span class="p">(</span><span class="s2">&quot;fam&quot;</span><span class="p">)</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">sid_count</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">sid_count</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Number of SNPs (variants).</span>
 
 <span class="sd">        Returns:</span>
@@ -1258,13 +1258,13 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_count</span><span class="p">(</span><span class="s2">&quot;bim&quot;</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">_property_location</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">suffix</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_property_location</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">suffix</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">suffix</span> <span class="o">==</span> <span class="s2">&quot;fam&quot;</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fam_location</span>
         <span class="k">assert</span> <span class="n">suffix</span> <span class="o">==</span> <span class="s2">&quot;bim&quot;</span>  <span class="c1"># real assert</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bim_location</span>
 
-    <span class="k">def</span> <span class="nf">_count</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">suffix</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_count</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">suffix</span><span class="p">):</span>
         <span class="n">count</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_counts</span><span class="p">[</span><span class="n">suffix</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">count</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">location</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_property_location</span><span class="p">(</span><span class="n">suffix</span><span class="p">)</span>
@@ -1298,7 +1298,7 @@
         <span class="k">return</span> <span class="n">count</span>
 
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">_check_file</span><span class="p">(</span><span class="n">filepointer</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_file</span><span class="p">(</span><span class="n">filepointer</span><span class="p">):</span>
         <span class="n">magic_number</span> <span class="o">=</span> <span class="n">filepointer</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">magic_number</span> <span class="o">!=</span> <span class="sa">b</span><span class="s2">&quot;l</span><span class="se">\x1b</span><span class="s2">&quot;</span><span class="p">:</span>
             <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Not a valid .bed file&quot;</span>
@@ -1310,24 +1310,24 @@
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">mode</span>
 
-    <span class="k">def</span> <span class="fm">__del__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__del__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="fm">__exit__</span><span class="p">()</span>
 
-    <span class="k">def</span> <span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span>
 
-    <span class="k">def</span> <span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">_</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">_</span><span class="p">):</span>
         <span class="k">pass</span>
 
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">_array_properties_are_ok</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">order</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_array_properties_are_ok</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">order</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">order</span> <span class="o">==</span> <span class="s2">&quot;F&quot;</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">val</span><span class="o">.</span><span class="n">flags</span><span class="p">[</span><span class="s2">&quot;F_CONTIGUOUS&quot;</span><span class="p">]</span>
         <span class="k">assert</span> <span class="n">order</span> <span class="o">==</span> <span class="s2">&quot;C&quot;</span>  <span class="c1"># real assert</span>
         <span class="k">return</span> <span class="n">val</span><span class="o">.</span><span class="n">flags</span><span class="p">[</span><span class="s2">&quot;C_CONTIGUOUS&quot;</span><span class="p">]</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span> <span class="nf">shape</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">shape</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Number of individuals (samples) and SNPs (variants).</span>
 
 <span class="sd">        Returns:</span>
@@ -1354,7 +1354,7 @@
         <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">iid_count</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sid_count</span><span class="p">)</span>
 
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">_split_index</span><span class="p">(</span><span class="n">index</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_split_index</span><span class="p">(</span><span class="n">index</span><span class="p">):</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
             <span class="n">index</span> <span class="o">=</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">index</span><span class="p">)</span>
         <span class="n">iid_index</span> <span class="o">=</span> <span class="n">open_bed</span><span class="o">.</span><span class="n">_fix_up_index</span><span class="p">(</span><span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
@@ -1362,7 +1362,7 @@
         <span class="k">return</span> <span class="n">iid_index</span><span class="p">,</span> <span class="n">sid_index</span>
 
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">_fix_up_index</span><span class="p">(</span><span class="n">index</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_fix_up_index</span><span class="p">(</span><span class="n">index</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">index</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># make a shortcut for None</span>
             <span class="k">return</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
         <span class="k">try</span><span class="p">:</span>  <span class="c1"># If index is an int, return it in an array</span>
@@ -1374,7 +1374,7 @@
         <span class="k">return</span> <span class="n">index</span>
 
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">_write_fam_or_bim</span><span class="p">(</span><span class="n">base_filepath</span><span class="p">,</span> <span class="n">properties</span><span class="p">,</span> <span class="n">suffix</span><span class="p">,</span> <span class="n">property_filepath</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_write_fam_or_bim</span><span class="p">(</span><span class="n">base_filepath</span><span class="p">,</span> <span class="n">properties</span><span class="p">,</span> <span class="n">suffix</span><span class="p">,</span> <span class="n">property_filepath</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">assert</span> <span class="n">suffix</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;fam&quot;</span><span class="p">,</span> <span class="s2">&quot;bim&quot;</span><span class="p">},</span> <span class="s2">&quot;real assert&quot;</span>
 
         <span class="n">filepath</span> <span class="o">=</span> <span class="p">(</span>
@@ -1398,7 +1398,7 @@
                 <span class="p">)</span>
 
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">_fix_up_properties_array</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">dtype</span><span class="p">,</span> <span class="n">missing_value</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_fix_up_properties_array</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">dtype</span><span class="p">,</span> <span class="n">missing_value</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
         <span class="k">if</span> <span class="nb">input</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">None</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
@@ -1440,7 +1440,7 @@
         <span class="k">return</span> <span class="n">output</span>
 
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">_fix_up_properties</span><span class="p">(</span><span class="n">properties</span><span class="p">,</span> <span class="n">iid_count</span><span class="p">,</span> <span class="n">sid_count</span><span class="p">,</span> <span class="n">use_fill_sequence</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_fix_up_properties</span><span class="p">(</span><span class="n">properties</span><span class="p">,</span> <span class="n">iid_count</span><span class="p">,</span> <span class="n">sid_count</span><span class="p">,</span> <span class="n">use_fill_sequence</span><span class="p">):</span>
         <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">properties</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_meta_meta</span><span class="p">:</span>
                 <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;properties key &#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&#39; not known&quot;</span>
@@ -1473,7 +1473,7 @@
             <span class="n">properties_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">output</span>
         <span class="k">return</span> <span class="n">properties_dict</span><span class="p">,</span> <span class="n">count_dict</span>
 
-    <span class="k">def</span> <span class="nf">_read_fam_or_bim</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">suffix</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_read_fam_or_bim</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">suffix</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">property_location</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_property_location</span><span class="p">(</span><span class="n">suffix</span><span class="p">)</span>
 
         <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loading </span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2"> file </span><span class="si">{</span><span class="n">property_location</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -1536,7 +1536,7 @@
 
 <div class="viewcode-block" id="open_bed.read_sparse">
 <a class="viewcode-back" href="../../index.html#bed_reader.open_bed.read_sparse">[docs]</a>
-    <span class="k">def</span> <span class="nf">read_sparse</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">read_sparse</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">index</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">dtype</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">type</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="s2">&quot;float32&quot;</span><span class="p">,</span>
@@ -1848,7 +1848,7 @@
         <span class="p">)</span></div>
 
 
-    <span class="k">def</span> <span class="nf">sparsify</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">order</span><span class="p">,</span> <span class="n">minor_index</span><span class="p">,</span> <span class="n">batch_slice</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">indptr</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">sparsify</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">order</span><span class="p">,</span> <span class="n">minor_index</span><span class="p">,</span> <span class="n">batch_slice</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">indices</span><span class="p">,</span> <span class="n">indptr</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">flatten</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="n">order</span><span class="p">)</span>
         <span class="n">nz_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">flatten</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
         <span class="n">column_indexes</span> <span class="o">=</span> <span class="n">nz_indices</span> <span class="o">//</span> <span class="nb">len</span><span class="p">(</span><span class="n">minor_index</span><span class="p">)</span>
@@ -1865,7 +1865,7 @@
 
 
 
-<span class="k">def</span> <span class="nf">_read_csv</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">usecols</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_read_csv</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">usecols</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="n">pattern</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;^np\.\w+\((.+?)\)$&quot;</span><span class="p">)</span>
 
     <span class="c1"># Prepare the usecols by ensuring it is a list of indices</span>
@@ -1898,7 +1898,7 @@
     <span class="k">return</span> <span class="n">columns</span><span class="p">,</span> <span class="n">row_count</span>
 
 
-<span class="k">def</span> <span class="nf">_convert_to_dtype</span><span class="p">(</span><span class="n">str_arr</span><span class="p">,</span> <span class="n">dtype</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_convert_to_dtype</span><span class="p">(</span><span class="n">str_arr</span><span class="p">,</span> <span class="n">dtype</span><span class="p">):</span>
     <span class="k">assert</span> <span class="n">dtype</span> <span class="ow">in</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">str_</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">]</span>  <span class="c1"># real assert</span>
 
     <span class="k">if</span> <span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">str_</span><span class="p">:</span>
@@ -1925,7 +1925,7 @@
 
 
 <span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
-    <span class="kn">import</span> <span class="nn">pytest</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
 
     <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
 

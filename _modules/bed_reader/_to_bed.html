@@ -6,7 +6,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>bed_reader._to_bed &mdash; Bed Reader 1.0.6 documentation</title>
-      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
 
   
@@ -76,17 +76,17 @@
            <div itemprop="articleBody">
              
   <h1>Source code for bed_reader._to_bed</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span> <span class="nn">contextlib</span>
-<span class="kn">import</span> <span class="nn">logging</span>
-<span class="kn">import</span> <span class="nn">os</span>
-<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">contextlib</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
 
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
-<span class="kn">from</span> <span class="nn">bed_reader</span> <span class="kn">import</span> <span class="n">get_num_threads</span><span class="p">,</span> <span class="n">open_bed</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">bed_reader</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_num_threads</span><span class="p">,</span> <span class="n">open_bed</span>
 
-<span class="kn">from</span> <span class="nn">.bed_reader</span> <span class="kn">import</span> <span class="p">(</span>  <span class="c1"># type: ignore</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.bed_reader</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>  <span class="c1"># type: ignore</span>
     <span class="n">encode1_f32</span><span class="p">,</span>
     <span class="n">encode1_f64</span><span class="p">,</span>
     <span class="n">encode1_i8</span><span class="p">,</span>
@@ -98,7 +98,7 @@
 
 <div class="viewcode-block" id="create_bed">
 <a class="viewcode-back" href="../../index.html#bed_reader.create_bed">[docs]</a>
-<span class="k">class</span> <span class="nc">create_bed</span><span class="p">:</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">create_bed</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Open a file to write values into PLINK .bed format.</span>
 
 <span class="sd">    Values may be given in a SNP-by-SNP (or individual-by-individual) manner.</span>
@@ -211,7 +211,7 @@
 
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">location</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">],</span>
         <span class="n">iid_count</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
@@ -287,15 +287,15 @@
         <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="p">):</span>
             <span class="n">os</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">location</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span>
 
-    <span class="k">def</span> <span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc_type</span><span class="p">,</span> <span class="n">exc_value</span><span class="p">,</span> <span class="n">traceback</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc_type</span><span class="p">,</span> <span class="n">exc_value</span><span class="p">,</span> <span class="n">traceback</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 
 <div class="viewcode-block" id="create_bed.close">
 <a class="viewcode-back" href="../../index.html#bed_reader.create_bed.close">[docs]</a>
-    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Close the bed_writer, writing the file to disk. If you use</span>
 <span class="sd">        :class:`create_bed` with the `with` statement,</span>
 <span class="sd">        you don&#39;t need to use this.</span>
@@ -322,19 +322,19 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_clean_up_error</span><span class="p">()</span></div>
 
 
-    <span class="k">def</span> <span class="nf">_clean_up_error</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_clean_up_error</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">with</span> <span class="n">contextlib</span><span class="o">.</span><span class="n">suppress</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
             <span class="n">os</span><span class="o">.</span><span class="n">unlink</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">temp_filepath</span><span class="p">)</span>
 
     <span class="nd">@staticmethod</span>
-    <span class="k">def</span> <span class="nf">_replace_extension</span><span class="p">(</span><span class="n">location</span><span class="p">,</span> <span class="n">extension</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_replace_extension</span><span class="p">(</span><span class="n">location</span><span class="p">,</span> <span class="n">extension</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">open_bed</span><span class="o">.</span><span class="n">_is_url</span><span class="p">(</span><span class="n">location</span><span class="p">):</span>
             <span class="k">return</span> <span class="n">location</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="p">(</span><span class="n">location</span><span class="o">.</span><span class="n">stem</span> <span class="o">+</span> <span class="s2">&quot;.&quot;</span> <span class="o">+</span> <span class="n">extension</span><span class="p">)</span>
         <span class="k">return</span> <span class="kc">None</span>
 
 <div class="viewcode-block" id="create_bed.write">
 <a class="viewcode-back" href="../../index.html#bed_reader.create_bed.write">[docs]</a>
-    <span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vector</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vector</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Write a vector of values to the bed_writer.</span>
 
 <span class="sd">        See :class:`create_bed` for more information.</span>
@@ -369,7 +369,7 @@
             <span class="k">raise</span>  <span class="c1"># Re-raise the exception to handle it externally</span></div>
 
 
-    <span class="k">def</span> <span class="nf">_internal_write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vector</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_internal_write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vector</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">force_python_only</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">vector</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">:</span>
                 <span class="n">encode1_i8</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">count_A1</span><span class="p">,</span> <span class="n">vector</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">buffer</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_threads</span><span class="p">)</span>
@@ -413,7 +413,7 @@
 
 
 
-<span class="k">def</span> <span class="nf">_fix_up_vector</span><span class="p">(</span><span class="nb">input</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_fix_up_vector</span><span class="p">(</span><span class="nb">input</span><span class="p">):</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">_fix_up_vector</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">input</span><span class="p">))</span>
 
@@ -434,7 +434,7 @@
 
 <div class="viewcode-block" id="to_bed">
 <a class="viewcode-back" href="../../index.html#bed_reader.to_bed">[docs]</a>
-<span class="k">def</span> <span class="nf">to_bed</span><span class="p">(</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">to_bed</span><span class="p">(</span>
     <span class="n">filepath</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">],</span>
     <span class="n">val</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
     <span class="n">properties</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{},</span>
@@ -668,7 +668,7 @@
 
 
 
-<span class="k">def</span> <span class="nf">_fix_up_val</span><span class="p">(</span><span class="nb">input</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_fix_up_val</span><span class="p">(</span><span class="nb">input</span><span class="p">):</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">_fix_up_val</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">input</span><span class="p">))</span>
 
