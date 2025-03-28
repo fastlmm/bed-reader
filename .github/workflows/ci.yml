@@ -62,7 +62,7 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSIONS }}
       - name: Build wheels
-        uses: PyO3/maturin-action@v1.34.5
+        uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
           args: --release --out dist ${{ env.PYTHON_VERSIONS_ARGS }}
@@ -94,7 +94,7 @@ jobs:
         env:
           CC: aarch64-linux-gnu-gcc
           CFLAGS: -march=armv8-a -D__ARM_ARCH=8
-        uses: PyO3/maturin-action@v1.34.5
+        uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
           args: --release --out dist ${{ env.PYTHON_VERSIONS_ARGS }}
@@ -102,7 +102,7 @@ jobs:
 
       - name: Build wheels for x86_64
         if: matrix.target == 'x86_64'
-        uses: PyO3/maturin-action@v1.34.5
+        uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
           args: --release --out dist ${{ env.PYTHON_VERSIONS_ARGS }}
@@ -126,7 +126,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSIONS }}
           architecture: ${{ matrix.target }}
       - name: Build wheels
-        uses: PyO3/maturin-action@v1.34.5
+        uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
           args: --release --out dist ${{ env.PYTHON_VERSIONS_ARGS }}
@@ -141,7 +141,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build sdist
-        uses: PyO3/maturin-action@v1.34.5
+        uses: PyO3/maturin-action@v1
         with:
           command: sdist
           args: --out dist
