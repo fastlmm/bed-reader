@@ -1,4 +1,5 @@
 [project]
+version = "1.0.6"
 name = "bed-reader"
 readme = "README.md"
 classifiers = [

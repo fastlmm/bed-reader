@@ -65,9 +65,9 @@ jobs:
           target: ${{ matrix.target }}
           args: --release --out dist --find-interpreter
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-macos-${{ matrix.target }}
           path: dist
           
   linux:
@@ -111,9 +111,9 @@ jobs:
           manylinux: auto
 
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-linux-${{ matrix.target }}
           path: dist
           
   windows:
@@ -137,9 +137,9 @@ jobs:
           target: ${{ matrix.target }}
           args: --release --out dist --find-interpreter
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-windows-${{ matrix.target }}
           path: dist
         
   sdist:
@@ -152,10 +152,37 @@ jobs:
           command: sdist
           args: --out dist
       - name: Upload sdist
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-sdist
           path: dist
+
+  merge_artifacts:
+    name: Merge Artifacts
+    needs: [macos, linux, windows, sdist]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create merged directory
+        run: mkdir -p merged_dist
+        
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: wheels-*
+          merge-multiple: true
+          
+      - name: List downloaded artifacts
+        run: find artifacts -type f | sort
+        
+      - name: Copy artifacts to merged directory
+        run: cp -r artifacts/* merged_dist/
+        
+      - name: Upload merged artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-all
+          path: merged_dist
 
   test_python:
     name: Test Python
