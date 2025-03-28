@@ -57,12 +57,12 @@ jobs:
       matrix:
         target: [x86_64, aarch64]
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSIONS }}
       - name: Build wheels
-        uses: PyO3/maturin-action@v1
+        uses: PyO3/maturin-action@v2
         with:
           target: ${{ matrix.target }}
           args: --release --out dist ${{ env.PYTHON_VERSIONS_ARGS }}
@@ -78,8 +78,8 @@ jobs:
       matrix:
         target: [x86_64, aarch64]
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSIONS }}
 
@@ -94,7 +94,7 @@ jobs:
         env:
           CC: aarch64-linux-gnu-gcc
           CFLAGS: -march=armv8-a -D__ARM_ARCH=8
-        uses: PyO3/maturin-action@v1
+        uses: PyO3/maturin-action@v2
         with:
           target: ${{ matrix.target }}
           args: --release --out dist ${{ env.PYTHON_VERSIONS_ARGS }}
@@ -102,7 +102,7 @@ jobs:
 
       - name: Build wheels for x86_64
         if: matrix.target == 'x86_64'
-        uses: PyO3/maturin-action@v1
+        uses: PyO3/maturin-action@v2
         with:
           target: ${{ matrix.target }}
           args: --release --out dist ${{ env.PYTHON_VERSIONS_ARGS }}
@@ -120,13 +120,13 @@ jobs:
       matrix:
         target: [x64]
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSIONS }}
           architecture: ${{ matrix.target }}
       - name: Build wheels
-        uses: PyO3/maturin-action@v1
+        uses: PyO3/maturin-action@v2
         with:
           target: ${{ matrix.target }}
           args: --release --out dist ${{ env.PYTHON_VERSIONS_ARGS }}
@@ -139,9 +139,9 @@ jobs:
   sdist:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Build sdist
-        uses: PyO3/maturin-action@v1
+        uses: PyO3/maturin-action@v2
         with:
           command: sdist
           args: --out dist
@@ -188,12 +188,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     - name: Install Rust
-      uses: actions-rs/toolchain@v1
+      uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: stable
-        override: true
+        components: clippy, rustfmt, rust-src
     - name: Install the latest version of uv
       uses: astral-sh/setup-uv@v3
     - name: Install Python ${{ matrix.python-version }}
