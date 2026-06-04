@@ -4,7 +4,7 @@ import logging
 import math
 import os
 import platform
-from pathlib import Path, PurePath
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -15,7 +15,7 @@ from bed_reader.tests.test_open_bed import reference_val, setting_generator
 
 def test_cloud_read1(shared_datadir) -> None:
     file = shared_datadir / "plink_sim_10s_100v_10pmiss.bed"
-    file = PurePath(file).as_uri()
+    file = Path(file).as_uri()
 
     with open_bed(file) as bed:
         assert bed.iid_count == 10
@@ -34,7 +34,7 @@ def test_cloud_read1(shared_datadir) -> None:
 
 def test_cloud_write(tmp_path, shared_datadir) -> None:
     in_file = shared_datadir / "plink_sim_10s_100v_10pmiss.bed"
-    in_file = PurePath(in_file).as_uri()
+    in_file = Path(in_file).as_uri()
 
     out_file = tmp_path / "out.bed"
     with open_bed(in_file) as bed:
@@ -85,7 +85,7 @@ def test_cloud_write(tmp_path, shared_datadir) -> None:
 
 
 def test_cloud_overrides(shared_datadir) -> None:
-    file = PurePath(shared_datadir / "some_missing.bed").as_uri()
+    file = Path(shared_datadir / "some_missing.bed").as_uri()
     with open_bed(file) as bed:
         fid = bed.fid
         iid = bed.iid
@@ -166,7 +166,7 @@ def test_cloud_overrides(shared_datadir) -> None:
 
 
 def file_to_url(file):
-    return PurePath(file).as_uri()
+    return Path(file).as_uri()
 
 
 def test_cloud_str(shared_datadir) -> None:
@@ -940,7 +940,7 @@ def test_s3(shared_datadir) -> None:
         assert val.shape == (500, 10_000)
 
     # file url
-    file = PurePath(file).as_uri()
+    file = Path(file).as_uri()
     with open_bed(file) as bed:
         val = bed.read(dtype="int8")
         assert val.shape == (500, 10_000)
@@ -1120,14 +1120,13 @@ def test_http_cloud_urls_rst_4() -> None:
 
 def test_local_cloud_urls_rst_1() -> None:
     from pathlib import Path
-    from urllib.parse import urljoin
 
     import numpy as np
 
     from bed_reader import open_bed, sample_file
 
     file_name = str(sample_file("small.bed"))
-    url = urljoin("file:", Path(file_name).as_uri())
+    url = Path(file_name).as_uri()
 
     with open_bed(url) as bed:
         val = bed.read(index=np.s_[:, 2], dtype=np.float64)

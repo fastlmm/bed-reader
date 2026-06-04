@@ -1,5 +1,5 @@
 import tempfile
-from pathlib import Path, PurePath
+from pathlib import Path
 from typing import Union
 
 try:
@@ -122,7 +122,7 @@ def sample_url(filepath: Union[str, Path]) -> str:
 
     """
     file_name = sample_file(filepath)
-    return PurePath(file_name).as_uri()
+    return Path(file_name).as_uri()
 
 
 def tmp_path() -> Path:

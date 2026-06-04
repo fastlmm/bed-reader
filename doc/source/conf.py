@@ -7,9 +7,7 @@ doctest_global_setup = "import bed_reader"
 
 
 def read(filepath):
-    import codecs
-
-    with codecs.open(filepath, "r") as fp:
+    with open(filepath, encoding="utf-8") as fp:
         return fp.read()
 
 

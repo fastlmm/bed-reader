@@ -158,12 +158,11 @@ The URL for a local file takes the form `file:///{encoded_file_name}`. No cloud 
 
     >>> import numpy as np
     >>> from bed_reader import open_bed, sample_file
-    >>> from urllib.parse import urljoin
     >>> from pathlib import Path
     >>> file_name = str(sample_file("small.bed"))
     >>> print(f"file name: {file_name}")   # doctest: +ELLIPSIS
     file name: ...small.bed
-    >>> url = urljoin("file:", Path(file_name).as_uri())
+    >>> url = Path(file_name).as_uri()
     >>> print(f"url: {url}") # doctest: +ELLIPSIS
     url: file:///.../small.bed
     >>> with open_bed(url) as bed:
