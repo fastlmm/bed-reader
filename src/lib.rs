@@ -3304,7 +3304,7 @@ enum Hold<'a> {
 }
 
 impl Hold<'_> {
-    fn new(index: &Index, count: usize) -> Result<Hold, Box<BedErrorPlus>> {
+    fn new(index: &Index, count: usize) -> Result<Hold<'_>, Box<BedErrorPlus>> {
         let hold = if let Index::Vec(vec) = index {
             Hold::Ref(vec)
         } else {

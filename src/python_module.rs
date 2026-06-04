@@ -19,6 +19,24 @@ use pyo3::{
 use std::collections::HashMap;
 use tokio::runtime;
 
+impl std::convert::From<Box<BedErrorPlus>> for PyErr {
+    fn from(err: Box<BedErrorPlus>) -> PyErr {
+        match *err {
+            BedErrorPlus::BedError(
+                BedError::IidIndexTooBig(_)
+                | BedError::SidIndexTooBig(_)
+                | BedError::IndexMismatch(_, _, _, _)
+                | BedError::IndexesTooBigForFiles(_, _)
+                | BedError::SubsetMismatch(_, _, _, _),
+            ) => PyIndexError::new_err(err.to_string()),
+
+            BedErrorPlus::IOError(_) => PyIOError::new_err(err.to_string()),
+
+            _ => PyValueError::new_err(err.to_string()),
+        }
+    }
+}
+
 #[pymodule]
 #[allow(clippy::too_many_lines, clippy::items_after_statements)]
 fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -30,25 +48,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         pyo3::import_exception!(io, UnsupportedOperation);
     }
 
-    impl std::convert::From<Box<BedErrorPlus>> for PyErr {
-        fn from(err: Box<BedErrorPlus>) -> PyErr {
-            match *err {
-                BedErrorPlus::BedError(
-                    BedError::IidIndexTooBig(_)
-                    | BedError::SidIndexTooBig(_)
-                    | BedError::IndexMismatch(_, _, _, _)
-                    | BedError::IndexesTooBigForFiles(_, _)
-                    | BedError::SubsetMismatch(_, _, _, _),
-                ) => PyIndexError::new_err(err.to_string()),
-
-                BedErrorPlus::IOError(_) => PyIOError::new_err(err.to_string()),
-
-                _ => PyValueError::new_err(err.to_string()),
-            }
-        }
-    }
-
-    #[pyfn(m)]
+    #[pyfunction]
     fn url_to_bytes(location: &str, options: &Bound<'_, PyDict>) -> Result<Vec<u8>, PyErr> {
         let options: HashMap<String, String> = options.extract()?;
         let cloud_file = CloudFile::new_with_options(location, options)
@@ -65,7 +65,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         })
     }
 
-    #[pyfn(m)]
+    #[pyfunction]
     #[allow(clippy::too_many_arguments)]
     #[allow(clippy::needless_pass_by_value)]
     fn read_f64(
@@ -102,7 +102,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         Ok(())
     }
 
-    #[pyfn(m)]
+    #[pyfunction]
     #[allow(clippy::too_many_arguments)]
     #[allow(clippy::needless_pass_by_value)]
     fn read_f32(
@@ -139,7 +139,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         Ok(())
     }
 
-    #[pyfn(m)]
+    #[pyfunction]
     #[allow(clippy::too_many_arguments)]
     #[allow(clippy::needless_pass_by_value)]
     fn read_i8(
@@ -176,7 +176,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         Ok(())
     }
 
-    #[pyfn(m)]
+    #[pyfunction]
     fn check_file_cloud(location: &str, options: &Bound<'_, PyDict>) -> Result<(), PyErr> {
         let options: HashMap<String, String> = options.extract()?;
         runtime::Runtime::new()?.block_on(async {
@@ -185,7 +185,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         })
     }
 
-    #[pyfn(m)]
+    #[pyfunction]
     #[allow(clippy::too_many_arguments)]
     fn read_cloud_i8(
         location: &str,
@@ -232,7 +232,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         })
     }
 
-    #[pyfn(m)]
+    #[pyfunction]
     #[allow(clippy::too_many_arguments)]
     fn read_cloud_f32(
         location: &str,
@@ -279,7 +279,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         })
     }
 
-    #[pyfn(m)]
+    #[pyfunction]
     #[allow(clippy::too_many_arguments)]
     fn read_cloud_f64(
         location: &str,
@@ -326,7 +326,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         })
     }
 
-    #[pyfn(m)]
+    #[pyfunction]
     fn write_f64(
         filename: &str,
         is_a1_counted: bool,
@@ -350,7 +350,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         Ok(())
     }
 
-    #[pyfn(m)]
+    #[pyfunction]
     fn write_f32(
         filename: &str,
         is_a1_counted: bool,
@@ -370,7 +370,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         Ok(())
     }
 
-    #[pyfn(m)]
+    #[pyfunction]
     fn write_i8(
         filename: &str,
         is_a1_counted: bool,
@@ -390,7 +390,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         Ok(())
     }
 
-    #[pyfn(m)]
+    #[pyfunction]
     #[allow(unused_variables)]
     fn encode1_i8(
         is_a1_counted: bool,
@@ -409,7 +409,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         Ok(encode1(&val, bytes_vector, is_a1_counted, -127)?)
     }
 
-    #[pyfn(m)]
+    #[pyfunction]
     #[allow(unused_variables)]
     fn encode1_f32(
         is_a1_counted: bool,
@@ -428,7 +428,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         Ok(encode1(&val, bytes_vector, is_a1_counted, f32::NAN)?)
     }
 
-    #[pyfn(m)]
+    #[pyfunction]
     #[allow(unused_variables)]
     fn encode1_f64(
         is_a1_counted: bool,
@@ -447,7 +447,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         Ok(encode1(&val, bytes_vector, is_a1_counted, f64::NAN)?)
     }
 
-    #[pyfn(m)]
+    #[pyfunction]
     fn subset_f64_f64(
         val_in: &Bound<'_, PyArray3<f64>>,
         iid_index: &Bound<'_, PyArray1<usize>>,
@@ -472,7 +472,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         Ok(())
     }
 
-    #[pyfn(m)]
+    #[pyfunction]
     fn subset_f32_f64(
         val_in: &Bound<'_, PyArray3<f32>>,
         iid_index: &Bound<'_, PyArray1<usize>>,
@@ -497,7 +497,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         Ok(())
     }
 
-    #[pyfn(m)]
+    #[pyfunction]
     fn subset_f32_f32(
         val_in: &Bound<'_, PyArray3<f32>>,
         iid_index: &Bound<'_, PyArray1<usize>>,
@@ -522,7 +522,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         Ok(())
     }
 
-    #[pyfn(m)]
+    #[pyfunction]
     #[allow(clippy::too_many_arguments)]
     fn standardize_f32(
         val: &Bound<'_, PyArray2<f32>>,
@@ -559,7 +559,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         }
     }
 
-    #[pyfn(m)]
+    #[pyfunction]
     #[allow(clippy::too_many_arguments)]
     fn standardize_f64(
         val: &Bound<'_, PyArray2<f64>>,
@@ -589,7 +589,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         Ok(())
     }
 
-    #[pyfn(m)]
+    #[pyfunction]
     #[allow(clippy::too_many_arguments)]
     fn file_ata_piece_f32_orderf(
         filename: &str,
@@ -620,7 +620,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         Ok(())
     }
 
-    #[pyfn(m)]
+    #[pyfunction]
     #[allow(clippy::too_many_arguments)]
     fn file_ata_piece_f64_orderf(
         filename: &str,
@@ -652,7 +652,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     }
 
     // Old version of function for backwards compatibility
-    #[pyfn(m)]
+    #[pyfunction]
     fn file_dot_piece(
         filename: &str,
         offset: u64,
@@ -680,7 +680,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         Ok(())
     }
 
-    #[pyfn(m)]
+    #[pyfunction]
     #[allow(clippy::too_many_arguments)]
     fn file_aat_piece_f32_orderf(
         filename: &str,
@@ -711,7 +711,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         Ok(())
     }
 
-    #[pyfn(m)]
+    #[pyfunction]
     #[allow(clippy::too_many_arguments)]
     fn file_aat_piece_f64_orderf(
         filename: &str,
@@ -742,7 +742,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         Ok(())
     }
 
-    #[pyfn(m)]
+    #[pyfunction]
     #[pyo3(name = "file_b_less_aatbx")]
     #[allow(clippy::too_many_arguments)]
     fn file_b_less_aatbx_translator(
@@ -776,6 +776,33 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
 
         Ok(())
     }
+
+    m.add_function(wrap_pyfunction!(url_to_bytes, m)?)?;
+    m.add_function(wrap_pyfunction!(read_f64, m)?)?;
+    m.add_function(wrap_pyfunction!(read_f32, m)?)?;
+    m.add_function(wrap_pyfunction!(read_i8, m)?)?;
+    m.add_function(wrap_pyfunction!(check_file_cloud, m)?)?;
+    m.add_function(wrap_pyfunction!(read_cloud_i8, m)?)?;
+    m.add_function(wrap_pyfunction!(read_cloud_f32, m)?)?;
+    m.add_function(wrap_pyfunction!(read_cloud_f64, m)?)?;
+    m.add_function(wrap_pyfunction!(write_f64, m)?)?;
+    m.add_function(wrap_pyfunction!(write_f32, m)?)?;
+    m.add_function(wrap_pyfunction!(write_i8, m)?)?;
+    m.add_function(wrap_pyfunction!(encode1_i8, m)?)?;
+    m.add_function(wrap_pyfunction!(encode1_f32, m)?)?;
+    m.add_function(wrap_pyfunction!(encode1_f64, m)?)?;
+    m.add_function(wrap_pyfunction!(subset_f64_f64, m)?)?;
+    m.add_function(wrap_pyfunction!(subset_f32_f64, m)?)?;
+    m.add_function(wrap_pyfunction!(subset_f32_f32, m)?)?;
+    m.add_function(wrap_pyfunction!(standardize_f32, m)?)?;
+    m.add_function(wrap_pyfunction!(standardize_f64, m)?)?;
+    m.add_function(wrap_pyfunction!(file_ata_piece_f32_orderf, m)?)?;
+    m.add_function(wrap_pyfunction!(file_ata_piece_f64_orderf, m)?)?;
+    m.add_function(wrap_pyfunction!(file_dot_piece, m)?)?;
+    m.add_function(wrap_pyfunction!(file_aat_piece_f32_orderf, m)?)?;
+    m.add_function(wrap_pyfunction!(file_aat_piece_f64_orderf, m)?)?;
+    m.add_function(wrap_pyfunction!(file_b_less_aatbx_translator, m)?)?;
+
     Ok(())
 }
 

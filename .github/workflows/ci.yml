@@ -35,7 +35,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Set up Rust (Pinned Version)
-        uses: dtolnay/rust-toolchain@1.81.0
+        uses: dtolnay/rust-toolchain@1.83.0
         with:
           components: clippy, rustfmt, rust-src
       - name: Run Clippy (strict for this pinned version of Rust)
