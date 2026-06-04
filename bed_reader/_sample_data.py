@@ -128,12 +128,12 @@ def sample_url(filepath: Union[str, Path]) -> str:
 def tmp_path() -> Path:
     """Return a :class:`pathlib.Path` to a temporary directory.
 
-    Returns:
+    Returns
     -------
     pathlib.Path
         a temporary directory
 
-    Example:
+    Example
     -------
 
     .. doctest::

@@ -72,7 +72,7 @@ PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 cargo semver-checks check-release
 cargo publish --dry-run
 ```
 
-Inspect the `.crate` path printed by `cargo publish --dry-run` and confirm it is not unexpectedly large.
+Inspect the `.crate` path printed by `cargo publish --dry-run` and confirm it is not unexpectedly large. Around 510KB is fine.
 
 Do not run `cargo update` as a routine release step. Use it only when a dependency update is deliberately part of the release.
 
@@ -99,11 +99,11 @@ python -m pytest --collect-only
 Lint:
 
 ```bash
-uvx ruff@0.6.9 check bed_reader
+uvx ruff@0.15.16 check bed_reader
 uvx ruff@latest check bed_reader
 ```
 
-Useful targeted checks:
+Aside, useful targeted checks (already covered above)
 
 ```bash
 python -m pytest --doctest-modules bed_reader/_open_bed.py
@@ -144,6 +144,7 @@ cp -R doc/build/html/. docs/
 ```
 
 Check the rendered README and docs pages before committing generated docs.
+The PyPI version and Python-version badges are live badges. Before publishing, they may still show the previous release; that is expected.
 
 ### 7. Local Wheel Smoke Test
 

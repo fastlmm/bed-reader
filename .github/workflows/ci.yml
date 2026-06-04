@@ -207,8 +207,8 @@ jobs:
     - name: Install Python ${{ matrix.python-version }}
       run: uv python install ${{ matrix.python-version }}
     - name: Pinned Ruff
-      run:  uvx ruff@0.6.9 check bed_reader
-    - name: Lastest Ruff (just to check for warnings)
+      run:  uvx ruff@0.15.16 check bed_reader
+    - name: Latest Ruff (just to check for warnings)
       run: uvx ruff@latest check bed_reader || echo "Ignoring warnings from the latest version of ruff"
     - name: Install minimal dependencies
       run: uv sync --extra min_dev
