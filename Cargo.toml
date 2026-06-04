@@ -48,10 +48,10 @@ fetch-data = "0.2.0"
 futures-util = { version = "0.3.31" }
 bytecount = { version = "0.6.8" }
 itertools = { version = "0.13.0" }
-bytes = { version = "1.8.0" }
+bytes = { version = "1.11.1" }
 cloud-file = { version = "0.2.0" }
 pyo3 = { version = "0.28.3", features = ["extension-module"], optional = true }
-tokio = { version = "1.41.0", features = ["full"], optional = true }
+tokio = { version = "1.42.1", features = ["full"], optional = true }
 
 [dev-dependencies]
 ndarray-rand = "0.15.0"

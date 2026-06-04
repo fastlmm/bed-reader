@@ -26,6 +26,8 @@ Update the release version in:
 
 Use a normal final version, for example `1.1.0`, unless intentionally publishing a prerelease such as `1.1.0a1`.
 
+`Cargo.toml` and `pyproject.toml` should have the same release version.
+
 ### 3. Preflight
 
 ```bash
@@ -33,13 +35,15 @@ git status # or use VSCode to see that everything is checked-in
 rg -n "cmk" --glob '!doc/build/**' --glob '!docs/**' .
 ```
 
-Confirm:
+Update:
 
-* `Cargo.toml` and `pyproject.toml` have the same release version.
-* `CHANGELOG.md`, `README.md`, `README-rust.md`, and docs mention the right supported Python versions.
-* Any skipped network tests are intentional and documented.
-* No unrelated dependency updates are included unless they are needed for the release.
-* The release branch name matches the release version.
+* `CHANGELOG.md`
+
+Review:
+
+* Consider which, if any Rust and Python versions to update to.
+
+* Consider which, if any, Rust and Python dependencies should be updated for this release.
 
 ### 4. Rust Checks
 
@@ -63,7 +67,8 @@ Security and semver checks:
 cargo install cargo-audit
 cargo install cargo-semver-checks
 cargo audit
-cargo semver-checks check-release
+# may not need the env set next time
+PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 cargo semver-checks check-release
 cargo publish --dry-run
 ```
 
