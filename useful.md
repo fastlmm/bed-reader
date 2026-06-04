@@ -80,7 +80,7 @@ PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 cargo semver-checks check-release
 cargo publish --dry-run
 ```
 
-Inspect the `.crate` path printed by `cargo publish --dry-run` and confirm it is not unexpectedly large. Around 510KB is fine.
+Inspect the `ls -las target/package/tmp-crate/*.crate` path printed by `cargo publish --dry-run` and confirm it is not unexpectedly large. Around 510KB is fine.
 
 Do not run `cargo update` as a routine release step. Use it only when a dependency update is deliberately part of the release.
 
