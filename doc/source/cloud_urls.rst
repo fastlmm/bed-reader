@@ -87,7 +87,7 @@ What is the mean value of the SNP (variant) at index position 100,000?
 
     >>> import numpy as np
     >>> from bed_reader import open_bed
-    >>> with open_bed(
+    >>> with open_bed(  # doctest: +SKIP
     ...     "https://www.ebi.ac.uk/biostudies/files/S-BSST936/genotypes/synthetic_v1_chr-10.bed",
     ...     cloud_options={"timeout": "100s"},
     ...     skip_format_check=True,
@@ -109,7 +109,7 @@ This gives you almost instant access to the metadata and the \*.bed file. Here i
     >>> # and 'local_fam_file' and 'local_bim_file' variables are set to their local file paths.
     >>> local_fam_file = sample_file("synthetic_v1_chr-10.fam")
     >>> local_bim_file = sample_file("synthetic_v1_chr-10.bim")
-    >>> with open_bed(
+    >>> with open_bed(  # doctest: +SKIP
     ...     "https://www.ebi.ac.uk/biostudies/files/S-BSST936/genotypes/synthetic_v1_chr-10.bed",
     ...     fam_filepath=local_fam_file,
     ...     bim_filepath=local_bim_file,

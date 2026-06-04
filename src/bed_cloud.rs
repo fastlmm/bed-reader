@@ -2011,7 +2011,8 @@ impl BedCloud {
         if let Some(fam_cloud_file) = &self.fam_cloud_file {
             Ok(fam_cloud_file.clone())
         } else {
-            let fam_cloud_file = to_metadata_path(&self.cloud_file, &self.fam_cloud_file, "fam")?;
+            let fam_cloud_file =
+                to_metadata_path(&self.cloud_file, self.fam_cloud_file.as_ref(), "fam")?;
             self.fam_cloud_file = Some(fam_cloud_file.clone());
             Ok(fam_cloud_file)
         }
@@ -2023,7 +2024,8 @@ impl BedCloud {
         if let Some(bim_cloud_file) = &self.bim_cloud_file {
             Ok(bim_cloud_file.clone())
         } else {
-            let bim_cloud_file = to_metadata_path(&self.cloud_file, &self.bim_cloud_file, "bim")?;
+            let bim_cloud_file =
+                to_metadata_path(&self.cloud_file, self.bim_cloud_file.as_ref(), "bim")?;
             self.bim_cloud_file = Some(bim_cloud_file.clone());
             Ok(bim_cloud_file)
         }
@@ -2373,7 +2375,7 @@ pub fn sample_urls(path_list: AnyIter<AnyPath>) -> Result<Vec<String>, Box<BedEr
 
 fn to_metadata_path(
     bed_cloud_file: &CloudFile,
-    metadata_cloud_file: &Option<CloudFile>,
+    metadata_cloud_file: Option<&CloudFile>,
     extension: &str,
 ) -> Result<CloudFile, Box<BedErrorPlus>> {
     if let Some(metadata_cloud_file) = metadata_cloud_file {

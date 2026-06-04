@@ -1,11 +1,11 @@
 #![cfg(feature = "extension-module")]
 
-use crate::{BedCloud, CloudFile};
 use crate::{
-    BedError, BedErrorPlus, Dist, _file_ata_piece_internal, create_pool, encode1, file_aat_piece,
-    file_ata_piece, file_b_less_aatbx, impute_and_zero_mean_snps, matrix_subset_no_alloc,
-    read_into_f32, read_into_f64, Bed, ReadOptions, WriteOptions,
+    create_pool, encode1, file_aat_piece, file_ata_piece, file_ata_piece_internal,
+    file_b_less_aatbx, impute_and_zero_mean_snps, matrix_subset_no_alloc, read_into_f32,
+    read_into_f64, Bed, BedError, BedErrorPlus, Dist, ReadOptions, WriteOptions,
 };
+use crate::{BedCloud, CloudFile};
 use numpy::PyArrayMethods;
 use numpy::{PyArray1, PyArray2, PyArray3};
 use pyo3::{
@@ -666,7 +666,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         let mut ata_piece = ata_piece.as_array_mut();
 
         create_pool(num_threads)?.install(|| {
-            _file_ata_piece_internal(
+            file_ata_piece_internal(
                 filename,
                 offset,
                 row_count,
