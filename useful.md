@@ -48,6 +48,14 @@ Review:
 ### 4. Rust Checks
 
 Strict clippy is pinned so new monthly clippy lints do not unexpectedly fail CI.
+After any Rust dependency or `Cargo.lock` update, rerun:
+
+```bash
+rustup run 1.83.0 cargo check --all-targets --all-features
+rustup run 1.83.0 cargo clippy --all-targets --all-features -- -D warnings
+```
+
+Local stable Cargo may accept dependencies that CI's pinned Cargo cannot parse.
 
 ```bash
 rustup toolchain install 1.83.0 --component clippy --component rustfmt --component rust-src
