@@ -15,7 +15,6 @@
 // for an article on how this project uses Rust to create a Python extension.
 
 // For Rust API tips see https://rust-lang.github.io/api-guidelines/necessities.html
-#![doc = include_str!("../README-rust.md")]
 //! ## Main Functions
 //!
 //! | Function | Description |
