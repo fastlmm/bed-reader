@@ -5,16 +5,16 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>bed_reader._open_bed &mdash; Bed Reader 1.0.6 documentation</title>
+  <title>bed_reader._open_bed &mdash; Bed Reader 1.1.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
-      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
 
   
       <script src="../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../../_static/documentation_options.js?v=e2a723ec"></script>
-      <script src="../../_static/doctools.js?v=9bcbadda"></script>
-      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../../_static/documentation_options.js?v=fc837d61"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" /> 
@@ -750,7 +750,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">major</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Major mode of a local .bed file.</span>
 
-<span class="sd">        Returns:</span>
+<span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        str</span>
 <span class="sd">            &#39;SNP&#39; or &#39;individual&#39;</span>
@@ -764,7 +764,7 @@
 <span class="sd">        ValueError</span>
 <span class="sd">            If the file is a cloud file.</span>
 
-<span class="sd">        Example:</span>
+<span class="sd">        Example</span>
 <span class="sd">        -------</span>
 
 <span class="sd">        .. doctest::</span>
@@ -791,7 +791,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">fid</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Family id of each individual (sample).</span>
 
-<span class="sd">        Returns:</span>
+<span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
 <span class="sd">            array of str</span>
@@ -801,7 +801,7 @@
 
 <span class="sd">        If needed, will cause a one-time read of the .fam file.</span>
 
-<span class="sd">        Example:</span>
+<span class="sd">        Example</span>
 <span class="sd">        -------</span>
 
 <span class="sd">        .. doctest::</span>
@@ -820,7 +820,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">iid</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Individual id of each individual (sample).</span>
 
-<span class="sd">        Returns:</span>
+<span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
 <span class="sd">            array of str</span>
@@ -828,7 +828,7 @@
 
 <span class="sd">        If needed, will cause a one-time read of the .fam file.</span>
 
-<span class="sd">        Example:</span>
+<span class="sd">        Example</span>
 <span class="sd">        -------</span>
 
 <span class="sd">        .. doctest::</span>
@@ -847,7 +847,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">father</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Father id of each individual (sample).</span>
 
-<span class="sd">        Returns:</span>
+<span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
 <span class="sd">            array of str</span>
@@ -857,7 +857,7 @@
 
 <span class="sd">        If needed, will cause a one-time read of the .fam file.</span>
 
-<span class="sd">        Example:</span>
+<span class="sd">        Example</span>
 <span class="sd">        -------</span>
 
 <span class="sd">        .. doctest::</span>
@@ -876,7 +876,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">mother</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Mother id of each individual (sample).</span>
 
-<span class="sd">        Returns:</span>
+<span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
 <span class="sd">            array of str</span>
@@ -886,7 +886,7 @@
 
 <span class="sd">        If needed, will cause a one-time read of the .fam file.</span>
 
-<span class="sd">        Example:</span>
+<span class="sd">        Example</span>
 <span class="sd">        -------</span>
 
 <span class="sd">        .. doctest::</span>
@@ -905,7 +905,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">sex</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Sex of each individual (sample).</span>
 
-<span class="sd">        Returns:</span>
+<span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
 <span class="sd">            array of 0, 1, or 2</span>
@@ -915,7 +915,7 @@
 
 <span class="sd">        If needed, will cause a one-time read of the .fam file.</span>
 
-<span class="sd">        Example:</span>
+<span class="sd">        Example</span>
 <span class="sd">        -------</span>
 <span class="sd">        .. doctest::</span>
 
@@ -934,7 +934,7 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;A phenotype for each individual (sample)</span>
 <span class="sd">        (seldom used).</span>
 
-<span class="sd">        Returns:</span>
+<span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
 <span class="sd">            array of str</span>
@@ -944,7 +944,7 @@
 
 <span class="sd">        If needed, will cause a one-time read of the .fam file.</span>
 
-<span class="sd">        Example:</span>
+<span class="sd">        Example</span>
 <span class="sd">        -------</span>
 
 <span class="sd">        .. doctest::</span>
@@ -963,7 +963,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">properties</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;All the properties returned as a dictionary.</span>
 
-<span class="sd">        Returns:</span>
+<span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        dict</span>
 <span class="sd">            all the properties</span>
@@ -980,7 +980,7 @@
 
 <span class="sd">        If needed, will cause a one-time read of the .fam and .bim file.</span>
 
-<span class="sd">        Example:</span>
+<span class="sd">        Example</span>
 <span class="sd">        -------</span>
 
 <span class="sd">        .. doctest::</span>
@@ -1002,7 +1002,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">property_item</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Retrieve one property by name.</span>
 
-<span class="sd">        Returns:</span>
+<span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
 <span class="sd">            a property value</span>
@@ -1017,7 +1017,7 @@
 
 <span class="sd">        If needed, will cause a one-time read of the .fam or .bim file.</span>
 
-<span class="sd">        Example:</span>
+<span class="sd">        Example</span>
 <span class="sd">        -------</span>
 
 <span class="sd">        .. doctest::</span>
@@ -1040,7 +1040,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">chromosome</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Chromosome of each SNP (variant).</span>
 
-<span class="sd">        Returns:</span>
+<span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
 <span class="sd">            array of str</span>
@@ -1050,7 +1050,7 @@
 
 <span class="sd">        If needed, will cause a one-time read of the .bim file.</span>
 
-<span class="sd">        Example:</span>
+<span class="sd">        Example</span>
 <span class="sd">        -------</span>
 
 <span class="sd">        .. doctest::</span>
@@ -1069,7 +1069,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">sid</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;SNP id of each SNP (variant).</span>
 
-<span class="sd">        Returns:</span>
+<span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
 <span class="sd">            array of str</span>
@@ -1077,7 +1077,7 @@
 
 <span class="sd">        If needed, will cause a one-time read of the .bim file.</span>
 
-<span class="sd">        Example:</span>
+<span class="sd">        Example</span>
 <span class="sd">        -------</span>
 
 <span class="sd">        .. doctest::</span>
@@ -1096,7 +1096,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">cm_position</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Centimorgan position of each SNP (variant).</span>
 
-<span class="sd">        Returns:</span>
+<span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
 <span class="sd">            array of float</span>
@@ -1106,7 +1106,7 @@
 
 <span class="sd">        If needed, will cause a one-time read of the .bim file.</span>
 
-<span class="sd">        Example:</span>
+<span class="sd">        Example</span>
 <span class="sd">        -------</span>
 
 <span class="sd">        .. doctest::</span>
@@ -1125,7 +1125,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">bp_position</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Base-pair position of each SNP (variant).</span>
 
-<span class="sd">        Returns:</span>
+<span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
 <span class="sd">            array of int</span>
@@ -1135,7 +1135,7 @@
 
 <span class="sd">        If needed, will cause a one-time read of the .bim file.</span>
 
-<span class="sd">        Example:</span>
+<span class="sd">        Example</span>
 <span class="sd">        -------</span>
 
 <span class="sd">        .. doctest::</span>
@@ -1154,7 +1154,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">allele_1</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;First allele of each SNP (variant).</span>
 
-<span class="sd">        Returns:</span>
+<span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
 <span class="sd">            array of str</span>
@@ -1162,7 +1162,7 @@
 
 <span class="sd">        If needed, will cause a one-time read of the .bim file.</span>
 
-<span class="sd">        Example:</span>
+<span class="sd">        Example</span>
 <span class="sd">        -------</span>
 
 <span class="sd">        .. doctest::</span>
@@ -1181,7 +1181,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">allele_2</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Second allele of each SNP (variant),.</span>
 
-<span class="sd">        Returns:</span>
+<span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        numpy.ndarray</span>
 <span class="sd">            array of str</span>
@@ -1189,7 +1189,7 @@
 
 <span class="sd">        If needed, will cause a one-time read of the .bim file.</span>
 
-<span class="sd">        Example:</span>
+<span class="sd">        Example</span>
 <span class="sd">        -------</span>
 
 <span class="sd">        .. doctest::</span>
@@ -1208,7 +1208,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">iid_count</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Number of individuals (samples).</span>
 
-<span class="sd">        Returns:</span>
+<span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        int</span>
 <span class="sd">            number of individuals</span>
@@ -1216,7 +1216,7 @@
 
 <span class="sd">        If needed, will cause a fast line-count of the .fam file.</span>
 
-<span class="sd">        Example:</span>
+<span class="sd">        Example</span>
 <span class="sd">        -------</span>
 
 <span class="sd">        .. doctest::</span>
@@ -1235,7 +1235,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">sid_count</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Number of SNPs (variants).</span>
 
-<span class="sd">        Returns:</span>
+<span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        int</span>
 <span class="sd">            number of SNPs</span>
@@ -1243,7 +1243,7 @@
 
 <span class="sd">        If needed, will cause a fast line-count of the .bim file.</span>
 
-<span class="sd">        Example:</span>
+<span class="sd">        Example</span>
 <span class="sd">        -------</span>
 
 <span class="sd">        .. doctest::</span>
@@ -1330,7 +1330,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">shape</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Number of individuals (samples) and SNPs (variants).</span>
 
-<span class="sd">        Returns:</span>
+<span class="sd">        Returns</span>
 <span class="sd">        -------</span>
 <span class="sd">        (int, int)</span>
 <span class="sd">            number of individuals, number of SNPs</span>
@@ -1338,7 +1338,7 @@
 
 <span class="sd">        If needed, will cause a fast line-count of the .fam and .bim files.</span>
 
-<span class="sd">        Example:</span>
+<span class="sd">        Example</span>
 <span class="sd">        -------</span>
 
 <span class="sd">        .. doctest::</span>
