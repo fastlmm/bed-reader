@@ -182,38 +182,54 @@ git push
 
 Wait for GitHub Actions to finish. The `wheels-all` artifact should contain:
 
-* macOS x86_64 wheels
-* macOS aarch64 wheels
-* Linux x86_64 wheels
-* Linux aarch64 wheels
-* Windows x64 wheels
-* sdist
+* 25 wheels: Python 3.10 through 3.14 for macOS x86_64, macOS aarch64, Linux x86_64, Linux aarch64, and Windows x64.
+* 1 sdist: `bed_reader-VERSION.tar.gz`.
+
+If the GitHub Actions UI does not show the artifact list, download the merged artifact with `gh`:
+
+```bash
+gh run download RUN_ID --name wheels-all --dir wheels
+```
 
 ### 9. Inspect CI Artifacts
 
-Download and extract the `wheels-all` artifact from GitHub Actions.
+Download and extract the `wheels-all` artifact from GitHub Actions. It may contain the files directly, or inside the directory passed to `--dir`.
 
-Windows example:
+Windows example after downloading:
 
 ```cmd
 cd /d "C:\Users\carlk\Downloads\wheels"
 dir
 ```
 
+Linux/macOS example after downloading:
+
+```bash
+find wheels -type f | sort
+```
+
 Check the artifacts before upload:
 
 ```bash
-python -m twine check bed_reader-*
+uvx twine check wheels/bed_reader-1.1.0*
 ```
 
-Look for expected Python versions, platforms, and file names. For this release, expect Python 3.10 through 3.14 wheels.
+Use the actual version number. Look for expected Python versions, platforms, and file names:
 
-### 10. TestPyPI
+* `cp310`, `cp311`, `cp312`, `cp313`, `cp314`
+* `macosx_10_12_x86_64`
+* `macosx_11_0_arm64`
+* `manylinux_2_17_x86_64.manylinux2014_x86_64`
+* `manylinux_2_17_aarch64.manylinux2014_aarch64`
+* `win_amd64`
+* `bed_reader-VERSION.tar.gz`
+
+### 10. Optional: TestPyPI
 
 Upload to TestPyPI:
 
 ```bash
-python -m twine upload --repository testpypi bed_reader-*
+uvx twine upload --repository testpypi wheels/bed_reader-VERSION*
 ```
 
 Install from TestPyPI in a clean environment:
@@ -221,9 +237,9 @@ Install from TestPyPI in a clean environment:
 ```bash
 uv venv --python 3.14 /tmp/bed-reader-testpypi
 source /tmp/bed-reader-testpypi/bin/activate
-python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ bed-reader
-python -c "from bed_reader import open_bed; print(open_bed)"
-python -m pip uninstall -y bed-reader
+uv pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ bed-reader==VERSION
+cd /tmp
+python -c "import bed_reader; from bed_reader import open_bed; print(bed_reader.__file__); print(open_bed)"
 deactivate
 ```
 
@@ -232,15 +248,25 @@ On Windows, use:
 ```cmd
 uv venv --python 3.14 %TEMP%\bed-reader-testpypi
 %TEMP%\bed-reader-testpypi\Scripts\activate
-python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ bed-reader
-python -c "from bed_reader import open_bed; print(open_bed)"
-python -m pip uninstall -y bed-reader
+uv pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ bed-reader==VERSION
+cd /d %TEMP%
+python -c "import bed_reader; from bed_reader import open_bed; print(bed_reader.__file__); print(open_bed)"
 deactivate
 ```
 
 ### 11. Publish
 
 After TestPyPI and CI look good, merge to `main` and wait for CI on `main`.
+
+```bash
+git status
+git switch main
+git pull
+git merge --no-ff RELEASE_BRANCH
+git push origin main
+```
+
+Use the actual release branch name. Wait for GitHub Actions to pass on `main` before publishing.
 
 Publish Rust crate:
 
@@ -259,7 +285,14 @@ cargo run
 Publish Python package:
 
 ```bash
-python -m twine upload bed_reader-*
+uvx twine upload wheels/bed_reader-VERSION*
+```
+
+If publishing from WSL but credentials live in Windows, copy the PyPI config once:
+
+```bash
+cp /mnt/c/Users/carlk/.pypirc ~/.pypirc
+chmod 600 ~/.pypirc
 ```
 
 Tag the release:
@@ -276,8 +309,11 @@ Use the actual version number.
 ```bash
 uv venv --python 3.14 /tmp/bed-reader-pypi
 source /tmp/bed-reader-pypi/bin/activate
-python -m pip install bed-reader
-python -c "import bed_reader; from bed_reader import open_bed; print(bed_reader.__version__ if hasattr(bed_reader, '__version__') else open_bed)"
+uv pip install bed-reader==VERSION
+cd /tmp
+python -c "import bed_reader; from bed_reader import open_bed; print(bed_reader.__file__); print(open_bed)"
+uv pip install "bed-reader[samples]==VERSION"
+python -c "from bed_reader import sample_file; print(sample_file('small.bed'))"
 deactivate
 ```
 
