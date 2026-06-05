@@ -13,8 +13,8 @@ edition = "2021"
 homepage = "https://fastlmm.github.io/"
 exclude = [
     "**/tests/data/*",
-    "doc/*",
-    "docs/*",
+    "doc/build/*",
+    "docs/build/*",
     "target/*",
     "**/target/debug/*",
     "**/_static/fonts/*",
