@@ -81,6 +81,12 @@ cargo publish --dry-run
 ```
 
 Inspect the `ls -las target/package/tmp-crate/*.crate` path printed by `cargo publish --dry-run` and confirm it is not unexpectedly large. Around 510KB is fine.
+If verification fails with a missing file that is present in the `.crate`, remove stale Cargo package output and retry:
+
+```bash
+rm -rf target/package/bed-reader-VERSION
+cargo publish --dry-run
+```
 
 Do not run `cargo update` as a routine release step. Use it only when a dependency update is deliberately part of the release.
 
