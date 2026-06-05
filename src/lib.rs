@@ -71,7 +71,7 @@
 //! | [`is_a1_counted`](struct.ReadOptionsBuilder.html#method.is_a1_counted) | Is allele 1 counted? (defaults to true) |
 //! | [`num_threads`](struct.ReadOptionsBuilder.html#method.num_threads) | Number of threads to use (defaults to all processors) |
 //! | [`max_concurrent_requests`](struct.ReadOptionsBuilder.html#method.max_concurrent_requests) | Maximum number of concurrent async requests (defaults to 10) -- Used by [`BedCloud`](struct.BedCloud.html). |
-//! | [`max_chunk_bytes`](struct.ReadOptionsBuilder.html#method.max_chunk_bytes) | Maximum chunk size of async requests (defaults to 8_000_000 bytes) -- Used by [`BedCloud`](struct.BedCloud.html). |
+//! | [`max_chunk_bytes`](struct.ReadOptionsBuilder.html#method.max_chunk_bytes) | Maximum chunk size of async requests (defaults to `8_000_000` bytes) -- Used by [`BedCloud`](struct.BedCloud.html). |
 //!
 //! ### [`Index`](enum.Index.html) Expressions
 //!
