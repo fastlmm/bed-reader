@@ -77,6 +77,7 @@ cargo install cargo-semver-checks
 cargo audit
 # may not need the env set next time
 PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 cargo semver-checks check-release
+rm -rf target/package
 cargo publish --dry-run
 ```
 
@@ -84,7 +85,7 @@ Inspect the `ls -las target/package/tmp-crate/*.crate` path printed by `cargo pu
 If verification fails with a missing file that is present in the `.crate`, remove stale Cargo package output and retry:
 
 ```bash
-rm -rf target/package/bed-reader-VERSION
+rm -rf target/package
 cargo publish --dry-run
 ```
 
@@ -277,6 +278,7 @@ Use the actual release branch name. Wait for GitHub Actions to pass on `master` 
 Publish Rust crate:
 
 ```bash
+rm -rf target/package
 cargo publish
 ```
 
