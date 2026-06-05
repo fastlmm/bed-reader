@@ -1027,7 +1027,7 @@ fn impute_and_zero_mean_snps<
         let result_list = nd::Zip::from(val.axis_iter_mut(nd::Axis(1)))
             .and(stats.axis_iter_mut(nd::Axis(0)))
             .par_map_collect(|mut col, mut stats_row| {
-                _process_sid(
+                process_sid(
                     &mut col,
                     apply_in_place,
                     use_stats,
@@ -1046,7 +1046,7 @@ fn impute_and_zero_mean_snps<
         Ok(())
     } else {
         //If C-order
-        _process_all_iids(val, apply_in_place, use_stats, stats, dist, two)
+        process_all_iids(val, apply_in_place, use_stats, stats, dist, two)
     }
 }
 
@@ -1087,7 +1087,7 @@ fn find_factor<
 }
 
 #[allow(dead_code)]
-fn _process_sid<
+fn process_sid<
     T: Default + Copy + Debug + Sync + Send + Sync + Float + ToPrimitive + FromPrimitive,
 >(
     col: &mut nd::ArrayViewMut1<'_, T>,
@@ -1158,7 +1158,7 @@ fn _process_sid<
 }
 
 #[allow(dead_code)]
-fn _process_all_iids<
+fn process_all_iids<
     T: Default + Copy + Debug + Sync + Send + Sync + Float + ToPrimitive + FromPrimitive,
 >(
     val: &mut nd::ArrayViewMut2<'_, T>,
@@ -1402,7 +1402,7 @@ fn file_ata_piece<T: Float + Send + Sync + Sync + AddAssign>(
         Err(BedError::CannotConvertBetaToFromF64)?;
     }
 
-    _file_ata_piece_internal(
+    file_ata_piece_internal(
         path,
         offset,
         row_count,
@@ -1415,7 +1415,7 @@ fn file_ata_piece<T: Float + Send + Sync + Sync + AddAssign>(
 
 #[allow(dead_code)]
 #[anyinput]
-fn _file_ata_piece_internal<T: Float + Send + Sync + Sync + AddAssign>(
+fn file_ata_piece_internal<T: Float + Send + Sync + Sync + AddAssign>(
     path: AnyPath,
     offset: u64,
     row_count: usize,
@@ -1631,8 +1631,8 @@ pub struct Metadata {
     allele_2: Option<Rc<nd::Array1<String>>>,
 }
 
-fn lazy_or_skip_count<T>(array: &Option<Rc<nd::Array1<T>>>) -> Option<usize> {
-    array.as_ref().map(|array| array.len())
+fn lazy_or_skip_count<T>(array: Option<&Rc<nd::Array1<T>>>) -> Option<usize> {
+    array.map(|array| array.len())
 }
 
 /// Represents a PLINK .bed file that is open for reading genotype data and metadata.
@@ -2257,7 +2257,7 @@ impl BedBuilder {
 #[anyinput]
 fn to_metadata_path(
     bed_path: AnyPath,
-    metadata_path: &Option<PathBuf>,
+    metadata_path: Option<&PathBuf>,
     extension: AnyString,
 ) -> PathBuf {
     if let Some(metadata_path) = metadata_path {
@@ -2891,7 +2891,7 @@ impl Bed {
         if let Some(path) = &self.fam_path {
             path.clone()
         } else {
-            let path = to_metadata_path(&self.path, &self.fam_path, "fam");
+            let path = to_metadata_path(&self.path, self.fam_path.as_ref(), "fam");
             self.fam_path = Some(path.clone());
             path
         }
@@ -2903,7 +2903,7 @@ impl Bed {
         if let Some(path) = &self.bim_path {
             path.clone()
         } else {
-            let path = to_metadata_path(&self.path, &self.bim_path, "bim");
+            let path = to_metadata_path(&self.path, self.bim_path.as_ref(), "bim");
             self.bim_path = Some(path.clone());
             path
         }
@@ -3304,7 +3304,7 @@ enum Hold<'a> {
 }
 
 impl Hold<'_> {
-    fn new(index: &Index, count: usize) -> Result<Hold, Box<BedErrorPlus>> {
+    fn new(index: &Index, count: usize) -> Result<Hold<'_>, Box<BedErrorPlus>> {
         let hold = if let Index::Vec(vec) = index {
             Hold::Ref(vec)
         } else {
@@ -3461,7 +3461,6 @@ pub type SliceInfo1 =
 ///     .f64()
 ///     .read(&mut bed)?;
 /// assert!(val.dim() == (3, 1));
-
 /// // Create a boolean ndarray identifying SNPs in chromosome 5,
 /// // then select those SNPs.
 /// let chrom_5 = bed.chromosome()?.map(|elem| elem == "5");
@@ -3470,7 +3469,6 @@ pub type SliceInfo1 =
 ///     .f64()
 ///     .read(&mut bed)?;
 /// assert!(val.dim() == (100, 6));
-
 /// // Use ndarray's slice macro, [`s!`](https://docs.rs/ndarray/latest/ndarray/macro.s.html),
 /// // to select every 2nd individual and every 3rd SNP.
 /// let val = ReadOptions::builder()
@@ -3491,7 +3489,6 @@ pub type SliceInfo1 =
 /// # use bed_reader::BedErrorPlus;
 /// # Ok::<(), Box<BedErrorPlus>>(())
 /// ```
-
 #[derive(Debug, Clone)]
 pub enum Index {
     // Could implement an enumerator, but it is complex and requires a 'match' on each next()
@@ -3571,17 +3568,12 @@ pub struct RangeNdSlice {
     is_reversed: bool,
 }
 
-// https://www.geeksforgeeks.org/find-ceil-ab-without-using-ceil-function/
-fn div_ceil(a: usize, b: usize) -> usize {
-    (a + b - 1) / b
-}
-
 impl RangeNdSlice {
     fn len(&self) -> usize {
         if self.start > self.end {
             0
         } else {
-            div_ceil(self.end - self.start, self.step)
+            (self.end - self.start).div_ceil(self.step)
         }
     }
 
@@ -4354,7 +4346,6 @@ impl<TVal: BedVal> ReadOptions<TVal> {
     /// let file_name = sample_bed_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let val = bed.read_with_options(&read_options)?;
-
     /// assert_eq_nan(&val, &nd::array![[-127, 0, 1], [-127, 2, 2], [2, 0, 0]]);
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), Box<BedErrorPlus>>(())
@@ -4378,7 +4369,6 @@ impl<TVal: BedVal> ReadOptions<TVal> {
     /// let file_name = sample_bed_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let val = bed.read_with_options(&read_options)?;
-
     /// assert_eq_nan(&val, &nd::array![[-127, 0, 1], [-127, 2, 2], [2, 0, 0]]);
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), Box<BedErrorPlus>>(())
@@ -4402,7 +4392,6 @@ impl<TVal: BedVal> ReadOptions<TVal> {
     /// let file_name = sample_bed_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let val = bed.read_with_options(&read_options)?;
-
     /// assert_eq_nan(&val, &nd::array![[-127, 0, 1], [-127, 2, 2], [2, 0, 0]]);
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), Box<BedErrorPlus>>(())
@@ -4425,7 +4414,6 @@ impl<TVal: BedVal> ReadOptions<TVal> {
     /// let file_name = sample_bed_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let val = bed.read_with_options(&read_options)?;
-
     /// assert_eq_nan(&val, &nd::array![[-127, 0, 1], [-127, 2, 2], [2, 0, 0]]);
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), Box<BedErrorPlus>>(())
@@ -4448,7 +4436,6 @@ impl<TVal: BedVal> ReadOptions<TVal> {
     /// let file_name = sample_bed_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let val = bed.read_with_options(&read_options)?;
-
     /// assert_eq_nan(&val, &nd::array![[-127, 0, 1], [-127, 2, 2], [2, 0, 0]]);
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), Box<BedErrorPlus>>(())
@@ -4472,7 +4459,6 @@ impl<TVal: BedVal> ReadOptions<TVal> {
     /// let file_name = sample_bed_file("small.bed")?;
     /// let mut bed = Bed::new(file_name)?;
     /// let val = bed.read_with_options(&read_options)?;
-
     /// assert_eq_nan(&val, &nd::array![[-127, 0, 1], [-127, 2, 2], [2, 0, 0]]);
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), Box<BedErrorPlus>>(())
@@ -5689,7 +5675,6 @@ where
     /// let output_folder = temp_testdir::TempDir::default();
     /// let output_file = output_folder.join("small.deb");
     /// let val = nd::array![[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]];
-
     /// WriteOptions::builder(output_file)
     ///     .fam_path(output_folder.join("small.maf"))
     ///     .bim_path(output_folder.join("small.mib"))
@@ -5717,7 +5702,6 @@ where
     /// let output_folder = temp_testdir::TempDir::default();
     /// let output_file = output_folder.join("small.deb");
     /// let val = nd::array![[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]];
-
     /// WriteOptions::builder(output_file)
     ///     .fam_path(output_folder.join("small.maf"))
     ///     .bim_path(output_folder.join("small.mib"))
@@ -5805,7 +5789,6 @@ where
     /// let output_folder = temp_testdir::TempDir::default();
     /// let output_file = output_folder.join("small.bed");
     /// let val = nd::array![[1, 0, -127, 0], [2, 0, -127, 2], [0, 1, 2, 0]];
-
     /// WriteOptions::builder(output_file)
     ///     .num_threads(1)
     ///     .write(&val)?;
@@ -5909,8 +5892,8 @@ where
 
         let write_options = WriteOptions {
             path: path.to_owned(),
-            fam_path: to_metadata_path(path, &self.fam_path, "fam"),
-            bim_path: to_metadata_path(path, &self.bim_path, "bim"),
+            fam_path: to_metadata_path(path, self.fam_path.as_ref(), "fam"),
+            bim_path: to_metadata_path(path, self.bim_path.as_ref(), "bim"),
             is_a1_counted: self.is_a1_counted.unwrap_or(true),
             num_threads: self.num_threads.unwrap_or(None),
             missing_value: self.missing_value.unwrap_or_else(|| TVal::missing()),
@@ -6320,19 +6303,19 @@ impl MetadataBuilder {
     /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn metadata(&mut self, metadata: &Metadata) -> &mut Self {
-        set_field(&metadata.fid, &mut self.fid);
-        set_field(&metadata.iid, &mut self.iid);
-        set_field(&metadata.father, &mut self.father);
-        set_field(&metadata.mother, &mut self.mother);
-        set_field(&metadata.sex, &mut self.sex);
-        set_field(&metadata.pheno, &mut self.pheno);
+        set_field(metadata.fid.as_ref(), &mut self.fid);
+        set_field(metadata.iid.as_ref(), &mut self.iid);
+        set_field(metadata.father.as_ref(), &mut self.father);
+        set_field(metadata.mother.as_ref(), &mut self.mother);
+        set_field(metadata.sex.as_ref(), &mut self.sex);
+        set_field(metadata.pheno.as_ref(), &mut self.pheno);
 
-        set_field(&metadata.chromosome, &mut self.chromosome);
-        set_field(&metadata.sid, &mut self.sid);
-        set_field(&metadata.cm_position, &mut self.cm_position);
-        set_field(&metadata.bp_position, &mut self.bp_position);
-        set_field(&metadata.allele_1, &mut self.allele_1);
-        set_field(&metadata.allele_2, &mut self.allele_2);
+        set_field(metadata.chromosome.as_ref(), &mut self.chromosome);
+        set_field(metadata.sid.as_ref(), &mut self.sid);
+        set_field(metadata.cm_position.as_ref(), &mut self.cm_position);
+        set_field(metadata.bp_position.as_ref(), &mut self.bp_position);
+        set_field(metadata.allele_1.as_ref(), &mut self.allele_1);
+        set_field(metadata.allele_2.as_ref(), &mut self.allele_2);
         self
     }
 }
@@ -6351,24 +6334,24 @@ impl Metadata {
     ) -> Result<(Option<usize>, Option<usize>), Box<BedErrorPlus>> {
         check_counts(
             vec![
-                lazy_or_skip_count(&self.fid),
-                lazy_or_skip_count(&self.iid),
-                lazy_or_skip_count(&self.father),
-                lazy_or_skip_count(&self.mother),
-                lazy_or_skip_count(&self.sex),
-                lazy_or_skip_count(&self.pheno),
+                lazy_or_skip_count(self.fid.as_ref()),
+                lazy_or_skip_count(self.iid.as_ref()),
+                lazy_or_skip_count(self.father.as_ref()),
+                lazy_or_skip_count(self.mother.as_ref()),
+                lazy_or_skip_count(self.sex.as_ref()),
+                lazy_or_skip_count(self.pheno.as_ref()),
             ],
             &mut iid_count,
             "iid",
         )?;
         check_counts(
             vec![
-                lazy_or_skip_count(&self.chromosome),
-                lazy_or_skip_count(&self.sid),
-                lazy_or_skip_count(&self.cm_position),
-                lazy_or_skip_count(&self.bp_position),
-                lazy_or_skip_count(&self.allele_1),
-                lazy_or_skip_count(&self.allele_2),
+                lazy_or_skip_count(self.chromosome.as_ref()),
+                lazy_or_skip_count(self.sid.as_ref()),
+                lazy_or_skip_count(self.cm_position.as_ref()),
+                lazy_or_skip_count(self.bp_position.as_ref()),
+                lazy_or_skip_count(self.allele_1.as_ref()),
+                lazy_or_skip_count(self.allele_2.as_ref()),
             ],
             &mut sid_count,
             "sid",
@@ -6392,7 +6375,6 @@ impl Metadata {
     ///     .build()?;
     /// let mut rng = StdRng::seed_from_u64(0);
     /// let val = nd::Array::random_using((3, 4), Uniform::from(-1..3), &mut rng);
-
     /// let temp_out = temp_testdir::TempDir::default();
     /// let output_file = temp_out.join("random.bed");
     /// WriteOptions::builder(output_file)
@@ -6419,7 +6401,7 @@ impl Metadata {
     /// Optional family id of each of individual (sample)
     #[must_use]
     pub fn fid(&self) -> Option<&nd::Array1<String>> {
-        option_rc_as_ref(&self.fid)
+        option_rc_as_ref(self.fid.as_ref())
     }
 
     /// Optional individual id of each of individual (sample)
@@ -6435,37 +6417,37 @@ impl Metadata {
     /// # Ok::<(), Box<BedErrorPlus>>(())    
     #[must_use]
     pub fn iid(&self) -> Option<&nd::Array1<String>> {
-        option_rc_as_ref(&self.iid)
+        option_rc_as_ref(self.iid.as_ref())
     }
 
     /// Optional father id of each of individual (sample)
     #[must_use]
     pub fn father(&self) -> Option<&nd::Array1<String>> {
-        option_rc_as_ref(&self.father)
+        option_rc_as_ref(self.father.as_ref())
     }
 
     /// Optional mother id of each of individual (sample)
     #[must_use]
     pub fn mother(&self) -> Option<&nd::Array1<String>> {
-        option_rc_as_ref(&self.mother)
+        option_rc_as_ref(self.mother.as_ref())
     }
 
     /// Optional sex each of individual (sample)
     #[must_use]
     pub fn sex(&self) -> Option<&nd::Array1<i32>> {
-        option_rc_as_ref(&self.sex)
+        option_rc_as_ref(self.sex.as_ref())
     }
 
     /// Optional phenotype for each individual (seldom used)
     #[must_use]
     pub fn pheno(&self) -> Option<&nd::Array1<String>> {
-        option_rc_as_ref(&self.pheno)
+        option_rc_as_ref(self.pheno.as_ref())
     }
 
     /// Optional chromosome of each SNP (variant)
     #[must_use]
     pub fn chromosome(&self) -> Option<&nd::Array1<String>> {
-        option_rc_as_ref(&self.chromosome)
+        option_rc_as_ref(self.chromosome.as_ref())
     }
 
     /// Optional SNP id of each SNP (variant)
@@ -6481,31 +6463,31 @@ impl Metadata {
     /// # Ok::<(), Box<BedErrorPlus>>(())    
     #[must_use]
     pub fn sid(&self) -> Option<&nd::Array1<String>> {
-        option_rc_as_ref(&self.sid)
+        option_rc_as_ref(self.sid.as_ref())
     }
 
     /// Optional centimorgan position of each SNP (variant)
     #[must_use]
     pub fn cm_position(&self) -> Option<&nd::Array1<f32>> {
-        option_rc_as_ref(&self.cm_position)
+        option_rc_as_ref(self.cm_position.as_ref())
     }
 
     /// Optional base-pair position of each SNP (variant)
     #[must_use]
     pub fn bp_position(&self) -> Option<&nd::Array1<i32>> {
-        option_rc_as_ref(&self.bp_position)
+        option_rc_as_ref(self.bp_position.as_ref())
     }
 
     /// Optional first allele of each SNP (variant)
     #[must_use]
     pub fn allele_1(&self) -> Option<&nd::Array1<String>> {
-        option_rc_as_ref(&self.allele_1)
+        option_rc_as_ref(self.allele_1.as_ref())
     }
 
     /// Optional second allele of each SNP (variant)
     #[must_use]
     pub fn allele_2(&self) -> Option<&nd::Array1<String>> {
-        option_rc_as_ref(&self.allele_2)
+        option_rc_as_ref(self.allele_2.as_ref())
     }
 
     /// Create a new [`Metadata`](struct.Metadata.html) by filling in empty fields with a .fam file.
@@ -6993,7 +6975,6 @@ impl Metadata {
     ///     .sid(["s1", "s2", "s3", "s4"])
     ///     .build()?;
     /// let metadata_filled = metadata0.fill(3, 4)?;
-
     /// let temp_out = temp_testdir::TempDir::default();
     /// let output_file = temp_out.join("no_bed.fam");
     /// metadata_filled.write_fam(output_file)?;
@@ -7055,7 +7036,6 @@ impl Metadata {
     ///     .sid(["s1", "s2", "s3", "s4"])
     ///     .build()?;
     /// let metadata_filled = metadata0.fill(3, 4)?;
-
     /// let temp_out = temp_testdir::TempDir::default();
     /// let output_file = temp_out.join("no_bed.bim");
     /// metadata_filled.write_bim(output_file)?;
@@ -7232,7 +7212,7 @@ impl Metadata {
 
 #[allow(clippy::option_option)]
 fn set_field<T>(
-    field1: &Option<Rc<nd::Array1<T>>>,
+    field1: Option<&Rc<nd::Array1<T>>>,
     field2: &mut Option<Option<Rc<nd::Array1<T>>>>,
 ) {
     if let Some(array) = field1 {
@@ -7240,7 +7220,7 @@ fn set_field<T>(
     }
 }
 
-fn option_rc_as_ref<T>(field: &Option<Rc<nd::Array1<T>>>) -> Option<&nd::Array1<T>> {
+fn option_rc_as_ref<T>(field: Option<&Rc<nd::Array1<T>>>) -> Option<&nd::Array1<T>> {
     match field {
         Some(array) => Some(array.as_ref()),
         None => None,

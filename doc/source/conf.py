@@ -7,9 +7,7 @@ doctest_global_setup = "import bed_reader"
 
 
 def read(filepath):
-    import codecs
-
-    with codecs.open(filepath, "r") as fp:
+    with open(filepath, encoding="utf-8") as fp:
         return fp.read()
 
 
@@ -38,7 +36,6 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.napoleon",
     "sphinx.ext.autosummary",
-    "sphinx.ext.autosectionlabel",
 ]
 
 autodoc_default_flags = ["members"]
@@ -46,7 +43,6 @@ autodoc_mock_imports = ["_tkinter"]
 autosummary_generate = True
 napoleon_numpy_docstring = True
 templates_path = ["_templates"]
-autosectionlabel_prefix_document = True
 
 source_suffix = ".rst"
 

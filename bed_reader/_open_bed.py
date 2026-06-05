@@ -667,7 +667,7 @@ class open_bed:
     def major(self) -> str:
         """Major mode of a local .bed file.
 
-        Returns:
+        Returns
         -------
         str
             'SNP' or 'individual'
@@ -681,7 +681,7 @@ class open_bed:
         ValueError
             If the file is a cloud file.
 
-        Example:
+        Example
         -------
 
         .. doctest::
@@ -708,7 +708,7 @@ class open_bed:
     def fid(self) -> np.ndarray:
         """Family id of each individual (sample).
 
-        Returns:
+        Returns
         -------
         numpy.ndarray
             array of str
@@ -718,7 +718,7 @@ class open_bed:
 
         If needed, will cause a one-time read of the .fam file.
 
-        Example:
+        Example
         -------
 
         .. doctest::
@@ -737,7 +737,7 @@ class open_bed:
     def iid(self) -> np.ndarray:
         """Individual id of each individual (sample).
 
-        Returns:
+        Returns
         -------
         numpy.ndarray
             array of str
@@ -745,7 +745,7 @@ class open_bed:
 
         If needed, will cause a one-time read of the .fam file.
 
-        Example:
+        Example
         -------
 
         .. doctest::
@@ -764,7 +764,7 @@ class open_bed:
     def father(self) -> np.ndarray:
         """Father id of each individual (sample).
 
-        Returns:
+        Returns
         -------
         numpy.ndarray
             array of str
@@ -774,7 +774,7 @@ class open_bed:
 
         If needed, will cause a one-time read of the .fam file.
 
-        Example:
+        Example
         -------
 
         .. doctest::
@@ -793,7 +793,7 @@ class open_bed:
     def mother(self) -> np.ndarray:
         """Mother id of each individual (sample).
 
-        Returns:
+        Returns
         -------
         numpy.ndarray
             array of str
@@ -803,7 +803,7 @@ class open_bed:
 
         If needed, will cause a one-time read of the .fam file.
 
-        Example:
+        Example
         -------
 
         .. doctest::
@@ -822,7 +822,7 @@ class open_bed:
     def sex(self) -> np.ndarray:
         """Sex of each individual (sample).
 
-        Returns:
+        Returns
         -------
         numpy.ndarray
             array of 0, 1, or 2
@@ -832,7 +832,7 @@ class open_bed:
 
         If needed, will cause a one-time read of the .fam file.
 
-        Example:
+        Example
         -------
         .. doctest::
 
@@ -851,7 +851,7 @@ class open_bed:
         """A phenotype for each individual (sample)
         (seldom used).
 
-        Returns:
+        Returns
         -------
         numpy.ndarray
             array of str
@@ -861,7 +861,7 @@ class open_bed:
 
         If needed, will cause a one-time read of the .fam file.
 
-        Example:
+        Example
         -------
 
         .. doctest::
@@ -880,7 +880,7 @@ class open_bed:
     def properties(self) -> Mapping[str, np.array]:
         """All the properties returned as a dictionary.
 
-        Returns:
+        Returns
         -------
         dict
             all the properties
@@ -897,7 +897,7 @@ class open_bed:
 
         If needed, will cause a one-time read of the .fam and .bim file.
 
-        Example:
+        Example
         -------
 
         .. doctest::
@@ -917,7 +917,7 @@ class open_bed:
     def property_item(self, name: str) -> np.ndarray:
         """Retrieve one property by name.
 
-        Returns:
+        Returns
         -------
         numpy.ndarray
             a property value
@@ -932,7 +932,7 @@ class open_bed:
 
         If needed, will cause a one-time read of the .fam or .bim file.
 
-        Example:
+        Example
         -------
 
         .. doctest::
@@ -954,7 +954,7 @@ class open_bed:
     def chromosome(self) -> np.ndarray:
         """Chromosome of each SNP (variant).
 
-        Returns:
+        Returns
         -------
         numpy.ndarray
             array of str
@@ -964,7 +964,7 @@ class open_bed:
 
         If needed, will cause a one-time read of the .bim file.
 
-        Example:
+        Example
         -------
 
         .. doctest::
@@ -983,7 +983,7 @@ class open_bed:
     def sid(self) -> np.ndarray:
         """SNP id of each SNP (variant).
 
-        Returns:
+        Returns
         -------
         numpy.ndarray
             array of str
@@ -991,7 +991,7 @@ class open_bed:
 
         If needed, will cause a one-time read of the .bim file.
 
-        Example:
+        Example
         -------
 
         .. doctest::
@@ -1010,7 +1010,7 @@ class open_bed:
     def cm_position(self) -> np.ndarray:
         """Centimorgan position of each SNP (variant).
 
-        Returns:
+        Returns
         -------
         numpy.ndarray
             array of float
@@ -1020,7 +1020,7 @@ class open_bed:
 
         If needed, will cause a one-time read of the .bim file.
 
-        Example:
+        Example
         -------
 
         .. doctest::
@@ -1039,7 +1039,7 @@ class open_bed:
     def bp_position(self) -> np.ndarray:
         """Base-pair position of each SNP (variant).
 
-        Returns:
+        Returns
         -------
         numpy.ndarray
             array of int
@@ -1049,7 +1049,7 @@ class open_bed:
 
         If needed, will cause a one-time read of the .bim file.
 
-        Example:
+        Example
         -------
 
         .. doctest::
@@ -1068,7 +1068,7 @@ class open_bed:
     def allele_1(self) -> np.ndarray:
         """First allele of each SNP (variant).
 
-        Returns:
+        Returns
         -------
         numpy.ndarray
             array of str
@@ -1076,7 +1076,7 @@ class open_bed:
 
         If needed, will cause a one-time read of the .bim file.
 
-        Example:
+        Example
         -------
 
         .. doctest::
@@ -1095,7 +1095,7 @@ class open_bed:
     def allele_2(self) -> np.ndarray:
         """Second allele of each SNP (variant),.
 
-        Returns:
+        Returns
         -------
         numpy.ndarray
             array of str
@@ -1103,7 +1103,7 @@ class open_bed:
 
         If needed, will cause a one-time read of the .bim file.
 
-        Example:
+        Example
         -------
 
         .. doctest::
@@ -1122,7 +1122,7 @@ class open_bed:
     def iid_count(self) -> np.ndarray:
         """Number of individuals (samples).
 
-        Returns:
+        Returns
         -------
         int
             number of individuals
@@ -1130,7 +1130,7 @@ class open_bed:
 
         If needed, will cause a fast line-count of the .fam file.
 
-        Example:
+        Example
         -------
 
         .. doctest::
@@ -1149,7 +1149,7 @@ class open_bed:
     def sid_count(self) -> np.ndarray:
         """Number of SNPs (variants).
 
-        Returns:
+        Returns
         -------
         int
             number of SNPs
@@ -1157,7 +1157,7 @@ class open_bed:
 
         If needed, will cause a fast line-count of the .bim file.
 
-        Example:
+        Example
         -------
 
         .. doctest::
@@ -1244,7 +1244,7 @@ class open_bed:
     def shape(self):
         """Number of individuals (samples) and SNPs (variants).
 
-        Returns:
+        Returns
         -------
         (int, int)
             number of individuals, number of SNPs
@@ -1252,7 +1252,7 @@ class open_bed:
 
         If needed, will cause a fast line-count of the .fam and .bim files.
 
-        Example:
+        Example
         -------
 
         .. doctest::

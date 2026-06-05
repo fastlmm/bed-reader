@@ -89,7 +89,7 @@ just one file access.
 
 What is the mean value of the SNP (variant) at index position 100,000?
 
-```rust
+```rust,ignore
 use ndarray as nd;
 use bed_reader::{BedCloud, ReadOptions, EMPTY_OPTIONS};
 
