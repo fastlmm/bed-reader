@@ -256,17 +256,17 @@ deactivate
 
 ### 11. Publish
 
-After TestPyPI and CI look good, merge to `main` and wait for CI on `main`.
+After TestPyPI and CI look good, merge to `master` and wait for CI on `master`.
 
 ```bash
 git status
-git switch main
+git switch master
 git pull
 git merge --no-ff RELEASE_BRANCH
-git push origin main
+git push origin master
 ```
 
-Use the actual release branch name. Wait for GitHub Actions to pass on `main` before publishing.
+Use the actual release branch name. Wait for GitHub Actions to pass on `master` before publishing.
 
 Publish Rust crate:
 
