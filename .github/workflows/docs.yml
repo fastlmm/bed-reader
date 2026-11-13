@@ -3,7 +3,7 @@ name: Build and Deploy Documentation
 on:
   push:
     branches:
-      - master
+      - main
   workflow_dispatch:  # This allows manual triggering of the workflow
 
 jobs:
