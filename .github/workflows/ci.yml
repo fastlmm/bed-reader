@@ -12,12 +12,12 @@ on:
 env:
   CARGO_TERM_COLOR: always
   PYTHON_VERSIONS: |
-    3.10
     3.11
     3.12
     3.13
     3.14
-  PYTHON_VERSIONS_ARGS: "-i python3.10 -i python3.11 -i python3.12 -i python3.13 -i python3.14"
+    3.15
+  PYTHON_VERSIONS_ARGS: "-i python3.11 -i python3.12 -i python3.13 -i python3.14 -i python3.15"
 
 permissions:
   contents: read
@@ -29,27 +29,27 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-15, macos-15-intel]
+        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, macos-15, macos-15-intel]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Set up Rust (Pinned Version)
-        uses: dtolnay/rust-toolchain@1.83.0
+        uses: dtolnay/rust-toolchain@cfcaf53ba4c621917ec7f78a66bff7a8848ddad4 # 1.85.0
         with:
           components: clippy, rustfmt, rust-src
       - name: Run Clippy (strict for this pinned version of Rust)
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: cargo clippy --locked --all-targets --all-features -- -D warnings
       - name: Set up Rust (Latest Stable)
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
           components: clippy, rustfmt, rust-src
       - name: Run Clippy (lenient for latest version)
-        run: cargo clippy --all-targets --all-features -- -A warnings || echo "Clippy warnings from the latest version"
+        run: cargo clippy --locked --all-targets --all-features
       - name: Test Rust no-default-features
-        run: cargo test --verbose --no-default-features
+        run: cargo test --locked --verbose --no-default-features
       - name: Test Rust default features
-        run: cargo test --verbose
+        run: cargo test --locked --verbose
   
   
   macos:
@@ -64,19 +64,19 @@ jobs:
             deployment-target: "11.0"
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: ${{ env.PYTHON_VERSIONS }}
       - name: Build wheels
         env:
           MACOSX_DEPLOYMENT_TARGET: ${{ matrix.deployment-target }}
-        uses: PyO3/maturin-action@v1
+        uses: PyO3/maturin-action@423a6347767a8b16e65c2a7a7042e4a921528da8 # v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist ${{ env.PYTHON_VERSIONS_ARGS }}
+          args: --release --locked --out dist ${{ env.PYTHON_VERSIONS_ARGS }}
       - name: Upload wheels
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: wheels-macos-${{ matrix.target }}
           path: dist
@@ -87,8 +87,8 @@ jobs:
       matrix:
         target: [x86_64, aarch64]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: ${{ env.PYTHON_VERSIONS }}
 
@@ -103,22 +103,22 @@ jobs:
         env:
           CC: aarch64-linux-gnu-gcc
           CFLAGS: -march=armv8-a -D__ARM_ARCH=8
-        uses: PyO3/maturin-action@v1
+        uses: PyO3/maturin-action@423a6347767a8b16e65c2a7a7042e4a921528da8 # v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist ${{ env.PYTHON_VERSIONS_ARGS }}
+          args: --release --locked --out dist ${{ env.PYTHON_VERSIONS_ARGS }}
           manylinux: auto
 
       - name: Build wheels for x86_64
         if: matrix.target == 'x86_64'
-        uses: PyO3/maturin-action@v1
+        uses: PyO3/maturin-action@423a6347767a8b16e65c2a7a7042e4a921528da8 # v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist ${{ env.PYTHON_VERSIONS_ARGS }}
+          args: --release --locked --out dist ${{ env.PYTHON_VERSIONS_ARGS }}
           manylinux: auto
 
       - name: Upload wheels
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: wheels-linux-${{ matrix.target }}
           path: dist
@@ -129,18 +129,18 @@ jobs:
       matrix:
         target: [x64]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: ${{ env.PYTHON_VERSIONS }}
           architecture: ${{ matrix.target }}
       - name: Build wheels
-        uses: PyO3/maturin-action@v1
+        uses: PyO3/maturin-action@423a6347767a8b16e65c2a7a7042e4a921528da8 # v1
         with:
           target: ${{ matrix.target }}
-          args: --release --out dist ${{ env.PYTHON_VERSIONS_ARGS }}
+          args: --release --locked --out dist ${{ env.PYTHON_VERSIONS_ARGS }}
       - name: Upload wheels
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: wheels-windows-${{ matrix.target }}
           path: dist
@@ -148,14 +148,14 @@ jobs:
   sdist:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Build sdist
-        uses: PyO3/maturin-action@v1
+        uses: PyO3/maturin-action@423a6347767a8b16e65c2a7a7042e4a921528da8 # v1
         with:
           command: sdist
           args: --out dist
       - name: Upload sdist
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: wheels-sdist
           path: dist
@@ -169,7 +169,7 @@ jobs:
         run: mkdir -p merged_dist
         
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           path: artifacts
           pattern: wheels-*
@@ -182,36 +182,40 @@ jobs:
         run: cp -r artifacts/* merged_dist/
         
       - name: Upload merged artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: wheels-all
           path: merged_dist
 
   test_python:
     name: Test Python
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
-        os: [ubuntu-latest, windows-latest, macos-15, macos-15-intel]
+        python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
+        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, macos-15, macos-15-intel]
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
     - name: Install Rust
-      uses: dtolnay/rust-toolchain@stable
+      uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
       with:
         components: clippy, rustfmt, rust-src
-    - name: Install the latest version of uv
-      uses: astral-sh/setup-uv@v3
     - name: Install Python ${{ matrix.python-version }}
-      run: uv python install ${{ matrix.python-version }}
+      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install uv
+      uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+      with:
+        version: "0.12.24"
     - name: Pinned Ruff
-      run:  uvx ruff@0.15.16 check bed_reader
-    - name: Latest Ruff (just to check for warnings)
-      run: uvx ruff@latest check bed_reader || echo "Ignoring warnings from the latest version of ruff"
+      run:  uvx ruff@0.17.5 check bed_reader
     - name: Install minimal dependencies
-      run: uv sync --extra min_dev
+      run: uv sync --frozen --extra min_dev
     - name: Run min tests
       shell: bash
       run: |
@@ -222,7 +226,7 @@ jobs:
         fi
         pytest bed_reader/tests/test_opt_dep.py  
     - name: Install all dependencies
-      run: uv sync --all-extras
+      run: uv sync --frozen --all-extras
     - name: Run all tests
       shell: bash
       run: |
@@ -233,34 +237,90 @@ jobs:
         fi
         pytest .
 
-  python-3-15-probe:
-    name: Python 3.15 candidate probe
-    if: github.event_name != 'schedule'
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    env:
-      UV_PYTHON: "3.15"
-      UV_PRERELEASE: if-necessary
+
+  artifact-test:
+    name: Installed wheel (${{ matrix.os }}, Python ${{ matrix.python-version }})
+    needs: merge_artifacts
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, macos-15, macos-15-intel]
+        python-version: ["3.11", "3.15"]
     steps:
-      - name: Checkout
+      - name: Checkout test sources
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Install uv and Python 3.15
+      - name: Install stable Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
-          version: "0.12.2"
-          python-version: "3.15"
-          enable-cache: true
-          cache-suffix: python-3.15-probe
+          version: "0.12.24"
 
-      - name: Install the Python 3.15 candidate
-        run: uv python install 3.15
+      - name: Download built distributions
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: wheels-all
+          path: artifact
 
-      - name: Resolve and install candidate dependencies
-        run: uv sync --all-extras --prerelease=if-necessary --python 3.15
+      - name: Install an exact compatible wheel
+        run: |
+          uv venv --python ${{ matrix.python-version }} .artifact-venv
+          uv pip install --python .artifact-venv --no-index --no-deps --only-binary :all: --find-links artifact bed-reader
+          uv pip install --python .artifact-venv "bed-reader[samples,sparse,dev]"
 
-      - name: Build the Rust extension
-        run: uv run --python 3.15 --all-extras maturin develop --release
+      - name: Test outside the source checkout
+        shell: bash
+        working-directory: ${{ runner.temp }}
+        run: |
+          python -c "import pathlib, shutil, sys; shutil.copytree(pathlib.Path(sys.argv[1]) / 'bed_reader' / 'tests', pathlib.Path(sys.argv[2]) / 'bed_reader_artifact_tests')" "$GITHUB_WORKSPACE" "$RUNNER_TEMP"
+          uv run --no-project --python "$GITHUB_WORKSPACE/.artifact-venv" python -c "import bed_reader; assert '.artifact-venv' in bed_reader.__file__; print(bed_reader.__file__)"
+          uv run --no-project --python "$GITHUB_WORKSPACE/.artifact-venv" python -m pytest --import-mode=importlib --doctest-modules "$RUNNER_TEMP/bed_reader_artifact_tests"
 
-      - name: Run the Python 3.15 candidate suite
-        run: uv run --python 3.15 --all-extras pytest .
+  sdist-test:
+    name: Source distribution (Python ${{ matrix.python-version }})
+    needs: sdist
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.15"]
+    steps:
+      - name: Checkout test sources
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install stable Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.12.24"
+
+      - name: Download source distribution
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: wheels-sdist
+          path: artifact
+
+      - name: Build and install from the source distribution
+        run: |
+          uv build --wheel --python ${{ matrix.python-version }} --no-sources --out-dir sdist-wheel artifact/*.tar.gz
+          uv venv --python ${{ matrix.python-version }} .artifact-venv
+          uv pip install --python .artifact-venv --no-index --no-deps --only-binary :all: --find-links sdist-wheel bed-reader
+          uv pip install --python .artifact-venv "bed-reader[samples,sparse,dev]"
+
+      - name: Test outside the source checkout
+        working-directory: ${{ runner.temp }}
+        run: |
+          python -c "import pathlib, shutil, sys; shutil.copytree(pathlib.Path(sys.argv[1]) / 'bed_reader' / 'tests', pathlib.Path(sys.argv[2]) / 'bed_reader_artifact_tests')" "$GITHUB_WORKSPACE" "$RUNNER_TEMP"
+          uv run --no-project --python "$GITHUB_WORKSPACE/.artifact-venv" python -c "import bed_reader; assert '.artifact-venv' in bed_reader.__file__; print(bed_reader.__file__)"
+          uv run --no-project --python "$GITHUB_WORKSPACE/.artifact-venv" python -m pytest --import-mode=importlib --doctest-modules "$RUNNER_TEMP/bed_reader_artifact_tests"

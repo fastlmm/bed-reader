@@ -150,7 +150,7 @@ fn convert_negative_sid_index(
 #[allow(clippy::similar_names)]
 async fn internal_read_no_alloc<TVal: BedVal>(
     cloud_file: &CloudFile,
-    size: usize,
+    size: u64,
     in_iid_count: usize,
     in_sid_count: usize,
     is_a1_counted: bool,
@@ -227,17 +227,18 @@ fn extract_ranges(
     in_iid_count_div4_u64: u64,
     i_div_4_start: u64,
     i_div_4_len: u64,
-) -> Result<(Vec<Range<usize>>, Vec<usize>), Box<BedErrorPlus>> {
+) -> Result<(Vec<Range<u64>>, Vec<usize>), Box<BedErrorPlus>> {
     let mut ranges = Vec::with_capacity(chunk_count);
     let mut out_sid_i_vec = Vec::with_capacity(chunk_count);
     for (inner_index, in_sid_i_signed) in chunk.enumerate() {
         let out_sid_i = chunk_index * chunk_count + inner_index;
         let in_sid_i =
             convert_negative_sid_index(*in_sid_i_signed, upper_sid_count, lower_sid_count)?;
-        let pos: usize =
-            (in_sid_i * in_iid_count_div4_u64 + i_div_4_start + CB_HEADER_U64) as usize; // "as" and math is safe because of early checks
-        let range = pos..pos + i_div_4_len as usize;
-        debug_assert!(range.end - range.start == i_div_4_len as usize); // real assert
+        // File offsets stay u64 across the cloud-file boundary. The file-length
+        // and index checks above guarantee these calculations fit.
+        let pos = in_sid_i * in_iid_count_div4_u64 + i_div_4_start + CB_HEADER_U64;
+        let range = pos..pos + i_div_4_len;
+        debug_assert!(range.end - range.start == i_div_4_len); // real assert
         ranges.push(range);
         out_sid_i_vec.push(out_sid_i);
     }
@@ -274,11 +275,11 @@ fn decode_bytes_into_columns<TVal: BedVal>(
 fn check_file_length(
     in_iid_count: usize,
     in_sid_count: usize,
-    size: usize,
+    size: u64,
     cloud_file: &CloudFile,
 ) -> Result<u64, Box<BedErrorPlus>> {
     let in_iid_count_div4_u64 = try_div_4(in_iid_count, in_sid_count)?;
-    let file_len = size as u64;
+    let file_len = size;
     let file_len2 = in_iid_count_div4_u64 * (in_sid_count as u64) + CB_HEADER_U64;
     if file_len != file_len2 {
         Err(BedError::IllFormed(cloud_file.to_string()))?;
@@ -345,9 +346,9 @@ async fn read_no_alloc<TVal: BedVal>(
     Ok(())
 }
 
-async fn open_and_check(cloud_file: &CloudFile) -> Result<(usize, Bytes), Box<BedErrorPlus>> {
+async fn open_and_check(cloud_file: &CloudFile) -> Result<(u64, Bytes), Box<BedErrorPlus>> {
     let (bytes, size) = cloud_file
-        .read_range_and_file_size(0..CB_HEADER_U64 as usize)
+        .read_range_and_file_size(0..CB_HEADER_U64)
         .await?;
     if (bytes.len() as u64) < CB_HEADER_U64
         || BED_FILE_MAGIC1 != bytes[0]
@@ -2384,5 +2385,29 @@ fn to_metadata_path(
         let mut meta_cloud_file = bed_cloud_file.clone();
         meta_cloud_file.set_extension(extension)?;
         Ok(meta_cloud_file)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::extract_ranges;
+    use itertools::Itertools;
+    use std::ops::Range;
+
+    #[test]
+    fn cloud_ranges_preserve_large_offsets_and_negative_indices() {
+        // Two variants with 8 GiB of encoded individuals per variant.
+        // Selecting the last variant must retain the full u64 file offset.
+        let bytes_per_variant = 1_u64 << 33;
+        let indices = [0, -1];
+        let chunks = indices.iter().chunks(2);
+        let chunk = chunks.into_iter().next().unwrap();
+        let (ranges, output_indices): (Vec<Range<u64>>, _) =
+            extract_ranges(2, chunk, 0, 1, -2, bytes_per_variant, 0, 1).unwrap();
+        assert_eq!(
+            ranges,
+            vec![3..4, (bytes_per_variant + 3)..(bytes_per_variant + 4)]
+        );
+        assert_eq!(output_indices, vec![0, 1]);
     }
 }

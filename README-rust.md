@@ -22,6 +22,8 @@ Highlights
 Install
 -------
 
+Requires Rust 1.85 or later.
+
 **Full version**: Can read local and cloud files
 
 ```bash

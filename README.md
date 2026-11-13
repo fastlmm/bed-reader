@@ -25,6 +25,8 @@ Highlights
 Install
 ====================
 
+Python 3.11 or later is required. Python 3.15 wheel qualification is in progress.
+
 **Full version**: With all optional dependencies:
 
     pip install bed-reader[samples,sparse]

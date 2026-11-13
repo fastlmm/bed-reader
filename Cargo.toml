@@ -1,5 +1,5 @@
 [package]
-version = "1.1.1"
+version = "1.2.0"
 name = "bed-reader"
 description = "Read and write the PLINK BED format, simply and efficiently."
 repository = "https://github.com/fastlmm/bed-reader"
@@ -10,6 +10,9 @@ license = "Apache-2.0" # toml-ignore
 keywords = ["bioinformatics", "plink", "genomics", "genotype", "snps"]
 categories = ["science"]
 edition = "2021"
+rust-version = "1.85"
+# When refreshing Cargo.lock, retain one ndarray 0.16.1 shared with numpy.
+# psm 0.1.28 and crc-fast 1.9.0 retain compatibility with Rust 1.85.
 homepage = "https://fastlmm.github.io/"
 exclude = [
     "**/tests/data/*",
@@ -38,7 +41,7 @@ thiserror = "1.0.66"
 num-traits = "0.2.19"
 ndarray-npy = { version = "0.9.1", default-features = false }
 rayon = "1.10.0"
-numpy = "0.28.0"
+numpy = "0.30.0"
 ndarray = { version = "0.16.1", features = ["approx", "rayon"] }
 statrs = "0.17.1"
 byteorder = { version = "1.5.0", default-features = false }
@@ -50,8 +53,8 @@ futures-util = { version = "0.3.31" }
 bytecount = { version = "0.6.8" }
 itertools = { version = "0.13.0" }
 bytes = { version = "1.11.1" }
-cloud-file = { version = "0.2.0" }
-pyo3 = { version = "0.28.3", features = ["extension-module"], optional = true }
+cloud-file = { version = "0.3.1" }
+pyo3 = { version = "0.30.1", features = ["extension-module"], optional = true }
 tokio = { version = "1.42.1", features = ["full"], optional = true }
 
 [dev-dependencies]
@@ -63,4 +66,4 @@ thousands = "0.2.0"
 
 
 [build-dependencies]
-pyo3-build-config = "0.28.3"
+pyo3-build-config = "0.30.1"
