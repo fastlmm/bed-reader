@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.14"
+      - name: Verify Python, Rust, and tag versions agree
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          import tomllib
+
+          python_version = tomllib.loads(Path("pyproject.toml").read_text())["project"]["version"]
+          rust_version = tomllib.loads(Path("Cargo.toml").read_text())["package"]["version"]
+          assert python_version == rust_version, (python_version, rust_version)
+          assert os.environ["RELEASE_TAG"] == f"v{python_version}", os.environ["RELEASE_TAG"]
+          PY
+
+  qualify:
+    needs: validate-tag
+    uses: ./.github/workflows/ci.yml
+
+  publish:
+    needs: qualify
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/bed-reader
+    permissions:
+      id-token: write
+    steps:
+      - name: Download the qualified distributions
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: wheels-all
+          path: dist
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3

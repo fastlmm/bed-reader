@@ -2,7 +2,7 @@
 
 .. image:: https://badge.fury.io/py/bed-reader.svg
     :target: https://badge.fury.io/py/bed-reader
-.. image:: https://github.com/fastlmm/bed-reader/actions/workflows/ci.yml/badge.svg?branch=master
+.. image:: https://github.com/fastlmm/bed-reader/actions/workflows/ci.yml/badge.svg?branch=main
     :target: https://github.com/fastlmm/bed-reader/actions/workflows/ci.yml
 .. image:: https://img.shields.io/pypi/pyversions/bed-reader
 
@@ -108,7 +108,7 @@ Project Links
 - `Bug reports <https://github.com/fastlmm/bed-reader/issues>`_
 - `Mailing list <https://mail.python.org/mailman3/lists/fastlmm-user.python.org>`_
 - `Project Website <https://fastlmm.github.io/>`_
-- `Change Log <https://github.com/fastlmm/bed-reader/blob/master/CHANGELOG.md>`_
+- `Change Log <https://github.com/fastlmm/bed-reader/blob/main/CHANGELOG.md>`_
 
 
 Summary

@@ -16,7 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Retain shared ndarray 0.16 and compiler-compatible psm/crc-fast versions in
   the lockfile.
 - Track the uv lockfile, pin CI actions, and test installed wheels and source
-  distributions on boundary Python versions, including Linux ARM64 CI.
+  distributions on boundary Python versions, including Linux and Windows ARM64.
+- Preserve caller arrays when replacing missing integer metadata, including
+  read-only arrays, and avoid NumPy's invalid NaN-to-integer conversion warning.
+- Prepare a tag-triggered PyPI release workflow that reuses the full CI suite,
+  validates metadata, and publishes the qualified artifacts with trusted publishing.
+  Compare complete direct and source-derived wheels without ignoring native code.
 
 ## [1.1.1] - 2026-06-05
 
