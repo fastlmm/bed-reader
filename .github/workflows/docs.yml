@@ -31,8 +31,9 @@ jobs:
           version: "0.12.24"
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@cfcaf53ba4c621917ec7f78a66bff7a8848ddad4 # stable
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # generic installer
         with:
+          toolchain: stable
           components: rust-src
 
       - name: Setup, Lint, and Test Python

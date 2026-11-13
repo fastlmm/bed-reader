@@ -5,6 +5,11 @@ updates:
     schedule:
       interval: monthly
     open-pull-requests-limit: 1
+    # Version-specific refs hard-code a compiler and may not accept toolchain
+    # inputs. Review installer SHA changes manually to preserve MSRV/stable
+    # coverage. The `stable` compiler itself still updates on every CI run.
+    ignore:
+      - dependency-name: dtolnay/rust-toolchain
     groups:
       github-actions:
         patterns:
