@@ -1,18 +1,22 @@
 [project]
-version = "1.1.0"
+version = "1.2.0"
 name = "bed-reader"
+requires-python = ">=3.11"
 readme = "README.md"
 classifiers = [
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
 ]
 dependencies = [
-    "numpy>=1.13.3; python_version < '3.14'",
-    "numpy>=2.3.5; python_version >= '3.14'",
+    "numpy>=1.23.5; python_version < '3.12'",
+    "numpy>=1.26.0; python_version == '3.12'",
+    "numpy>=2.1.0; python_version == '3.13'",
+    "numpy>=2.3.5; python_version == '3.14'",
+    "numpy>=2.5.4; python_version >= '3.15'",
 ]
 
 [project.optional-dependencies]
@@ -27,12 +31,12 @@ dev = [
     "pytest-sphinx>=0.2.2",
     "sphinx>=6.2.1",
     "sphinx-autoapi>=3.0.0",
-    "maturin>=1.5.0",
+    "maturin>=1.16.0",
     "pandas>=0.25.1",
     "recommonmark>=0.7.1",
     "ruff>=0.1.0",
 ]
-min_dev = ["numpy>=1.13.3", "pytest", "pytest-datadir"]
+min_dev = ["numpy>=1.23.5", "pytest", "pytest-datadir"]
 
 [project.urls]
 homepage = "https://fastlmm.github.io"
@@ -41,7 +45,7 @@ bug-tracker = "https://github.com/fastlmm/bed-reader/issues"
 documentation = "http://fastlmm.github.io/bed-reader"
 
 [build-system]
-requires = ["maturin>=1.5,<2.0"]
+requires = ["maturin==1.16.0"]
 build-backend = "maturin"
 
 [tool.maturin]
@@ -65,5 +69,5 @@ addopts = "--doctest-modules --doctest-glob=*.rst --doctest-glob=*.md"
 doctest_optionflags = "ELLIPSIS"
 norecursedirs = ["target"]
 
-[tool.uv]
-dev-dependencies = ["twine>=5.1.1"]
+[dependency-groups]
+dev = ["twine>=5.1.1"]

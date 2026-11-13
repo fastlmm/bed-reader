@@ -1328,7 +1328,8 @@ class open_bed:
             raise ValueError(msg)
 
         do_missing_values = True
-        if np.issubdtype(input.dtype, np.floating) and np.issubdtype(dtype, int):
+        if np.issubdtype(input.dtype, np.floating) and np.issubdtype(dtype, np.integer):
+            input = input.copy()
             input[input != input] = missing_value
             old_settings = np.seterr(invalid="warn")
             try:

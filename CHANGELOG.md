@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - Unreleased
+
+- Require Python 3.11 or later and prepare Python 3.15 wheels with PyO3 0.30.1,
+  Rust NumPy 0.30, and maturin 1.16.
+- Require Rust 1.85 or later. Upgrade cloud-file to 0.3.1 and use its u64 byte
+  ranges without narrowing file offsets. Rust callers supplying a CloudFile
+  must use cloud-file 0.3.
+- Refresh compatible dependencies and remove the vulnerable quick-xml chain.
+  Retain shared ndarray 0.16 and compiler-compatible psm/crc-fast versions in
+  the lockfile.
+- Track the uv lockfile, pin CI actions, and test installed wheels and source
+  distributions on boundary Python versions, including Linux and Windows ARM64.
+- Preserve caller arrays when replacing missing integer metadata, including
+  read-only arrays, and avoid NumPy's invalid NaN-to-integer conversion warning.
+- Prepare a tag-triggered PyPI release workflow that reuses the full CI suite,
+  validates metadata, and publishes the qualified artifacts with trusted publishing.
+  Compare complete direct and source-derived wheels without ignoring native code.
+
 ## [1.1.1] - 2026-06-05
 
 - Fix Rust README CI badge.

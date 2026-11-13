@@ -704,7 +704,6 @@ def test_cloud_coverage2(shared_datadir, tmp_path) -> None:
     with pytest.raises(ValueError):
         to_bed(tmp_path / "ignore", val)
 
-@pytest.mark.filterwarnings("ignore:invalid value encountered in cast:RuntimeWarning")
 def test_cloud_coverage3(shared_datadir, tmp_path) -> None:
     with open_bed(
         file_to_url(shared_datadir / "small.bed"),

@@ -872,7 +872,22 @@ def test_coverage2(shared_datadir, tmp_path) -> None:
     with pytest.raises(ValueError):
         to_bed(tmp_path / "ignore", val)
 
-@pytest.mark.filterwarnings("ignore:invalid value encountered in cast:RuntimeWarning")
+@pytest.mark.parametrize("key", ["sex", "bp_position"])
+@pytest.mark.parametrize("read_only", [False, True])
+def test_nan_integer_properties_preserve_input(key, read_only) -> None:
+    import warnings
+
+    values = np.array([1.0, np.nan, 2.0])
+    original = values.copy()
+    values.flags.writeable = not read_only
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", RuntimeWarning)
+        actual = open_bed._fix_up_properties_array(values, np.int32, 0, key)
+    assert actual.dtype == np.int32
+    np.testing.assert_array_equal(actual, [1, 0, 2])
+    np.testing.assert_array_equal(values, original)
+
+
 def test_coverage3(shared_datadir, tmp_path) -> None:
     with open_bed(
         shared_datadir / "small.bed", properties={"sex": [1.0, np.nan, 1.0, 2.0]},
