@@ -54,6 +54,7 @@ jobs:
   
   macos:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - target: x86_64
@@ -82,35 +83,23 @@ jobs:
           path: dist
           
   linux:
-    runs-on: ubuntu-latest
+    # Native runners keep host build scripts and target C compilers aligned.
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        target: [x86_64, aarch64]
+        include:
+          - target: x86_64
+            os: ubuntu-latest
+          - target: aarch64
+            os: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: ${{ env.PYTHON_VERSIONS }}
 
-      - name: Install cross-compilation dependencies
-        if: matrix.target == 'aarch64'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu
-          
-      - name: Build wheels for aarch64
-        if: matrix.target == 'aarch64'
-        env:
-          CC: aarch64-linux-gnu-gcc
-          CFLAGS: -march=armv8-a -D__ARM_ARCH=8
-        uses: PyO3/maturin-action@423a6347767a8b16e65c2a7a7042e4a921528da8 # v1
-        with:
-          target: ${{ matrix.target }}
-          args: --release --locked --out dist ${{ env.PYTHON_VERSIONS_ARGS }}
-          manylinux: auto
-
-      - name: Build wheels for x86_64
-        if: matrix.target == 'x86_64'
+      - name: Build wheels
         uses: PyO3/maturin-action@423a6347767a8b16e65c2a7a7042e4a921528da8 # v1
         with:
           target: ${{ matrix.target }}
@@ -122,10 +111,11 @@ jobs:
         with:
           name: wheels-linux-${{ matrix.target }}
           path: dist
-          
+
   windows:
     runs-on: windows-latest
     strategy:
+      fail-fast: false
       matrix:
         target: [x64]
     steps:
