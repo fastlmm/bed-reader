@@ -511,8 +511,13 @@ fn read_errors() {
     );
     assert_error_variant!(result, BedErrorPlus::BedError(BedError::IllFormed(_)));
 
+    // Construct the empty input locally: this test checks a truncated BED
+    // header, rather than the sample-file download service.
+    let empty_folder = TempDir::default();
+    let empty_path = empty_folder.join("empty.bed");
+    std::fs::write(&empty_path, []).unwrap();
     let result = read_no_alloc(
-        sample_file("empty.bed").unwrap(),
+        empty_path,
         iid_count,
         sid_count,
         true,
