@@ -13,7 +13,10 @@ publication. Preparing this workflow does not authorize creating a release tag.
    default features, pinned-Rust strict Clippy, source Python tests on 3.11–3.15,
    native wheels for Linux/macOS/Windows on x86-64 and ARM64, installed wheel
    tests on 3.11 and 3.15, and source-distribution tests on both boundary versions.
-   Do not waive a platform because its runners are queued.
+   Do not waive a platform because its runners are queued. Branch protection
+   requires the PR to be up to date with `main` and to pass the `CI result`
+   check, so CI does not run again after merging; it reruns monthly and for
+   the release tag.
 3. Require metadata validation and complete wheel comparison between the Git
    source and sdist. `scripts/verify_sdist_wheel.py` uses the same source path,
    timestamp, and fresh build output for both builds, including native binaries.
