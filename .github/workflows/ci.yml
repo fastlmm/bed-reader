@@ -2,9 +2,11 @@
 
 name: CI3
 
+# Full CI runs on pull requests, monthly, and for release tags (via
+# workflow_call). Pushes to main are not retested: branch protection requires
+# PRs to be up to date with main and to pass "CI result" before merging.
+# Documentation deployment on main is handled by docs.yml.
 on:
-  push:
-    branches: [main]
   schedule:
     - cron: '0 0 1 * *'
   pull_request:
@@ -351,3 +353,19 @@ jobs:
           python -c "import pathlib, shutil, sys; shutil.copytree(pathlib.Path(sys.argv[1]) / 'bed_reader' / 'tests', pathlib.Path(sys.argv[2]) / 'bed_reader_artifact_tests')" "$GITHUB_WORKSPACE" "$RUNNER_TEMP"
           uv run --no-project --python "$GITHUB_WORKSPACE/.artifact-venv" python -c "import bed_reader; assert '.artifact-venv' in bed_reader.__file__; print(bed_reader.__file__)"
           uv run --no-project --python "$GITHUB_WORKSPACE/.artifact-venv" python -m pytest --import-mode=importlib --doctest-modules "$RUNNER_TEMP/bed_reader_artifact_tests"
+
+  ci-result:
+    # The single required status check for branch protection. It runs even
+    # when other jobs fail, so a failure can never appear as a passing skip.
+    name: CI result
+    if: always()
+    needs: [test_rust, macos, linux, windows, sdist, merge_artifacts, test_python, artifact-test, sdist-test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every CI job to succeed
+        env:
+          RESULTS: ${{ toJSON(needs.*.result) }}
+        run: |
+          echo "$RESULTS"
+          jq -e 'all(.[]; . == "success")' <<< "$RESULTS"
