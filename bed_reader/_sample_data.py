@@ -19,6 +19,8 @@ try:
         version_dev="main",
         # The registry specifies the files that can be fetched
         env="BED_READER_DATA_DIR",
+        # Retry transient network failures (DNS, timeouts, 5xx) with backoff.
+        retry_if_failed=3,
     )
 
     # Get registry file from package_data
