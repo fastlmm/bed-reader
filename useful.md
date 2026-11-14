@@ -143,8 +143,6 @@ cd doc
 make.bat html
 build\html\index.html
 cd ..
-if not exist docs mkdir docs
-xcopy /c /e /s /h doc\build\html docs
 ```
 
 Python docs on Linux/macOS:
@@ -154,11 +152,10 @@ cd doc
 make html
 python -m webbrowser build/html/index.html
 cd ..
-mkdir -p docs
-cp -R doc/build/html/. docs/
 ```
 
-Check the rendered README and docs pages before committing generated docs.
+Check the rendered README and docs pages. Generated HTML is not committed:
+docs.yml builds the site on each push to main and deploys it to GitHub Pages.
 The PyPI version and Python-version badges are live badges. Before publishing, they may still show the previous release; that is expected.
 
 ### 7. Local Wheel Smoke Test
