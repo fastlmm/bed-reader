@@ -802,8 +802,135 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(file_aat_piece_f32_orderf, m)?)?;
     m.add_function(wrap_pyfunction!(file_aat_piece_f64_orderf, m)?)?;
     m.add_function(wrap_pyfunction!(file_b_less_aatbx_translator, m)?)?;
+    #[cfg(feature = "gpu-cuda")]
+    gpu_python::register(m)?;
 
     Ok(())
 }
 
 // LATER on both rust and python side, when counting bim and fam files, also parse them -- don't read them twice.
+
+/// Python bindings for GPU reading (`gpu-cuda` feature): `read_gpu` returns a `GpuArray` that `CuPy`
+/// (or any `__cuda_array_interface__` consumer) wraps without copying; `standardize_gpu`
+/// standardizes it in place first. A preliminary, low-level API (like `read_f32`).
+#[cfg(feature = "gpu-cuda")]
+mod gpu_python {
+    use crate::gpu::{self, CudaPointer, Matrix};
+    use crate::{Bed, ReadOptions};
+    use numpy::{PyArray1, PyArrayMethods, ToPyArray};
+    use pyo3::{exceptions::PyValueError, prelude::*, types::PyDict};
+
+    enum AnyMatrix {
+        F32(Matrix<f32>),
+        F64(Matrix<f64>),
+    }
+
+    /// A genotype matrix in GPU memory. `CuPy` arrays made from it hold a reference to it, which keeps
+    /// the GPU buffer alive.
+    #[pyclass(unsendable)]
+    struct GpuArray {
+        matrix: AnyMatrix,
+        /// Keeps the allocation in place while consumers use the pointer it reports.
+        pointer: Option<CudaPointer>,
+    }
+
+    #[pymethods]
+    impl GpuArray {
+        #[getter]
+        fn shape(&self) -> (usize, usize) {
+            match &self.matrix {
+                AnyMatrix::F32(matrix) => matrix.dim(),
+                AnyMatrix::F64(matrix) => matrix.dim(),
+            }
+        }
+
+        #[getter]
+        fn __cuda_array_interface__<'py>(&mut self, py: Python<'py>) -> PyResult<Bound<'py, PyDict>> {
+            // `cuda_pointer` finishes the matrix's pending GPU work before another library reads it.
+            let (dim, is_f, itemsize, typestr, pointer) = match &self.matrix {
+                AnyMatrix::F32(matrix) => (matrix.dim(), matrix.is_f(), 4usize, "<f4", matrix.cuda_pointer()?),
+                AnyMatrix::F64(matrix) => (matrix.dim(), matrix.is_f(), 8usize, "<f8", matrix.cuda_pointer()?),
+            };
+            let (rows, cols) = dim;
+            let strides = if is_f { (itemsize, itemsize * rows) } else { (itemsize * cols, itemsize) };
+            let ptr = if rows * cols == 0 { 0 } else { pointer.ptr() };
+            self.pointer = Some(pointer);
+            let interface = PyDict::new(py);
+            interface.set_item("shape", (rows, cols))?;
+            interface.set_item("typestr", typestr)?;
+            interface.set_item("data", (ptr, false))?;
+            interface.set_item("strides", strides)?;
+            interface.set_item("version", 3)?;
+            Ok(interface)
+        }
+    }
+
+    #[pyfunction]
+    #[allow(clippy::too_many_arguments, clippy::needless_pass_by_value)]
+    fn read_gpu(
+        filename: &str,
+        iid_count: usize,
+        sid_count: usize,
+        is_a1_counted: bool,
+        iid_index: &Bound<'_, PyArray1<isize>>,
+        sid_index: &Bound<'_, PyArray1<isize>>,
+        dtype: &str,
+        is_f: bool,
+    ) -> PyResult<GpuArray> {
+        let iid_index = iid_index.readonly();
+        let sid_index = sid_index.readonly();
+        let (ii, si) = (iid_index.as_slice()?, sid_index.as_slice()?);
+        let device = gpu::Device::new()?;
+        let mut bed = Bed::builder(filename).iid_count(iid_count).sid_count(sid_count).build()?;
+        let matrix = match dtype {
+            "float32" => AnyMatrix::F32(
+                ReadOptions::<f32>::builder()
+                    .iid_index(ii)
+                    .sid_index(si)
+                    .is_a1_counted(is_a1_counted)
+                    .is_f(is_f)
+                    .read_gpu(&mut bed, &device)?,
+            ),
+            "float64" => AnyMatrix::F64(
+                ReadOptions::<f64>::builder()
+                    .iid_index(ii)
+                    .sid_index(si)
+                    .is_a1_counted(is_a1_counted)
+                    .is_f(is_f)
+                    .read_gpu(&mut bed, &device)?,
+            ),
+            _ => return Err(PyValueError::new_err(format!("dtype must be 'float32' or 'float64', not '{dtype}'"))),
+        };
+        Ok(GpuArray { matrix, pointer: None })
+    }
+
+    /// Standardizes `array` in place on the GPU and returns each SNP's (mean, std), like
+    /// `standardize_f32/f64` with `apply_in_place=True, use_stats=False`.
+    #[pyfunction]
+    fn standardize_gpu<'py>(
+        py: Python<'py>,
+        array: &mut GpuArray,
+        beta_not_unit_variance: bool,
+        beta_a: f64,
+        beta_b: f64,
+    ) -> PyResult<Bound<'py, PyAny>> {
+        Ok(match &mut array.matrix {
+            AnyMatrix::F32(matrix) => {
+                let stats = if beta_not_unit_variance { matrix.standardize_beta(beta_a, beta_b)? } else { matrix.standardize_unit()? };
+                stats.to_pyarray(py).into_any()
+            }
+            AnyMatrix::F64(matrix) => {
+                let stats = if beta_not_unit_variance { matrix.standardize_beta(beta_a, beta_b)? } else { matrix.standardize_unit()? };
+                stats.to_pyarray(py).into_any()
+            }
+        })
+    }
+
+    pub(super) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
+        m.add_class::<GpuArray>()?;
+        m.add_function(wrap_pyfunction!(read_gpu, m)?)?;
+        m.add_function(wrap_pyfunction!(standardize_gpu, m)?)?;
+        Ok(())
+    }
+}
+

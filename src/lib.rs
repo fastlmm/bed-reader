@@ -113,6 +113,10 @@
 
 mod python_module;
 mod tests;
+#[cfg(feature = "gpu")]
+pub mod gpu;
+#[cfg(all(feature = "gpu", not(any(feature = "gpu-cuda", feature = "gpu-hip"))))]
+compile_error!("the `gpu` feature needs a backend: enable `gpu-cuda` or `gpu-hip`");
 use anyinput::anyinput;
 pub use bed_cloud::{sample_bed_url, sample_url, sample_urls, BedCloud, BedCloudBuilder};
 use byteorder::{LittleEndian, ReadBytesExt};
@@ -195,6 +199,11 @@ pub enum BedErrorPlus {
     #[allow(missing_docs)]
     #[error(transparent)]
     Utf8Error(#[from] Utf8Error),
+
+    /// GPU errors (`gpu-cuda` or `gpu-hip` feature).
+    #[cfg(feature = "gpu")]
+    #[error(transparent)]
+    GpuError(gpu::Error),
 }
 // https://docs.rs/thiserror/1.0.23/thiserror/
 
@@ -1005,13 +1014,14 @@ fn count_lines(path: AnyPath) -> Result<usize, Box<BedErrorPlus>> {
 }
 
 #[allow(dead_code)]
-enum Dist {
+#[derive(Debug)]
+pub(crate) enum Dist {
     Unit,
     Beta { a: f64, b: f64 },
 }
 
 #[allow(dead_code)]
-fn impute_and_zero_mean_snps<
+pub(crate) fn impute_and_zero_mean_snps<
     T: Default + Copy + Debug + Sync + Send + Sync + Float + ToPrimitive + FromPrimitive,
 >(
     val: &mut nd::ArrayViewMut2<'_, T>,
@@ -1052,7 +1062,7 @@ fn impute_and_zero_mean_snps<
 
 // Later move the other fast-lmm functions into their own package
 #[allow(dead_code)]
-fn find_factor<
+pub(crate) fn find_factor<
     T: Default + Copy + Debug + Sync + Send + Sync + Float + ToPrimitive + FromPrimitive,
 >(
     dist: &Dist,
@@ -1086,6 +1096,41 @@ fn find_factor<
     }
 }
 
+/// One SNP's mean and standard deviation from its count, sum, and sum of squares over observed
+/// values. Shared by the CPU standardizers and the GPU one (`gpu` feature), so all of them compute
+/// identical statistics.
+pub(crate) fn snp_mean_std<
+    T: Default + Copy + Debug + Sync + Send + Sync + Float + ToPrimitive + FromPrimitive,
+>(
+    n_observed: T,
+    sum_s: T,
+    sum2_s: T,
+    dist: &Dist,
+    two: T,
+) -> Result<(T, T), BedError> {
+    if n_observed < T::one() {
+        //LATER make it work (in some form) for n of 0
+        Err(BedError::NoIndividuals)?;
+    }
+    let mean_s = sum_s / n_observed; //compute the mean over observed individuals for the current SNP
+    let mean2_s: T = sum2_s / n_observed; //compute the mean of the squared SNP
+
+    if mean_s.is_nan()
+        || (matches!(dist, Dist::Beta { a: _, b: _ }) && ((mean_s > two) || (mean_s < T::zero())))
+    {
+        Err(BedError::IllegalSnpMean)?;
+    }
+
+    let variance: T = mean2_s - mean_s * mean_s; //By the Cauchy Schwartz inequality this should always be positive
+
+    let mut std = variance.sqrt();
+    if std.is_nan() || std <= T::zero() {
+        // All "SNPs" have the same value (aka SNC)
+        std = T::infinity(); //SNCs are still meaning full in QQ plots because they should be thought of as SNPs without enough data.
+    }
+    Ok((mean_s, std))
+}
+
 #[allow(dead_code)]
 fn process_sid<
     T: Default + Copy + Debug + Sync + Send + Sync + Float + ToPrimitive + FromPrimitive,
@@ -1110,28 +1155,7 @@ fn process_sid<
                 n_observed = n_observed + T::one();
             }
         }
-        if n_observed < T::one() {
-            //LATER make it work (in some form) for n of 0
-            Err(BedError::NoIndividuals)?;
-        }
-        let mean_s = sum_s / n_observed; //compute the mean over observed individuals for the current SNP
-        let mean2_s: T = sum2_s / n_observed; //compute the mean of the squared SNP
-
-        if mean_s.is_nan()
-            || (matches!(dist, Dist::Beta { a: _, b: _ })
-                && ((mean_s > two) || (mean_s < T::zero())))
-        {
-            Err(BedError::IllegalSnpMean)?;
-        }
-
-        let variance: T = mean2_s - mean_s * mean_s; //By the Cauchy Schwartz inequality this should always be positive
-
-        let mut std = variance.sqrt();
-        if std.is_nan() || std <= T::zero() {
-            // All "SNPs" have the same value (aka SNC)
-            std = T::infinity(); //SNCs are still meaning full in QQ plots because they should be thought of as SNPs without enough data.
-        }
-
+        let (mean_s, std) = snp_mean_std(n_observed, sum_s, sum2_s, dist, two)?;
         stats_row[0] = mean_s;
         stats_row[1] = std;
     }
@@ -1199,28 +1223,13 @@ fn process_all_iids<
                 &sum2_s in &sum2_s_array,
                 result_ptr in &mut result_list)
         {
-            if n_observed < T::one() {
-                *result_ptr = Err(BedError::NoIndividuals);
-                return;
+            match snp_mean_std(n_observed, sum_s, sum2_s, dist, two) {
+                Ok((mean_s, std)) => {
+                    stats_row[0] = mean_s;
+                    stats_row[1] = std;
+                }
+                Err(error) => *result_ptr = Err(error),
             }
-            let mean_s = sum_s / n_observed; //compute the mean over observed individuals for the current SNP
-            let mean2_s: T = sum2_s / n_observed; //compute the mean of the squared SNP
-
-            if mean_s.is_nan()
-                || (matches!(dist, Dist::Beta { a:_, b:_ }) && ((mean_s > two) || (mean_s < T::zero())))
-            {
-                *result_ptr = Err(BedError::IllegalSnpMean);
-                return;
-            }
-
-            let variance: T = mean2_s - mean_s * mean_s; //By the Cauchy Schwartz inequality this should always be positive
-            let mut std = variance.sqrt();
-            if std.is_nan() || std <= T::zero() {
-                // All "SNPs" have the same value (aka SNC)
-                std = T::infinity(); //SNCs are still meaning full in QQ plots because they should be thought of as SNPs without enough data.
-            }
-            stats_row[0] = mean_s;
-            stats_row[1] = std;
         });
         // Check the result list for errors
         result_list.par_iter().try_for_each(|x| (*x).clone())?;

@@ -10,9 +10,9 @@ license = "Apache-2.0" # toml-ignore
 keywords = ["bioinformatics", "plink", "genomics", "genotype", "snps"]
 categories = ["science"]
 edition = "2021"
-rust-version = "1.85"
+# 1.95 for the optional GPU support (CubeCL needs Rust 1.95).
+rust-version = "1.95"
 # When refreshing Cargo.lock, retain one ndarray 0.16.1 shared with numpy.
-# psm 0.1.28 and crc-fast 1.9.0 retain compatibility with Rust 1.85.
 homepage = "https://fastlmm.github.io/"
 exclude = [
     "**/tests/data/*",
@@ -35,6 +35,11 @@ crate-type = ["cdylib", "rlib"]
 default = ["tokio"]
 tokio = ["dep:tokio"]
 extension-module = ["pyo3/extension-module", "tokio"]
+# GPU-resident reading and standardizing (CubeCL). `gpu-cuda` for NVIDIA GPUs, `gpu-hip` for AMD.
+gpu-cuda = ["gpu", "cubecl/cuda", "dep:cudarc"]
+gpu-hip = ["gpu", "cubecl/hip"]
+# Shared GPU code; enable through `gpu-cuda` or `gpu-hip`.
+gpu = ["dep:cubecl", "dep:cubecl-runtime", "dep:pollster", "dep:bytemuck"]
 
 [dependencies]
 thiserror = "1.0.66"
@@ -56,6 +61,12 @@ bytes = { version = "1.11.1" }
 cloud-file = { version = "0.3.1" }
 pyo3 = { version = "0.30.1", features = ["extension-module"], optional = true }
 tokio = { version = "1.42.1", features = ["full"], optional = true }
+# CubeCL is alpha, with breaking changes between minor versions: pin exact versions.
+cubecl = { version = "=0.11.3", default-features = false, features = ["std", "stdlib"], optional = true }
+cubecl-runtime = { version = "=0.11.3", default-features = false, optional = true }
+cudarc = { version = "0.19.6", default-features = false, features = ["std", "driver", "fallback-dynamic-loading", "cuda-version-from-build-system"], optional = true }
+pollster = { version = "0.4", optional = true }
+bytemuck = { version = "1", optional = true }
 
 [dev-dependencies]
 ndarray-rand = "0.15.0"
