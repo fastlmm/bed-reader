@@ -145,12 +145,12 @@ class open_bed:
 
     count_A1: bool, optional
         True (default) to count the number of A1 alleles (the PLINK standard).
-        False to count the number of A2 alleles.
+        False to count the number of A2 alleles. Applies to CPU and GPU reads.
     num_threads: None or int, optional
         The number of threads with which to read data. Defaults to all available
         processors.
         Can also be set with these environment variables (listed in priority order):
-        'PST_NUM_THREADS', 'NUM_THREADS', 'MKL_NUM_THREADS'.
+        'PST_NUM_THREADS', 'NUM_THREADS', 'MKL_NUM_THREADS'. Ignored by GPU reads.
     skip_format_check: bool, optional
         False (default) to immediately check for expected starting bytes in
         the .bed file. True to delay the check until (and if) data is read.
@@ -161,13 +161,14 @@ class open_bed:
         Path to the file containing information about each SNP (variant).
         Defaults to replacing the .bed file’s suffix with .bim.
     cloud_options: dict, optional
-        A dictionary of options for reading from cloud storage. The default is an empty.
+        A dictionary of options for reading from cloud storage. The default is empty.
+        Applies to cloud reads; GPU reads require local files.
     max_concurrent_requests: None or int, optional
         The maximum number of concurrent requests to make to the cloud storage service.
-        Defaults to 10.
+        Defaults to 10. Ignored by local CPU and GPU reads.
     max_chunk_bytes: None or int, optional
         The maximum number of bytes to read in a single request to the cloud storage
-        service. Defaults to 8MB.
+        service. Defaults to 8MB. Ignored by local CPU and GPU reads.
     filepath: same as location
         Deprecated. Use location instead.
     fam_filepath: same as fam_location
@@ -355,6 +356,28 @@ class open_bed:
             return parsed
         return Path(input)
 
+    def _read_gpu(self, index=None, dtype="float32", order="F"):
+        """Read into a native GPU owner, for the PySnpTools bindings."""
+        from bed_reader import has_gpu_support
+        from bed_reader import bed_reader as native
+
+        if not has_gpu_support():
+            raise RuntimeError("GPU reading requires bed-reader built with the cubecl-cuda Cargo feature")
+        if self._is_url(self.location):
+            raise ValueError("GPU reading does not support cloud files")
+        dtype = np.dtype(dtype)
+        if dtype not in (np.dtype("int8"), np.dtype("float32"), np.dtype("float64")):
+            raise ValueError("GPU dtype must be int8, float32, or float64")
+        if order not in {"F", "C"}:
+            raise ValueError("GPU order must be 'F' or 'C'")
+        iid_index, sid_index = self._split_index(index)
+        iid_index = np.ascontiguousarray(np.arange(self.iid_count, dtype="intp")[iid_index])
+        sid_index = np.ascontiguousarray(np.arange(self.sid_count, dtype="intp")[sid_index])
+        return native.read_gpu(
+            str(self.location), self.iid_count, self.sid_count, self.count_A1,
+            iid_index, sid_index, dtype.name, order == "F",
+        )
+
     def read(
         self,
         index: Optional[Any] = None,
@@ -364,58 +387,100 @@ class open_bed:
         num_threads=None,
         max_concurrent_requests=None,
         max_chunk_bytes=None,
-    ) -> np.ndarray:
+        xp=None,
+    ):
         """Read genotype information.
 
         Parameters
         ----------
+        xp: module or str, optional
+            NumPy or CuPy, as a module or name. Defaults to ARRAY_MODULE, then
+            NumPy. CuPy reads decode on the GPU and return a zero-copy CuPy array
+            backed by Rust-owned memory. Requires a build with the cubecl-cuda Cargo feature, a working CUDA
+            device 0, CuPy, and a local file. An explicit xp overrides the environment.
+            See :ref:`gpu-reading` for build instructions and a complete example.
         index:
             An optional expression specifying the individuals (samples) and SNPs
             (variants) to read. (See examples, below).
-            Defaults to ``None``, meaning read all.
+            Defaults to ``None``, meaning read all. CPU and GPU reads preserve
+            the selected row/column order and duplicate indices.
 
             (If index is a tuple, the first component indexes the individuals and the
             second indexes
             the SNPs. If it is not a tuple and not None, it indexes SNPs.)
 
         dtype: {'float32' (default), 'float64', 'int8'}, optional
-            The desired data-type for the returned array.
+            The desired data-type for the returned array, on either CPU or GPU.
         order : {'F','C'}, optional
-            The desired memory layout for the returned array.
+            The desired memory layout for the returned array, on either CPU or GPU.
             Defaults to ``F`` (Fortran order, which is SNP-major).
         force_python_only: bool, optional
             If False (default), uses the faster Rust code; otherwise it uses the slower
-            pure Python code.
+            pure Python code. True is not supported with CuPy output.
 
         num_threads: None or int, optional
             The number of threads with which to read data. Defaults to all available
             processors.
             Can also be set with :class:`open_bed` or these
             environment variables (listed in priority order):
-            'PST_NUM_THREADS', 'NUM_THREADS', 'MKL_NUM_THREADS'.
+            'PST_NUM_THREADS', 'NUM_THREADS', 'MKL_NUM_THREADS'. Applies to CPU
+            reads; it does not control GPU execution.
 
         max_concurrent_requests: None or int, optional
             The maximum number of concurrent requests to make to the cloud storage
-            service. Defaults to 10.
+            service. Defaults to 10. Applies to CPU cloud reads; GPU reads
+            support only local files.
 
         max_chunk_bytes: None or int, optional
             The maximum number of bytes to read in a single request to the cloud
-            storage service. Defaults to 8MB.
+            storage service. Defaults to 8MB. Applies to CPU cloud reads.
 
         Returns
         -------
-        numpy.ndarray
-            2-D array containing values of 0, 1, 2, or missing
+        numpy.ndarray or cupy.ndarray
+            A 2-D array containing values of 0, 1, 2, or missing. NumPy output
+            resides on the CPU; CuPy output shares Rust-owned GPU memory.
+
+        Raises
+        ------
+        RuntimeError
+            CuPy output was requested from a build without native GPU support.
+        ImportError
+            CuPy output was requested but CuPy is not installed.
+        ValueError
+            GPU output was requested for a cloud file or with force_python_only=True,
+            or an array module, dtype, or memory order is unsupported.
 
 
         Rows represent individuals (samples). Columns represent SNPs (variants).
+        The reader's ``count_A1`` setting applies on both devices.
 
         For ``dtype`` 'float32' and 'float64', NaN indicates missing values.
         For 'int8', -127 indicates missing values.
 
         Examples
         --------
-        To read all data in a .bed file, set ``index`` to ``None``. This is the default.
+        GPU example (requires the build and runtime described in :ref:`gpu-reading`):
+
+        .. code-block:: python
+
+            import cupy as cp
+            import numpy as np
+            from bed_reader import open_bed, sample_file
+
+            with open_bed(sample_file("small.bed")) as bed:
+                values = bed.read(np.s_[[2, 0], 1:4], dtype="float32", xp=cp)
+                assert isinstance(values, cp.ndarray)
+                host_means = cp.asnumpy(cp.nanmean(values, axis=0))
+
+        The CuPy array and its views keep the allocation alive after the reader
+        closes. Native decoding finishes before the array is exported. Releasing
+        its last view waits for GPU consumers before recycling the allocation.
+        Use explicit ``cp.asnumpy`` for host transfers. GPU matrices have at most
+        u32::MAX elements, subject to device memory.
+
+        To read all data in a .bed file on the CPU, set ``index`` to ``None`` and
+        use ``xp="numpy"`` (also the default when ARRAY_MODULE is unset).
 
         .. doctest::
 
@@ -479,6 +544,14 @@ class open_bed:
             >>> del bed  # optional: delete bed object
 
         """
+        from bed_reader._array_module import array_module
+
+        xp = array_module(xp)
+        if xp is not np:
+            if force_python_only:
+                raise ValueError("GPU reads do not support force_python_only=True")
+            return xp.asarray(self._read_gpu(index, dtype, order))
+
         iid_index_or_slice_etc, sid_index_or_slice_etc = self._split_index(index)
 
         dtype = np.dtype(dtype)
@@ -1460,7 +1533,8 @@ class open_bed:
         max_chunk_bytes=None,
     ) -> (Union[sparse.csc_matrix, sparse.csr_matrix]) if sparse is not None else None:  # type: ignore
         """Read genotype information into a :mod:`scipy.sparse` matrix. Sparse matrices
-        may be useful when the data is mostly zeros.
+        may be useful when the data is mostly zeros. This method runs on the CPU;
+        ``ARRAY_MODULE`` does not change its backend, and it has no ``xp`` argument.
 
         .. note::
             This method requires :mod:`scipy`. Install `scipy` with:

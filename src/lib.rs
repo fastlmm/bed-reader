@@ -54,9 +54,14 @@
 //! When using [`ReadOptions::builder`](struct.ReadOptions.html#method.builder) to read genotype data, use these options to
 //! specify a desired numeric type,
 //! which individuals (samples) to read, which SNPs (variants) to read, etc.
+//! Numeric type, indexing, layout, missing-value, and allele-count options work
+//! on both CPU and GPU reads. The `.cubecl()` method is available when built
+//! with the Cargo feature `cubecl-cuda` or `cubecl-hip`; CPU reads remain the default.
 //!
 //! | Option | Description |
 //! | -------- | ----------- |
+//! | [`cpu`](struct.ReadOptionsBuilder.html#method.cpu) | Decode into a CPU `ndarray` (default; method available with a CubeCL Cargo feature) |
+//! | [`cubecl`](struct.ReadOptionsBuilder.html#method.cubecl) | Decode into a GPU `backend::CubeClMatrix` (requires the Cargo feature `cubecl-cuda` or `cubecl-hip`); see its [complete example](backend/struct.CubeClMatrix.html) |
 //! | [`i8`](struct.ReadOptionsBuilder.html#method.i8) | Read values as i8 |
 //! | [`f32`](struct.ReadOptionsBuilder.html#method.f32) | Read values as f32 |
 //! | [`f64`](struct.ReadOptionsBuilder.html#method.f64) | Read values as f64 |
@@ -64,14 +69,14 @@
 //! | [`sid_index`](struct.ReadOptionsBuilder.html#method.sid_index) | Index of SNPs (variants) to read (defaults to all) |
 //! | [`f`](struct.ReadOptionsBuilder.html#method.f) | Order of the output array, Fortran-style (default) |
 //! | [`c`](struct.ReadOptionsBuilder.html#method.c) | Order of the output array, C-style |
-//! | [`is_f`](struct.ReadOptionsBuilder.html#method.is_f) | Is order of the output array Fortran-style? (defaults to true)|
+//! | [`is_f`](struct.ReadOptionsBuilder.html#method.is_f) | Set whether output uses Fortran order (defaults to true) |
 //! | [`missing_value`](struct.ReadOptionsBuilder.html#method.missing_value) | Value to use for missing values (defaults to -127 or NaN) |
 //! | [`count_a1`](struct.ReadOptionsBuilder.html#method.count_a1) | Count the number allele 1 (default) |
 //! | [`count_a2`](struct.ReadOptionsBuilder.html#method.count_a2) | Count the number allele 2 |
-//! | [`is_a1_counted`](struct.ReadOptionsBuilder.html#method.is_a1_counted) | Is allele 1 counted? (defaults to true) |
-//! | [`num_threads`](struct.ReadOptionsBuilder.html#method.num_threads) | Number of threads to use (defaults to all processors) |
-//! | [`max_concurrent_requests`](struct.ReadOptionsBuilder.html#method.max_concurrent_requests) | Maximum number of concurrent async requests (defaults to 10) -- Used by [`BedCloud`](struct.BedCloud.html). |
-//! | [`max_chunk_bytes`](struct.ReadOptionsBuilder.html#method.max_chunk_bytes) | Maximum chunk size of async requests (defaults to `8_000_000` bytes) -- Used by [`BedCloud`](struct.BedCloud.html). |
+//! | [`is_a1_counted`](struct.ReadOptionsBuilder.html#method.is_a1_counted) | Set whether allele 1 is counted (defaults to true) |
+//! | [`num_threads`](struct.ReadOptionsBuilder.html#method.num_threads) | CPU thread count (defaults to all processors); ignored by GPU reads |
+//! | [`max_concurrent_requests`](struct.ReadOptionsBuilder.html#method.max_concurrent_requests) | Maximum concurrent cloud requests (defaults to 10); used by `BedCloud`, ignored by local CPU and GPU reads |
+//! | [`max_chunk_bytes`](struct.ReadOptionsBuilder.html#method.max_chunk_bytes) | Maximum cloud request size (defaults to `8_000_000` bytes); used by `BedCloud`, ignored by local CPU and GPU reads |
 //!
 //! ### [`Index`](enum.Index.html) Expressions
 //!
@@ -105,6 +110,13 @@
 //! or [`WriteOptionsBuilder::num_threads`](struct.WriteOptionsBuilder.html#method.num_threads) is not specified,
 //! the number of threads to use is determined by these environment variable (in order of priority):
 //! If neither of these environment variables are set, all processors are used.
+//! These settings control CPU work; GPU reads ignore them.
+//!
+//! Rust GPU selection uses `.cubecl()` and the Cargo feature `cubecl-cuda` or
+//! `cubecl-hip`; there is no Rust GPU-selection environment variable. The Python
+//! API accepts `ARRAY_MODULE=numpy` or `ARRAY_MODULE=cupy` as its default backend
+//! (overridden by an explicit `xp` argument). `ARRAY_MODULE` does not affect
+//! Rust reads: a Rust builder without `.cubecl()` still reads on the CPU.
 //!
 //! * `BED_READER_DATA_DIR`
 //!
@@ -113,14 +125,16 @@
 
 mod python_module;
 mod tests;
-#[cfg(feature = "gpu")]
-pub mod gpu;
-#[cfg(all(feature = "gpu", not(any(feature = "gpu-cuda", feature = "gpu-hip"))))]
-compile_error!("the `gpu` feature needs a backend: enable `gpu-cuda` or `gpu-hip`");
+#[cfg(feature = "cubecl")]
+pub mod backend;
+#[cfg(all(feature = "cubecl", not(any(feature = "cubecl-cuda", feature = "cubecl-hip"))))]
+compile_error!("the `cubecl` Cargo feature needs a backend: enable Cargo feature `cubecl-cuda` or `cubecl-hip`");
 use anyinput::anyinput;
 pub use bed_cloud::{sample_bed_url, sample_url, sample_urls, BedCloud, BedCloudBuilder};
 use byteorder::{LittleEndian, ReadBytesExt};
 pub use cloud_file::{CloudFile, CloudFileError};
+#[cfg(feature = "cubecl")]
+use core::marker::PhantomData;
 use core::fmt::Debug;
 use derive_builder::Builder;
 use dpc_pariter::{scope, IteratorExt};
@@ -200,10 +214,10 @@ pub enum BedErrorPlus {
     #[error(transparent)]
     Utf8Error(#[from] Utf8Error),
 
-    /// GPU errors (`gpu-cuda` or `gpu-hip` feature).
-    #[cfg(feature = "gpu")]
+    /// GPU errors (Cargo feature `cubecl-cuda` or `cubecl-hip`).
+    #[cfg(feature = "cubecl")]
     #[error(transparent)]
-    GpuError(gpu::Error),
+    GpuError(backend::Error),
 }
 // https://docs.rs/thiserror/1.0.23/thiserror/
 
@@ -1097,8 +1111,9 @@ pub(crate) fn find_factor<
 }
 
 /// One SNP's mean and standard deviation from its count, sum, and sum of squares over observed
-/// values. Shared by the CPU standardizers and the GPU one (`gpu` feature), so all of them compute
-/// identical statistics.
+/// values. Shared by the CPU standardizers and the GPU's validated integer-genotype
+/// optimization (internal Cargo feature `cubecl`), which retain identical statistics. General GPU
+/// floating-point columns instead use centered statistics to avoid cancellation.
 pub(crate) fn snp_mean_std<
     T: Default + Copy + Debug + Sync + Send + Sync + Float + ToPrimitive + FromPrimitive,
 >(
@@ -3947,12 +3962,23 @@ impl From<()> for Index {
 /// See the [Table of Index Expressions](index.html#index-expressions)
 /// for a list of expressions for selecting individuals (sample)
 /// and SNPs (variants).
+/// With the Cargo feature `cubecl-cuda` or `cubecl-hip` enabled, the builder's `.cubecl()` method selects
+/// GPU memory and returns `backend::CubeClMatrix<TVal>` from `read`. Without it, reads
+/// return an `ndarray::Array2<TVal>`. GPU builds expose a
+/// [complete read and accessor example](backend/struct.CubeClMatrix.html) in the `backend` module.
+/// Numeric type, indexing, layout, missing values, and allele counting apply on both
+/// devices. CPU thread-count and cloud-request options are ignored by GPU reads.
 #[derive(Debug, Clone, Builder)]
 #[builder(build_fn(error = "Box<BedErrorPlus>"))]
-pub struct ReadOptions<TVal: BedVal> {
+pub struct ReadOptions<
+    TVal: BedVal,
+    // The backend parameter exists only with CubeCL support and defaults to the CPU.
+    #[cfg(feature = "cubecl")] TBackend: backend::Backend = backend::Cpu,
+> {
     /// Value to use for missing values (defaults to -127 or NaN)
     ///
     /// -127 is the default for i8 and NaN is the default for f32 and f64.
+    /// The selected sentinel is used by both CPU and GPU reads.
     ///
     /// In this example, the missing value is set to -1:
     /// ```
@@ -3979,6 +4005,7 @@ pub struct ReadOptions<TVal: BedVal> {
     missing_value: TVal,
 
     /// Select which individual (sample) values to read -- Defaults to all.
+    /// Applies to both CPU and GPU reads, preserving selection order and duplicates.
     ///
     /// Can select with a signed number, various lists of signed numbers,
     /// ranges, and various lists of booleans.
@@ -4049,6 +4076,7 @@ pub struct ReadOptions<TVal: BedVal> {
     iid_index: Index,
 
     /// Select which SNPs (variant) values to read -- Defaults to all.
+    /// Applies to both CPU and GPU reads, preserving selection order and duplicates.
     ///
     /// Can select with a signed number, various lists of signed numbers,
     /// ranges, and various lists of booleans.
@@ -4119,6 +4147,7 @@ pub struct ReadOptions<TVal: BedVal> {
     sid_index: Index,
 
     /// Sets if the order of the output array is Fortran-style -- Default is true.
+    /// Applies to both CPU and GPU reads.
     ///
     /// "Fortran order" is also called "column-major order" [Wikipedia](https://en.wikipedia.org/wiki/Row-_and_column-major_order).
     ///
@@ -4127,12 +4156,14 @@ pub struct ReadOptions<TVal: BedVal> {
     is_f: bool,
 
     /// Sets if allele 1 is counted. Default is true.
+    /// Applies to both CPU and GPU reads.
     ///
     /// Also see [`count_a1`](struct.ReadOptionsBuilder.html#method.count_a1) and [`count_a2`](struct.ReadOptionsBuilder.html#method.count_a2).
     #[builder(default = "true")]
     is_a1_counted: bool,
 
-    /// Number of threads to use (defaults to all processors)
+    /// Number of CPU threads to use (defaults to all processors).
+    /// Ignored by GPU reads.
     ///
     /// Can also be set with an environment variable.
     /// See [Environment Variables](index.html#environment-variables).
@@ -4163,7 +4194,7 @@ pub struct ReadOptions<TVal: BedVal> {
 
     // LATER: Allow this to be set with an environment variable.
     /// Maximum number of concurrent async requests (defaults to 10) --
-    /// Used by [`BedCloud`](struct.BedCloud.html).
+    /// Used by [`BedCloud`](struct.BedCloud.html). Ignored by local CPU and GPU reads.
     ///
     /// In this example, we read using only request at a time.
     /// ```
@@ -4192,7 +4223,7 @@ pub struct ReadOptions<TVal: BedVal> {
 
     // LATER: Allow this to be set with an environment variable.
     /// Maximum chunk size of async requests (defaults to `8_000_000` bytes) --
-    /// Used by [`BedCloud`](struct.BedCloud.html).
+    /// Used by [`BedCloud`](struct.BedCloud.html). Ignored by local CPU and GPU reads.
     ///
     /// In this example, we read using only `1_000_000` bytes per request.
     /// ```
@@ -4219,6 +4250,11 @@ pub struct ReadOptions<TVal: BedVal> {
     #[builder(default, setter(strip_option))]
     #[allow(dead_code)]
     max_chunk_bytes: Option<usize>,
+
+    /// The read backend (internal Cargo feature `cubecl`): chosen with `.cubecl()`, else the CPU.
+    #[cfg(feature = "cubecl")]
+    #[builder(setter(skip), default = "PhantomData")]
+    _backend: PhantomData<TBackend>,
 }
 
 impl<TVal: BedVal> ReadOptions<TVal> {
@@ -4615,7 +4651,7 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
         self
     }
 
-    /// Order of the output array, C (default)
+    /// Order of the output array, C (Fortran order is the default).
     ///
     /// Also called "row-major order" [Wikipedia](https://en.wikipedia.org/wiki/Row-_and_column-major_order).
     ///

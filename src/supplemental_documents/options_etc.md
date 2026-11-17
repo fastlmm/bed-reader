@@ -101,8 +101,13 @@ println!("{:?}", bed.iid()?); // Outputs ndarray ["sample1", "sample2", "sample3
 When reading read genotype data, use [`ReadOptions::builder`](../struct.ReadOptions.html#method.builder) to specify:
 
 * a desired numeric type,
+* CPU or GPU output (`.cubecl()` requires the Cargo feature `cubecl-cuda` or `cubecl-hip`),
 * which individuals (samples) to read,
 * which SNPs (variants) to read,
 * etc.
 
 See this crate's introductory material for [a complete table](../index.html#readoptions).
+
+Numeric type, selection, memory order, missing values, and allele counting apply
+on both devices. CPU thread counts and cloud-request settings are ignored by
+GPU reads. The backend module includes a [complete example](../backend/struct.CubeClMatrix.html).

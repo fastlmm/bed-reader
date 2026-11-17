@@ -35,6 +35,17 @@ Python 3.11 or later is required. Python 3.15 wheel qualification is in progress
 
     pip install bed-reader
 
+Experimental GPU reads
+======================
+
+Use `bed.read(xp="cupy")` to decode into GPU memory. This requires CuPy and a
+CUDA-enabled bed-reader build; ordinary installations do not enable GPU support.
+An explicit `xp` overrides `ARRAY_MODULE`; the default is NumPy on the CPU.
+
+See the [GPU guide](doc/source/index.rst#experimental-gpu-reads) for build
+instructions, complete examples, supported options, and current limitations.
+
+
 Usage
 ========
 

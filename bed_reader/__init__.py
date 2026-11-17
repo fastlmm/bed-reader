@@ -30,3 +30,26 @@ from .bed_reader import (
     write_f64,
     write_i8,
 )
+
+
+def has_gpu_support():
+    """Return whether this build includes Python CUDA reading support.
+
+    This checks the build, not whether a GPU is available at run time. A True
+    result still requires a working CUDA device and CuPy for read(xp="cupy").
+    It reports Python CUDA support, not the Rust crate's cubecl-hip Cargo feature.
+
+    Returns
+    -------
+    bool
+        Whether native CUDA reading is included in the installed extension.
+
+    Examples
+    --------
+    >>> from bed_reader import has_gpu_support
+    >>> isinstance(has_gpu_support(), bool)
+    True
+    """
+    from . import bed_reader as native
+
+    return hasattr(native, "read_gpu")

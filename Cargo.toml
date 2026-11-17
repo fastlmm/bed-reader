@@ -35,11 +35,11 @@ crate-type = ["cdylib", "rlib"]
 default = ["tokio"]
 tokio = ["dep:tokio"]
 extension-module = ["pyo3/extension-module", "tokio"]
-# GPU-resident reading and standardizing (CubeCL). `gpu-cuda` for NVIDIA GPUs, `gpu-hip` for AMD.
-gpu-cuda = ["gpu", "cubecl/cuda", "dep:cudarc"]
-gpu-hip = ["gpu", "cubecl/hip"]
-# Shared GPU code; enable through `gpu-cuda` or `gpu-hip`.
-gpu = ["dep:cubecl", "dep:cubecl-runtime", "dep:pollster", "dep:bytemuck"]
+# GPU-resident reading and standardizing (CubeCL). `cubecl-cuda` for NVIDIA GPUs, `cubecl-hip` for AMD.
+cubecl-cuda = ["cubecl", "cubecl/cuda", "dep:cudarc"]
+cubecl-hip = ["cubecl", "cubecl/hip"]
+# Shared GPU code; enable through `cubecl-cuda` or `cubecl-hip`.
+cubecl = ["dep:cubecl", "dep:cubecl-runtime", "dep:pollster", "dep:bytemuck"]
 
 [dependencies]
 thiserror = "1.0.66"

@@ -802,7 +802,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(file_aat_piece_f32_orderf, m)?)?;
     m.add_function(wrap_pyfunction!(file_aat_piece_f64_orderf, m)?)?;
     m.add_function(wrap_pyfunction!(file_b_less_aatbx_translator, m)?)?;
-    #[cfg(feature = "gpu-cuda")]
+    #[cfg(feature = "cubecl-cuda")]
     gpu_python::register(m)?;
 
     Ok(())
@@ -810,19 +810,26 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
 
 // LATER on both rust and python side, when counting bim and fam files, also parse them -- don't read them twice.
 
-/// Python bindings for GPU reading (`gpu-cuda` feature): `read_gpu` returns a `GpuArray` that `CuPy`
+/// Python bindings for GPU reading (Cargo feature `cubecl-cuda`): `read_gpu` returns a `GpuArray` that `CuPy`
 /// (or any `__cuda_array_interface__` consumer) wraps without copying; `standardize_gpu`
-/// standardizes it in place first. A preliminary, low-level API (like `read_f32`).
-#[cfg(feature = "gpu-cuda")]
+/// standardizes it in place first. Low-level plumbing, like `read_f32`: `open_bed.read(xp=...)` and
+/// `PySnpTools` call these.
+#[cfg(feature = "cubecl-cuda")]
 mod gpu_python {
-    use crate::gpu::{self, CudaPointer, Matrix};
+    use crate::backend::{
+        standardize::{standardize_beta, standardize_unit},
+        CubeCl, CubeClMatrix, CudaPointer,
+    };
     use crate::{Bed, ReadOptions};
+    use cudarc::driver::CudaContext;
+    use std::sync::Arc;
     use numpy::{PyArray1, PyArrayMethods, ToPyArray};
     use pyo3::{exceptions::PyValueError, prelude::*, types::PyDict};
 
     enum AnyMatrix {
-        F32(Matrix<f32>),
-        F64(Matrix<f64>),
+        I8(CubeClMatrix<i8>),
+        F32(CubeClMatrix<f32>),
+        F64(CubeClMatrix<f64>),
     }
 
     /// A genotype matrix in GPU memory. `CuPy` arrays made from it hold a reference to it, which keeps
@@ -832,6 +839,22 @@ mod gpu_python {
         matrix: AnyMatrix,
         /// Keeps the allocation in place while consumers use the pointer it reports.
         pointer: Option<CudaPointer>,
+        // CubeCl selects CUDA device 0 and its primary context. Keep the same
+        // context alive so destruction can wait for consumers on any stream.
+        context: Arc<CudaContext>,
+    }
+
+    impl Drop for GpuArray {
+        fn drop(&mut self) {
+            if self.pointer.is_some() {
+                // CuPy enqueues work asynchronously and can drop its last Python
+                // reference before that work completes. CubeCL cannot see those
+                // streams: wait before its pool can recycle the shared allocation.
+                self.context.synchronize().expect(
+                    "CUDA failed while waiting for array consumers before releasing GPU memory",
+                );
+            }
+        }
     }
 
     #[pymethods]
@@ -839,6 +862,7 @@ mod gpu_python {
         #[getter]
         fn shape(&self) -> (usize, usize) {
             match &self.matrix {
+                AnyMatrix::I8(matrix) => matrix.dim(),
                 AnyMatrix::F32(matrix) => matrix.dim(),
                 AnyMatrix::F64(matrix) => matrix.dim(),
             }
@@ -848,12 +872,15 @@ mod gpu_python {
         fn __cuda_array_interface__<'py>(&mut self, py: Python<'py>) -> PyResult<Bound<'py, PyDict>> {
             // `cuda_pointer` finishes the matrix's pending GPU work before another library reads it.
             let (dim, is_f, itemsize, typestr, pointer) = match &self.matrix {
+                AnyMatrix::I8(matrix) => (matrix.dim(), matrix.is_f(), 1usize, "|i1", matrix.cuda_pointer()?),
                 AnyMatrix::F32(matrix) => (matrix.dim(), matrix.is_f(), 4usize, "<f4", matrix.cuda_pointer()?),
                 AnyMatrix::F64(matrix) => (matrix.dim(), matrix.is_f(), 8usize, "<f8", matrix.cuda_pointer()?),
             };
             let (rows, cols) = dim;
             let strides = if is_f { (itemsize, itemsize * rows) } else { (itemsize * cols, itemsize) };
-            let ptr = if rows * cols == 0 { 0 } else { pointer.ptr() };
+            // Even an empty matrix owns a small native allocation. CuPy needs
+            // its non-null pointer to determine the device for an empty view.
+            let ptr = pointer.ptr();
             self.pointer = Some(pointer);
             let interface = PyDict::new(py);
             interface.set_item("shape", (rows, cols))?;
@@ -880,16 +907,25 @@ mod gpu_python {
         let iid_index = iid_index.readonly();
         let sid_index = sid_index.readonly();
         let (ii, si) = (iid_index.as_slice()?, sid_index.as_slice()?);
-        let device = gpu::Device::new()?;
         let mut bed = Bed::builder(filename).iid_count(iid_count).sid_count(sid_count).build()?;
         let matrix = match dtype {
+            "int8" => AnyMatrix::I8(
+                ReadOptions::<i8>::builder()
+                    .iid_index(ii)
+                    .sid_index(si)
+                    .is_a1_counted(is_a1_counted)
+                    .is_f(is_f)
+                    .cubecl()
+                    .read(&mut bed)?,
+            ),
             "float32" => AnyMatrix::F32(
                 ReadOptions::<f32>::builder()
                     .iid_index(ii)
                     .sid_index(si)
                     .is_a1_counted(is_a1_counted)
                     .is_f(is_f)
-                    .read_gpu(&mut bed, &device)?,
+                    .cubecl()
+                    .read(&mut bed)?,
             ),
             "float64" => AnyMatrix::F64(
                 ReadOptions::<f64>::builder()
@@ -897,11 +933,13 @@ mod gpu_python {
                     .sid_index(si)
                     .is_a1_counted(is_a1_counted)
                     .is_f(is_f)
-                    .read_gpu(&mut bed, &device)?,
+                    .cubecl()
+                    .read(&mut bed)?,
             ),
-            _ => return Err(PyValueError::new_err(format!("dtype must be 'float32' or 'float64', not '{dtype}'"))),
+            _ => return Err(PyValueError::new_err(format!("dtype must be 'int8', 'float32', or 'float64', not '{dtype}'"))),
         };
-        Ok(GpuArray { matrix, pointer: None })
+        let context = CudaContext::new(0).map_err(|error| PyValueError::new_err(error.to_string()))?;
+        Ok(GpuArray { matrix, pointer: None, context })
     }
 
     /// Standardizes `array` in place on the GPU and returns each SNP's (mean, std), like
@@ -914,23 +952,44 @@ mod gpu_python {
         beta_a: f64,
         beta_b: f64,
     ) -> PyResult<Bound<'py, PyAny>> {
-        Ok(match &mut array.matrix {
+        // A caller may have changed the exported CuPy view on any CUDA stream.
+        // Finish those writes before CubeCL reads the shared allocation.
+        if array.pointer.is_some() {
+            array.context.synchronize().map_err(|error| PyValueError::new_err(error.to_string()))?;
+        }
+        let stats = match &mut array.matrix {
+            AnyMatrix::I8(_) => return Err(PyValueError::new_err("Standardizing needs float32 or float64, not int8")),
             AnyMatrix::F32(matrix) => {
-                let stats = if beta_not_unit_variance { matrix.standardize_beta(beta_a, beta_b)? } else { matrix.standardize_unit()? };
+                let stats = if beta_not_unit_variance { standardize_beta(matrix, beta_a, beta_b)? } else { standardize_unit(matrix)? };
                 stats.to_pyarray(py).into_any()
             }
             AnyMatrix::F64(matrix) => {
-                let stats = if beta_not_unit_variance { matrix.standardize_beta(beta_a, beta_b)? } else { matrix.standardize_unit()? };
+                let stats = if beta_not_unit_variance { standardize_beta(matrix, beta_a, beta_b)? } else { standardize_unit(matrix)? };
                 stats.to_pyarray(py).into_any()
             }
-        })
+        };
+        if array.pointer.is_some() {
+            // Existing CuPy views do not ask for the array interface again.
+            // Make queued writes visible before returning to those consumers.
+            let client = CubeCl::client()?;
+            pollster::block_on(client.sync()).map_err(|error| PyValueError::new_err(error.to_string()))?;
+        }
+        Ok(stats)
+    }
+
+    /// Asks `CubeCL` to return the GPU memory of dropped arrays, so that other GPU libraries in the
+    /// process (for example, `CuPy`) can use it.
+    #[pyfunction]
+    fn gpu_memory_cleanup() -> PyResult<()> {
+        CubeCl::memory_cleanup()?;
+        Ok(())
     }
 
     pub(super) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m.add_class::<GpuArray>()?;
         m.add_function(wrap_pyfunction!(read_gpu, m)?)?;
         m.add_function(wrap_pyfunction!(standardize_gpu, m)?)?;
+        m.add_function(wrap_pyfunction!(gpu_memory_cleanup, m)?)?;
         Ok(())
     }
 }
-

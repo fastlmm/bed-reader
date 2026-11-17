@@ -1,4 +1,4 @@
-"""GPU reading (bed-reader built with the `gpu-cuda` feature): compare `read_gpu` and
+"""GPU reading (bed-reader built with the `cubecl-cuda` Cargo feature): compare `read_gpu` and
 `standardize_gpu` with the CPU functions exactly, and check the zero-copy handoff to CuPy.
 
 Skipped, with the reason shown, when bed-reader was built without GPU support or CuPy is missing.
@@ -13,7 +13,7 @@ from bed_reader import open_bed, sample_file, standardize_f32, standardize_f64, 
 
 bed_reader_rust = pytest.importorskip("bed_reader.bed_reader")
 if not hasattr(bed_reader_rust, "read_gpu"):
-    pytest.skip("bed-reader was built without the gpu-cuda feature", allow_module_level=True)
+    pytest.skip("bed-reader was built without the cubecl-cuda Cargo feature", allow_module_level=True)
 cp = pytest.importorskip("cupy", reason="CuPy is needed to receive GPU arrays")
 
 FILES = [

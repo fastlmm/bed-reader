@@ -22,7 +22,7 @@ Highlights
 Install
 -------
 
-Requires Rust 1.85 or later.
+Requires Rust 1.95 or later, as declared in `Cargo.toml`.
 
 **Full version**: Can read local and cloud files
 
@@ -35,6 +35,21 @@ cargo add bed-reader
 ```bash
 cargo add bed-reader --no-default-features
 ```
+
+
+Experimental GPU reads
+----------------------
+
+Enable the Cargo feature `cubecl-cuda` (NVIDIA) or `cubecl-hip` (AMD), then select
+`.cubecl()` on the read builder to return a GPU-resident matrix. CPU remains the default.
+This API is experimental and currently available only in development checkouts.
+
+See the `backend` module for setup, examples, and limitations. Build its docs with:
+
+```bash
+cargo doc --no-deps --features cubecl-cuda --open
+```
+
 
 Examples
 --------
