@@ -6,21 +6,71 @@ Experimental GPU reads
 ======================
 
 Python GPU reading currently supports NVIDIA CUDA and CuPy. It requires a
-CUDA-enabled bed-reader build, a compatible NVIDIA driver and CUDA toolkit
-(including ``nvcc``), Rust 1.95 or later, and a CuPy distribution matching your CUDA
-installation. :func:`has_gpu_support` checks the installed build; it does not
-check whether a GPU is available. The normal installation commands above do not
-enable the optional Cargo GPU feature. GPU wheel distribution and Python AMD
-support remain deferred.
+CUDA-enabled bed-reader build and a compatible NVIDIA driver.
+:func:`has_gpu_support` checks the installed build; it does not
+check whether a GPU is available. The normal published wheels do not yet enable
+the optional Cargo GPU feature. CUDA-enabled wheels are being qualified for
+Linux x86-64 and native Windows x86-64; WSL2 uses the Linux wheel. Python AMD
+support remains deferred; Rust's separate HIP Cargo feature is unaffected.
+
+Installing an experimental wheel
+--------------------------------
+
+If you have a CUDA-enabled wheel built from this checkout, its ``cupy`` extra
+installs CuPy's CUDA 13 distribution. It follows CuPy's prerequisites: a
+compatible NVIDIA driver and a CUDA 13 toolkit, including NVRTC and CUDA
+headers. For example, replace the filename below
+with the wheel for your Python version and platform:
+
+.. code-block:: bash
+
+    pip install "./bed_reader-1.2.1-cp313-cp313-manylinux_2_35_x86_64.whl[cupy]"
+    # Alternatively, install into an existing uv environment:
+    uv pip install "./bed_reader-1.2.1-cp313-cp313-manylinux_2_35_x86_64.whl[cupy]"
+
+For native Windows, use a ``win_amd64.whl`` file instead. A prebuilt wheel does
+not require Rust, Maturin, or a C++ compiler on the user's machine. The NVIDIA
+driver and CUDA toolkit remain separate prerequisites. CuPy's installation guide explains its
+`CUDA setup <https://docs.cupy.dev/en/stable/install.html>`_.
+
+The example Linux wheel requires glibc 2.35 or later. Initial artifact checks
+use CPython 3.13 on WSL2 and native Windows with an NVIDIA RTX 3060; the full
+Python/platform wheel matrix is not yet qualified. CuPy 14.2 provides wheels
+through Python 3.14, so this GPU installation path is not qualified for Python
+3.15 even though bed-reader itself supports that Python version.
+
+The extra adds Python dependencies; it cannot enable GPU support in a CPU-only
+wheel. Do not use ``pip install bed-reader[cupy]`` against the public release
+until CUDA-enabled wheels are published. GPU-capable wheels still support CPU
+reads without importing CuPy or initializing CUDA. GPU dependencies are not
+included in an ordinary ``pip install bed-reader`` installation.
+
+CuPy also offers pip-managed CUDA components for users who prefer them to a
+system toolkit. For example, the following installs CuPy with the CUDA 13.3
+components used in our initial wheel checks:
+
+.. code-block:: bash
+
+    pip install "cupy-cuda13x[ctk]>=14.2,<15" "cuda-toolkit==13.3.*"
+
+This is an alternative CUDA setup, not an additional bed-reader requirement.
+It still requires a compatible NVIDIA driver. See CuPy's installation guide
+for supported configurations and avoid installing multiple CuPy distributions
+in the same environment.
+
+Building from source
+--------------------
 
 Build with the Cargo features ``cubecl-cuda`` (CUDA support) and
-``extension-module`` (Python extension). From this checkout, use ``uv`` and
+``extension-module`` (Python extension). A source build requires Rust 1.95 or
+later and a CUDA toolkit providing ``nvcc``. From this checkout, use ``uv`` and
 Maturin (omit the clone commands if you already have the repository):
 
 .. code-block:: bash
 
     git clone https://github.com/fastlmm/bed-reader.git
     cd bed-reader
+    git switch gpu-cubecl  # development branch until a GPU-enabled release
     uv venv --python 3.13 ~/.cache/bed-reader-gpu/venv
     uv pip install --python ~/.cache/bed-reader-gpu/venv/bin/python numpy pooch
     uv tool run --from maturin maturin build --release --locked \

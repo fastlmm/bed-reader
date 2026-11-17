@@ -27,7 +27,7 @@ Features:
 Install
 ====================
 
-**Full version**: With all optional dependencies:
+**Sample files and sparse arrays**:
 
 .. code-block:: bash
 

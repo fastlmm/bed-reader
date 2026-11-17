@@ -249,8 +249,9 @@ jobs:
           source .venv/Scripts/activate
         fi
         pytest bed_reader/tests/test_opt_dep.py  
-    - name: Install all dependencies
-      run: uv sync --frozen --all-extras
+    # CuPy is qualified separately on NVIDIA hardware; retain every CPU test extra.
+    - name: Install CPU test dependencies
+      run: uv sync --frozen --extra samples --extra sparse --extra dev --extra min_dev
     - name: Run all tests
       shell: bash
       run: |
@@ -377,7 +378,7 @@ jobs:
         with:
           toolchain: stable
       - name: Build bed-reader and install documentation dependencies
-        run: uv sync --frozen --all-extras
+        run: uv sync --frozen --extra samples --extra sparse --extra dev --extra min_dev
       - name: Build documentation from clean sources
         run: uv run --frozen --no-sync sphinx-build -W --keep-going -E -a -d "${{ runner.temp }}/doctrees" -b html doc/source "${{ runner.temp }}/generated-docs"
 
