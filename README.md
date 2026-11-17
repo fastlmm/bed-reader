@@ -22,6 +22,7 @@ Features
 * Supports [PLINK 1.9](https://www.cog-genomics.org/plink2/formats).
 * Read data locally or from the cloud, efficiently and directly.
 * Optional [GPU reads](doc/source/gpu.rst) with CuPy and a CUDA-enabled build.
+  Python environment variables `ARRAY_MODULE` and `ARRAY_DTYPE` select backend/precision defaults.
 
 Install
 ====================

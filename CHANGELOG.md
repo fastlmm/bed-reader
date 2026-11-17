@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+* Add `ARRAY_DTYPE` precision defaults for Python dense/sparse reads and GPU
+  allocation. Explicit dtype wins; without the setting, existing defaults are
+  unchanged. The optional dtype parameter now defaults to `None`.
+  Explicit `dtype=None` now selects the same default as omission (float32 for
+  reads without the environment), rather than NumPy's implicit float64 dtype.
+
 * Add `is_cubecl_backed` to identify CubeCL-backed CuPy arrays and their views
   without copying values or synchronizing the GPU.
 

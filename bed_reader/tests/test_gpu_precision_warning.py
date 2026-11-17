@@ -46,3 +46,13 @@ def test_warning_can_be_selected_without_changing_dtype(cupy):
         warnings.simplefilter("error", GpuFloat64Warning)
         with pytest.raises(GpuFloat64Warning):
             empty_gpu((3, 2))
+
+
+def test_warning_location_skips_pandas_bridge():
+    from bed_reader._gpu import _warn_gpu_float64
+
+    namespace = {"__name__": "pandas.core.reshape.concat", "warn": _warn_gpu_float64}
+    exec(compile("def consume():\n    warn('float64')\n", "pandas_bridge.py", "exec"), namespace)
+    with pytest.warns(GpuFloat64Warning) as caught:
+        namespace["consume"]()
+    assert caught[0].filename == __file__

@@ -12,6 +12,8 @@ from urllib.parse import urlparse
 
 import numpy as np
 
+from bed_reader._array_module import array_dtype
+
 if TYPE_CHECKING:
     from scipy import sparse
 else:
@@ -356,7 +358,7 @@ class open_bed:
             return parsed
         return Path(input)
 
-    def _read_gpu(self, index=None, dtype="float32", order="F"):
+    def _read_gpu(self, index=None, dtype=None, order="F"):
         """Read into a native GPU owner, for the PySnpTools bindings."""
         from bed_reader import has_gpu_support
         from bed_reader import bed_reader as native
@@ -365,7 +367,7 @@ class open_bed:
             raise RuntimeError("GPU reading requires bed-reader built with the cubecl-cuda Cargo feature")
         if self._is_url(self.location):
             raise ValueError("GPU reading does not support cloud files")
-        dtype = np.dtype(dtype)
+        dtype = array_dtype(dtype, default="float32")
         if dtype not in (np.dtype("int8"), np.dtype("float32"), np.dtype("float64")):
             raise ValueError("GPU dtype must be int8, float32, or float64")
         if order not in {"F", "C"}:
@@ -384,7 +386,7 @@ class open_bed:
     def read(
         self,
         index: Optional[Any] = None,
-        dtype: Optional[Union[type, str]] = "float32",
+        dtype: Optional[Union[type, str]] = None,
         order: Optional[str] = "F",
         force_python_only: Optional[bool] = False,
         num_threads=None,
@@ -406,8 +408,10 @@ class open_bed:
             second indexes
             the SNPs. If it is not a tuple and not None, it indexes SNPs.)
 
-        dtype: {'float32' (default), 'float64', 'int8'}, optional
+        dtype: {None, 'float32', 'float64', 'int8'}, optional
             The desired data-type for the returned array, on either CPU or GPU.
+            None uses ARRAY_DTYPE, then float32. An explicit dtype overrides
+            the environment. ARRAY_DTYPE accepts float32 or float64.
             GPU float64 emits GpuFloat64Warning: subsequent float64 arithmetic
             can be much slower on consumer GPUs. Float32 is preferable when
             its precision is sufficient. CPU reads do not emit this warning.
@@ -563,7 +567,7 @@ class open_bed:
 
         iid_index_or_slice_etc, sid_index_or_slice_etc = self._split_index(index)
 
-        dtype = np.dtype(dtype)
+        dtype = array_dtype(dtype, default="float32")
         if order not in {"F", "C"}:
             msg = f"order '{order}' not known, only 'F', 'C'"
             raise ValueError(msg)
@@ -1534,7 +1538,7 @@ class open_bed:
     def read_sparse(
         self,
         index: Optional[Any] = None,
-        dtype: Optional[Union[type, str]] = "float32",
+        dtype: Optional[Union[type, str]] = None,
         batch_size: Optional[int] = None,
         format: Optional[str] = "csc",
         num_threads=None,
@@ -1563,7 +1567,8 @@ class open_bed:
             second indexes
             the SNPs. If it is not a tuple and not None, it indexes SNPs.)
 
-        dtype: {'float32' (default), 'float64', 'int8'}, optional
+        dtype: {None, 'float32', 'float64', 'int8'}, optional
+            None uses ARRAY_DTYPE, then float32; explicit dtype overrides it.
             The desired data-type for the returned array.
         batch_size: None or int, optional
             Number of dense columns or rows to read at a time, internally.
@@ -1675,7 +1680,7 @@ class open_bed:
             )
         iid_index_or_slice_etc, sid_index_or_slice_etc = self._split_index(index)
 
-        dtype = np.dtype(dtype)
+        dtype = array_dtype(dtype, default="float32")
 
         # Similar code in read().
         # Later happy with _iid_range and _sid_range or could it be done with

@@ -111,6 +111,25 @@ CuPy's own pool is unaffected. See that function's complete example.
 Choosing float32 or float64
 ---------------------------
 
+``dtype=None`` (or omitting dtype) uses ``ARRAY_DTYPE`` when set. Valid values
+are ``float32`` and ``float64``; an explicit dtype always wins. Without the
+environment variable, BED reads keep their float32 default and ``empty_gpu``
+keeps its float64 default. These are Python defaults, separate from the Rust
+builder's explicit type selection. NumPy/CuPy operations do not consult this
+variable themselves. For example::
+
+    from unittest.mock import patch
+    from bed_reader import open_bed, sample_file
+
+    with patch.dict("os.environ", {"ARRAY_MODULE": "cupy", "ARRAY_DTYPE": "float32"}):
+        with open_bed(sample_file("small.bed")) as bed:
+            values = bed.read()  # CuPy, float32
+            precise = bed.read(dtype="float64")  # explicit override
+        assert values.dtype.name == "float32"
+        assert precise.dtype.name == "float64"
+    # Both environment settings are restored, including on failure.
+
+
 Float64 arithmetic can be much slower than float32 on consumer GPUs. Some
 data-center GPUs have high float64 throughput; speed depends on the device and
 operation. Allocation and BED decoding are not necessarily compute-bound.

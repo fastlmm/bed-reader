@@ -22,6 +22,7 @@ Features:
 * Supports `PLINK 1.9 <https://www.cog-genomics.org/plink2/formats>`_.
 * Read data locally or from the cloud, efficiently and directly.
 * Optional :doc:`GPU reads <gpu>` with CuPy and a CUDA-enabled build.
+  Python environment variables ``ARRAY_MODULE`` and ``ARRAY_DTYPE`` select backend/precision defaults.
 
 Install
 ====================
@@ -171,6 +172,11 @@ open_bed
    :members:
    :inherited-members:
 
+array_dtype
+-----------
+
+.. autofunction:: array_dtype
+
 has_gpu_support
 ---------------
 
@@ -237,7 +243,14 @@ For Python dense reads, ``ARRAY_MODULE`` supplies the default for ``xp``
 (``numpy`` or ``cupy``); an explicit ``xp`` overrides it. It does not affect
 ``read_sparse``. Thread-count variables are ignored by GPU reads. See
 :ref:`gpu-reading`. The Rust API selects GPU reads explicitly with ``.cubecl()``
-and does not consult ``ARRAY_MODULE``.
+and does not consult ``ARRAY_MODULE`` or ``ARRAY_DTYPE``.
+
+For Python reads and GPU allocation, ``ARRAY_DTYPE`` supplies the dtype when
+``dtype=None`` or omitted. It accepts ``float32`` or ``float64``; explicit dtype
+overrides it. Without this setting, dense/sparse BED reads remain float32 and
+``empty_gpu`` remains float64. This does not change NumPy/CuPy defaults or
+existing arrays. See :func:`array_dtype` and the precision example in
+:ref:`gpu-reading`.
 
 Guides
 ======================

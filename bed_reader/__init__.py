@@ -6,6 +6,7 @@
 # for an article on how this project uses Rust to create a Python extension.
 
 from bed_reader._open_bed import get_num_threads, open_bed
+from bed_reader._array_module import array_dtype
 from bed_reader._sample_data import sample_file, sample_url, tmp_path
 from bed_reader._to_bed import create_bed, to_bed
 from bed_reader._gpu import GpuFloat64Warning, _warn_gpu_float64, empty_gpu, gpu_memory_cleanup, is_cubecl_backed

@@ -7,6 +7,8 @@ import warnings
 
 import numpy as np
 
+from bed_reader._array_module import array_dtype
+
 
 # CuPy retains the native owner; this registry must not extend its lifetime.
 _owners = WeakValueDictionary()
@@ -29,7 +31,9 @@ def _warn_gpu_float64(dtype):
     stacklevel = 2
     while frame is not None:
         modules = frame.f_globals.get("__name__", "").split(".")
-        if modules[0] not in {"bed_reader", "pysnptools", "fastlmm"} or any(
+        # pandas can consume our lazy map/reduce results; it is an intermediate
+        # frame, not the user's precision choice or allocation call site.
+        if modules[0] not in {"bed_reader", "pysnptools", "fastlmm", "pandas"} or any(
             part in {"test", "tests"} or part.startswith("test_") for part in modules[1:]
         ):
             break
@@ -102,7 +106,7 @@ def is_cubecl_backed(array):
     return _owners.get(array.data.mem.ptr) is not None
 
 
-def empty_gpu(shape, dtype="float64", order="F"):
+def empty_gpu(shape, dtype=None, order="F"):
     """Allocate an uninitialized 2-D CuPy array backed by CubeCL memory.
 
     Requires CuPy, CUDA device 0, and bed-reader built with the ``cubecl-cuda``
@@ -120,7 +124,8 @@ def empty_gpu(shape, dtype="float64", order="F"):
     shape : pair of int
         Nonnegative row and column counts.
     dtype : data-type, optional
-        int8, float32, or float64; defaults to float64.
+        int8, float32, or float64. None uses ARRAY_DTYPE, then float64;
+        an explicit dtype overrides the environment.
         Float64 emits GpuFloat64Warning about potentially slow arithmetic on
         consumer GPUs. Choose float32 when its precision is sufficient.
     order : {'F', 'C'}, optional
@@ -158,7 +163,7 @@ def empty_gpu(shape, dtype="float64", order="F"):
         raise ValueError("shape must contain two nonnegative integers")
     if max(rows, columns, rows * columns) > np.iinfo(np.uint32).max:
         raise ValueError("GPU dimensions and element count must fit in uint32")
-    dtype = np.dtype(dtype)
+    dtype = array_dtype(dtype)
     if dtype not in (np.dtype("int8"), np.dtype("float32"), np.dtype("float64")):
         raise ValueError("GPU dtype must be int8, float32, or float64")
     if order not in ("C", "F"):
