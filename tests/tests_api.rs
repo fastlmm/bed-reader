@@ -888,7 +888,7 @@ fn read_options_builder() -> Result<(), Box<BedErrorPlus>> {
         .f64()
         .read(&mut bed)?;
 
-    println!("{:?}", &val);
+    println!("{:?}", val);
     assert_eq_nan(&val, &nd::array![[0.0], [2.0]]);
     Ok(())
 }
@@ -1646,7 +1646,7 @@ where
         + std::slice::SliceIndex<[isize], Output = [isize]>
         + std::panic::RefUnwindSafe,
 {
-    println!("Running {:?}", &range_thing);
+    println!("Running {:?}", range_thing);
     let file_name = sample_bed_file("toydata.5chrom.bed")?;
 
     let result1 = catch_unwind(|| {
@@ -1668,7 +1668,7 @@ where
 fn rt2(
     range_thing: bed_reader::Index,
 ) -> Result<Result<nd::Array2<i8>, Box<BedErrorPlus>>, Box<BedErrorPlus>> {
-    println!("Running {:?}", &range_thing);
+    println!("Running {:?}", range_thing);
     let file_name = sample_bed_file("toydata.5chrom.bed")?;
 
     let result2 = catch_unwind(|| {
@@ -1691,7 +1691,7 @@ fn rt23(range_thing: bed_reader::Index) -> (RrArray2, RrUsize) {
 fn rt3(
     range_thing: bed_reader::Index,
 ) -> Result<Result<usize, Box<BedErrorPlus>>, Box<BedErrorPlus>> {
-    println!("Running {:?}", &range_thing);
+    println!("Running {:?}", range_thing);
     let file_name = sample_bed_file("toydata.5chrom.bed").unwrap();
 
     let result3 = catch_unwind(|| {
@@ -1707,7 +1707,7 @@ fn rt3(
 fn nds1(
     range_thing: SliceInfo1,
 ) -> Result<Result<nd::Array2<i8>, Box<BedErrorPlus>>, Box<BedErrorPlus>> {
-    println!("Running {:?}", &range_thing);
+    println!("Running {:?}", range_thing);
     let file_name = sample_bed_file("toydata.5chrom.bed")?;
 
     let result1 = catch_unwind(|| {

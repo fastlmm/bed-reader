@@ -104,18 +104,9 @@ impl BedCloudBuilder {
                 Some(ref value) => Clone::clone(value),
                 None => None,
             },
-            is_checked_early: match self.is_checked_early {
-                Some(ref value) => Clone::clone(value),
-                None => true,
-            },
-            iid_count: match self.iid_count {
-                Some(ref value) => Clone::clone(value),
-                None => None,
-            },
-            sid_count: match self.sid_count {
-                Some(ref value) => Clone::clone(value),
-                None => None,
-            },
+            is_checked_early: self.is_checked_early.unwrap_or(true),
+            iid_count: self.iid_count.unwrap_or_default(),
+            sid_count: self.sid_count.unwrap_or_default(),
             metadata: match self.metadata {
                 Some(ref value) => Clone::clone(value),
                 None => Err(BedError::UninitializedField("metadata"))?,
@@ -238,7 +229,7 @@ fn extract_ranges(
         // and index checks above guarantee these calculations fit.
         let pos = in_sid_i * in_iid_count_div4_u64 + i_div_4_start + CB_HEADER_U64;
         let range = pos..pos + i_div_4_len;
-        debug_assert!(range.end - range.start == i_div_4_len); // real assert
+        debug_assert_eq!(range.end - range.start, i_div_4_len); // real assert
         ranges.push(range);
         out_sid_i_vec.push(out_sid_i);
     }
@@ -258,7 +249,7 @@ fn decode_bytes_into_columns<TVal: BedVal>(
     out_val: &mut nd::prelude::ArrayBase<nd::ViewRepr<&mut TVal>, nd::prelude::Dim<[usize; 2]>>,
     from_two_bits_to_value: [TVal; 4],
 ) {
-    for (bytes, out_sid_i) in bytes_slice.iter().zip(out_sid_i_vec.into_iter()) {
+    for (bytes, out_sid_i) in bytes_slice.iter().zip(out_sid_i_vec) {
         let mut col = out_val.column_mut(out_sid_i);
         // LATER: Consider doing this in parallel as in the non-cloud version.
         for out_iid_i in 0..iid_index.len() {
@@ -342,7 +333,7 @@ async fn read_no_alloc<TVal: BedVal>(
             .await?;
         }
         _ => Err(BedError::BadMode(cloud_file.to_string()))?,
-    };
+    }
     Ok(())
 }
 

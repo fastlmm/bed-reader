@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+* Add `is_cubecl_backed` to identify CubeCL-backed CuPy arrays and their views
+  without copying values or synchronizing the GPU.
+
+* Add experimental `empty_gpu` allocation of CubeCL-backed CuPy matrices, with
+  view lifetime tracking and safe native owner transfer between Python threads.
+  Expose `gpu_memory_cleanup` to release unused native allocations without
+  invalidating live arrays.
+
 * Retry sample-file downloads up to three times on transient network errors.
 
 ## [1.2.1] - 2026-11-13

@@ -60,7 +60,7 @@
 //!
 //! | Option | Description |
 //! | -------- | ----------- |
-//! | [`cpu`](struct.ReadOptionsBuilder.html#method.cpu) | Decode into a CPU `ndarray` (default; method available with a CubeCL Cargo feature) |
+//! | [`cpu`](struct.ReadOptionsBuilder.html#method.cpu) | Decode into a CPU `ndarray` (default; method available with a `CubeCL` Cargo feature) |
 //! | [`cubecl`](struct.ReadOptionsBuilder.html#method.cubecl) | Decode into a GPU `backend::CubeClMatrix` (requires the Cargo feature `cubecl-cuda` or `cubecl-hip`); see its [complete example](backend/struct.CubeClMatrix.html) |
 //! | [`i8`](struct.ReadOptionsBuilder.html#method.i8) | Read values as i8 |
 //! | [`f32`](struct.ReadOptionsBuilder.html#method.f32) | Read values as f32 |
@@ -1303,7 +1303,7 @@ fn file_b_less_aatbx(
     let (a_sid_count, b_sid_count) = atb.dim();
     if log_frequency > 0 {
         println!("file_b_less_aatbx: iid_count={iid_count}, {a_sid_count}x{b_sid_count} output");
-    };
+    }
 
     // Open the file and move to the starting sid
     let mut buf_reader = BufReader::new(File::open(a_filename)?);
@@ -1451,7 +1451,7 @@ fn file_ata_piece_internal<T: Float + Send + Sync + Sync + AddAssign>(
     let (nrows, ncols) = ata_piece.dim();
     if log_frequency > 0 {
         println!("file_ata_piece: col_start={col_start}, {nrows}x{ncols} output");
-    };
+    }
 
     // Open the file and move to the starting col
     let mut buf_reader = BufReader::new(File::open(path)?);
@@ -1500,7 +1500,7 @@ fn file_ata_piece_internal<T: Float + Send + Sync + Sync + AddAssign>(
 
 #[allow(dead_code)]
 fn col_product<T: Float + AddAssign>(col_i: &[T], col_j: &[T]) -> T {
-    assert!(col_i.len() == col_j.len()); // real assert
+    assert_eq!(col_i.len(), col_j.len()); // real assert
     let mut product = T::zero();
     for row_index in 0..col_i.len() {
         product += col_i[row_index] * col_j[row_index];
@@ -1533,7 +1533,7 @@ fn file_aat_piece<T: Float + Sync + Send + Sync + AddAssign>(
 
     if log_frequency > 0 {
         println!("file_aat_piece: row_start={row_start}, {nrows}x{ncols} output");
-    };
+    }
 
     if (row_start >= row_count)
         || (row_start + nrows != row_count)
@@ -6075,7 +6075,7 @@ pub fn allclose<
     atol: T1,
     equal_nan: bool,
 ) -> bool {
-    assert!(val1.dim() == val2.dim());
+    assert_eq!(val1.dim(), val2.dim());
     // Could be run in parallel
 
     nd::Zip::from(val1)
@@ -7342,7 +7342,7 @@ pub fn sample_bed_file(bed_path: AnyPath) -> Result<PathBuf, Box<BedErrorPlus>> 
     }
 
     let vec = sample_files(path_list)?;
-    assert!(vec.len() == 3);
+    assert_eq!(vec.len(), 3);
     Ok(vec[0].clone())
 }
 

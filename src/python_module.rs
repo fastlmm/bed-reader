@@ -822,7 +822,7 @@ mod gpu_python {
     };
     use crate::{Bed, ReadOptions};
     use cudarc::driver::CudaContext;
-    use std::sync::Arc;
+    use std::sync::{Arc, Mutex};
     use numpy::{PyArray1, PyArrayMethods, ToPyArray};
     use pyo3::{exceptions::PyValueError, prelude::*, types::PyDict};
 
@@ -832,13 +832,17 @@ mod gpu_python {
         F64(CubeClMatrix<f64>),
     }
 
-    /// A genotype matrix in GPU memory. `CuPy` arrays made from it hold a reference to it, which keeps
+    /// A matrix in GPU memory. `CuPy` arrays made from it hold a reference to it, which keeps
     /// the GPU buffer alive.
-    #[pyclass(unsendable)]
+    #[pyclass(weakref)]
     struct GpuArray {
         matrix: AnyMatrix,
         /// Keeps the allocation in place while consumers use the pointer it reports.
-        pointer: Option<CudaPointer>,
+        // CudaPointer is Send, but its erased resource is not Sync. A mutex
+        // makes the owner transferable between Python threads without unsafe.
+        // Access is always through &mut self (also guarded by PyO3's mutable
+        // borrow), using get_mut; this mutex is never locked or poisoned.
+        pointer: Mutex<Option<CudaPointer>>,
         // CubeCl selects CUDA device 0 and its primary context. Keep the same
         // context alive so destruction can wait for consumers on any stream.
         context: Arc<CudaContext>,
@@ -846,7 +850,7 @@ mod gpu_python {
 
     impl Drop for GpuArray {
         fn drop(&mut self) {
-            if self.pointer.is_some() {
+            if self.pointer.get_mut().expect("pointer mutex is never locked").is_some() {
                 // CuPy enqueues work asynchronously and can drop its last Python
                 // reference before that work completes. CubeCL cannot see those
                 // streams: wait before its pool can recycle the shared allocation.
@@ -881,7 +885,7 @@ mod gpu_python {
             // Even an empty matrix owns a small native allocation. CuPy needs
             // its non-null pointer to determine the device for an empty view.
             let ptr = pointer.ptr();
-            self.pointer = Some(pointer);
+            *self.pointer.get_mut().expect("pointer mutex is never locked") = Some(pointer);
             let interface = PyDict::new(py);
             interface.set_item("shape", (rows, cols))?;
             interface.set_item("typestr", typestr)?;
@@ -939,7 +943,19 @@ mod gpu_python {
             _ => return Err(PyValueError::new_err(format!("dtype must be 'int8', 'float32', or 'float64', not '{dtype}'"))),
         };
         let context = CudaContext::new(0).map_err(|error| PyValueError::new_err(error.to_string()))?;
-        Ok(GpuArray { matrix, pointer: None, context })
+        Ok(GpuArray { matrix, pointer: Mutex::new(None), context })
+    }
+
+    #[pyfunction]
+    fn allocate_gpu(rows: usize, columns: usize, dtype: &str, is_f: bool) -> PyResult<GpuArray> {
+        let matrix = match dtype {
+            "int8" => AnyMatrix::I8(CubeClMatrix::empty(rows, columns, is_f)?),
+            "float32" => AnyMatrix::F32(CubeClMatrix::empty(rows, columns, is_f)?),
+            "float64" => AnyMatrix::F64(CubeClMatrix::empty(rows, columns, is_f)?),
+            _ => return Err(PyValueError::new_err("GPU dtype must be int8, float32, or float64")),
+        };
+        let context = CudaContext::new(0).map_err(|error| PyValueError::new_err(error.to_string()))?;
+        Ok(GpuArray { matrix, pointer: Mutex::new(None), context })
     }
 
     /// Standardizes `array` in place on the GPU and returns each SNP's (mean, std), like
@@ -954,7 +970,7 @@ mod gpu_python {
     ) -> PyResult<Bound<'py, PyAny>> {
         // A caller may have changed the exported CuPy view on any CUDA stream.
         // Finish those writes before CubeCL reads the shared allocation.
-        if array.pointer.is_some() {
+        if array.pointer.get_mut().expect("pointer mutex is never locked").is_some() {
             array.context.synchronize().map_err(|error| PyValueError::new_err(error.to_string()))?;
         }
         let stats = match &mut array.matrix {
@@ -968,7 +984,7 @@ mod gpu_python {
                 stats.to_pyarray(py).into_any()
             }
         };
-        if array.pointer.is_some() {
+        if array.pointer.get_mut().expect("pointer mutex is never locked").is_some() {
             // Existing CuPy views do not ask for the array interface again.
             // Make queued writes visible before returning to those consumers.
             let client = CubeCl::client()?;
@@ -988,6 +1004,7 @@ mod gpu_python {
     pub(super) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m.add_class::<GpuArray>()?;
         m.add_function(wrap_pyfunction!(read_gpu, m)?)?;
+        m.add_function(wrap_pyfunction!(allocate_gpu, m)?)?;
         m.add_function(wrap_pyfunction!(standardize_gpu, m)?)?;
         m.add_function(wrap_pyfunction!(gpu_memory_cleanup, m)?)?;
         Ok(())

@@ -42,9 +42,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Set up Rust (Pinned Version)
-        uses: dtolnay/rust-toolchain@cfcaf53ba4c621917ec7f78a66bff7a8848ddad4 # 1.85.0
+      - name: Set up Rust (Minimum Supported Version)
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # generic installer
         with:
+          toolchain: 1.95.0
           components: clippy, rustfmt, rust-src
       - name: Run Clippy (strict for this pinned version of Rust)
         run: cargo clippy --locked --all-targets --all-features -- -D warnings

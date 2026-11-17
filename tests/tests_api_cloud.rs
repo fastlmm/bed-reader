@@ -758,7 +758,7 @@ where
         + std::slice::SliceIndex<[isize], Output = [isize]>
         + std::panic::RefUnwindSafe,
 {
-    println!("Running {:?}", &range_thing);
+    println!("Running {:?}", range_thing);
 
     let result1 = catch_unwind(|| {
         let rt = runtime::Runtime::new()?;
@@ -785,7 +785,7 @@ where
 fn rt2_cloud(
     range_thing: bed_reader::Index,
 ) -> Result<Result<nd::Array2<i8>, Box<BedErrorPlus>>, Box<BedErrorPlus>> {
-    println!("Running {:?}", &range_thing);
+    println!("Running {:?}", range_thing);
     let url = sample_bed_url("toydata.5chrom.bed")?;
 
     let result1 = catch_unwind(|| {
@@ -816,7 +816,7 @@ fn rt23_cloud(range_thing: bed_reader::Index) -> (RrArray2, RrUsize) {
 fn rt3_cloud(
     range_thing: bed_reader::Index,
 ) -> Result<Result<usize, Box<BedErrorPlus>>, Box<BedErrorPlus>> {
-    println!("Running {:?}", &range_thing);
+    println!("Running {:?}", range_thing);
     let url = sample_bed_url("toydata.5chrom.bed")?;
 
     let result1 = catch_unwind(|| {
@@ -837,7 +837,7 @@ fn rt3_cloud(
 fn nds1_cloud(
     range_thing: SliceInfo1,
 ) -> Result<Result<nd::Array2<i8>, Box<BedErrorPlus>>, Box<BedErrorPlus>> {
-    println!("Running {:?}", &range_thing);
+    println!("Running {:?}", range_thing);
     let url = sample_bed_url("toydata.5chrom.bed")?;
 
     let result1 = catch_unwind(|| {
@@ -1102,7 +1102,7 @@ async fn read_options_builder_cloud() -> Result<(), Box<BedErrorPlus>> {
         .f64()
         .read_cloud(&mut bed_cloud)
         .await?;
-    println!("{:?}", &val);
+    println!("{:?}", val);
     assert_eq_nan(&val, &nd::array![[0.0], [2.0]]);
 
     Ok(())
@@ -2031,12 +2031,12 @@ async fn read_index_quick_cloud() -> Result<(), Box<BedErrorPlus>> {
     let path = sample_bed_file("small.bed")?;
     let mut bed = Bed::new(path)?;
     let val0 = bed.read_with_options(&read_options)?;
-    println!("0: {:?}", &val0);
+    println!("0: {:?}", val0);
 
     let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
     let mut bed_cloud = BedCloud::new(&url).await?;
     let val1 = bed_cloud.read_with_options(&read_options).await?;
-    println!("1: {:?}", &val1);
+    println!("1: {:?}", val1);
 
     assert_eq_nan(&val0, &val1);
 

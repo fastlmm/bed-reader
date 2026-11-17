@@ -373,6 +373,9 @@ class open_bed:
         iid_index, sid_index = self._split_index(index)
         iid_index = np.ascontiguousarray(np.arange(self.iid_count, dtype="intp")[iid_index])
         sid_index = np.ascontiguousarray(np.arange(self.sid_count, dtype="intp")[sid_index])
+        from bed_reader._gpu import _warn_gpu_float64
+
+        _warn_gpu_float64(dtype)
         return native.read_gpu(
             str(self.location), self.iid_count, self.sid_count, self.count_A1,
             iid_index, sid_index, dtype.name, order == "F",
@@ -389,16 +392,10 @@ class open_bed:
         max_chunk_bytes=None,
         xp=None,
     ):
-        """Read genotype information.
+        """Read genotype information into NumPy or CuPy arrays, selected by ``xp``.
 
         Parameters
         ----------
-        xp: module or str, optional
-            NumPy or CuPy, as a module or name. Defaults to ARRAY_MODULE, then
-            NumPy. CuPy reads decode on the GPU and return a zero-copy CuPy array
-            backed by Rust-owned memory. Requires a build with the cubecl-cuda Cargo feature, a working CUDA
-            device 0, CuPy, and a local file. An explicit xp overrides the environment.
-            See :ref:`gpu-reading` for build instructions and a complete example.
         index:
             An optional expression specifying the individuals (samples) and SNPs
             (variants) to read. (See examples, below).
@@ -411,6 +408,9 @@ class open_bed:
 
         dtype: {'float32' (default), 'float64', 'int8'}, optional
             The desired data-type for the returned array, on either CPU or GPU.
+            GPU float64 emits GpuFloat64Warning: subsequent float64 arithmetic
+            can be much slower on consumer GPUs. Float32 is preferable when
+            its precision is sufficient. CPU reads do not emit this warning.
         order : {'F','C'}, optional
             The desired memory layout for the returned array, on either CPU or GPU.
             Defaults to ``F`` (Fortran order, which is SNP-major).
@@ -434,6 +434,13 @@ class open_bed:
         max_chunk_bytes: None or int, optional
             The maximum number of bytes to read in a single request to the cloud
             storage service. Defaults to 8MB. Applies to CPU cloud reads.
+
+        xp: module or str, optional
+            NumPy or CuPy, as a module or name. Defaults to ARRAY_MODULE, then
+            NumPy. CuPy reads decode on the GPU and return a zero-copy CuPy array
+            backed by Rust-owned memory. Requires a build with the cubecl-cuda Cargo feature, a working CUDA
+            device 0, CuPy, and a local file. An explicit xp overrides the environment.
+            See :ref:`gpu-reading` for build instructions and a complete example.
 
         Returns
         -------
@@ -550,7 +557,9 @@ class open_bed:
         if xp is not np:
             if force_python_only:
                 raise ValueError("GPU reads do not support force_python_only=True")
-            return xp.asarray(self._read_gpu(index, dtype, order))
+            from bed_reader._gpu import _as_cupy
+
+            return _as_cupy(self._read_gpu(index, dtype, order))
 
         iid_index_or_slice_etc, sid_index_or_slice_etc = self._split_index(index)
 

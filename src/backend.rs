@@ -10,6 +10,26 @@
 //! genotype) to the GPU and decodes them there into an `i8`, `f32`, or `f64` [`CubeClMatrix`], in C
 //! or F order.
 //!
+//! # Precision and throughput
+//!
+//! On many consumer GPUs, `f64` arithmetic is much slower than `f32`; some data-center
+//! GPUs have high `f64` throughput. This is a computation tradeoff, not a claim that
+//! allocating or decoding `f64` is always slow. `f64` storage also takes twice the
+//! memory. Choose `.f32().cubecl()` when its precision is sufficient; keep `f64` when
+//! numerical accuracy requires it. For example:
+//!
+//! ```rust,no_run
+//! use bed_reader::{Bed, ReadOptions, sample_bed_file};
+//! let mut bed = Bed::new(sample_bed_file("small.bed")?)?;
+//! let values = ReadOptions::builder().f32().cubecl().read(&mut bed)?;
+//! assert_eq!(values.dim(), (3, 4));
+//! # use bed_reader::BedErrorPlus;
+//! # Ok::<(), Box<BedErrorPlus>>(())
+//! ```
+//!
+//! Output dtype does not specify every intermediate: standardization may still
+//! use `f64` reductions for accuracy. Rust does not emit Python's `GpuFloat64Warning`.
+//!
 //! The GPU work runs through [CubeCL](https://github.com/tracel-ai/cubecl), so one code base runs on
 //! NVIDIA (CUDA) and AMD (HIP) GPUs.
 //!
@@ -47,15 +67,15 @@
 //!
 //! # Memory and CUDA interoperation
 //!
-//! CubeCL pools freed allocations. Drop matrices and exported handles before
+//! `CubeCL` pools freed allocations. Drop matrices and exported handles before
 //! calling [`CubeCl::memory_cleanup`] if another library needs that memory.
-//! On CUDA builds, `CubeClMatrix::cuda_pointer` finishes pending CubeCL work
+//! On CUDA builds, `CubeClMatrix::cuda_pointer` finishes pending `CubeCL` work
 //! and pins the allocation. Rust callers must finish foreign CUDA work before
-//! releasing the pointer guard or accessing the buffer again through CubeCL;
-//! the guard does not synchronize foreign streams. Python CuPy ownership and
+//! releasing the pointer guard or accessing the buffer again through `CubeCL`;
+//! the guard does not synchronize foreign streams. Python `CuPy` ownership and
 //! synchronization are managed by the bindings.
 //!
-use core::{fmt::Debug, marker::PhantomData};
+use core::{fmt::Debug, marker::PhantomData, mem::size_of};
 use std::io::{Read, Seek, SeekFrom};
 
 use cubecl::{prelude::*, std::tensor::TensorHandle};
@@ -115,7 +135,7 @@ mod sealed {
     /// Keeps [`Backend`](super::Backend) to the backends this crate defines.
     pub trait Sealed {}
 
-    /// Restricts CubeCL element types to the types supported by this crate.
+    /// Restricts `CubeCL` element types to the types supported by this crate.
     pub trait Value {}
 
     impl Value for i8 {}
@@ -226,7 +246,7 @@ impl CubeCl {
     }
 }
 
-/// A value type the CubeCL reader supports: `i8`, `f32`, or `f64`.
+/// A value type the `CubeCL` reader supports: `i8`, `f32`, or `f64`.
 ///
 /// This trait is sealed: downstream crates cannot add element types. The supported
 /// types are controlled by bed-reader so kernel and memory-layout assumptions stay
@@ -416,6 +436,9 @@ impl ReadOptionsBuilder<f32, CubeCl> {
 
 impl ReadOptionsBuilder<f64, CubeCl> {
     /// Output a [`CubeClMatrix`] of `f64`. As [`ReadOptionsBuilder::f64`] on the CPU.
+    /// On many consumer GPUs, `f64` arithmetic is substantially slower than `f32`.
+    /// Consider [`ReadOptionsBuilder::f32`] if its precision is sufficient. Storage
+    /// also takes twice the memory; this method never silently changes precision.
     ///
     /// # Example
     ///
@@ -500,7 +523,8 @@ fn read_cubecl<TVal: CubeClVal>(
         }
     }
 
-    let handle = client.empty((element_count * core::mem::size_of::<TVal>()).max(4));
+    // Empty kernel arguments advertise one dummy element; it must fit even for f64.
+    let handle = client.empty((element_count.max(1) * size_of::<TVal>()).max(4));
     if element_count > 0 {
         let packed_handle = upload_u32(&client, &packed)?;
         let col_word_handle = client.create_from_slice(u32::as_bytes(&col_word));
@@ -566,6 +590,30 @@ fn genotype_lookup<TVal: CubeClVal>(
 }
 
 impl<TVal: CubeClVal> CubeClMatrix<TVal> {
+    #[cfg(all(feature = "extension-module", feature = "cubecl-cuda"))]
+    pub(crate) fn empty(rows: usize, columns: usize, is_f: bool) -> Result<Self, Box<BedErrorPlus>> {
+        to_u32(rows)?;
+        to_u32(columns)?;
+        let element_count = rows
+            .checked_mul(columns)
+            .ok_or(Error::TooLarge(usize::MAX))?;
+        to_u32(element_count)?;
+        let byte_count = element_count
+            .checked_mul(size_of::<TVal>())
+            .ok_or(Error::TooLarge(usize::MAX))?;
+        let client = CubeCl::client()?;
+        // Keep a real pointer and one valid dummy element for empty kernel arguments.
+        let handle = client.empty(byte_count.max(size_of::<TVal>()).max(4));
+        Ok(Self {
+            client,
+            handle,
+            iid_count: rows,
+            sid_count: columns,
+            is_f,
+            phantom: PhantomData,
+        })
+    }
+
     /// The number of individuals and SNPs.
     ///
     /// See the [`CubeClMatrix`] example.

@@ -21,6 +21,7 @@ Features:
 * Used by `PySnpTools <https://github.com/fastlmm/PySnpTools>`_, `FaST-LMM <https://github.com/fastlmm/FaST-LMM>`_, and `PyStatGen <https://github.com/pystatgen>`_.
 * Supports `PLINK 1.9 <https://www.cog-genomics.org/plink2/formats>`_.
 * Read data locally or from the cloud, efficiently and directly.
+* Optional :doc:`GPU reads <gpu>` with CuPy and a CUDA-enabled build.
 
 Install
 ====================
@@ -36,81 +37,6 @@ Install
 .. code-block:: bash
 
     pip install bed-reader
-
-.. _gpu-reading:
-
-Experimental GPU reads
-======================
-
-Python GPU reading currently supports NVIDIA CUDA and CuPy. It requires a
-CUDA-enabled bed-reader build, a compatible NVIDIA driver and CUDA toolkit
-(including ``nvcc``), Rust 1.95 or later, and a CuPy distribution matching your CUDA
-installation. :func:`has_gpu_support` checks the installed build; it does not
-check whether a GPU is available. The normal installation commands above do not
-enable the optional Cargo GPU feature. GPU wheel distribution and Python AMD
-support remain deferred.
-
-Build with the Cargo features ``cubecl-cuda`` (CUDA support) and
-``extension-module`` (Python extension). From this checkout, use ``uv`` and
-Maturin (omit the clone commands if you already have the repository):
-
-.. code-block:: bash
-
-    git clone https://github.com/fastlmm/bed-reader.git
-    cd bed-reader
-    uv venv --python 3.13 ~/.cache/bed-reader-gpu/venv
-    uv pip install --python ~/.cache/bed-reader-gpu/venv/bin/python numpy pooch
-    uv tool run --from maturin maturin build --release --locked \
-        --features cubecl-cuda,extension-module \
-        --interpreter ~/.cache/bed-reader-gpu/venv/bin/python \
-        --target-dir ~/.cache/bed-reader-gpu/target \
-        --out ~/.cache/bed-reader-gpu/wheels
-    uv pip install --python ~/.cache/bed-reader-gpu/venv/bin/python \
-        --reinstall --no-index --no-deps \
-        --find-links ~/.cache/bed-reader-gpu/wheels bed-reader
-
-Install the matching CuPy distribution into the same virtual environment before
-running this example with ``~/.cache/bed-reader-gpu/venv/bin/python``:
-
-.. code-block:: python
-
-    import cupy as cp
-    import numpy as np
-    from bed_reader import has_gpu_support, open_bed, sample_file
-
-    if not has_gpu_support():
-        raise RuntimeError("Rebuild bed-reader with the cubecl-cuda Cargo feature before requesting CuPy")
-
-    with open_bed(sample_file("small.bed")) as bed:
-        values = bed.read(index=np.s_[[2, 0], 1:4], dtype="float32", order="F", xp=cp)
-        assert isinstance(values, cp.ndarray)
-        assert values.shape == (2, 3)
-        means = cp.nanmean(values, axis=0)  # computation stays on the GPU
-        host_means = cp.asnumpy(means)  # explicitly copy only the result to the CPU
-        cpu_values = bed.read(xp="numpy")  # overrides ARRAY_MODULE=cupy
-        assert isinstance(cpu_values, np.ndarray)
-
-``xp`` accepts the NumPy or CuPy module, or the strings ``"numpy"`` and ``"cupy"``.
-With ``xp=None``, ``ARRAY_MODULE`` supplies the default; when unset, reads use
-NumPy. An explicit ``xp`` overrides the environment. Requesting CuPy fails clearly
-if CuPy or native GPU support is missing; there is no CPU decoding fallback.
-
-GPU reads honor ``index``, ``dtype`` (int8, float32, float64), ``order`` (C/F),
-and the reader's ``count_A1`` setting, just as dense CPU reads do. Rows are individuals and columns are
-SNPs. Missing values are NaN for floats and -127 for int8. Packed input bytes
-move to the GPU and are decoded there. The returned ``cupy.ndarray`` shares
-Rust-owned memory without copying the decoded matrix; views keep it alive.
-Releasing the last view waits for GPU consumers before native memory is recycled.
-Use ordinary CuPy operations on the array; ``cp.asnumpy`` explicitly transfers
-a result to the CPU.
-
-GPU reads use device 0. They require a local file and reject
-``force_python_only=True``. ``num_threads`` is ignored by GPU reads;
-``max_concurrent_requests`` and ``max_chunk_bytes`` apply only to CPU cloud reads.
-``read_sparse`` remains a CPU/SciPy operation and has no ``xp`` argument. A decoded GPU matrix is limited to ``u32::MAX`` elements
-and available device memory. Rust supports separate CUDA and HIP Cargo features;
-Python HIP reading is not available yet.
-
 
 Usage
 ========
@@ -250,6 +176,26 @@ has_gpu_support
 
 .. autofunction:: has_gpu_support
 
+empty_gpu
+---------
+
+.. autofunction:: empty_gpu
+
+is_cubecl_backed
+----------------
+
+.. autofunction:: is_cubecl_backed
+
+gpu_memory_cleanup
+------------------
+
+.. autofunction:: gpu_memory_cleanup
+
+GpuFloat64Warning
+-----------------
+
+.. autoclass:: GpuFloat64Warning
+
 
 to_bed
 ----------
@@ -293,12 +239,13 @@ For Python dense reads, ``ARRAY_MODULE`` supplies the default for ``xp``
 :ref:`gpu-reading`. The Rust API selects GPU reads explicitly with ``.cubecl()``
 and does not consult ``ARRAY_MODULE``.
 
-Cloud URL Examples
+Guides
 ======================
 
 .. toctree::
    :maxdepth: 1
 
+   gpu
    cloud_urls 
 
 Indices and Tables

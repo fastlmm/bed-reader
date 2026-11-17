@@ -30,8 +30,6 @@ use ndarray::Order;
 use ndarray::ShapeBuilder;
 use ndarray_npy::read_npy;
 use num_traits::abs;
-use std::f32;
-use std::f64;
 use std::io::BufReader;
 use std::ops::Range;
 use std::ops::RangeInclusive;
@@ -76,8 +74,8 @@ fn reference_val_i8(is_a1_counted: bool) -> nd::Array2<i8> {
 fn read_test() {
     let file = sample_bed_file("plink_sim_10s_100v_10pmiss.bed").unwrap();
     let mut bed = Bed::new(file).unwrap();
-    assert!(bed.iid_count().unwrap() == 10);
-    assert!(bed.sid_count().unwrap() == 100);
+    assert_eq!(bed.iid_count().unwrap(), 10);
+    assert_eq!(bed.sid_count().unwrap(), 100);
     let val: nd::Array2<i8> = bed.read().unwrap();
     let val_f64 = val.mapv(|elem| elem as f64);
     let mean_ = val_f64.mean().unwrap();
@@ -584,14 +582,14 @@ fn zeros() -> Result<(), Box<BedErrorPlus>> {
         .f64()
         .read(&mut bed)
         .unwrap();
-    assert!(out_val10.dim() == (iid_count, 0));
+    assert_eq!(out_val10.dim(), (iid_count, 0));
 
     let out_val01 = ReadOptions::builder()
         .iid_index([0; 0])
         .f64()
         .read(&mut bed)
         .unwrap();
-    assert!(out_val01.dim() == (0, sid_count));
+    assert_eq!(out_val01.dim(), (0, sid_count));
 
     let out_val00 = ReadOptions::builder()
         .iid_index([0; 0])
@@ -599,7 +597,7 @@ fn zeros() -> Result<(), Box<BedErrorPlus>> {
         .f64()
         .read(&mut bed)
         .unwrap();
-    assert!(out_val00.dim() == (0, 0));
+    assert_eq!(out_val00.dim(), (0, 0));
 
     // Test subset on zero length indexes
 
@@ -635,17 +633,17 @@ fn zeros() -> Result<(), Box<BedErrorPlus>> {
 
     Bed::write(&out_val01, &path).unwrap();
     let in_val01 = Bed::new(&path).unwrap().read::<f64>().unwrap();
-    assert!(in_val01.dim() == (0, sid_count));
+    assert_eq!(in_val01.dim(), (0, sid_count));
     assert!(allclose(&in_val01.view(), &out_val01.view(), 1e-08, true));
 
     Bed::write(&out_val10, &path).unwrap();
     let in_val10 = Bed::new(&path).unwrap().read::<f64>().unwrap();
-    assert!(in_val10.dim() == (iid_count, 0));
+    assert_eq!(in_val10.dim(), (iid_count, 0));
     assert!(allclose(&in_val10.view(), &out_val10.view(), 1e-08, true));
 
     Bed::write(&out_val00, &path).unwrap();
     let in_val00 = Bed::new(&path).unwrap().read::<f64>().unwrap();
-    assert!(in_val00.dim() == (0, 0));
+    assert_eq!(in_val00.dim(), (0, 0));
     assert!(allclose(&in_val00.view(), &out_val00.view(), 1e-08, true));
 
     Ok(())
@@ -831,9 +829,9 @@ fn test_allclose() -> Result<(), Box<BedErrorPlus>> {
 }
 
 fn expected_len(index: &Index, count: usize, len: usize) -> Result<(), Box<BedErrorPlus>> {
-    assert!(index.to_vec(count)?.len() == len);
-    assert!(index.len(count)? == len);
-    assert!(index.is_empty(count)? == (len == 0));
+    assert_eq!(index.to_vec(count)?.len(), len);
+    assert_eq!(index.len(count)?, len);
+    assert_eq!(index.is_empty(count)?, (len == 0));
 
     Ok(())
 }

@@ -40,6 +40,9 @@ extensions = [
 
 autodoc_default_flags = ["members"]
 autodoc_mock_imports = ["_tkinter"]
+
+# Wrap long signatures so trailing parameters remain visible without scrolling.
+python_maximum_signature_line_length = 88
 autosummary_generate = True
 napoleon_numpy_docstring = True
 templates_path = ["_templates"]
