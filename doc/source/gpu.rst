@@ -9,14 +9,14 @@ Python GPU reading currently supports NVIDIA CUDA and CuPy. It requires a
 CUDA-enabled bed-reader build and a compatible NVIDIA driver.
 :func:`has_gpu_support` checks the installed build; it does not
 check whether a GPU is available. Stable releases do not yet include CUDA-enabled
-wheels. The ``1.3.0a1`` alpha is being prepared for Linux x86-64 and native
+wheels. The ``1.3.0a1`` alpha provides wheels for Linux x86-64 and native
 Windows x86-64; WSL2 uses the Linux wheel. Python AMD
 support remains deferred; Rust's separate HIP Cargo feature is unaffected.
 
 Installing the alpha
 --------------------
 
-Publication is pending. After ``1.3.0a1`` is published, explicitly select it:
+The alpha is available on PyPI. Explicitly select it:
 
 .. code-block:: bash
 
