@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0a1] - 2026-11-17
+
+* Add experimental NVIDIA GPU reads for Python through CuPy and optional
+  CubeCL CUDA/HIP backends for Rust. CPU execution remains the default.
+  Python GPU wheels target Windows and Linux x86-64; WSL2 uses the Linux wheel.
+  The `cupy` extra installs CuPy's CUDA 13 distribution and follows CuPy's
+  NVIDIA driver/toolkit prerequisites.
+
+* Support GPU Unit/Beta standardization of fractional float32/float64 inputs,
+  with centered variance calculation, missing values, constant columns,
+  trained statistics, and both memory orders. Int8 standardization remains
+  unsupported. Warn about float64 GPU arithmetic costs without changing dtype.
+
+* Add experimental Rust backend selection while retaining CPU-only builds.
+  Optional GPU dependencies require Rust 1.95 or later.
+
 * Add `ARRAY_DTYPE` precision defaults for Python dense/sparse reads and GPU
   allocation. Explicit dtype wins; without the setting, existing defaults are
   unchanged. The optional dtype parameter now defaults to `None`.

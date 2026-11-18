@@ -26,11 +26,18 @@ jobs:
           python - <<'PY'
           import os
           from pathlib import Path
+          import re
           import tomllib
 
           python_version = tomllib.loads(Path("pyproject.toml").read_text())["project"]["version"]
           rust_version = tomllib.loads(Path("Cargo.toml").read_text())["package"]["version"]
-          assert python_version == rust_version, (python_version, rust_version)
+          # Cargo uses SemVer prereleases; Python uses PEP 440 (alpha.1 -> a1).
+          match = re.fullmatch(r"(\d+\.\d+\.\d+)(?:-(alpha|beta|rc)\.(\d+))?", rust_version)
+          assert match is not None, rust_version
+          base, stage, number = match.groups()
+          python_stage = {"alpha": "a", "beta": "b", "rc": "rc"}
+          normalized_rust_version = base if stage is None else f"{base}{python_stage[stage]}{number}"
+          assert python_version == normalized_rust_version, (python_version, rust_version)
           assert os.environ["RELEASE_TAG"] == f"v{python_version}", os.environ["RELEASE_TAG"]
           PY
 

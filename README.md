@@ -21,7 +21,7 @@ Features
 * Used by [PySnpTools](https://github.com/fastlmm/PySnpTools), [FaST-LMM](https://github.com/fastlmm/FaST-LMM), and [PyStatGen](https://github.com/pystatgen).
 * Supports [PLINK 1.9](https://www.cog-genomics.org/plink2/formats).
 * Read data locally or from the cloud, efficiently and directly.
-* Optional [GPU reads](doc/source/gpu.rst) with CuPy and a CUDA-enabled build.
+* Optional [GPU reads](https://github.com/fastlmm/bed-reader/blob/gpu-cubecl/doc/source/gpu.rst) with CuPy and a CUDA-enabled build.
   Python environment variables `ARRAY_MODULE` and `ARRAY_DTYPE` select backend/precision defaults.
 
 Install

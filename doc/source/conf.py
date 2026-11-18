@@ -25,7 +25,7 @@ project = "Bed Reader"
 copyright = "2024, Carl Kadie"
 author = "Carl Kadie"
 
-version = find_version(Path(__file__).parents[0] / Path("../../Cargo.toml"))
+version = find_version(Path(__file__).parents[0] / Path("../../pyproject.toml"))
 release = version
 today = time.strftime("%B %d, %Y")
 

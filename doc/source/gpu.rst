@@ -8,10 +8,30 @@ Experimental GPU reads
 Python GPU reading currently supports NVIDIA CUDA and CuPy. It requires a
 CUDA-enabled bed-reader build and a compatible NVIDIA driver.
 :func:`has_gpu_support` checks the installed build; it does not
-check whether a GPU is available. The normal published wheels do not yet enable
-the optional Cargo GPU feature. CUDA-enabled wheels are being qualified for
-Linux x86-64 and native Windows x86-64; WSL2 uses the Linux wheel. Python AMD
+check whether a GPU is available. Stable releases do not yet include CUDA-enabled
+wheels. The ``1.3.0a1`` alpha is being prepared for Linux x86-64 and native
+Windows x86-64; WSL2 uses the Linux wheel. Python AMD
 support remains deferred; Rust's separate HIP Cargo feature is unaffected.
+
+Installing the alpha
+--------------------
+
+Publication is pending. After ``1.3.0a1`` is published, explicitly select it:
+
+.. code-block:: bash
+
+    pip install --only-binary=bed-reader "bed-reader[cupy]==1.3.0a1"
+    # Or, in an existing uv environment:
+    uv pip install --only-binary=bed-reader "bed-reader[cupy]==1.3.0a1"
+
+The alpha targets CPython 3.11 through 3.15 on Windows and Linux x86-64.
+CuPy 14.2 supports Python through 3.14, so Python 3.15 is currently a CPU-only
+installation path. Linux alpha wheels require glibc 2.35 or later. Other
+architectures and macOS are outside this initial alpha wheel set.
+``--only-binary=bed-reader`` avoids building a CPU-only extension from the
+source distribution when a matching GPU wheel is unavailable. For CPU-only
+use of the alpha, omit ``[cupy]``. Normal unpinned installs continue selecting
+the stable release.
 
 Installing an experimental wheel
 --------------------------------
@@ -24,20 +44,18 @@ with the wheel for your Python version and platform:
 
 .. code-block:: bash
 
-    pip install "./bed_reader-1.2.1-cp313-cp313-manylinux_2_35_x86_64.whl[cupy]"
+    pip install "./bed_reader-1.3.0a1-cp313-cp313-manylinux_2_35_x86_64.whl[cupy]"
     # Alternatively, install into an existing uv environment:
-    uv pip install "./bed_reader-1.2.1-cp313-cp313-manylinux_2_35_x86_64.whl[cupy]"
+    uv pip install "./bed_reader-1.3.0a1-cp313-cp313-manylinux_2_35_x86_64.whl[cupy]"
 
 For native Windows, use a ``win_amd64.whl`` file instead. A prebuilt wheel does
 not require Rust, Maturin, or a C++ compiler on the user's machine. The NVIDIA
 driver and CUDA toolkit remain separate prerequisites. CuPy's installation guide explains its
 `CUDA setup <https://docs.cupy.dev/en/stable/install.html>`_.
 
-The example Linux wheel requires glibc 2.35 or later. Initial artifact checks
-use CPython 3.13 on WSL2 and native Windows with an NVIDIA RTX 3060; the full
-Python/platform wheel matrix is not yet qualified. CuPy 14.2 provides wheels
-through Python 3.14, so this GPU installation path is not qualified for Python
-3.15 even though bed-reader itself supports that Python version.
+Initial artifact checks use WSL2 and native Windows with an NVIDIA RTX 3060.
+Native Linux GPU testing is still needed; the Linux wheel is currently tested
+under WSL2. Additional hardware reports are welcome.
 
 The extra adds Python dependencies; it cannot enable GPU support in a CPU-only
 wheel. Do not use ``pip install bed-reader[cupy]`` against the public release
@@ -70,7 +88,7 @@ Maturin (omit the clone commands if you already have the repository):
 
     git clone https://github.com/fastlmm/bed-reader.git
     cd bed-reader
-    git switch gpu-cubecl  # development branch until a GPU-enabled release
+    git switch gpu-cubecl  # alpha development branch
     uv venv --python 3.13 ~/.cache/bed-reader-gpu/venv
     uv pip install --python ~/.cache/bed-reader-gpu/venv/bin/python numpy pooch
     uv tool run --from maturin maturin build --release --locked \
