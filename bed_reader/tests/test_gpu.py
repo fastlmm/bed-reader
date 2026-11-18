@@ -105,7 +105,9 @@ def test_gpu_single_value_and_all_missing(tmp_path):
                 all_missing = bed.read(dtype=dtype, order=order)
                 with pytest.raises(ValueError) as cpu_error:
                     cpu_standardize(all_missing, None)
-                array = gpu_read(path, bed, np.arange(4, dtype=np.intp), np.arange(4, dtype=np.intp), True, dtype, order)
+                array = gpu_read(
+                    path, bed, np.arange(4, dtype=np.intp), np.arange(4, dtype=np.intp), True, dtype, order
+                )
                 with pytest.raises(ValueError) as gpu_error:
                     gpu_standardize(array, None)
                 assert str(gpu_error.value) == str(cpu_error.value)
@@ -115,7 +117,10 @@ def test_gpu_zero_copy_and_lifetime():
     path = sample_file("toydata.5chrom.bed")
     with open_bed(path) as bed:
         expected = bed.read(dtype="float32")
-        array = gpu_read(path, bed, np.arange(bed.iid_count, dtype=np.intp), np.arange(bed.sid_count, dtype=np.intp), True, "float32", "F")
+        array = gpu_read(
+            path, bed, np.arange(bed.iid_count, dtype=np.intp), np.arange(bed.sid_count, dtype=np.intp),
+            True, "float32", "F"
+        )
     view = cp.asarray(array)
     assert view.data.ptr == array.__cuda_array_interface__["data"][0], "CuPy copied instead of wrapping"
     del array
