@@ -53,9 +53,10 @@ not require Rust, Maturin, or a C++ compiler on the user's machine. The NVIDIA
 driver and CUDA toolkit remain separate prerequisites. CuPy's installation guide explains its
 `CUDA setup <https://docs.cupy.dev/en/stable/install.html>`_.
 
-Initial artifact checks use WSL2 and native Windows with an NVIDIA RTX 3060.
-Native Linux GPU testing is still needed; the Linux wheel is currently tested
-under WSL2. Additional hardware reports are welcome.
+Artifact checks cover WSL2 and native Windows with an NVIDIA RTX 3060.
+The published alpha stack also passed native Linux GPU integration tests on
+Ubuntu 24.04 x86-64 with an RTX 3060, Python 3.11, and CUDA toolkit 13.3.
+Additional hardware reports are welcome.
 
 The extra adds Python dependencies; it cannot enable GPU support in a CPU-only
 wheel. Do not use ``pip install bed-reader[cupy]`` against the public release
