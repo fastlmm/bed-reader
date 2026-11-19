@@ -67,25 +67,12 @@ fn standardize<TVal: CubeClFloat>(
     }
     let c_order = u32::from(!matrix.is_f);
     let client = &matrix.client;
-    let sums_handle = client.empty(4 * sid_count * 4);
-    // SAFETY: one cube per SNP (`sid_j < sid_count`); it reads the matrix only at indexes below
-    // `iid_count * sid_count` (= `element_count`, which fits u32) and writes
-    // `sums[4 * sid_j .. 4 * sid_j + 4]`, inside the `4 * sid_count` words allocated.
-    unsafe {
-        snp_sums::launch_unchecked::<TVal>(
-            client,
-            CubeCount::Static(to_u32(sid_count)?, 1, 1),
-            CubeDim::new_1d(UNITS),
-            BufferArg::from_raw_parts(
-                matrix.handle.clone(),
-                to_u32(element_count.max(1))? as usize,
-            ),
-            to_u32(iid_count)?,
-            to_u32(sid_count)?,
-            c_order,
-            BufferArg::from_raw_parts(sums_handle.clone(), 4 * sid_count),
-        );
-    }
+    // CUDA has plane operations; only CubeCL's CPU runtime (internal tests) lacks them.
+    let use_plane = client
+        .features()
+        .plane
+        .contains(cubecl::ir::features::Plane::Ops);
+    let sums_handle = launch_snp_sums(matrix, use_plane)?;
     let sums_bytes = client.read_one(sums_handle.clone()).map_err(Error::from)?;
     let sums: &[u32] = bytemuck::cast_slice(&sums_bytes[..4 * sid_count * 4]);
 
@@ -160,6 +147,41 @@ fn standardize<TVal: CubeClFloat>(
     Ok(stats)
 }
 
+/// Launches `snp_sums` into a new `4 * sid_count`-word buffer and returns it. `use_plane` picks
+/// the plane (warp) reduction, which needs `Plane::Ops`, or the shared-memory tree reduction;
+/// both give identical results. The caller has checked that `4 * iid_count`, `4 * sid_count`,
+/// and `iid_count * sid_count` fit u32.
+fn launch_snp_sums<TVal: CubeClFloat>(
+    matrix: &CubeClMatrix<TVal>,
+    use_plane: bool,
+) -> Result<cubecl::server::Handle, Box<BedErrorPlus>> {
+    let (iid_count, sid_count) = (matrix.iid_count, matrix.sid_count);
+    let element_count = iid_count * sid_count;
+    let c_order = u32::from(!matrix.is_f);
+    let client = &matrix.client;
+    let sums_handle = client.empty(4 * sid_count * 4);
+    // SAFETY: one cube per SNP (`sid_j < sid_count`); it reads the matrix only at indexes below
+    // `iid_count * sid_count` (= `element_count`, which fits u32) and writes
+    // `sums[4 * sid_j .. 4 * sid_j + 4]`, inside the `4 * sid_count` words allocated.
+    unsafe {
+        snp_sums::launch_unchecked::<TVal>(
+            client,
+            CubeCount::Static(to_u32(sid_count)?, 1, 1),
+            CubeDim::new_1d(UNITS),
+            BufferArg::from_raw_parts(
+                matrix.handle.clone(),
+                to_u32(element_count.max(1))? as usize,
+            ),
+            to_u32(iid_count)?,
+            to_u32(sid_count)?,
+            c_order,
+            BufferArg::from_raw_parts(sums_handle.clone(), 4 * sid_count),
+            use_plane,
+        );
+    }
+    Ok(sums_handle)
+}
+
 fn from_u32<TVal: CubeClFloat>(value: u32) -> TVal {
     // f32/f64 from u32 is the CPU's sum of the same integers whenever that sum is exact.
     <TVal as num_traits::NumCast>::from(value).expect("u32 converts to f32/f64")
@@ -169,7 +191,14 @@ fn from_u32<TVal: CubeClFloat>(value: u32) -> TVal {
 /// `sum of squares`, and a flag set if any value is not 0, 1, or 2 to `sums[4 * sid_j ..]`. The
 /// values are small integers, so these integer sums are exact in any order.
 #[cube(launch_unchecked)]
-fn snp_sums<F: Float>(val: &[F], iid_count: u32, sid_count: u32, c_order: u32, sums: &mut [u32]) {
+fn snp_sums<F: Float>(
+    val: &[F],
+    iid_count: u32,
+    sid_count: u32,
+    c_order: u32,
+    sums: &mut [u32],
+    #[comptime] use_plane: bool,
+) {
     let sid_j = CUBE_POS_X;
     let mut count = 0u32;
     let mut sum = 0u32;
@@ -205,38 +234,74 @@ fn snp_sums<F: Float>(val: &[F], iid_count: u32, sid_count: u32, c_order: u32, s
             iid_i += UNITS;
         }
     }
-    // Reduce over the cube: within each plane, then across planes.
     let mut partials = Shared::<[u32]>::new_slice((4u32 * UNITS) as usize);
-    let plane = UNIT_POS_X / PLANE_DIM;
-    let count_plane = plane_sum(count);
-    let sum_plane = plane_sum(sum);
-    let sum2_plane = plane_sum(sum2);
-    let not_genotype_plane = plane_max(not_genotype);
-    if UNIT_POS_PLANE == 0u32 {
-        partials[(4u32 * plane) as usize] = count_plane;
-        partials[(4u32 * plane + 1u32) as usize] = sum_plane;
-        partials[(4u32 * plane + 2u32) as usize] = sum2_plane;
-        partials[(4u32 * plane + 3u32) as usize] = not_genotype_plane;
-    }
-    sync_cube();
-    if UNIT_POS_X == 0u32 && sid_j < sid_count {
-        let planes = UNITS / PLANE_DIM;
-        let mut total_count = 0u32;
-        let mut total_sum = 0u32;
-        let mut total_sum2 = 0u32;
-        let mut total_not_genotype = 0u32;
-        let mut p = 0u32;
-        while p < planes {
-            total_count += partials[(4u32 * p) as usize];
-            total_sum += partials[(4u32 * p + 1u32) as usize];
-            total_sum2 += partials[(4u32 * p + 2u32) as usize];
-            total_not_genotype = u32::max(total_not_genotype, partials[(4u32 * p + 3u32) as usize]);
-            p += 1u32;
+    if use_plane {
+        // Reduce over the cube: within each plane, then across planes.
+        let plane = UNIT_POS_X / PLANE_DIM;
+        let count_plane = plane_sum(count);
+        let sum_plane = plane_sum(sum);
+        let sum2_plane = plane_sum(sum2);
+        let not_genotype_plane = plane_max(not_genotype);
+        if UNIT_POS_PLANE == 0u32 {
+            partials[(4u32 * plane) as usize] = count_plane;
+            partials[(4u32 * plane + 1u32) as usize] = sum_plane;
+            partials[(4u32 * plane + 2u32) as usize] = sum2_plane;
+            partials[(4u32 * plane + 3u32) as usize] = not_genotype_plane;
         }
-        sums[(4u32 * sid_j) as usize] = total_count;
-        sums[(4u32 * sid_j + 1u32) as usize] = total_sum;
-        sums[(4u32 * sid_j + 2u32) as usize] = total_sum2;
-        sums[(4u32 * sid_j + 3u32) as usize] = total_not_genotype;
+        sync_cube();
+        if UNIT_POS_X == 0u32 && sid_j < sid_count {
+            let planes = UNITS / PLANE_DIM;
+            let mut total_count = 0u32;
+            let mut total_sum = 0u32;
+            let mut total_sum2 = 0u32;
+            let mut total_not_genotype = 0u32;
+            let mut p = 0u32;
+            while p < planes {
+                total_count += partials[(4u32 * p) as usize];
+                total_sum += partials[(4u32 * p + 1u32) as usize];
+                total_sum2 += partials[(4u32 * p + 2u32) as usize];
+                total_not_genotype =
+                    u32::max(total_not_genotype, partials[(4u32 * p + 3u32) as usize]);
+                p += 1u32;
+            }
+            sums[(4u32 * sid_j) as usize] = total_count;
+            sums[(4u32 * sid_j + 1u32) as usize] = total_sum;
+            sums[(4u32 * sid_j + 2u32) as usize] = total_sum2;
+            sums[(4u32 * sid_j + 3u32) as usize] = total_not_genotype;
+        }
+    } else {
+        // Runtimes without plane operations (CubeCL's CPU runtime, used by this crate's tests):
+        // a shared-memory tree reduction. Integer sums and max are exact in any order, so this
+        // gives the same results as the plane path above.
+        partials[(4u32 * UNIT_POS_X) as usize] = count;
+        partials[(4u32 * UNIT_POS_X + 1u32) as usize] = sum;
+        partials[(4u32 * UNIT_POS_X + 2u32) as usize] = sum2;
+        partials[(4u32 * UNIT_POS_X + 3u32) as usize] = not_genotype;
+        sync_cube();
+        // A runtime variable, as in `general::centered`, so the loop can halve it.
+        let mut stride = 0u32;
+        stride += UNITS / 2u32;
+        while stride > 0u32 {
+            if UNIT_POS_X < stride {
+                let mine = 4u32 * UNIT_POS_X;
+                let other = 4u32 * (UNIT_POS_X + stride);
+                partials[mine as usize] += partials[other as usize];
+                partials[(mine + 1u32) as usize] += partials[(other + 1u32) as usize];
+                partials[(mine + 2u32) as usize] += partials[(other + 2u32) as usize];
+                partials[(mine + 3u32) as usize] = u32::max(
+                    partials[(mine + 3u32) as usize],
+                    partials[(other + 3u32) as usize],
+                );
+            }
+            sync_cube();
+            stride /= 2u32;
+        }
+        if UNIT_POS_X == 0u32 && sid_j < sid_count {
+            sums[(4u32 * sid_j) as usize] = partials[0];
+            sums[(4u32 * sid_j + 1u32) as usize] = partials[1];
+            sums[(4u32 * sid_j + 2u32) as usize] = partials[2];
+            sums[(4u32 * sid_j + 3u32) as usize] = partials[3];
+        }
     }
 }
 
@@ -282,5 +347,77 @@ fn apply<F: Float>(
             }
             slow += CUBE_COUNT_Y;
         }
+    }
+}
+
+// CUDA only: CubeCL's CPU runtime (internal feature `_cubecl-cpu-test`) cannot compile the plane
+// path, so there only the tree path runs, through the standardizer tests.
+#[cfg(all(test, not(feature = "_cubecl-cpu-test")))]
+mod tests {
+    //! These need a GPU; without one, they fail (they do not skip).
+    use super::{launch_snp_sums, CubeClFloat};
+    use crate::{sample_bed_file, Bed, BedErrorPlus, ReadOptions};
+
+    fn sums<TVal: CubeClFloat>(
+        matrix: &super::CubeClMatrix<TVal>,
+        use_plane: bool,
+    ) -> Result<Vec<u8>, Box<BedErrorPlus>> {
+        let handle = launch_snp_sums(matrix, use_plane)?;
+        let bytes = matrix.client.read_one(handle).map_err(super::Error::from)?;
+        Ok(bytes[..16 * matrix.sid_count].to_vec())
+    }
+
+    /// The plane and tree reductions of `snp_sums` give identical sums and flags, for genotype
+    /// data with NaNs and for non-genotype data (missing value -1), in both memory orders.
+    #[test]
+    fn snp_sums_plane_and_tree_reductions_agree() -> Result<(), Box<BedErrorPlus>> {
+        for file in [
+            "some_missing.bed",
+            "plink_sim_10s_100v_10pmiss.bed",
+            "toydata.5chrom.bed",
+        ] {
+            for is_f in [true, false] {
+                let mut bed = Bed::new(sample_bed_file(file)?)?;
+                for missing in [f32::NAN, -1.0] {
+                    let matrix = ReadOptions::builder()
+                        .missing_value(missing)
+                        .is_f(is_f)
+                        .cubecl()
+                        .read(&mut bed)?;
+                    let plane = sums(&matrix, true)?;
+                    assert_eq!(
+                        plane,
+                        sums(&matrix, false)?,
+                        "{file} is_f={is_f} f32 {missing}"
+                    );
+                    // Only an observed missing value (-1, not NaN) is a non-genotype value.
+                    let expected = !missing.is_nan()
+                        && matrix
+                            .to_cpu()?
+                            .iter()
+                            .any(|value| value.to_bits() == missing.to_bits());
+                    let has_non_genotype = plane
+                        .as_chunks::<16>()
+                        .0
+                        .iter()
+                        .any(|column| column[12] != 0);
+                    assert_eq!(
+                        has_non_genotype, expected,
+                        "{file} is_f={is_f} non-genotype flag"
+                    );
+                }
+                let matrix = ReadOptions::builder()
+                    .f64()
+                    .is_f(is_f)
+                    .cubecl()
+                    .read(&mut bed)?;
+                assert_eq!(
+                    sums(&matrix, true)?,
+                    sums(&matrix, false)?,
+                    "{file} is_f={is_f} f64"
+                );
+            }
+        }
+        Ok(())
     }
 }

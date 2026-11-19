@@ -43,6 +43,11 @@ extension-module = ["pyo3/extension-module", "tokio"]
 cubecl-cuda = ["cubecl", "cubecl/cuda", "dep:cudarc"]
 # Shared GPU code; enable through `cubecl-cuda`.
 cubecl = ["dep:cubecl", "dep:cubecl-runtime", "dep:pollster", "dep:bytemuck"]
+# Internal, not public API: run this crate's own CubeCL kernel tests on CubeCL's CPU (LLVM)
+# runtime, so CI without a GPU can test them. Only `cfg(test)` code switches to the CPU device;
+# the library's CubeCL backend stays CUDA-only. Downloads a prebuilt LLVM on first build.
+# TODO0 experiment (2026-11-19): decide go/no-go before release; remove if no-go.
+_cubecl-cpu-test = ["cubecl-cuda", "cubecl/cpu"]
 
 [dependencies]
 thiserror = "1.0.66"

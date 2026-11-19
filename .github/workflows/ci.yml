@@ -60,6 +60,32 @@ jobs:
         run: cargo test --locked --verbose --no-default-features
       - name: Test Rust default features
         run: cargo test --locked --verbose
+  test_rust_cubecl_cpu:
+    # Runs the CubeCL GPU kernel tests on CubeCL's CPU (LLVM) runtime through the internal
+    # `_cubecl-cpu-test` feature, so kernel-logic and indexing regressions surface without a GPU.
+    # CUDA-only code (pinned upload, CudaPointer, the plane reduction, the Python GpuArray) still
+    # needs a local GPU run. The first build downloads a prebuilt LLVM (tracel-llvm-bundler); the
+    # cache keeps it. The CPU runtime gives each cube unit its own spinning thread, so tests run
+    # one at a time to avoid oversubscribing the runner's cores.
+    name: Test Rust CubeCL kernels (CPU runtime)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Rust (Minimum Supported Version)
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # generic installer
+        with:
+          toolchain: 1.95.0
+      - name: Cache the prebuilt LLVM
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cache/tracel
+            ~/.local/share/tracel
+          key: tracel-llvm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
+      - name: Test CubeCL kernels on the CPU runtime
+        run: cargo test --locked --features _cubecl-cpu-test --lib backend::cubecl -- --test-threads=1
   
   
   macos:
@@ -387,7 +413,7 @@ jobs:
     # when other jobs fail, so a failure can never appear as a passing skip.
     name: CI result
     if: always()
-    needs: [test_rust, macos, linux, windows, sdist, merge_artifacts, test_python, artifact-test, sdist-test, docs]
+    needs: [test_rust, test_rust_cubecl_cpu, macos, linux, windows, sdist, merge_artifacts, test_python, artifact-test, sdist-test, docs]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

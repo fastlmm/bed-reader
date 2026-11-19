@@ -20,7 +20,15 @@ use crate::{
 pub(crate) mod standardize;
 
 /// Units per cube.
+#[cfg(not(all(test, feature = "_cubecl-cpu-test")))]
 const UNITS: u32 = 256;
+/// Units per cube. `CubeCL`'s CPU runtime (internal tests) runs each unit of a `sync_cube` kernel on
+/// its own spinning thread, so a cube must have no more units than the machine has cores, and
+/// fewer is faster (measured on 32 cores, standardizing 500 x 10,000: 256 units hung, 32 units
+/// took 2.7 s, 8 took 0.14 s, 4 took 0.05 s). Small cubes also exercise the kernels' strided loops.
+// TODO0 experiment (2026-11-19): decide go/no-go before release; remove if no-go.
+#[cfg(all(test, feature = "_cubecl-cpu-test"))]
+const UNITS: u32 = 4;
 /// Cubes along a grid's y axis are limited to this many; kernels stride over the rest.
 const MAX_GRID_Y: usize = 65_535;
 
@@ -59,7 +67,12 @@ impl CubeCl {
     /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
     pub fn client() -> Result<Client, Box<BedErrorPlus>> {
+        // This crate's own tests can run the same kernels on CubeCL's CPU runtime (internal
+        // feature `_cubecl-cpu-test`), for CI without a GPU. Library builds always use CUDA.
+        #[cfg(not(all(test, feature = "_cubecl-cpu-test")))]
         let result = cubecl::Device::cuda(0);
+        #[cfg(all(test, feature = "_cubecl-cpu-test"))]
+        let result = cubecl::Device::cpu();
         let device = result.map_err(Error::from)?;
         Ok(device.client())
     }
@@ -218,7 +231,11 @@ pub(crate) fn read_cubecl<TVal: CubeClVal>(
     // Empty kernel arguments advertise one dummy element; it must fit even for f64.
     let handle = empty_dedicated(&client, (element_count.max(1) * size_of::<TVal>()).max(4));
     if element_count > 0 {
+        #[cfg(not(all(test, feature = "_cubecl-cpu-test")))]
         let packed_handle = upload_u32(&client, &packed)?;
+        // The CPU runtime (internal test feature) has no CUDA device to pin-copy to.
+        #[cfg(all(test, feature = "_cubecl-cpu-test"))]
+        let packed_handle = client.create_from_slice(u32::as_bytes(&packed));
         let col_word_handle = client.create_from_slice(u32::as_bytes(&col_word));
         let col_shift_handle = client.create_from_slice(u32::as_bytes(&col_shift));
         let lut_handle = genotype_lookup(&client, read_options);
@@ -486,6 +503,7 @@ fn genotype<TVal: CubeClVal>(value: i8) -> TVal {
 
 /// Copies `words` to a new GPU buffer (through reused pinned host buffers on CUDA, which is about 4x
 /// faster than `CubeCL's` own upload under `WSL2`).
+#[cfg(not(all(test, feature = "_cubecl-cpu-test")))]
 fn upload_u32(client: &Client, words: &[u32]) -> Result<cubecl::server::Handle, Box<BedErrorPlus>> {
     let handle = empty_dedicated(client, core::mem::size_of_val(words));
     upload_pinned_cuda(client, &handle, bytemuck::cast_slice(words))?;
@@ -539,6 +557,7 @@ fn decode<F: Numeric>(
 
 /// CUDA only: copies `bytes` into the `CubeCL` buffer `handle` through two reused pinned host buffers,
 /// so filling one overlaps copying the other.
+#[cfg(not(all(test, feature = "_cubecl-cpu-test")))]
 fn upload_pinned_cuda(
     client: &Client,
     handle: &cubecl::server::Handle,
@@ -584,9 +603,11 @@ fn upload_pinned_cuda(
     Ok(())
 }
 
+#[cfg(not(all(test, feature = "_cubecl-cpu-test")))]
 const CHUNK_BYTES: usize = 16 << 20;
 
 /// Two reused pinned host buffers, their events, and a stream, for chunked copies.
+#[cfg(not(all(test, feature = "_cubecl-cpu-test")))]
 struct CudaStaging {
     /// Device 0's primary context, retained once for the life of the process.
     context: cudarc::driver::sys::CUcontext,
@@ -595,10 +616,12 @@ struct CudaStaging {
     events: [cudarc::driver::sys::CUevent; 2],
 }
 // SAFETY: the raw handles are only used while holding the mutex in `cuda_staging`.
+#[cfg(not(all(test, feature = "_cubecl-cpu-test")))]
 unsafe impl Send for CudaStaging {}
 
 /// Locks the shared staging state, creating it on first use. On success the `Option` is `Some`.
 /// A failed first initialization leaves it `None`, so a later call retries instead of panicking.
+#[cfg(not(all(test, feature = "_cubecl-cpu-test")))]
 fn cuda_staging() -> Result<std::sync::MutexGuard<'static, Option<CudaStaging>>, Error> {
     use cudarc::driver::{result, sys};
     static STAGING: std::sync::Mutex<Option<CudaStaging>> = std::sync::Mutex::new(None);
@@ -647,8 +670,14 @@ mod size_tests {
     fn element_count_requires_u32_dimensions_and_product() {
         assert_eq!(element_count(3, 4).ok(), Some(12));
         assert_eq!(element_count(0, 5).ok(), Some(0));
-        assert!(matches!(element_count(65_536, 65_536), Err(Error::TooLarge(4_294_967_296))));
-        assert!(matches!(element_count(1 << 32, 0), Err(Error::TooLarge(4_294_967_296))));
+        assert!(matches!(
+            element_count(65_536, 65_536),
+            Err(Error::TooLarge(4_294_967_296))
+        ));
+        assert!(matches!(
+            element_count(1 << 32, 0),
+            Err(Error::TooLarge(4_294_967_296))
+        ));
     }
 }
 
