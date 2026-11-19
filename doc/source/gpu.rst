@@ -25,20 +25,21 @@ Install the beta with the ``cupy`` extra:
 
 Naming the beta version is needed while it is a pre-release; an ordinary
 ``pip install bed-reader`` still selects the latest stable release.
-``--only-binary=bed-reader`` makes the install fail rather than quietly
-building a CPU-only version from source when no GPU wheel matches your system.
+``--only-binary=bed-reader`` requires a prebuilt wheel instead of a source
+build. Check the platform requirements below: older Linux systems can still
+select a CPU-only wheel.
 
 GPU wheels are available for:
 
-* Linux x86-64 and ARM64 (glibc 2.34 or later), including WSL2.
+* Linux x86-64 (glibc 2.34 or later), including WSL2.
 * Windows x86-64.
 * Python 3.11 through 3.15. GPU reads on Python 3.15 still require CuPy
   support for that Python version.
 
-macOS and Windows ARM64 get CPU-only wheels. Linux ARM64 wheels include the
-GPU backend, but runtime GPU qualification is currently limited to x86-64. To check an
-installation, call :func:`has_gpu_support`; it reports whether the installed
-build includes GPU reading, not whether a GPU is present. Source builds are
+macOS and ARM64 get CPU-only wheels. Linux x86-64 also has CPU-only
+manylinux2014 wheels for older glibc; pip selects the GPU wheel on glibc 2.34
+or later, even on machines without a GPU. To check an installation, call
+:func:`has_gpu_support`; it reports whether the installed build includes GPU reading, not whether a GPU is present. Source builds are
 CPU-only by default; enabling ``cubecl-cuda`` explicitly needs no build-time
 CUDA toolkit or ``nvcc``.
 

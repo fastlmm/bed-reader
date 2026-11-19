@@ -140,10 +140,21 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # Keep the original CPU wheels for older glibc; pip prefers the GPU tag
+          # on newer systems. ARM64 stays CPU-only.
           - target: x86_64
             os: ubuntu-latest
+            manylinux: "2014"
+            features: extension-module
+          - target: x86_64
+            os: ubuntu-latest
+            # CubeCL's prebuilt LLVM needs glibc 2.34.
+            manylinux: "2_34"
+            features: extension-module,cubecl-cuda
           - target: aarch64
             os: ubuntu-24.04-arm
+            manylinux: "2014"
+            features: extension-module
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
@@ -154,14 +165,13 @@ jobs:
         uses: PyO3/maturin-action@e83996d129638aa358a18fbd1dfb82f0b0fb5d3b # v1
         with:
           target: ${{ matrix.target }}
-          args: --release --locked --features extension-module,cubecl-cuda --out dist ${{ env.PYTHON_VERSIONS_ARGS }}
-          # CubeCL's prebuilt LLVM needs glibc 2.34, newer than manylinux2014.
-          manylinux: "2_34"
+          args: --release --locked --features ${{ matrix.features }} --out dist ${{ env.PYTHON_VERSIONS_ARGS }}
+          manylinux: ${{ matrix.manylinux }}
 
       - name: Upload wheels
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: wheels-linux-${{ matrix.target }}
+          name: wheels-linux-${{ matrix.target }}-${{ matrix.manylinux }}
           path: dist
 
   windows:
@@ -308,9 +318,11 @@ jobs:
 
 
   artifact-test:
-    name: Installed wheel (${{ matrix.os }}, Python ${{ matrix.python-version }})
+    name: Installed wheel (${{ matrix.os }}, Python ${{ matrix.python-version }}, ${{ matrix.wheel-flavor }})
     needs: merge_artifacts
     runs-on: ${{ matrix.os }}
+    env:
+      WHEEL_FLAVOR: ${{ matrix.wheel-flavor }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -318,6 +330,23 @@ jobs:
         os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, windows-11-arm, macos-15, macos-15-intel]
         # Check every wheel's features and CPU behavior without CUDA/CuPy.
         python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
+        wheel-flavor: [preferred]
+        include:
+          - os: ubuntu-latest
+            python-version: "3.11"
+            wheel-flavor: manylinux2014
+          - os: ubuntu-latest
+            python-version: "3.12"
+            wheel-flavor: manylinux2014
+          - os: ubuntu-latest
+            python-version: "3.13"
+            wheel-flavor: manylinux2014
+          - os: ubuntu-latest
+            python-version: "3.14"
+            wheel-flavor: manylinux2014
+          - os: ubuntu-latest
+            python-version: "3.15"
+            wheel-flavor: manylinux2014
     steps:
       - name: Checkout test sources
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -340,9 +369,26 @@ jobs:
           path: artifact
 
       - name: Install an exact compatible wheel
+        shell: bash
         run: |
-          uv venv --python ${{ matrix.python-version }} .artifact-venv
-          uv pip install --python .artifact-venv --no-index --no-deps --only-binary :all: --find-links artifact bed-reader
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          import platform
+
+          wheels = list(Path('artifact').glob('*.whl'))
+          if platform.system() == 'Linux' and platform.machine() == 'x86_64':
+              count = len(os.environ['PYTHON_VERSIONS'].split())
+              assert sum('manylinux2014_x86_64' in wheel.name for wheel in wheels) == count
+              assert sum('manylinux_2_34_x86_64' in wheel.name for wheel in wheels) == count
+          if os.environ['WHEEL_FLAVOR'] == 'manylinux2014':
+              for wheel in wheels:
+                  if 'manylinux2014_x86_64' not in wheel.name:
+                      wheel.unlink()
+          PY
+          uv venv --seed --python ${{ matrix.python-version }} .artifact-venv
+          # Exercise pip's tag preference with both Linux x86_64 wheel families present.
+          uv run --no-project --python .artifact-venv python -m pip install --no-index --no-deps --only-binary :all: --find-links artifact bed-reader
           uv pip install --python .artifact-venv "bed-reader[samples,sparse,dev]"
 
       - name: Test outside the source checkout
@@ -351,13 +397,20 @@ jobs:
         run: |
           python -c "import pathlib, shutil, sys; shutil.copytree(pathlib.Path(sys.argv[1]) / 'bed_reader' / 'tests', pathlib.Path(sys.argv[2]) / 'bed_reader_artifact_tests')" "$GITHUB_WORKSPACE" "$RUNNER_TEMP"
           uv run --no-project --python "$GITHUB_WORKSPACE/.artifact-venv" python - <<'PY'
+          import importlib.metadata
           import importlib.util
+          import os
           import platform
           import bed_reader
           import bed_reader.bed_reader as native
 
           assert '.artifact-venv' in bed_reader.__file__, bed_reader.__file__
-          expected = platform.system() == 'Linux' or (platform.system() == 'Windows' and platform.machine() == 'AMD64')
+          linux_x64 = platform.system() == 'Linux' and platform.machine() == 'x86_64'
+          windows_x64 = platform.system() == 'Windows' and platform.machine() == 'AMD64'
+          expected = (linux_x64 and os.environ['WHEEL_FLAVOR'] == 'preferred') or windows_x64
+          if linux_x64:
+              tag = 'manylinux_2_34_x86_64' if expected else 'manylinux2014_x86_64'
+              assert tag in importlib.metadata.distribution('bed-reader').read_text('WHEEL')
           assert bed_reader.has_gpu_support() == expected, (platform.platform(), expected)
           assert hasattr(native, 'read_gpu') == expected
           assert hasattr(native, 'standardize_gpu') == expected
