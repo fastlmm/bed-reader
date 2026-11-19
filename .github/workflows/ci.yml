@@ -38,6 +38,18 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, windows-11-arm, macos-15, macos-15-intel]
+        # Every public feature the platform can build. `cubecl-cuda` (CubeCL 0.11) downloads a
+        # prebuilt LLVM, which does not exist for Windows ARM or Intel macOS; neither has CUDA.
+        # The internal `_cubecl-cpu-test` feature has its own job.
+        features: ["tokio,extension-module,cubecl-cuda"]
+        exclude:
+          - os: windows-11-arm
+          - os: macos-15-intel
+        include:
+          - os: windows-11-arm
+            features: tokio,extension-module
+          - os: macos-15-intel
+            features: tokio,extension-module
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
@@ -47,17 +59,15 @@ jobs:
         with:
           toolchain: 1.95.0
           components: clippy, rustfmt, rust-src
-      # Every public feature. The internal `_cubecl-cpu-test` feature needs a prebuilt LLVM that
-      # does not exist for every runner (none for Windows ARM or Intel macOS), so its own job lints it.
       - name: Run Clippy (strict for this pinned version of Rust)
-        run: cargo clippy --locked --all-targets --features tokio,extension-module,cubecl-cuda -- -D warnings
+        run: cargo clippy --locked --all-targets --features ${{ matrix.features }} -- -D warnings
       - name: Set up Rust (Latest Stable)
         uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # generic installer
         with:
           toolchain: stable
           components: clippy, rustfmt, rust-src
       - name: Run Clippy (lenient for latest version)
-        run: cargo clippy --locked --all-targets --features tokio,extension-module,cubecl-cuda
+        run: cargo clippy --locked --all-targets --features ${{ matrix.features }}
       - name: Test Rust no-default-features
         run: cargo test --locked --verbose --no-default-features
       - name: Test Rust default features
