@@ -48,7 +48,7 @@ jobs:
           toolchain: 1.95.0
           components: clippy, rustfmt, rust-src
       # Every public feature. The internal `_cubecl-cpu-test` feature needs a prebuilt LLVM that
-      # does not exist for every runner (none for Windows ARM), so its own job lints it.
+      # does not exist for every runner (none for Windows ARM or Intel macOS), so its own job lints it.
       - name: Run Clippy (strict for this pinned version of Rust)
         run: cargo clippy --locked --all-targets --features tokio,extension-module,cubecl-cuda -- -D warnings
       - name: Set up Rust (Latest Stable)
