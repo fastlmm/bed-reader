@@ -59,6 +59,8 @@ jobs:
         with:
           toolchain: 1.95.0
           components: clippy, rustfmt, rust-src
+      - name: Check Rust formatting
+        run: cargo fmt --check
       - name: Run Clippy (strict for this pinned version of Rust)
         run: cargo clippy --locked --all-targets --features ${{ matrix.features }} -- -D warnings
       - name: Set up Rust (Latest Stable)

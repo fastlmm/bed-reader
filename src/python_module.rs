@@ -826,13 +826,13 @@ mod gpu_python {
     };
     use crate::{Bed, ReadOptions};
     use cudarc::driver::CudaContext;
-    use std::sync::{Arc, Mutex};
     use numpy::{PyArray1, PyArrayMethods, ToPyArray};
     use pyo3::{
         exceptions::{PyRuntimeError, PyValueError},
         prelude::*,
         types::PyDict,
     };
+    use std::sync::{Arc, Mutex};
 
     enum AnyMatrix {
         I8(CubeClMatrix<i8>),
@@ -868,7 +868,11 @@ mod gpu_python {
 
     impl Drop for GpuArray {
         fn drop(&mut self) {
-            let pointer = self.pointer.get_mut().expect("pointer mutex is never locked").take();
+            let pointer = self
+                .pointer
+                .get_mut()
+                .expect("pointer mutex is never locked")
+                .take();
             if pointer.is_some() {
                 // CuPy enqueues work asynchronously and can drop its last Python
                 // reference before that work completes. CubeCL cannot see those
@@ -896,13 +900,19 @@ mod gpu_python {
             let client = match CubeCl::client() {
                 Ok(client) => client,
                 Err(error) => {
-                    report_drop_error("CUDA failed while returning a dropped GPU array's memory", error);
+                    report_drop_error(
+                        "CUDA failed while returning a dropped GPU array's memory",
+                        error,
+                    );
                     return;
                 }
             };
             drop(client.empty(4));
             if let Err(error) = pollster::block_on(client.sync()) {
-                report_drop_error("CUDA failed while returning a dropped GPU array's memory", error);
+                report_drop_error(
+                    "CUDA failed while returning a dropped GPU array's memory",
+                    error,
+                );
             }
         }
     }
@@ -911,7 +921,11 @@ mod gpu_python {
         fn new(matrix: AnyMatrix) -> PyResult<Self> {
             let context =
                 CudaContext::new(0).map_err(|error| PyRuntimeError::new_err(error.to_string()))?;
-            Ok(GpuArray { matrix: Some(matrix), pointer: Mutex::new(None), context })
+            Ok(GpuArray {
+                matrix: Some(matrix),
+                pointer: Mutex::new(None),
+                context,
+            })
         }
 
         fn matrix(&self) -> &AnyMatrix {
@@ -931,19 +945,47 @@ mod gpu_python {
         }
 
         #[getter]
-        fn __cuda_array_interface__<'py>(&mut self, py: Python<'py>) -> PyResult<Bound<'py, PyDict>> {
+        fn __cuda_array_interface__<'py>(
+            &mut self,
+            py: Python<'py>,
+        ) -> PyResult<Bound<'py, PyDict>> {
             // `cuda_pointer` finishes the matrix's pending GPU work before another library reads it.
             let (dim, is_f, itemsize, typestr, pointer) = match self.matrix() {
-                AnyMatrix::I8(matrix) => (matrix.dim(), matrix.is_f(), 1usize, "|i1", matrix.cuda_pointer()?),
-                AnyMatrix::F32(matrix) => (matrix.dim(), matrix.is_f(), 4usize, "<f4", matrix.cuda_pointer()?),
-                AnyMatrix::F64(matrix) => (matrix.dim(), matrix.is_f(), 8usize, "<f8", matrix.cuda_pointer()?),
+                AnyMatrix::I8(matrix) => (
+                    matrix.dim(),
+                    matrix.is_f(),
+                    1usize,
+                    "|i1",
+                    matrix.cuda_pointer()?,
+                ),
+                AnyMatrix::F32(matrix) => (
+                    matrix.dim(),
+                    matrix.is_f(),
+                    4usize,
+                    "<f4",
+                    matrix.cuda_pointer()?,
+                ),
+                AnyMatrix::F64(matrix) => (
+                    matrix.dim(),
+                    matrix.is_f(),
+                    8usize,
+                    "<f8",
+                    matrix.cuda_pointer()?,
+                ),
             };
             let (rows, cols) = dim;
-            let strides = if is_f { (itemsize, itemsize * rows) } else { (itemsize * cols, itemsize) };
+            let strides = if is_f {
+                (itemsize, itemsize * rows)
+            } else {
+                (itemsize * cols, itemsize)
+            };
             // Even an empty matrix owns a small native allocation. CuPy needs
             // its non-null pointer to determine the device for an empty view.
             let ptr = pointer.ptr();
-            *self.pointer.get_mut().expect("pointer mutex is never locked") = Some(pointer);
+            *self
+                .pointer
+                .get_mut()
+                .expect("pointer mutex is never locked") = Some(pointer);
             let interface = PyDict::new(py);
             interface.set_item("shape", (rows, cols))?;
             interface.set_item("typestr", typestr)?;
@@ -969,7 +1011,10 @@ mod gpu_python {
         let iid_index = iid_index.readonly();
         let sid_index = sid_index.readonly();
         let (ii, si) = (iid_index.as_slice()?, sid_index.as_slice()?);
-        let mut bed = Bed::builder(filename).iid_count(iid_count).sid_count(sid_count).build()?;
+        let mut bed = Bed::builder(filename)
+            .iid_count(iid_count)
+            .sid_count(sid_count)
+            .build()?;
         let matrix = match dtype {
             "int8" => AnyMatrix::I8(
                 ReadOptions::<i8>::builder()
@@ -998,7 +1043,11 @@ mod gpu_python {
                     .cubecl()
                     .read(&mut bed)?,
             ),
-            _ => return Err(PyValueError::new_err(format!("dtype must be 'int8', 'float32', or 'float64', not '{dtype}'"))),
+            _ => {
+                return Err(PyValueError::new_err(format!(
+                    "dtype must be 'int8', 'float32', or 'float64', not '{dtype}'"
+                )))
+            }
         };
         GpuArray::new(matrix)
     }
@@ -1009,7 +1058,11 @@ mod gpu_python {
             "int8" => AnyMatrix::I8(CubeClMatrix::empty(rows, columns, is_f)?),
             "float32" => AnyMatrix::F32(CubeClMatrix::empty(rows, columns, is_f)?),
             "float64" => AnyMatrix::F64(CubeClMatrix::empty(rows, columns, is_f)?),
-            _ => return Err(PyValueError::new_err("GPU dtype must be int8, float32, or float64")),
+            _ => {
+                return Err(PyValueError::new_err(
+                    "GPU dtype must be int8, float32, or float64",
+                ))
+            }
         };
         GpuArray::new(matrix)
     }
@@ -1026,25 +1079,51 @@ mod gpu_python {
     ) -> PyResult<Bound<'py, PyAny>> {
         // A caller may have changed the exported CuPy view on any CUDA stream.
         // Finish those writes before CubeCL reads the shared allocation.
-        if array.pointer.get_mut().expect("pointer mutex is never locked").is_some() {
-            array.context.synchronize().map_err(|error| PyRuntimeError::new_err(error.to_string()))?;
+        if array
+            .pointer
+            .get_mut()
+            .expect("pointer mutex is never locked")
+            .is_some()
+        {
+            array
+                .context
+                .synchronize()
+                .map_err(|error| PyRuntimeError::new_err(error.to_string()))?;
         }
         let stats = match array.matrix.as_mut().expect("matrix is present until drop") {
-            AnyMatrix::I8(_) => return Err(PyValueError::new_err("Standardizing needs float32 or float64, not int8")),
+            AnyMatrix::I8(_) => {
+                return Err(PyValueError::new_err(
+                    "Standardizing needs float32 or float64, not int8",
+                ))
+            }
             AnyMatrix::F32(matrix) => {
-                let stats = if beta_not_unit_variance { standardize_beta(matrix, beta_a, beta_b)? } else { standardize_unit(matrix)? };
+                let stats = if beta_not_unit_variance {
+                    standardize_beta(matrix, beta_a, beta_b)?
+                } else {
+                    standardize_unit(matrix)?
+                };
                 stats.to_pyarray(py).into_any()
             }
             AnyMatrix::F64(matrix) => {
-                let stats = if beta_not_unit_variance { standardize_beta(matrix, beta_a, beta_b)? } else { standardize_unit(matrix)? };
+                let stats = if beta_not_unit_variance {
+                    standardize_beta(matrix, beta_a, beta_b)?
+                } else {
+                    standardize_unit(matrix)?
+                };
                 stats.to_pyarray(py).into_any()
             }
         };
-        if array.pointer.get_mut().expect("pointer mutex is never locked").is_some() {
+        if array
+            .pointer
+            .get_mut()
+            .expect("pointer mutex is never locked")
+            .is_some()
+        {
             // Existing CuPy views do not ask for the array interface again.
             // Make queued writes visible before returning to those consumers.
             let client = CubeCl::client()?;
-            pollster::block_on(client.sync()).map_err(|error| PyRuntimeError::new_err(error.to_string()))?;
+            pollster::block_on(client.sync())
+                .map_err(|error| PyRuntimeError::new_err(error.to_string()))?;
         }
         Ok(stats)
     }

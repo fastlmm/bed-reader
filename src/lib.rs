@@ -113,17 +113,17 @@
 //! Any requested sample file will be downloaded to this directory. If the environment variable is not set,
 //! a cache folder, appropriate to the OS, will be used.
 
+pub mod backend;
 mod python_module;
 mod tests;
-pub mod backend;
 #[cfg(all(feature = "cubecl", not(feature = "cubecl-cuda")))]
 compile_error!("the `cubecl` Cargo feature is internal: enable Cargo feature `cubecl-cuda`");
 use anyinput::anyinput;
 pub use bed_cloud::{sample_bed_url, sample_url, sample_urls, BedCloud, BedCloudBuilder};
 use byteorder::{LittleEndian, ReadBytesExt};
 pub use cloud_file::{CloudFile, CloudFileError};
-use core::marker::PhantomData;
 use core::fmt::Debug;
+use core::marker::PhantomData;
 use derive_builder::Builder;
 use dpc_pariter::{scope, IteratorExt};
 use fetch_data::FetchData;
