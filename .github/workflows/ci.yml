@@ -47,15 +47,17 @@ jobs:
         with:
           toolchain: 1.95.0
           components: clippy, rustfmt, rust-src
+      # Every public feature. The internal `_cubecl-cpu-test` feature needs a prebuilt LLVM that
+      # does not exist for every runner (none for Windows ARM), so its own job lints it.
       - name: Run Clippy (strict for this pinned version of Rust)
-        run: cargo clippy --locked --all-targets --all-features -- -D warnings
+        run: cargo clippy --locked --all-targets --features tokio,extension-module,cubecl-cuda -- -D warnings
       - name: Set up Rust (Latest Stable)
         uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # generic installer
         with:
           toolchain: stable
           components: clippy, rustfmt, rust-src
       - name: Run Clippy (lenient for latest version)
-        run: cargo clippy --locked --all-targets --all-features
+        run: cargo clippy --locked --all-targets --features tokio,extension-module,cubecl-cuda
       - name: Test Rust no-default-features
         run: cargo test --locked --verbose --no-default-features
       - name: Test Rust default features
@@ -77,6 +79,7 @@ jobs:
         uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # generic installer
         with:
           toolchain: 1.95.0
+          components: clippy
       - name: Cache the prebuilt LLVM
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -84,6 +87,8 @@ jobs:
             ~/.cache/tracel
             ~/.local/share/tracel
           key: tracel-llvm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
+      - name: Run Clippy on the internal CPU-runtime test feature (strict)
+        run: cargo clippy --locked --all-targets --features _cubecl-cpu-test -- -D warnings
       - name: Test CubeCL kernels on the CPU runtime
         run: cargo test --locked --features _cubecl-cpu-test --lib backend::cubecl -- --test-threads=1
   

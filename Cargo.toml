@@ -45,7 +45,8 @@ cubecl-cuda = ["cubecl", "cubecl/cuda", "dep:cudarc"]
 cubecl = ["dep:cubecl", "dep:cubecl-runtime", "dep:pollster", "dep:bytemuck"]
 # Internal, not public API: run this crate's own CubeCL kernel tests on CubeCL's CPU (LLVM)
 # runtime, so CI without a GPU can test them. Only `cfg(test)` code switches to the CPU device;
-# the library's CubeCL backend stays CUDA-only. Downloads a prebuilt LLVM on first build.
+# the library's CubeCL backend stays CUDA-only. Downloads a prebuilt LLVM on first build; none
+# exists for Windows ARM, so `--all-features` fails there (CI lists the public features instead).
 # TODO0 experiment (2026-11-19): decide go/no-go before release; remove if no-go.
 _cubecl-cpu-test = ["cubecl-cuda", "cubecl/cpu"]
 
