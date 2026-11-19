@@ -155,11 +155,7 @@ pub(crate) fn read_cubecl<TVal: CubeClVal>(
     let sid_hold = Hold::new(&read_options.sid_index, sid_count)?;
     let iid_index = resolve(iid_hold.as_ref(), iid_count, BedError::IidIndexTooBig)?;
     let sid_index = resolve(sid_hold.as_ref(), sid_count, BedError::SidIndexTooBig)?;
-    let element_count = iid_index
-        .len()
-        .checked_mul(sid_index.len())
-        .ok_or(Error::TooLarge(usize::MAX))?;
-    to_u32(element_count)?;
+    let element_count = element_count(iid_index.len(), sid_index.len())?;
     let client = CubeCl::client()?;
 
     let (buf_reader, header) = open_and_check(&bed.path)?;
@@ -228,10 +224,14 @@ pub(crate) fn read_cubecl<TVal: CubeClVal>(
         let lut_handle = genotype_lookup(&client, read_options);
         let (fast_count, slow_count) = memory_dimensions(cols.len(), rows.len(), kernel_is_f);
         let element_count_u32 = to_u32(element_count)?;
+        // The kernel indexes `packed` with u32. A few far-apart columns can make it much larger
+        // than the result, so check it separately from `element_count`.
+        to_u32(packed.len())?;
         // SAFETY: `decode` writes only `slow * fast_count + fast` for `fast < fast_count` and
         // `slow < slow_count`, so below `element_count` (which fits u32), the length of
         // `handle`; it reads `col_word`/`col_shift` at column indexes < `cols.len()` and
-        // `packed` at word indexes < `rows.len() * span_words`, the lengths passed.
+        // `packed` at word indexes < `rows.len() * span_words` = `packed.len()` (checked above to
+        // fit u32), the lengths passed.
         unsafe {
             decode::launch_unchecked::<TVal>(
                 &client,
@@ -292,15 +292,10 @@ impl<TVal: CubeClVal> CubeClMatrix<TVal> {
         columns: usize,
         is_f: bool,
     ) -> Result<Self, Box<BedErrorPlus>> {
-        to_u32(rows)?;
-        to_u32(columns)?;
-        let element_count = rows
-            .checked_mul(columns)
-            .ok_or(Error::TooLarge(usize::MAX))?;
-        to_u32(element_count)?;
-        let byte_count = element_count
-            .checked_mul(size_of::<TVal>())
-            .ok_or(Error::TooLarge(usize::MAX))?;
+        let element_count = element_count(rows, columns)?;
+        // At most `u32::MAX` elements of at most 8 bytes, so this cannot overflow usize on the
+        // 64-bit targets that `cubecl-cuda` supports.
+        let byte_count = element_count * size_of::<TVal>();
         let client = CubeCl::client()?;
         // Keep a real pointer and one valid dummy element for empty kernel arguments.
         let handle = empty_dedicated(&client, byte_count.max(size_of::<TVal>()).max(4));
@@ -410,7 +405,6 @@ impl<TVal: CubeClVal> CubeClMatrix<TVal> {
     /// # use bed_reader::BedErrorPlus;
     /// # Ok::<(), Box<BedErrorPlus>>(())
     /// ```
-    #[cfg(feature = "cubecl-cuda")]
     pub fn cuda_pointer(&self) -> Result<CudaPointer, Box<BedErrorPlus>> {
         use cubecl::cuda::CudaRuntime;
         use cubecl_runtime::runtime::Runtime;
@@ -429,14 +423,12 @@ impl<TVal: CubeClVal> CubeClMatrix<TVal> {
 
 /// CUDA only: a matrix's device pointer, from [`CubeClMatrix::cuda_pointer`]. While it exists, `CubeCL`
 /// keeps the allocation alive and never relocates it.
-#[cfg(feature = "cubecl-cuda")]
 pub struct CudaPointer {
     ptr: u64,
     /// `CubeCL's` `ManagedResource`, which pins the allocation in place.
     _resource: Box<dyn core::any::Any + Send>,
 }
 
-#[cfg(feature = "cubecl-cuda")]
 impl CudaPointer {
     /// The device pointer.
     ///
@@ -470,7 +462,14 @@ fn resolve(
 }
 
 fn to_u32(value: usize) -> Result<u32, Error> {
-    u32::try_from(value).map_err(|_| Error::TooLarge(value))
+    u32::try_from(value).map_err(|_| Error::TooLarge(value as u64))
+}
+
+/// `rows * columns`, requiring both dimensions and the product to fit `u32`, as the kernels index.
+fn element_count(rows: usize, columns: usize) -> Result<usize, Error> {
+    let count = u64::from(to_u32(rows)?) * u64::from(to_u32(columns)?);
+    let count = u32::try_from(count).map_err(|_| Error::TooLarge(count))?;
+    Ok(count as usize)
 }
 
 /// Allocates `size` bytes outside `CubeCL`'s pools. Freed memory returns to CUDA at `CubeCL`'s
@@ -488,16 +487,9 @@ fn genotype<TVal: CubeClVal>(value: i8) -> TVal {
 /// Copies `words` to a new GPU buffer (through reused pinned host buffers on CUDA, which is about 4x
 /// faster than `CubeCL's` own upload under `WSL2`).
 fn upload_u32(client: &Client, words: &[u32]) -> Result<cubecl::server::Handle, Box<BedErrorPlus>> {
-    #[cfg(feature = "cubecl-cuda")]
-    {
-        let handle = empty_dedicated(client, core::mem::size_of_val(words));
-        upload_pinned_cuda(client, &handle, bytemuck::cast_slice(words))?;
-        Ok(handle)
-    }
-    #[cfg(not(feature = "cubecl-cuda"))]
-    {
-        Ok(client.create_from_slice(u32::as_bytes(words)))
-    }
+    let handle = empty_dedicated(client, core::mem::size_of_val(words));
+    upload_pinned_cuda(client, &handle, bytemuck::cast_slice(words))?;
+    Ok(handle)
 }
 
 /// Decodes one output element per unit, on a 2D grid: x covers the axis that is contiguous in the
@@ -547,7 +539,6 @@ fn decode<F: Numeric>(
 
 /// CUDA only: copies `bytes` into the `CubeCL` buffer `handle` through two reused pinned host buffers,
 /// so filling one overlaps copying the other.
-#[cfg(feature = "cubecl-cuda")]
 fn upload_pinned_cuda(
     client: &Client,
     handle: &cubecl::server::Handle,
@@ -593,40 +584,40 @@ fn upload_pinned_cuda(
     Ok(())
 }
 
-#[cfg(feature = "cubecl-cuda")]
 const CHUNK_BYTES: usize = 16 << 20;
 
 /// Two reused pinned host buffers, their events, and a stream, for chunked copies.
-#[cfg(feature = "cubecl-cuda")]
 struct CudaStaging {
+    /// Device 0's primary context, retained once for the life of the process.
+    context: cudarc::driver::sys::CUcontext,
     stream: cudarc::driver::sys::CUstream,
     buffers: [*mut u8; 2],
     events: [cudarc::driver::sys::CUevent; 2],
 }
 // SAFETY: the raw handles are only used while holding the mutex in `cuda_staging`.
-#[cfg(feature = "cubecl-cuda")]
 unsafe impl Send for CudaStaging {}
 
 /// Locks the shared staging state, creating it on first use. On success the `Option` is `Some`.
 /// A failed first initialization leaves it `None`, so a later call retries instead of panicking.
-#[cfg(feature = "cubecl-cuda")]
 fn cuda_staging() -> Result<std::sync::MutexGuard<'static, Option<CudaStaging>>, Error> {
     use cudarc::driver::{result, sys};
     static STAGING: std::sync::Mutex<Option<CudaStaging>> = std::sync::Mutex::new(None);
     // Nothing panics while this lock is held except a bug, so poisoning is not expected.
     let mut guard = STAGING.lock().expect("staging lock");
-    // SAFETY: device 0 exists (CubeCL already uses it); the primary context is the one CubeCL
-    // uses, is valid for the life of the process, and must be current on whichever thread copies.
-    unsafe {
-        result::init()?;
-        let device = result::device::get(0)?;
-        let context = result::primary_ctx::retain(device)?;
-        result::ctx::set_current(context)?;
-    }
-    if guard.is_none() {
-        // SAFETY: the primary context was made current above. If a later step fails, handles
-        // already created leak (a bounded cost, at most once per failed attempt).
+    if let Some(staging) = guard.as_ref() {
+        // SAFETY: the context was retained when the staging state was created and is never
+        // released; it must be current on whichever thread copies.
+        unsafe { result::ctx::set_current(staging.context)? };
+    } else {
+        // SAFETY: device 0 exists (CubeCL already uses it); its primary context is the one CubeCL
+        // uses. It is retained once here, kept in the staging state, and never released. If a
+        // later step fails, handles already created leak (a bounded cost, at most once per
+        // failed attempt).
         unsafe {
+            result::init()?;
+            let device = result::device::get(0)?;
+            let context = result::primary_ctx::retain(device)?;
+            result::ctx::set_current(context)?;
             let stream = result::stream::create(result::stream::StreamKind::NonBlocking)?;
             let buffers = [
                 result::malloc_host(CHUNK_BYTES, 0)?.cast::<u8>(),
@@ -637,6 +628,7 @@ fn cuda_staging() -> Result<std::sync::MutexGuard<'static, Option<CudaStaging>>,
                 result::event::create(sys::CUevent_flags::CU_EVENT_DISABLE_TIMING)?,
             ];
             *guard = Some(CudaStaging {
+                context,
                 stream,
                 buffers,
                 events,
@@ -644,6 +636,20 @@ fn cuda_staging() -> Result<std::sync::MutexGuard<'static, Option<CudaStaging>>,
         }
     }
     Ok(guard)
+}
+
+#[cfg(test)]
+mod size_tests {
+    //! Size limits, which need no GPU.
+    use super::{element_count, Error};
+
+    #[test]
+    fn element_count_requires_u32_dimensions_and_product() {
+        assert_eq!(element_count(3, 4).ok(), Some(12));
+        assert_eq!(element_count(0, 5).ok(), Some(0));
+        assert!(matches!(element_count(65_536, 65_536), Err(Error::TooLarge(4_294_967_296))));
+        assert!(matches!(element_count(1 << 32, 0), Err(Error::TooLarge(4_294_967_296))));
+    }
 }
 
 #[cfg(test)]

@@ -17,13 +17,13 @@ pub(super) fn statistics<TVal: CubeClFloat>(
 ) -> Result<Vec<[f64; 3]>, Box<BedErrorPlus>> {
     let (iid_count, sid_count) = matrix.dim();
     let statistics_handle = matrix.client.empty(3 * sid_count * size_of::<f64>());
-    // SAFETY: one unit per SNP, guarded by sid_index < sid_count. Matrix offsets
-    // are below iid_count * sid_count, already checked by the reader. The input
-    // flags have four words per SNP and the output has three f64 values per SNP.
+    // SAFETY: one cube per SNP (`sid_index < sid_count`). Matrix offsets are below
+    // iid_count * sid_count, already checked by the reader. The input flags have four words per
+    // SNP and the output has three f64 values per SNP, written only by unit 0 of each cube.
     unsafe {
         centered::launch_unchecked::<TVal>(
             &matrix.client,
-            CubeCount::Static(to_u32(sid_count)?.div_ceil(UNITS), 1, 1),
+            CubeCount::Static(to_u32(sid_count)?, 1, 1),
             CubeDim::new_1d(UNITS),
             BufferArg::from_raw_parts(matrix.handle.clone(), iid_count * sid_count),
             to_u32(iid_count)?,
@@ -71,10 +71,10 @@ pub(super) fn mean_std<TVal: CubeClFloat>(
     Ok((mean, deviation))
 }
 
-/// One GPU unit per non-genotype column. Subtract the first observed value
-/// before summing, then sum squared deviations about that shifted mean in a
-/// second pass, both in f64. This avoids cancellation in E[x*x] - E[x]**2 and
-/// avoids summing a large common offset. Only per-SNP output is allocated.
+/// One cube per SNP, like `snp_sums`. Only non-genotype columns do any work. Two passes in f64:
+/// first the mean, then the sum of squared deviations from it, which avoids the cancellation in
+/// E[x*x] - E[x]**2. In each pass the cube's units stride over individuals (coalesced in F
+/// order) and their partial sums are combined in shared memory.
 #[cube(launch_unchecked)]
 fn centered<F: Float>(
     values: &[F],
@@ -84,12 +84,18 @@ fn centered<F: Float>(
     genotype_sums: &[u32],
     statistics: &mut [f64],
 ) {
-    let sid_index = CUBE_POS_X * UNITS + UNIT_POS_X;
-    if sid_index < sid_count && genotype_sums[(4u32 * sid_index + 3u32) as usize] != 0u32 {
-        let mut count = 0u32;
-        let mut anchor = 0.0f64;
-        let mut shifted_sum = 0.0f64;
-        let mut iid_index = 0u32;
+    let sid_index = CUBE_POS_X;
+    // Uniform across the cube, so every unit reaches the same `sync_cube` calls below.
+    let mut active = false;
+    if sid_index < sid_count {
+        active = genotype_sums[(4u32 * sid_index + 3u32) as usize] != 0u32;
+    }
+
+    // Pass 1: count and sum of the observed (non-NaN) values.
+    let mut count = 0u32;
+    let mut sum = 0.0f64;
+    if active {
+        let mut iid_index = UNIT_POS_X;
         while iid_index < iid_count {
             let mut index = sid_index * iid_count + iid_index;
             if c_order == 1u32 {
@@ -98,17 +104,40 @@ fn centered<F: Float>(
             let value = f64::cast_from(values[index as usize]);
             // Ordered comparisons exclude NaN while retaining negative values.
             if value >= 0.0f64 || value < 0.0f64 {
-                if count == 0u32 {
-                    anchor = value;
-                }
-                shifted_sum += value - anchor;
                 count += 1u32;
+                sum += value;
             }
-            iid_index += 1u32;
+            if iid_count - iid_index <= UNITS {
+                break;
+            }
+            iid_index += UNITS;
         }
-        let shifted_mean = shifted_sum / f64::cast_from(count);
-        let mut centered_sum = 0.0f64;
-        iid_index = 0u32;
+    }
+    let mut counts = Shared::<[u32]>::new_slice(UNITS as usize);
+    let mut sums = Shared::<[f64]>::new_slice(UNITS as usize);
+    counts[UNIT_POS_X as usize] = count;
+    sums[UNIT_POS_X as usize] = sum;
+    sync_cube();
+    // A runtime variable (a literal start), since a value computed from the constant `UNITS`
+    // stays a compile-time constant that the loop could not halve.
+    let mut stride = 0u32;
+    stride += UNITS / 2u32;
+    while stride > 0u32 {
+        if UNIT_POS_X < stride {
+            counts[UNIT_POS_X as usize] += counts[(UNIT_POS_X + stride) as usize];
+            sums[UNIT_POS_X as usize] += sums[(UNIT_POS_X + stride) as usize];
+        }
+        sync_cube();
+        stride /= 2u32;
+    }
+    let total_count = counts[0];
+    // NaN when no value is observed; the host reports that SNP as having no individuals.
+    let mean = sums[0] / f64::cast_from(total_count);
+
+    // Pass 2: sum of squared deviations from the mean.
+    let mut squares = 0.0f64;
+    if active {
+        let mut iid_index = UNIT_POS_X;
         while iid_index < iid_count {
             let mut index = sid_index * iid_count + iid_index;
             if c_order == 1u32 {
@@ -116,17 +145,38 @@ fn centered<F: Float>(
             }
             let value = f64::cast_from(values[index as usize]);
             if value >= 0.0f64 || value < 0.0f64 {
-                let difference = (value - anchor) - shifted_mean;
-                centered_sum += difference * difference;
+                let difference = value - mean;
+                squares += difference * difference;
             }
-            iid_index += 1u32;
+            if iid_count - iid_index <= UNITS {
+                break;
+            }
+            iid_index += UNITS;
         }
-        statistics[(3u32 * sid_index) as usize] = f64::cast_from(count);
-        statistics[(3u32 * sid_index + 1u32) as usize] = anchor + shifted_mean;
-        statistics[(3u32 * sid_index + 2u32) as usize] = centered_sum / f64::cast_from(count);
-    } else if sid_index < sid_count {
-        statistics[(3u32 * sid_index) as usize] = 0.0f64;
-        statistics[(3u32 * sid_index + 1u32) as usize] = 0.0f64;
-        statistics[(3u32 * sid_index + 2u32) as usize] = 0.0f64;
+    }
+    let mut square_sums = Shared::<[f64]>::new_slice(UNITS as usize);
+    square_sums[UNIT_POS_X as usize] = squares;
+    sync_cube();
+    stride = 0u32;
+    stride += UNITS / 2u32;
+    while stride > 0u32 {
+        if UNIT_POS_X < stride {
+            square_sums[UNIT_POS_X as usize] += square_sums[(UNIT_POS_X + stride) as usize];
+        }
+        sync_cube();
+        stride /= 2u32;
+    }
+
+    if UNIT_POS_X == 0u32 && sid_index < sid_count {
+        if active {
+            statistics[(3u32 * sid_index) as usize] = f64::cast_from(total_count);
+            statistics[(3u32 * sid_index + 1u32) as usize] = mean;
+            statistics[(3u32 * sid_index + 2u32) as usize] =
+                square_sums[0] / f64::cast_from(total_count);
+        } else {
+            statistics[(3u32 * sid_index) as usize] = 0.0f64;
+            statistics[(3u32 * sid_index + 1u32) as usize] = 0.0f64;
+            statistics[(3u32 * sid_index + 2u32) as usize] = 0.0f64;
+        }
     }
 }

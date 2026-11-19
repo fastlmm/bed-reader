@@ -57,10 +57,8 @@ use crate::{BedErrorPlus, BedVal};
 // every build, so enabling a GPU feature adds items without changing any existing type.
 #[cfg(feature = "cubecl")]
 pub(crate) mod cubecl;
-#[cfg(feature = "cubecl-cuda")]
-pub use cubecl::CudaPointer;
 #[cfg(feature = "cubecl")]
-pub use cubecl::{CubeCl, CubeClMatrix, CubeClVal};
+pub use cubecl::{CubeCl, CubeClMatrix, CubeClVal, CudaPointer};
 
 /// GPU errors.
 ///
@@ -79,18 +77,13 @@ pub enum Error {
     #[error(transparent)]
     Server(#[from] ::cubecl_runtime::server::ServerError),
 
-    /// Legacy genotype-only error, retained for compatibility. General floating-point
-    /// standardization now handles columns outside the integer optimization.
-    #[error("GPU standardization needs values 0, 1, 2, or NaN")]
-    NotGenotype,
-
     /// Centered floating-point statistics overflowed or were otherwise invalid.
     #[error("Invalid GPU variance: {0}")]
     InvalidVariance(f64),
 
     /// The GPU code currently indexes with `u32`.
     #[error("Too large for the GPU code ({0} exceeds u32::MAX)")]
-    TooLarge(usize),
+    TooLarge(u64),
 
     /// A CUDA driver error from the pinned-memory upload path.
     #[cfg(feature = "cubecl-cuda")]

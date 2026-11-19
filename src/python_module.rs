@@ -11,6 +11,7 @@ use numpy::{PyArray1, PyArray2, PyArray3};
 use pyo3::{
     exceptions::PyIOError,
     exceptions::PyIndexError,
+    exceptions::PyRuntimeError,
     exceptions::PyValueError,
     prelude::*,
     types::{PyDict, PyModule},
@@ -31,6 +32,9 @@ impl std::convert::From<Box<BedErrorPlus>> for PyErr {
             ) => PyIndexError::new_err(err.to_string()),
 
             BedErrorPlus::IOError(_) => PyIOError::new_err(err.to_string()),
+
+            // A missing GPU, out-of-memory, or driver failure is not a bad argument.
+            BedErrorPlus::GpuError(_) => PyRuntimeError::new_err(err.to_string()),
 
             _ => PyValueError::new_err(err.to_string()),
         }
@@ -824,7 +828,11 @@ mod gpu_python {
     use cudarc::driver::CudaContext;
     use std::sync::{Arc, Mutex};
     use numpy::{PyArray1, PyArrayMethods, ToPyArray};
-    use pyo3::{exceptions::PyValueError, prelude::*, types::PyDict};
+    use pyo3::{
+        exceptions::{PyRuntimeError, PyValueError},
+        prelude::*,
+        types::PyDict,
+    };
 
     enum AnyMatrix {
         I8(CubeClMatrix<i8>),
@@ -849,6 +857,15 @@ mod gpu_python {
         context: Arc<CudaContext>,
     }
 
+    /// Reports an error during `Drop`, which cannot return one. A panic here would abort Python
+    /// (object deallocation cannot unwind), so report it the way Python reports errors in
+    /// `__del__`: printed as "unraisable", without stopping the program.
+    fn report_drop_error(message: &str, error: impl core::fmt::Display) {
+        Python::attach(|py| {
+            PyRuntimeError::new_err(format!("{message}: {error}")).write_unraisable(py, None);
+        });
+    }
+
     impl Drop for GpuArray {
         fn drop(&mut self) {
             let pointer = self.pointer.get_mut().expect("pointer mutex is never locked").take();
@@ -856,9 +873,15 @@ mod gpu_python {
                 // CuPy enqueues work asynchronously and can drop its last Python
                 // reference before that work completes. CubeCL cannot see those
                 // streams: wait before its pool can recycle the shared allocation.
-                self.context.synchronize().expect(
-                    "CUDA failed while waiting for array consumers before releasing GPU memory",
-                );
+                if let Err(error) = self.context.synchronize() {
+                    // Consumers may still be using the memory, so freeing it could let CUDA
+                    // reuse it under them. Leak it instead; CUDA errors here usually mean the
+                    // context is no longer usable anyway.
+                    report_drop_error("CUDA failed while waiting for GPU array consumers; leaking the array's memory", error);
+                    core::mem::forget(pointer);
+                    core::mem::forget(self.matrix.take());
+                    return;
+                }
             }
             drop(pointer);
             drop(self.matrix.take());
@@ -870,17 +893,24 @@ mod gpu_python {
             // `MemoryManagement::cleanup`). A full `memory_cleanup` here was measured about 3x
             // slower for repeated block reads. `test_drop_returns_gpu_memory` checks this
             // behavior; recheck it when upgrading CubeCL.
-            let client = CubeCl::client().expect("CUDA client for releasing a dropped array");
+            let client = match CubeCl::client() {
+                Ok(client) => client,
+                Err(error) => {
+                    report_drop_error("CUDA failed while returning a dropped GPU array's memory", error);
+                    return;
+                }
+            };
             drop(client.empty(4));
-            pollster::block_on(client.sync())
-                .expect("CUDA failed while returning a dropped array's GPU memory");
+            if let Err(error) = pollster::block_on(client.sync()) {
+                report_drop_error("CUDA failed while returning a dropped GPU array's memory", error);
+            }
         }
     }
 
     impl GpuArray {
         fn new(matrix: AnyMatrix) -> PyResult<Self> {
             let context =
-                CudaContext::new(0).map_err(|error| PyValueError::new_err(error.to_string()))?;
+                CudaContext::new(0).map_err(|error| PyRuntimeError::new_err(error.to_string()))?;
             Ok(GpuArray { matrix: Some(matrix), pointer: Mutex::new(None), context })
         }
 
@@ -997,7 +1027,7 @@ mod gpu_python {
         // A caller may have changed the exported CuPy view on any CUDA stream.
         // Finish those writes before CubeCL reads the shared allocation.
         if array.pointer.get_mut().expect("pointer mutex is never locked").is_some() {
-            array.context.synchronize().map_err(|error| PyValueError::new_err(error.to_string()))?;
+            array.context.synchronize().map_err(|error| PyRuntimeError::new_err(error.to_string()))?;
         }
         let stats = match array.matrix.as_mut().expect("matrix is present until drop") {
             AnyMatrix::I8(_) => return Err(PyValueError::new_err("Standardizing needs float32 or float64, not int8")),
@@ -1014,7 +1044,7 @@ mod gpu_python {
             // Existing CuPy views do not ask for the array interface again.
             // Make queued writes visible before returning to those consumers.
             let client = CubeCl::client()?;
-            pollster::block_on(client.sync()).map_err(|error| PyValueError::new_err(error.to_string()))?;
+            pollster::block_on(client.sync()).map_err(|error| PyRuntimeError::new_err(error.to_string()))?;
         }
         Ok(stats)
     }

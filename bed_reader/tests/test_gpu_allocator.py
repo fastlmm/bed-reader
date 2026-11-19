@@ -28,6 +28,13 @@ def test_invalid_shape(shape):
         empty_gpu(shape)
 
 
+def test_native_gpu_failure_is_runtime_error(cupy):
+    # Bypass the Python-side argument checks: a GPU limit inside the Rust code is not a bad
+    # argument, so it must surface as RuntimeError, not ValueError.
+    with pytest.raises(RuntimeError, match="u32::MAX"):
+        native.allocate_gpu(65_536, 65_536, "float32", True)
+
+
 @pytest.mark.parametrize("dtype,order", [("float16", "C"), ("int32", "F"), ("float32", "A")])
 def test_invalid_type_or_order(dtype, order):
     with pytest.raises(ValueError):

@@ -61,16 +61,10 @@ fn standardize<TVal: CubeClFloat>(
     let element_count = iid_count * sid_count;
     // Each observed genotype contributes at most four to sum2. Both the sums
     // and the four-word-per-SNP output are indexed with u32 in the kernels.
-    to_u32(
-        iid_count
-            .checked_mul(4)
-            .ok_or(Error::TooLarge(usize::MAX))?,
-    )?;
-    to_u32(
-        sid_count
-            .checked_mul(4)
-            .ok_or(Error::TooLarge(usize::MAX))?,
-    )?;
+    for count in [iid_count, sid_count] {
+        let times_four = u64::from(to_u32(count)?) * 4;
+        u32::try_from(times_four).map_err(|_| Error::TooLarge(times_four))?;
+    }
     let c_order = u32::from(!matrix.is_f);
     let client = &matrix.client;
     let sums_handle = client.empty(4 * sid_count * 4);
