@@ -154,7 +154,7 @@ jobs:
         uses: PyO3/maturin-action@e83996d129638aa358a18fbd1dfb82f0b0fb5d3b # v1
         with:
           target: ${{ matrix.target }}
-          args: --release --locked --features cubecl-cuda --out dist ${{ env.PYTHON_VERSIONS_ARGS }}
+          args: --release --locked --features extension-module,cubecl-cuda --out dist ${{ env.PYTHON_VERSIONS_ARGS }}
           # CubeCL's prebuilt LLVM needs glibc 2.34, newer than manylinux2014.
           manylinux: "2_34"
 
@@ -173,7 +173,7 @@ jobs:
           - os: windows-latest
             target: x64
             architecture: x64
-            features: --features cubecl-cuda
+            features: --features extension-module,cubecl-cuda
           - os: windows-11-arm
             target: aarch64-pc-windows-msvc
             architecture: arm64
