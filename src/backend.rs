@@ -9,7 +9,7 @@
 //! backend without changing any CPU type.
 //!
 //! This feature builds on Linux x86-64 and ARM64, Windows x86-64, and ARM64 macOS.
-//! CubeCL 0.11 downloads a prebuilt LLVM bundle that is unavailable for Windows ARM64
+//! `CubeCL` 0.11 downloads a prebuilt LLVM bundle that is unavailable for Windows ARM64
 //! and Intel macOS, so `cubecl-cuda` (and `--all-features`) cannot build there.
 //! ARM64 macOS can compile it but cannot run CUDA; Python wheels for both macOS
 //! architectures omit it. Building needs no CUDA toolkit or `nvcc` because cudarc
