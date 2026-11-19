@@ -2,7 +2,9 @@
 import numpy as np
 import pytest
 
-from bed_reader import array_dtype, empty_gpu, has_gpu_support, open_bed, sample_file
+from bed_reader import has_gpu_support, open_bed, sample_file
+from bed_reader._array_module import array_dtype
+from bed_reader._gpu import empty_gpu
 
 
 @pytest.mark.parametrize("configured", ["float32", "float64"])

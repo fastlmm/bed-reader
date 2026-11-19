@@ -1,5 +1,5 @@
 [package]
-version = "1.3.0-alpha.1"
+version = "1.3.0-beta.1"
 name = "bed-reader"
 description = "Read and write the PLINK BED format, simply and efficiently."
 repository = "https://github.com/fastlmm/bed-reader"
@@ -29,16 +29,19 @@ exclude = [
 name = "bed_reader"
 crate-type = ["cdylib", "rlib"]
 
+[package.metadata.docs.rs]
+# Document the GPU API too. `cubecl-cuda` builds without a CUDA toolkit (cudarc `fallback-latest`).
+features = ["cubecl-cuda"]
+
 # https://github.com/PyO3/pyo3/discussions/2271
 # https://pyo3.rs/latest/faq.html#i-cant-run-cargo-test-or-i-cant-build-in-a-cargo-workspace-im-having-linker-issues-like-symbol-not-found-or-undefined-reference-to-_pyexc_systemerror
 [features]
 default = ["tokio"]
 tokio = ["dep:tokio"]
 extension-module = ["pyo3/extension-module", "tokio"]
-# GPU-resident reading and standardizing (CubeCL). `cubecl-cuda` for NVIDIA GPUs, `cubecl-hip` for AMD.
+# GPU-resident reading and standardizing (CubeCL) on NVIDIA GPUs.
 cubecl-cuda = ["cubecl", "cubecl/cuda", "dep:cudarc"]
-cubecl-hip = ["cubecl", "cubecl/hip"]
-# Shared GPU code; enable through `cubecl-cuda` or `cubecl-hip`.
+# Shared GPU code; enable through `cubecl-cuda`.
 cubecl = ["dep:cubecl", "dep:cubecl-runtime", "dep:pollster", "dep:bytemuck"]
 
 [dependencies]

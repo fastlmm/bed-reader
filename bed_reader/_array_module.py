@@ -15,7 +15,7 @@ def array_dtype(dtype=None, *, default="float64"):
     Examples
     --------
     >>> from unittest.mock import patch
-    >>> from bed_reader import array_dtype
+    >>> from bed_reader._array_module import array_dtype
     >>> with patch.dict("os.environ", {"ARRAY_DTYPE": "float32"}):
     ...     print(array_dtype(), array_dtype("float64"))
     float32 float64

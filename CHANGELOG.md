@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+* Return a GPU read's memory to CUDA as soon as the array and its views are
+  dropped, so CuPy and other libraries can use it without a manual cleanup.
+  Read results no longer stay in bed-reader's memory pool.
+
+* Make `empty_gpu`, `is_cubecl_backed`, `gpu_memory_cleanup`, and
+  `array_dtype` internal; they support PySnpTools rather than end users.
+  `ARRAY_DTYPE` itself is unchanged.
+
+* Report CUDA errors while copying data to the GPU as Python exceptions
+  instead of panics.
+
+* Rust: the read backend type parameter, `backend::Cpu`, `backend::Error`, and
+  `BedErrorPlus::GpuError` now exist in every build. The `cubecl-cuda` Cargo
+  feature only adds the `CubeCl` backend, so enabling it no longer changes
+  existing types. Remove the untested AMD `cubecl-hip` Cargo feature.
+
 ## [1.3.0a1] - 2026-11-17
 
 * Add experimental NVIDIA GPU reads for Python through CuPy and optional

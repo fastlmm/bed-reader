@@ -8,7 +8,9 @@ mod general;
 use cubecl::prelude::*;
 use ndarray as nd;
 
-use super::{genotype, memory_dimensions, to_u32, CubeClMatrix, Error, CubeClVal, MAX_GRID_Y, UNITS};
+use super::{
+    genotype, memory_dimensions, to_u32, CubeClMatrix, CubeClVal, Error, MAX_GRID_Y, UNITS,
+};
 use crate::{find_factor, snp_mean_std, BedErrorPlus, Dist};
 
 /// A float type the GPU code standardizes: `f32` or `f64`.

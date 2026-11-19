@@ -4,7 +4,10 @@ use num_traits::Float as HostFloat;
 
 use super::{CubeClFloat, UNITS};
 use crate::{
-    backend::{to_u32, CubeClMatrix, Error},
+    backend::{
+        cubecl::{to_u32, CubeClMatrix},
+        Error,
+    },
     BedError, BedErrorPlus, Dist,
 };
 

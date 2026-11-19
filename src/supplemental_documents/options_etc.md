@@ -101,7 +101,7 @@ println!("{:?}", bed.iid()?); // Outputs ndarray ["sample1", "sample2", "sample3
 When reading read genotype data, use [`ReadOptions::builder`](../struct.ReadOptions.html#method.builder) to specify:
 
 * a desired numeric type,
-* CPU or GPU output (`.cubecl()` requires the Cargo feature `cubecl-cuda` or `cubecl-hip`),
+* CPU or GPU output (`.cubecl()` requires the Cargo feature `cubecl-cuda`),
 * which individuals (samples) to read,
 * which SNPs (variants) to read,
 * etc.

@@ -6,10 +6,9 @@
 # for an article on how this project uses Rust to create a Python extension.
 
 from bed_reader._open_bed import get_num_threads, open_bed
-from bed_reader._array_module import array_dtype
 from bed_reader._sample_data import sample_file, sample_url, tmp_path
 from bed_reader._to_bed import create_bed, to_bed
-from bed_reader._gpu import GpuFloat64Warning, _warn_gpu_float64, empty_gpu, gpu_memory_cleanup, is_cubecl_backed
+from bed_reader._gpu import GpuFloat64Warning
 
 from .bed_reader import (
     encode1_i8,
@@ -35,16 +34,15 @@ from .bed_reader import (
 
 
 def has_gpu_support():
-    """Return whether this build includes Python CUDA reading support.
+    """Return whether this installation includes GPU reading.
 
-    This checks the build, not whether a GPU is available at run time. A True
-    result still requires a working CUDA device and CuPy for read(xp="cupy").
-    It reports Python CUDA support, not the Rust crate's cubecl-hip Cargo feature.
+    This checks the installed build, not whether a GPU is present. See
+    :ref:`gpu-reading`.
 
     Returns
     -------
     bool
-        Whether native CUDA reading is included in the installed extension.
+        Whether ``open_bed.read(xp="cupy")`` is available.
 
     Examples
     --------

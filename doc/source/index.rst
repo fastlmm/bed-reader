@@ -21,8 +21,7 @@ Features:
 * Used by `PySnpTools <https://github.com/fastlmm/PySnpTools>`_, `FaST-LMM <https://github.com/fastlmm/FaST-LMM>`_, and `PyStatGen <https://github.com/pystatgen>`_.
 * Supports `PLINK 1.9 <https://www.cog-genomics.org/plink2/formats>`_.
 * Read data locally or from the cloud, efficiently and directly.
-* Optional :doc:`GPU reads <gpu>` with CuPy and a CUDA-enabled build.
-  Python environment variables ``ARRAY_MODULE`` and ``ARRAY_DTYPE`` select backend/precision defaults.
+* Optional :doc:`GPU reads <gpu>` (beta) into CuPy arrays on NVIDIA GPUs.
 
 Install
 ====================
@@ -172,30 +171,10 @@ open_bed
    :members:
    :inherited-members:
 
-array_dtype
------------
-
-.. autofunction:: array_dtype
-
 has_gpu_support
 ---------------
 
 .. autofunction:: has_gpu_support
-
-empty_gpu
----------
-
-.. autofunction:: empty_gpu
-
-is_cubecl_backed
-----------------
-
-.. autofunction:: is_cubecl_backed
-
-gpu_memory_cleanup
-------------------
-
-.. autofunction:: gpu_memory_cleanup
 
 GpuFloat64Warning
 -----------------
@@ -235,21 +214,15 @@ Environment Variables
 By default :meth:`sample_file` puts files under the user's cache directory. Override this by setting
 the ``BED_READER_DATA_DIR`` environment variable.
 
-For CPU reads, :class:`open_bed` uses all available processors by default. Override
-this with ``num_threads`` or these environment variables, in priority order:
+By default, :class:`open_bed` uses all available processors. Override this with
+``num_threads`` or these environment variables, in priority order:
 ``PST_NUM_THREADS``, ``NUM_THREADS``, ``MKL_NUM_THREADS``.
 
-For Python dense reads, ``ARRAY_MODULE`` supplies the default for ``xp``
-(``numpy`` or ``cupy``); an explicit ``xp`` overrides it. It does not affect
-``read_sparse``. Thread-count variables are ignored by GPU reads. See
-:ref:`gpu-reading`. The Rust API selects GPU reads explicitly with ``.cubecl()``
-and does not consult ``ARRAY_MODULE`` or ``ARRAY_DTYPE``.
-
-For Python reads and GPU allocation, ``ARRAY_DTYPE`` supplies the dtype when
-``dtype=None`` or omitted. It accepts ``float32`` or ``float64``; explicit dtype
-overrides it. Without this setting, dense/sparse BED reads remain float32 and
-``empty_gpu`` remains float64. This does not change NumPy/CuPy defaults or
-existing arrays. See :func:`array_dtype` and the precision example in
+``ARRAY_MODULE`` sets the default for :meth:`open_bed.read`'s ``xp``
+(``numpy`` or ``cupy``). ``ARRAY_DTYPE`` sets the default dtype (``float32`` or
+``float64``) for :meth:`open_bed.read` and :meth:`open_bed.read_sparse`. An
+explicit argument always wins. Without these variables, reads return NumPy
+float32 arrays, as before. GPU reads ignore the thread-count variables. See
 :ref:`gpu-reading`.
 
 Guides

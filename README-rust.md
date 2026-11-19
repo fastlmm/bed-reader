@@ -18,6 +18,7 @@ Highlights
 * The Python-facing APIs for this library is used by [PySnpTools](https://github.com/fastlmm/PySnpTools), [FaST-LMM](https://github.com/fastlmm/FaST-LMM), and [PyStatGen](https://github.com/pystatgen).
 * Supports [PLINK 1.9](https://www.cog-genomics.org/plink2/formats).
 * Read data locally or from the cloud, efficiently and directly.
+* Optional [GPU reads](https://docs.rs/bed-reader/1.3.0-beta.1/bed_reader/backend/index.html) (beta) into NVIDIA GPU memory.
 
 Install
 -------
@@ -36,20 +37,17 @@ cargo add bed-reader
 cargo add bed-reader --no-default-features
 ```
 
+GPU reads (beta)
+----------------
 
-Experimental GPU reads
-----------------------
-
-Enable the Cargo feature `cubecl-cuda` (NVIDIA) or `cubecl-hip` (AMD), then select
-`.cubecl()` on the read builder to return a GPU-resident matrix. CPU remains the default.
-This API is experimental and currently available only in development checkouts.
-
-See the `backend` module for setup, examples, and limitations. Build its docs with:
+With the Cargo feature `cubecl-cuda`, add `.cubecl()` to a read to put the result in NVIDIA GPU
+memory. This needs an NVIDIA driver and a CUDA toolkit.
 
 ```bash
-cargo doc --no-deps --features cubecl-cuda --open
+cargo add bed-reader@1.3.0-beta.1 --features cubecl-cuda
 ```
 
+See the [`backend`](https://docs.rs/bed-reader/1.3.0-beta.1/bed_reader/backend/index.html) module for an example and limitations.
 
 Examples
 --------

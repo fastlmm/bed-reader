@@ -13,7 +13,7 @@ Read and write the PLINK BED format, simply and efficiently.
 
 *This is the Python README. For Rust, see [README-rust.md](https://crates.io/crates/bed-reader).*
 
-Features
+Highlights
 ====================
 
 * Fast multi-threaded Rust engine.
@@ -21,8 +21,7 @@ Features
 * Used by [PySnpTools](https://github.com/fastlmm/PySnpTools), [FaST-LMM](https://github.com/fastlmm/FaST-LMM), and [PyStatGen](https://github.com/pystatgen).
 * Supports [PLINK 1.9](https://www.cog-genomics.org/plink2/formats).
 * Read data locally or from the cloud, efficiently and directly.
-* Optional [GPU reads](https://github.com/fastlmm/bed-reader/blob/gpu-cubecl/doc/source/gpu.rst) with CuPy and a CUDA-enabled build.
-  Python environment variables `ARRAY_MODULE` and `ARRAY_DTYPE` select backend/precision defaults.
+* Optional [GPU reads](https://fastlmm.github.io/bed-reader/gpu.html) (beta) into CuPy arrays on NVIDIA GPUs.
 
 Install
 ====================

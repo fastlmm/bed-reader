@@ -6,7 +6,8 @@ import warnings
 import numpy as np
 import pytest
 
-from bed_reader import GpuFloat64Warning, empty_gpu, has_gpu_support, open_bed, sample_file
+from bed_reader import GpuFloat64Warning, has_gpu_support, open_bed, sample_file
+from bed_reader._gpu import empty_gpu
 
 
 @pytest.fixture

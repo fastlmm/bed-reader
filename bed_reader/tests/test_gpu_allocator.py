@@ -9,7 +9,8 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from bed_reader import empty_gpu, gpu_memory_cleanup, is_cubecl_backed, open_bed, sample_file
+from bed_reader import open_bed, sample_file
+from bed_reader._gpu import empty_gpu, gpu_memory_cleanup, is_cubecl_backed
 from bed_reader import bed_reader as native
 from bed_reader._gpu import _native_owner
 
@@ -113,6 +114,29 @@ def test_views_keep_owner_without_registry_leak(cupy):
     gc.collect()
     assert owner() is None
     gpu_memory_cleanup()
+
+
+def test_drop_returns_gpu_memory(cupy):
+    # Python users never call gpu_memory_cleanup: dropping the last view of a
+    # bed-reader array must return its memory to CUDA for CuPy and others.
+    def free_bytes():
+        cupy.cuda.Device(0).synchronize()
+        return cupy.cuda.runtime.memGetInfo()[0]
+
+    size = 256 * 2**20
+    empty_gpu((4, 4), dtype="float32").fill(0)  # initialize CUDA and CubeCL first
+    before = free_bytes()
+    values = empty_gpu((size // 4 // 1024, 1024), dtype="float32")
+    values.fill(1)
+    view = values[1:, :]
+    del values
+    gc.collect()
+    held = free_bytes()
+    assert before - held >= 0.9 * size  # a live view keeps the allocation
+    del view
+    gc.collect()
+    # Other processes may share the GPU, so allow for unrelated changes.
+    assert free_bytes() - held >= 0.9 * size
 
 
 @pytest.mark.parametrize("order", ["C", "F"])

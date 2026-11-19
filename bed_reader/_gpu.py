@@ -85,7 +85,7 @@ def is_cubecl_backed(array):
     With a CUDA-enabled build and a working GPU::
 
         import cupy as cp
-        from bed_reader import empty_gpu, is_cubecl_backed
+        from bed_reader._gpu import empty_gpu, is_cubecl_backed
 
         values = empty_gpu((3, 2), dtype="float32")
         values.fill(1)
@@ -141,7 +141,7 @@ def empty_gpu(shape, dtype=None, order="F"):
     With a CUDA-enabled build and a working GPU::
 
         import cupy as cp
-        from bed_reader import empty_gpu
+        from bed_reader._gpu import empty_gpu
 
         values = empty_gpu((3, 2), dtype="float32", order="F")
         values.fill(1)
@@ -181,21 +181,24 @@ def empty_gpu(shape, dtype=None, order="F"):
 
 
 def gpu_memory_cleanup():
-    """Release unused memory cached by bed-reader's CubeCL CUDA runtime.
+    """Release all unused GPU memory cached by bed-reader's CubeCL runtime.
 
-    Drop arrays and all their views first to make their allocations eligible.
-    Live arrays remain valid. This does not clear CuPy's own memory pool.
-    Requires a build with the ``cubecl-cuda`` Cargo feature; otherwise raises
-    RuntimeError. CUDA errors propagate.
+    Internal: arrays from GPU reads and :func:`empty_gpu` already return their
+    memory to CUDA when their last view is dropped. This also frees CubeCL's
+    small pooled temporaries. Live arrays remain valid. CuPy's own pool is
+    unaffected. Requires a GPU-enabled build; otherwise raises RuntimeError.
+    CUDA errors propagate.
 
     Examples
     --------
-    With a CUDA-enabled build and a working GPU::
+    With a GPU-enabled build and a working GPU::
 
-        from bed_reader import empty_gpu, gpu_memory_cleanup
+        import cupy as cp
+        from bed_reader import open_bed, sample_file
+        from bed_reader._gpu import gpu_memory_cleanup
 
-        values = empty_gpu((3, 2), dtype="float32")
-        values.fill(1)
+        with open_bed(sample_file("small.bed")) as bed:
+            values = bed.read(xp=cp)
         del values
         gpu_memory_cleanup()
     """
