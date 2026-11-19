@@ -30,14 +30,17 @@ building a CPU-only version from source when no GPU wheel matches your system.
 
 GPU wheels are available for:
 
-* Linux x86-64 (glibc 2.35 or later), including WSL2.
+* Linux x86-64 and ARM64 (glibc 2.34 or later), including WSL2.
 * Windows x86-64.
-* Python 3.11 through 3.14. Python 3.15 installs are CPU-only until CuPy
-  supports it.
+* Python 3.11 through 3.15. GPU reads on Python 3.15 still require CuPy
+  support for that Python version.
 
-Other platforms, such as macOS and ARM, get CPU-only wheels. To check an
+macOS and Windows ARM64 get CPU-only wheels. Linux ARM64 wheels include the
+GPU backend, but runtime GPU qualification is currently limited to x86-64. To check an
 installation, call :func:`has_gpu_support`; it reports whether the installed
-build includes GPU reading, not whether a GPU is present.
+build includes GPU reading, not whether a GPU is present. Source builds are
+CPU-only by default; enabling ``cubecl-cuda`` explicitly needs no build-time
+CUDA toolkit or ``nvcc``.
 
 The ``cupy`` extra installs CuPy's CUDA 13 distribution, which needs a
 compatible NVIDIA driver and the CUDA 13 toolkit; see CuPy's

@@ -41,7 +41,9 @@ tokio = ["dep:tokio"]
 extension-module = ["pyo3/extension-module", "tokio"]
 # GPU-resident reading and standardizing (CubeCL) on NVIDIA GPUs. CubeCL 0.11 downloads a prebuilt
 # LLVM while building, which does not exist for Windows ARM or Intel macOS (neither has CUDA), so
-# this feature, and `--all-features`, cannot build there.
+# this feature, and `--all-features`, cannot build there. Linux x86-64/ARM64, Windows x86-64,
+# and ARM64 macOS can build it; macOS cannot run CUDA. No build-time CUDA toolkit is needed
+# (cudarc `fallback-latest`).
 cubecl-cuda = ["cubecl", "cubecl/cuda", "dep:cudarc"]
 # Shared GPU code; enable through `cubecl-cuda`.
 cubecl = ["dep:cubecl", "dep:cubecl-runtime", "dep:pollster", "dep:bytemuck"]

@@ -154,8 +154,9 @@ jobs:
         uses: PyO3/maturin-action@e83996d129638aa358a18fbd1dfb82f0b0fb5d3b # v1
         with:
           target: ${{ matrix.target }}
-          args: --release --locked --out dist ${{ env.PYTHON_VERSIONS_ARGS }}
-          manylinux: auto
+          args: --release --locked --features cubecl-cuda --out dist ${{ env.PYTHON_VERSIONS_ARGS }}
+          # CubeCL's prebuilt LLVM needs glibc 2.34, newer than manylinux2014.
+          manylinux: "2_34"
 
       - name: Upload wheels
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -172,9 +173,11 @@ jobs:
           - os: windows-latest
             target: x64
             architecture: x64
+            features: --features cubecl-cuda
           - os: windows-11-arm
             target: aarch64-pc-windows-msvc
             architecture: arm64
+            features: ''
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
@@ -185,7 +188,7 @@ jobs:
         uses: PyO3/maturin-action@e83996d129638aa358a18fbd1dfb82f0b0fb5d3b # v1
         with:
           target: ${{ matrix.target }}
-          args: --release --locked --out dist ${{ env.PYTHON_VERSIONS_ARGS }}
+          args: --release --locked ${{ matrix.features }} --out dist ${{ env.PYTHON_VERSIONS_ARGS }}
       - name: Upload wheels
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -313,7 +316,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, windows-11-arm, macos-15, macos-15-intel]
-        python-version: ["3.11", "3.15"]
+        # Check every wheel's features and CPU behavior without CUDA/CuPy.
+        python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
     steps:
       - name: Checkout test sources
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -346,7 +350,20 @@ jobs:
         working-directory: ${{ runner.temp }}
         run: |
           python -c "import pathlib, shutil, sys; shutil.copytree(pathlib.Path(sys.argv[1]) / 'bed_reader' / 'tests', pathlib.Path(sys.argv[2]) / 'bed_reader_artifact_tests')" "$GITHUB_WORKSPACE" "$RUNNER_TEMP"
-          uv run --no-project --python "$GITHUB_WORKSPACE/.artifact-venv" python -c "import bed_reader; assert '.artifact-venv' in bed_reader.__file__; print(bed_reader.__file__)"
+          uv run --no-project --python "$GITHUB_WORKSPACE/.artifact-venv" python - <<'PY'
+          import importlib.util
+          import platform
+          import bed_reader
+          import bed_reader.bed_reader as native
+
+          assert '.artifact-venv' in bed_reader.__file__, bed_reader.__file__
+          expected = platform.system() == 'Linux' or (platform.system() == 'Windows' and platform.machine() == 'AMD64')
+          assert bed_reader.has_gpu_support() == expected, (platform.platform(), expected)
+          assert hasattr(native, 'read_gpu') == expected
+          assert hasattr(native, 'standardize_gpu') == expected
+          assert importlib.util.find_spec('cupy') is None
+          print(bed_reader.__file__, 'GPU support:', expected)
+          PY
           uv run --no-project --python "$GITHUB_WORKSPACE/.artifact-venv" python -m pytest --import-mode=importlib --doctest-modules "$RUNNER_TEMP/bed_reader_artifact_tests"
 
   sdist-test:
@@ -394,7 +411,8 @@ jobs:
         working-directory: ${{ runner.temp }}
         run: |
           python -c "import pathlib, shutil, sys; shutil.copytree(pathlib.Path(sys.argv[1]) / 'bed_reader' / 'tests', pathlib.Path(sys.argv[2]) / 'bed_reader_artifact_tests')" "$GITHUB_WORKSPACE" "$RUNNER_TEMP"
-          uv run --no-project --python "$GITHUB_WORKSPACE/.artifact-venv" python -c "import bed_reader; assert '.artifact-venv' in bed_reader.__file__; print(bed_reader.__file__)"
+          # pyproject.toml keeps source builds CPU-only; no CUDA toolkit is needed.
+          uv run --no-project --python "$GITHUB_WORKSPACE/.artifact-venv" python -c "import bed_reader; assert '.artifact-venv' in bed_reader.__file__; assert not bed_reader.has_gpu_support(); print(bed_reader.__file__)"
           uv run --no-project --python "$GITHUB_WORKSPACE/.artifact-venv" python -m pytest --import-mode=importlib --doctest-modules "$RUNNER_TEMP/bed_reader_artifact_tests"
 
   docs:
