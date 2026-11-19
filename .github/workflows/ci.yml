@@ -327,11 +327,35 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, windows-11-arm, macos-15, macos-15-intel]
-        # Check every wheel's features and CPU behavior without CUDA/CuPy.
+        os: [ubuntu-latest, windows-latest]
+        # Check all Python versions for changed wheels; other platforms use boundaries.
         python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
         wheel-flavor: [preferred]
         include:
+          - os: ubuntu-24.04-arm
+            python-version: "3.11"
+            wheel-flavor: preferred
+          - os: ubuntu-24.04-arm
+            python-version: "3.15"
+            wheel-flavor: preferred
+          - os: windows-11-arm
+            python-version: "3.11"
+            wheel-flavor: preferred
+          - os: windows-11-arm
+            python-version: "3.15"
+            wheel-flavor: preferred
+          - os: macos-15
+            python-version: "3.11"
+            wheel-flavor: preferred
+          - os: macos-15
+            python-version: "3.15"
+            wheel-flavor: preferred
+          - os: macos-15-intel
+            python-version: "3.11"
+            wheel-flavor: preferred
+          - os: macos-15-intel
+            python-version: "3.15"
+            wheel-flavor: preferred
           - os: ubuntu-latest
             python-version: "3.11"
             wheel-flavor: manylinux2014

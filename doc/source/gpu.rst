@@ -39,9 +39,8 @@ GPU wheels are available for:
 macOS and ARM64 get CPU-only wheels. Linux x86-64 also has CPU-only
 manylinux2014 wheels for older glibc; pip selects the GPU wheel on glibc 2.34
 or later, even on machines without a GPU. To check an installation, call
-:func:`has_gpu_support`; it reports whether the installed build includes GPU reading, not whether a GPU is present. Source builds are
-CPU-only by default; enabling ``cubecl-cuda`` explicitly needs no build-time
-CUDA toolkit or ``nvcc``.
+:func:`has_gpu_support`; it reports whether the installed build includes
+GPU reading, not whether a GPU is present.
 
 The ``cupy`` extra installs CuPy's CUDA 13 distribution, which needs a
 compatible NVIDIA driver and the CUDA 13 toolkit; see CuPy's
