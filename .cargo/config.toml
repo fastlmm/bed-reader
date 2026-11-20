@@ -1,0 +1,4 @@
+# On lockfile refresh, retain idna_adapter 1.2.0 (CPU ICU 1.x), psm 0.1.28,
+# and one ndarray 0.16.1 shared with numpy; validate the CPU graph on Rust 1.85.
+[resolver]
+incompatible-rust-versions = "fallback"

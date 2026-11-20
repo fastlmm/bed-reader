@@ -74,6 +74,21 @@ jobs:
         run: cargo test --locked --verbose --no-default-features
       - name: Test Rust default features
         run: cargo test --locked --verbose
+  test_rust_cpu_msrv:
+    name: Test Rust CPU MSRV (1.85)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Rust (CPU Minimum Supported Version)
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # generic installer
+        with:
+          toolchain: 1.85.0
+      - name: Test Rust default features on the CPU MSRV
+        run: cargo test --locked
+      - name: Test Rust no-default-features on the CPU MSRV
+        run: cargo test --locked --no-default-features
+
   test_rust_cubecl_cpu:
     # Runs the CubeCL GPU kernel tests on CubeCL's CPU (LLVM) runtime through the internal
     # `_cubecl-cpu-test` feature, so kernel-logic and indexing regressions surface without a GPU.
@@ -102,7 +117,8 @@ jobs:
       - name: Run Clippy on the internal CPU-runtime test feature (strict)
         run: cargo clippy --locked --all-targets --features _cubecl-cpu-test -- -D warnings
       - name: Test CubeCL kernels on the CPU runtime
-        run: cargo test --locked --features _cubecl-cpu-test --lib backend::cubecl -- --test-threads=1
+        # Quoted: an unquoted "gpu:: " would parse as a YAML mapping.
+        run: 'cargo test --locked --features _cubecl-cpu-test --lib gpu:: -- --test-threads=1'
   
   
   macos:
@@ -525,7 +541,7 @@ jobs:
     # when other jobs fail, so a failure can never appear as a passing skip.
     name: CI result
     if: always()
-    needs: [test_rust, test_rust_cubecl_cpu, macos, linux, windows, sdist, merge_artifacts, test_python, artifact-test, sdist-test, docs]
+    needs: [test_rust, test_rust_cpu_msrv, test_rust_cubecl_cpu, macos, linux, windows, sdist, merge_artifacts, test_python, artifact-test, sdist-test, docs]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

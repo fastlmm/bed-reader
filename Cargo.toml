@@ -10,8 +10,9 @@ license = "Apache-2.0" # toml-ignore
 keywords = ["bioinformatics", "plink", "genomics", "genotype", "snps"]
 categories = ["science"]
 edition = "2021"
-# 1.95 for the optional GPU support (CubeCL needs Rust 1.95).
-rust-version = "1.95"
+# CPU-only builds support Rust 1.85. The cubecl-cuda feature needs Rust 1.95,
+# enforced by CubeCL's own rust-version.
+rust-version = "1.85"
 # When refreshing Cargo.lock, retain one ndarray 0.16.1 shared with numpy.
 homepage = "https://fastlmm.github.io/"
 exclude = [
@@ -44,13 +45,10 @@ extension-module = ["pyo3/extension-module", "tokio"]
 # this feature, and `--all-features`, cannot build there. Linux x86-64/ARM64, Windows x86-64,
 # and ARM64 macOS can build it; macOS cannot run CUDA. No build-time CUDA toolkit is needed
 # (cudarc `fallback-latest`).
-cubecl-cuda = ["cubecl", "cubecl/cuda", "dep:cudarc"]
-# Shared GPU code; enable through `cubecl-cuda`.
-cubecl = ["dep:cubecl", "dep:cubecl-runtime", "dep:pollster", "dep:bytemuck"]
+cubecl-cuda = ["dep:cubecl", "cubecl/cuda", "dep:cubecl-runtime", "dep:pollster", "dep:bytemuck", "dep:cudarc"]
 # Internal, not public API: run this crate's own CubeCL kernel tests on CubeCL's CPU (LLVM)
 # runtime, so CI without a GPU can test them. Only `cfg(test)` code switches to the CPU device;
 # the library's CubeCL backend stays CUDA-only.
-# TODO0 experiment (2026-11-19): decide go/no-go before release; remove if no-go.
 _cubecl-cpu-test = ["cubecl-cuda", "cubecl/cpu"]
 
 [dependencies]

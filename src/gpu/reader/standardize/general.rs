@@ -2,19 +2,19 @@
 use cubecl::{prelude::*, server::Handle};
 use num_traits::Float as HostFloat;
 
-use super::{CubeClFloat, UNITS};
+use super::{CubeClFloat, Error, UNITS};
 use crate::{
-    backend::{
-        cubecl::{to_u32, CubeClMatrix},
-        Error,
+    gpu::{
+        self,
+        reader::{to_u32, CubeClMatrix},
     },
-    BedError, BedErrorPlus, Dist,
+    BedError, Dist,
 };
 
 pub(super) fn statistics<TVal: CubeClFloat>(
     matrix: &CubeClMatrix<TVal>,
     genotype_sums: &Handle,
-) -> Result<Vec<[f64; 3]>, Box<BedErrorPlus>> {
+) -> Result<Vec<[f64; 3]>, Box<gpu::Error>> {
     let (iid_count, sid_count) = matrix.dim();
     let statistics_handle = matrix.client.empty(3 * sid_count * size_of::<f64>());
     // SAFETY: one cube per SNP (`sid_index < sid_count`). Matrix offsets are below
@@ -36,14 +36,14 @@ pub(super) fn statistics<TVal: CubeClFloat>(
     let bytes = matrix
         .client
         .read_one(statistics_handle)
-        .map_err(Error::from)?;
+        .map_err(gpu::Error::from)?;
     Ok(bytemuck::cast_slice::<u8, [f64; 3]>(&bytes[..3 * sid_count * size_of::<f64>()]).to_vec())
 }
 
 pub(super) fn mean_std<TVal: CubeClFloat>(
     [count, mean, variance]: [f64; 3],
     dist: &Dist,
-) -> Result<(TVal, TVal), BedErrorPlus> {
+) -> Result<(TVal, TVal), Error> {
     if count == 0.0 {
         return Err(BedError::NoIndividuals.into());
     }
@@ -57,7 +57,7 @@ pub(super) fn mean_std<TVal: CubeClFloat>(
     // A centered sum of squares cannot be negative. Do not turn invalid or
     // overflowed moments into a constant column as the legacy CPU formula does.
     if !variance.is_finite() || variance < 0.0 {
-        return Err(BedErrorPlus::GpuError(Error::InvalidVariance(variance)));
+        return Err(Error::InvalidVariance(variance));
     }
     let deviation = if variance == 0.0 {
         f64::INFINITY
@@ -66,7 +66,7 @@ pub(super) fn mean_std<TVal: CubeClFloat>(
     };
     let deviation = TVal::from_f64(deviation).expect("f64 converts to f32/f64");
     if variance > 0.0 && (!HostFloat::is_finite(deviation) || deviation <= TVal::zero()) {
-        return Err(BedErrorPlus::GpuError(Error::InvalidVariance(variance)));
+        return Err(Error::InvalidVariance(variance));
     }
     Ok((mean, deviation))
 }

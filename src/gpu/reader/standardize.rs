@@ -8,10 +8,38 @@ mod general;
 use cubecl::prelude::*;
 use ndarray as nd;
 
-use super::{
-    genotype, memory_dimensions, to_u32, CubeClMatrix, CubeClVal, Error, MAX_GRID_Y, UNITS,
-};
-use crate::{find_factor, snp_mean_std, BedErrorPlus, Dist};
+use super::{genotype, memory_dimensions, to_u32, CubeClMatrix, CubeClVal, MAX_GRID_Y, UNITS};
+use crate::{find_factor, gpu, snp_mean_std, BedError, Dist};
+
+/// Internal standardizer failures; invalid variance is not part of the public GPU API.
+/// Boxed conversions are explicit for the same coherence reasons as [`gpu::Error`].
+#[derive(thiserror::Error, Debug)]
+pub(crate) enum Error {
+    #[error(transparent)]
+    Gpu(#[from] Box<gpu::Error>),
+    #[error(transparent)]
+    Bed(#[from] BedError),
+    #[error("Invalid GPU variance: {0}")]
+    InvalidVariance(f64),
+}
+
+impl From<Box<gpu::Error>> for Box<Error> {
+    fn from(error: Box<gpu::Error>) -> Self {
+        Box::new(Error::from(error))
+    }
+}
+
+impl From<gpu::Error> for Box<Error> {
+    fn from(error: gpu::Error) -> Self {
+        Box::new(Error::Gpu(Box::new(error)))
+    }
+}
+
+impl From<BedError> for Box<Error> {
+    fn from(error: BedError) -> Self {
+        Box::new(Error::from(error))
+    }
+}
 
 /// A float type the GPU code standardizes: `f32` or `f64`.
 pub(crate) trait CubeClFloat:
@@ -30,7 +58,7 @@ impl CubeClFloat for f64 {}
 /// [`Error::InvalidVariance`] if floating-point moments overflow or become invalid.
 pub(crate) fn standardize_unit<TVal: CubeClFloat>(
     matrix: &mut CubeClMatrix<TVal>,
-) -> Result<nd::Array2<TVal>, Box<BedErrorPlus>> {
+) -> Result<nd::Array2<TVal>, Box<Error>> {
     standardize(matrix, &Dist::Unit)
 }
 
@@ -45,14 +73,14 @@ pub(crate) fn standardize_beta<TVal: CubeClFloat>(
     matrix: &mut CubeClMatrix<TVal>,
     a: f64,
     b: f64,
-) -> Result<nd::Array2<TVal>, Box<BedErrorPlus>> {
+) -> Result<nd::Array2<TVal>, Box<Error>> {
     standardize(matrix, &Dist::Beta { a, b })
 }
 
 fn standardize<TVal: CubeClFloat>(
     matrix: &mut CubeClMatrix<TVal>,
     dist: &Dist,
-) -> Result<nd::Array2<TVal>, Box<BedErrorPlus>> {
+) -> Result<nd::Array2<TVal>, Box<Error>> {
     let (iid_count, sid_count) = (matrix.iid_count, matrix.sid_count);
     let mut stats = nd::Array2::<TVal>::zeros((sid_count, 2));
     if sid_count == 0 {
@@ -63,7 +91,7 @@ fn standardize<TVal: CubeClFloat>(
     // and the four-word-per-SNP output are indexed with u32 in the kernels.
     for count in [iid_count, sid_count] {
         let times_four = u64::from(to_u32(count)?) * 4;
-        u32::try_from(times_four).map_err(|_| Error::TooLarge(times_four))?;
+        u32::try_from(times_four).map_err(|_| gpu::Error::TooLarge(times_four))?;
     }
     let c_order = u32::from(!matrix.is_f);
     let client = &matrix.client;
@@ -73,10 +101,12 @@ fn standardize<TVal: CubeClFloat>(
         .plane
         .contains(cubecl::ir::features::Plane::Ops);
     let sums_handle = launch_snp_sums(matrix, use_plane)?;
-    let sums_bytes = client.read_one(sums_handle.clone()).map_err(Error::from)?;
+    let sums_bytes = client
+        .read_one(sums_handle.clone())
+        .map_err(gpu::Error::from)?;
     let sums: &[u32] = bytemuck::cast_slice(&sums_bytes[..4 * sid_count * 4]);
 
-    let general_statistics = if sums.as_chunks::<4>().0.iter().any(|column| column[3] != 0) {
+    let general_statistics = if sums.chunks_exact(4).any(|column| column[3] != 0) {
         Some(general::statistics(matrix, &sums_handle)?)
     } else {
         None
@@ -88,13 +118,14 @@ fn standardize<TVal: CubeClFloat>(
     let mut mean = Vec::with_capacity(sid_count);
     let mut factor = Vec::with_capacity(sid_count);
     let mut snc = Vec::with_capacity(sid_count);
-    for (sid_index, (&[count, sum, sum2, not_genotype], mut stats_row)) in sums
-        .as_chunks::<4>()
-        .0
-        .iter()
+    for (sid_index, (column, mut stats_row)) in sums
+        .chunks_exact(4)
         .zip(stats.axis_iter_mut(nd::Axis(0)))
         .enumerate()
     {
+        let &[count, sum, sum2, not_genotype] = column else {
+            unreachable!("chunks_exact(4) produces four statistics per SNP");
+        };
         let (mean_s, std) = if not_genotype == 0 {
             snp_mean_std(
                 from_u32::<TVal>(count),
@@ -154,7 +185,7 @@ fn standardize<TVal: CubeClFloat>(
 fn launch_snp_sums<TVal: CubeClFloat>(
     matrix: &CubeClMatrix<TVal>,
     use_plane: bool,
-) -> Result<cubecl::server::Handle, Box<BedErrorPlus>> {
+) -> Result<cubecl::server::Handle, Box<Error>> {
     let (iid_count, sid_count) = (matrix.iid_count, matrix.sid_count);
     let element_count = iid_count * sid_count;
     let c_order = u32::from(!matrix.is_f);
@@ -355,22 +386,24 @@ fn apply<F: Float>(
 #[cfg(all(test, not(feature = "_cubecl-cpu-test")))]
 mod tests {
     //! These need a GPU; without one, they fail (they do not skip).
+    use std::error::Error as StandardError;
+
     use super::{launch_snp_sums, CubeClFloat};
-    use crate::{sample_bed_file, Bed, BedErrorPlus, ReadOptions};
+    use crate::{gpu, sample_bed_file, Bed, ReadOptions};
 
     fn sums<TVal: CubeClFloat>(
         matrix: &super::CubeClMatrix<TVal>,
         use_plane: bool,
-    ) -> Result<Vec<u8>, Box<BedErrorPlus>> {
+    ) -> Result<Vec<u8>, Box<dyn StandardError>> {
         let handle = launch_snp_sums(matrix, use_plane)?;
-        let bytes = matrix.client.read_one(handle).map_err(super::Error::from)?;
+        let bytes = matrix.client.read_one(handle).map_err(gpu::Error::from)?;
         Ok(bytes[..16 * matrix.sid_count].to_vec())
     }
 
     /// The plane and tree reductions of `snp_sums` give identical sums and flags, for genotype
     /// data with NaNs and for non-genotype data (missing value -1), in both memory orders.
     #[test]
-    fn snp_sums_plane_and_tree_reductions_agree() -> Result<(), Box<BedErrorPlus>> {
+    fn snp_sums_plane_and_tree_reductions_agree() -> Result<(), Box<dyn StandardError>> {
         for file in [
             "some_missing.bed",
             "plink_sim_10s_100v_10pmiss.bed",
@@ -382,8 +415,7 @@ mod tests {
                     let matrix = ReadOptions::builder()
                         .missing_value(missing)
                         .is_f(is_f)
-                        .cubecl()
-                        .read(&mut bed)?;
+                        .read_cubecl(&mut bed)?;
                     let plane = sums(&matrix, true)?;
                     assert_eq!(
                         plane,
@@ -396,11 +428,7 @@ mod tests {
                             .to_cpu()?
                             .iter()
                             .any(|value| value.to_bits() == missing.to_bits());
-                    let has_non_genotype = plane
-                        .as_chunks::<16>()
-                        .0
-                        .iter()
-                        .any(|column| column[12] != 0);
+                    let has_non_genotype = plane.chunks_exact(16).any(|column| column[12] != 0);
                     assert_eq!(
                         has_non_genotype, expected,
                         "{file} is_f={is_f} non-genotype flag"
@@ -409,8 +437,7 @@ mod tests {
                 let matrix = ReadOptions::builder()
                     .f64()
                     .is_f(is_f)
-                    .cubecl()
-                    .read(&mut bed)?;
+                    .read_cubecl(&mut bed)?;
                 assert_eq!(
                     sums(&matrix, true)?,
                     sums(&matrix, false)?,

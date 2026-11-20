@@ -1,18 +1,14 @@
-//! The `CubeCL` GPU backend (Cargo feature `cubecl-cuda`), re-exported by [`backend`](super).
-use core::{fmt::Debug, marker::PhantomData, mem::size_of};
+//! GPU reading and matrix storage, re-exported by [`gpu`](super).
+use core::{marker::PhantomData, mem::size_of};
 use std::io::{Read, Seek, SeekFrom};
 
 use cubecl::{prelude::*, std::tensor::TensorHandle};
 use ndarray as nd;
 use ndarray::ShapeBuilder;
 
-use super::{
-    sealed::{Sealed, Value},
-    Backend, Error,
-};
+use super::{sealed::Value, Error};
 use crate::{
-    open_and_check, path_ref_to_string, Bed, BedError, BedErrorPlus, BedVal, Hold, ReadOptions,
-    CB_HEADER_U64,
+    open_and_check, path_ref_to_string, Bed, BedError, BedVal, Hold, ReadOptions, CB_HEADER_U64,
 };
 
 // The standardizer is for the Python bindings (and this module's tests), like the CPU one.
@@ -26,84 +22,64 @@ const UNITS: u32 = 256;
 /// its own spinning thread, so a cube must have no more units than the machine has cores, and
 /// fewer is faster (measured on 32 cores, standardizing 500 x 10,000: 256 units hung, 32 units
 /// took 2.7 s, 8 took 0.14 s, 4 took 0.05 s). Small cubes also exercise the kernels' strided loops.
-// TODO0 experiment (2026-11-19): decide go/no-go before release; remove if no-go.
 #[cfg(all(test, feature = "_cubecl-cpu-test"))]
 const UNITS: u32 = 4;
 /// Cubes along a grid's y axis are limited to this many; kernels stride over the rest.
 const MAX_GRID_Y: usize = 65_535;
 
-/// GPU device 0, through this build's selected `CubeCL` runtime: `read` returns a
-/// [`CubeClMatrix`].
+/// The `CubeCL` client for GPU device 0, which GPU reads use.
+///
+/// A [`CubeClMatrix`] carries its own client ([`CubeClMatrix::client`]); use this one for work
+/// that is not tied to a matrix.
+///
+/// # Errors
+/// [`Error::Unavailable`] if there is no GPU.
 ///
 /// # Example
 ///
-/// See [`CubeClMatrix`].
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct CubeCl;
-
-impl Sealed for CubeCl {}
-
-impl Backend for CubeCl {
-    type Matrix<TVal: BedVal> = CubeClMatrix<TVal>;
+/// ```rust,no_run
+/// use bed_reader::gpu;
+///
+/// let client = gpu::client()?;
+/// println!("{}", client.name());
+/// # Ok::<(), Box<gpu::Error>>(())
+/// ```
+pub fn client() -> Result<Client, Box<Error>> {
+    // This crate's own tests can run the same kernels on CubeCL's CPU runtime (internal
+    // feature `_cubecl-cpu-test`), for CI without a GPU. Library builds always use CUDA.
+    #[cfg(not(all(test, feature = "_cubecl-cpu-test")))]
+    let result = cubecl::Device::cuda(0);
+    #[cfg(all(test, feature = "_cubecl-cpu-test"))]
+    let result = cubecl::Device::cpu();
+    let device = result.map_err(Error::from)?;
+    Ok(device.client())
 }
 
-impl CubeCl {
-    /// The `CubeCL` client of the GPU that reads go to.
-    ///
-    /// A [`CubeClMatrix`] carries its own client ([`CubeClMatrix::client`]); use this one for work
-    /// that is not tied to a matrix, such as [`CubeCl::memory_cleanup`].
-    ///
-    /// # Errors
-    /// [`Error::Unavailable`] if there is no GPU.
-    ///
-    /// # Example
-    ///
-    /// ```rust,no_run
-    /// use bed_reader::backend::CubeCl;
-    ///
-    /// let client = CubeCl::client()?;
-    /// println!("{}", client.name());
-    /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), Box<BedErrorPlus>>(())
-    /// ```
-    pub fn client() -> Result<Client, Box<BedErrorPlus>> {
-        // This crate's own tests can run the same kernels on CubeCL's CPU runtime (internal
-        // feature `_cubecl-cpu-test`), for CI without a GPU. Library builds always use CUDA.
-        #[cfg(not(all(test, feature = "_cubecl-cpu-test")))]
-        let result = cubecl::Device::cuda(0);
-        #[cfg(all(test, feature = "_cubecl-cpu-test"))]
-        let result = cubecl::Device::cpu();
-        let device = result.map_err(Error::from)?;
-        Ok(device.client())
-    }
-
-    /// Return all GPU memory that `CubeCL` holds but no longer uses to CUDA, now.
-    ///
-    /// A dropped matrix's memory otherwise returns at `CubeCL`'s next allocation. This also frees
-    /// `CubeCL`'s pooled small temporaries, so other GPU libraries in the process can use them.
-    ///
-    /// # Errors
-    /// [`Error::Unavailable`] if there is no GPU; [`Error::Server`] if the GPU fails.
-    ///
-    /// # Example
-    ///
-    /// ```rust,no_run
-    /// use bed_reader::{backend::CubeCl, Bed, ReadOptions, sample_bed_file};
-    ///
-    /// let mut bed = Bed::new(sample_bed_file("small.bed")?)?;
-    /// let cubecl_matrix = ReadOptions::builder().f32().cubecl().read(&mut bed)?;
-    /// drop(cubecl_matrix);
-    /// CubeCl::memory_cleanup()?;
-    /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), Box<BedErrorPlus>>(())
-    /// ```
-    pub fn memory_cleanup() -> Result<(), Box<BedErrorPlus>> {
-        let client = Self::client()?;
-        // Finish queued work first, so buffers that it still uses are not counted as in use later.
-        pollster::block_on(client.sync()).map_err(Error::from)?;
-        client.memory_cleanup().map_err(Error::from)?;
-        Ok(())
-    }
+/// Return all GPU memory that `CubeCL` holds but no longer uses to CUDA, now.
+///
+/// A dropped matrix's memory otherwise returns at `CubeCL`'s next allocation. This also frees
+/// `CubeCL`'s pooled small temporaries, so other GPU libraries in the process can use them.
+///
+/// # Errors
+/// [`Error::Unavailable`] if there is no GPU; [`Error::Server`] if the GPU fails.
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use bed_reader::{gpu, Bed, sample_bed_file};
+///
+/// let mut bed = Bed::new(sample_bed_file("small.bed")?)?;
+/// let cubecl_matrix = bed.read_cubecl::<f32>()?;
+/// drop(cubecl_matrix);
+/// gpu::memory_cleanup()?;
+/// # Ok::<(), Box<gpu::Error>>(())
+/// ```
+pub fn memory_cleanup() -> Result<(), Box<Error>> {
+    let client = client()?;
+    // Finish queued work first, so buffers that it still uses are not counted as in use later.
+    pollster::block_on(client.sync()).map_err(Error::from)?;
+    client.memory_cleanup().map_err(Error::from)?;
+    Ok(())
 }
 
 /// A value type the `CubeCL` reader supports: `i8`, `f32`, or `f64`.
@@ -118,7 +94,7 @@ impl CubeClVal for i8 {}
 impl CubeClVal for f32 {}
 impl CubeClVal for f64 {}
 
-/// A genotype matrix (individuals x SNPs) in GPU memory, from a `.cubecl()` read.
+/// A genotype matrix (individuals x SNPs) in GPU memory, from a `read_cubecl` call.
 ///
 /// It is a thin, typed wrapper over `CubeCL`'s own types: [`CubeClMatrix::tensor_handle`] and
 /// [`CubeClMatrix::client`] give what is needed to run `CubeCL` kernels on it.
@@ -129,7 +105,7 @@ impl CubeClVal for f64 {}
 /// use bed_reader::{Bed, ReadOptions, sample_bed_file};
 ///
 /// let mut bed = Bed::new(sample_bed_file("small.bed")?)?;
-/// let cubecl_matrix = ReadOptions::builder().f32().f().cubecl().read(&mut bed)?;
+/// let cubecl_matrix = ReadOptions::builder().f32().f().read_cubecl(&mut bed)?;
 /// assert_eq!(cubecl_matrix.dim(), (3, 4));
 /// assert!(cubecl_matrix.is_f());
 /// let tensor_handle = cubecl_matrix.tensor_handle(); // CubeCL's own type, for use with ...
@@ -142,11 +118,11 @@ impl CubeClVal for f64 {}
 /// assert_eq!(cpu_array2.dim(), (3, 4));
 /// // Select while decoding, choose another dtype and C order. No full-matrix decode is needed.
 /// let selected = ReadOptions::builder().i8().c().iid_index([2, 0]).sid_index(1..4)
-///     .cubecl().read(&mut bed)?;
+///     .read_cubecl(&mut bed)?;
 /// assert_eq!(selected.dim(), (2, 3));
 /// assert!(!selected.is_f());
-/// # use bed_reader::BedErrorPlus;
-/// # Ok::<(), Box<BedErrorPlus>>(())
+/// # use bed_reader::gpu::Error;
+/// # Ok::<(), Box<Error>>(())
 /// ```
 pub struct CubeClMatrix<TVal> {
     client: Client,
@@ -160,8 +136,8 @@ pub struct CubeClMatrix<TVal> {
 /// Reads into GPU memory: the packed bytes covering the selection go to the GPU, which decodes them.
 pub(crate) fn read_cubecl<TVal: CubeClVal>(
     bed: &mut Bed,
-    read_options: &ReadOptions<TVal, CubeCl>,
-) -> Result<CubeClMatrix<TVal>, Box<BedErrorPlus>> {
+    read_options: &ReadOptions<TVal>,
+) -> Result<CubeClMatrix<TVal>, Box<Error>> {
     let iid_count = bed.iid_count()?;
     let sid_count = bed.sid_count()?;
     let iid_hold = Hold::new(&read_options.iid_index, iid_count)?;
@@ -169,7 +145,7 @@ pub(crate) fn read_cubecl<TVal: CubeClVal>(
     let iid_index = resolve(iid_hold.as_ref(), iid_count, BedError::IidIndexTooBig)?;
     let sid_index = resolve(sid_hold.as_ref(), sid_count, BedError::SidIndexTooBig)?;
     let element_count = element_count(iid_index.len(), sid_index.len())?;
-    let client = CubeCl::client()?;
+    let client = client()?;
 
     let (buf_reader, header) = open_and_check(&bed.path)?;
     let mut file = buf_reader.into_inner();
@@ -291,7 +267,7 @@ fn memory_dimensions(iid_count: usize, sid_count: usize, is_f: bool) -> (usize, 
 
 fn genotype_lookup<TVal: CubeClVal>(
     client: &Client,
-    read_options: &ReadOptions<TVal, CubeCl>,
+    read_options: &ReadOptions<TVal>,
 ) -> cubecl::server::Handle {
     let missing = read_options.missing_value;
     let values: [TVal; 4] = if read_options.is_a1_counted {
@@ -304,16 +280,12 @@ fn genotype_lookup<TVal: CubeClVal>(
 
 impl<TVal: CubeClVal> CubeClMatrix<TVal> {
     #[cfg(all(feature = "extension-module", feature = "cubecl-cuda"))]
-    pub(crate) fn empty(
-        rows: usize,
-        columns: usize,
-        is_f: bool,
-    ) -> Result<Self, Box<BedErrorPlus>> {
+    pub(crate) fn empty(rows: usize, columns: usize, is_f: bool) -> Result<Self, Box<Error>> {
         let element_count = element_count(rows, columns)?;
         // At most `u32::MAX` elements of at most 8 bytes, so this cannot overflow usize on the
         // 64-bit targets that `cubecl-cuda` supports.
         let byte_count = element_count * size_of::<TVal>();
-        let client = CubeCl::client()?;
+        let client = client()?;
         // Keep a real pointer and one valid dummy element for empty kernel arguments.
         let handle = empty_dedicated(&client, byte_count.max(size_of::<TVal>()).max(4));
         Ok(Self {
@@ -351,7 +323,7 @@ impl<TVal: CubeClVal> CubeClMatrix<TVal> {
     ///
     /// # Errors
     /// [`Error::Server`] if the GPU fails.
-    pub fn to_cpu(&self) -> Result<nd::Array2<TVal>, Box<BedErrorPlus>> {
+    pub fn to_cpu(&self) -> Result<nd::Array2<TVal>, Box<Error>> {
         let element_count = self.iid_count * self.sid_count;
         let shape = (self.iid_count, self.sid_count).set_f(self.is_f);
         if element_count == 0 {
@@ -416,13 +388,13 @@ impl<TVal: CubeClVal> CubeClMatrix<TVal> {
     /// use bed_reader::{Bed, ReadOptions, sample_bed_file};
     ///
     /// let mut bed = Bed::new(sample_bed_file("small.bed")?)?;
-    /// let cubecl_matrix = ReadOptions::builder().f32().cubecl().read(&mut bed)?;
+    /// let cubecl_matrix = ReadOptions::builder().f32().read_cubecl(&mut bed)?;
     /// let cuda_pointer = cubecl_matrix.cuda_pointer()?;
     /// assert_ne!(cuda_pointer.ptr(), 0);
-    /// # use bed_reader::BedErrorPlus;
-    /// # Ok::<(), Box<BedErrorPlus>>(())
+    /// # use bed_reader::gpu::Error;
+    /// # Ok::<(), Box<Error>>(())
     /// ```
-    pub fn cuda_pointer(&self) -> Result<CudaPointer, Box<BedErrorPlus>> {
+    pub fn cuda_pointer(&self) -> Result<CudaPointer, Box<Error>> {
         use cubecl::cuda::CudaRuntime;
         use cubecl_runtime::runtime::Runtime;
         pollster::block_on(self.client.sync()).map_err(Error::from)?;
@@ -504,7 +476,7 @@ fn genotype<TVal: CubeClVal>(value: i8) -> TVal {
 /// Copies `words` to a new GPU buffer (through reused pinned host buffers on CUDA, which is about 4x
 /// faster than `CubeCL's` own upload under `WSL2`).
 #[cfg(not(all(test, feature = "_cubecl-cpu-test")))]
-fn upload_u32(client: &Client, words: &[u32]) -> Result<cubecl::server::Handle, Box<BedErrorPlus>> {
+fn upload_u32(client: &Client, words: &[u32]) -> Result<cubecl::server::Handle, Box<Error>> {
     let handle = empty_dedicated(client, core::mem::size_of_val(words));
     upload_pinned_cuda(client, &handle, bytemuck::cast_slice(words))?;
     Ok(handle)
@@ -562,7 +534,7 @@ fn upload_pinned_cuda(
     client: &Client,
     handle: &cubecl::server::Handle,
     bytes: &[u8],
-) -> Result<(), Box<BedErrorPlus>> {
+) -> Result<(), Box<Error>> {
     use cubecl::cuda::CudaRuntime;
     use cubecl_runtime::runtime::Runtime;
     use cudarc::driver::result;
@@ -685,13 +657,16 @@ mod size_tests {
 mod tests {
     //! Compare the GPU reader and standardizer with the CPU code, exactly (NaN matches NaN). These
     //! need a GPU; without one, they fail (they do not skip).
+    use std::error::Error as StandardError;
+
     use ndarray as nd;
 
     use super::{
+        memory_cleanup,
         standardize::{standardize_beta, standardize_unit, CubeClFloat},
-        CubeCl, CubeClVal,
+        CubeClVal,
     };
-    use crate::{impute_and_zero_mean_snps, sample_bed_file, Bed, BedErrorPlus, Dist, ReadOptions};
+    use crate::{impute_and_zero_mean_snps, sample_bed_file, Bed, Dist, ReadOptions};
 
     const FILES: [&str; 6] = [
         "small.bed",
@@ -737,7 +712,7 @@ mod tests {
         sid_index: &[isize],
         is_a1_counted: bool,
         is_f: bool,
-    ) -> Result<nd::Array2<T>, Box<BedErrorPlus>> {
+    ) -> Result<nd::Array2<T>, Box<dyn StandardError>> {
         let mut options = ReadOptions::<T>::builder();
         options
             .iid_index(iid_index)
@@ -746,7 +721,7 @@ mod tests {
             .is_f(is_f);
         let context = format!("iid {iid_index:?} sid {sid_index:?} a1 {is_a1_counted} f {is_f}");
         let expected = options.read(bed)?;
-        let matrix = options.cubecl().read(bed)?;
+        let matrix = options.read_cubecl(bed)?;
         assert_eq!(matrix.is_f(), is_f);
         assert_eq!(matrix.dim(), expected.dim());
         assert_same(&matrix.to_cpu()?, &expected, &context);
@@ -759,7 +734,7 @@ mod tests {
         sid_index: &[isize],
         is_a1_counted: bool,
         is_f: bool,
-    ) -> Result<(), Box<BedErrorPlus>> {
+    ) -> Result<(), Box<dyn StandardError>> {
         let expected = check_read::<T>(bed, iid_index, sid_index, is_a1_counted, is_f)?;
         let mut options = ReadOptions::<T>::builder();
         options
@@ -783,7 +758,7 @@ mod tests {
                 false,
                 &mut cpu_stats.view_mut(),
             );
-            let mut matrix = options.cubecl().read(bed)?;
+            let mut matrix = options.read_cubecl(bed)?;
             let gpu_result = match dist {
                 Dist::Unit => standardize_unit(&mut matrix),
                 Dist::Beta { a, b } => standardize_beta(&mut matrix, a, b),
@@ -814,7 +789,7 @@ mod tests {
     }
 
     #[test]
-    fn gpu_matches_cpu() -> Result<(), Box<BedErrorPlus>> {
+    fn gpu_matches_cpu() -> Result<(), Box<dyn StandardError>> {
         for file in FILES {
             let mut bed = Bed::new(sample_bed_file(file)?)?;
             let (iid_count, sid_count) = bed.dim()?;
@@ -840,47 +815,45 @@ mod tests {
     }
 
     #[test]
-    fn gpu_builder_chain_order() -> Result<(), Box<BedErrorPlus>> {
-        // `.cubecl()` can go anywhere in the chain, and the value-type and order methods work after it.
+    fn gpu_entry_points_match_cpu() -> Result<(), Box<dyn StandardError>> {
         let mut bed = Bed::new(sample_bed_file("small.bed")?)?;
+
+        // Bed::read_cubecl matches Bed::read (all data, default options).
+        let all = bed.read_cubecl::<f32>()?;
+        assert_same(&all.to_cpu()?, &bed.read::<f32>()?, "Bed::read_cubecl");
+        assert!(all.is_f());
+
+        // The builder and built-options entry points match the CPU read with the same options.
         let expected = ReadOptions::builder()
             .i8()
             .c()
             .count_a2()
             .sid_index([2, 0])
             .read(&mut bed)?;
-        let first = ReadOptions::builder()
-            .cubecl()
+        let from_builder = ReadOptions::builder()
             .i8()
             .c()
             .count_a2()
             .sid_index([2, 0])
-            .read(&mut bed)?;
-        let last = ReadOptions::builder()
+            .read_cubecl(&mut bed)?;
+        let read_options = ReadOptions::builder()
             .i8()
             .c()
             .count_a2()
             .sid_index([2, 0])
-            .cubecl()
-            .read(&mut bed)?;
-        let cpu = ReadOptions::builder()
-            .i8()
-            .cpu()
-            .c()
-            .count_a2()
-            .sid_index([2, 0])
-            .read(&mut bed)?;
-        assert_eq!(first.to_cpu()?, expected);
-        assert_eq!(last.to_cpu()?, expected);
-        assert_eq!(cpu, expected);
-        assert!(!first.is_f());
+            .build()?;
+        let from_options = bed.read_cubecl_with_options(&read_options)?;
+        assert_eq!(from_builder.to_cpu()?, expected);
+        assert_eq!(from_options.to_cpu()?, expected);
+        assert!(!from_builder.is_f());
+
+        // A later option overrides an earlier one, as on the CPU.
         let count_a1 = ReadOptions::builder()
             .f64()
-            .cubecl()
             .count_a2()
             .count_a1()
             .f()
-            .read(&mut bed)?;
+            .read_cubecl(&mut bed)?;
         assert_same(
             &count_a1.to_cpu()?,
             &ReadOptions::builder().f64().read(&mut bed)?,
@@ -890,10 +863,10 @@ mod tests {
     }
 
     #[test]
-    fn gpu_read_options_match_cpu() -> Result<(), Box<BedErrorPlus>> {
+    fn gpu_read_options_match_cpu() -> Result<(), Box<dyn StandardError>> {
         fn check_options<TVal: CubeClVal + PartialEq>(
             missing_value: TVal,
-        ) -> Result<(), Box<BedErrorPlus>> {
+        ) -> Result<(), Box<dyn StandardError>> {
             let mut bed = Bed::new(sample_bed_file("small.bed")?)?;
             for is_f in [true, false] {
                 for is_a1_counted in [true, false] {
@@ -906,11 +879,10 @@ mod tests {
                         .is_a1_counted(is_a1_counted);
                     let expected = options.read(&mut bed)?;
                     let matrix = options
-                        .cubecl()
                         .num_threads(1)
                         .max_concurrent_requests(1)
                         .max_chunk_bytes(1)
-                        .read(&mut bed)?;
+                        .read_cubecl(&mut bed)?;
                     let actual = matrix.to_cpu()?;
                     assert_same(&actual, &expected, "custom missing value and read options");
                     assert_eq!(actual[[0, 1]], missing_value);
@@ -926,14 +898,13 @@ mod tests {
     }
 
     #[test]
-    fn gpu_tensor_handle_describes_the_matrix() -> Result<(), Box<BedErrorPlus>> {
+    fn gpu_tensor_handle_describes_the_matrix() -> Result<(), Box<dyn StandardError>> {
         let mut bed = Bed::new(sample_bed_file("small.bed")?)?;
         for is_f in [true, false] {
             let matrix = ReadOptions::builder()
                 .f32()
                 .is_f(is_f)
-                .cubecl()
-                .read(&mut bed)?;
+                .read_cubecl(&mut bed)?;
             let tensor_handle = matrix.tensor_handle();
             assert_eq!(tensor_handle.shape().as_slice(), &[3, 4]);
             let expected_strides: [usize; 2] = if is_f { [1, 3] } else { [4, 1] };
@@ -960,26 +931,25 @@ mod tests {
     }
 
     #[test]
-    fn gpu_memory_cleanup_runs() -> Result<(), Box<BedErrorPlus>> {
+    fn gpu_memory_cleanup_runs() -> Result<(), Box<dyn StandardError>> {
         let mut bed = Bed::new(sample_bed_file("small.bed")?)?;
-        let matrix = ReadOptions::builder().f32().cubecl().read(&mut bed)?;
+        let matrix = ReadOptions::builder().f32().read_cubecl(&mut bed)?;
         let expected = matrix.to_cpu()?;
-        CubeCl::memory_cleanup()?; // must not free memory that a live matrix uses
+        memory_cleanup()?; // must not free memory that a live matrix uses
         assert_same(&matrix.to_cpu()?, &expected, "after cleanup");
         drop(matrix);
-        CubeCl::memory_cleanup()?;
+        memory_cleanup()?;
         Ok(())
     }
 
     #[test]
-    fn gpu_standardize_accepts_non_genotype_values() -> Result<(), Box<BedErrorPlus>> {
+    fn gpu_standardize_accepts_non_genotype_values() -> Result<(), Box<dyn StandardError>> {
         // A custom missing value (-1) is observed data, not NaN. It must take
         // the general floating-point path rather than the genotype optimization.
         let mut bed = Bed::new(sample_bed_file("some_missing.bed")?)?;
         let mut matrix = ReadOptions::builder()
             .missing_value(-1.0f32)
-            .cubecl()
-            .read(&mut bed)?;
+            .read_cubecl(&mut bed)?;
         let original = matrix.to_cpu()?;
         let observed_count =
             f64::from(u32::try_from(original.nrows()).expect("GPU dimensions fit u32"));
@@ -1005,7 +975,7 @@ mod tests {
     }
 
     #[test]
-    fn gpu_index_errors_match_cpu() -> Result<(), Box<BedErrorPlus>> {
+    fn gpu_index_errors_match_cpu() -> Result<(), Box<dyn StandardError>> {
         let mut bed = Bed::new(sample_bed_file("small.bed")?)?;
         for (iid_index, sid_index) in [
             (vec![3isize], vec![0isize]),
@@ -1017,8 +987,7 @@ mod tests {
             options.iid_index(&iid_index).sid_index(&sid_index);
             let cpu_error = options.read(&mut bed).expect_err("CPU should fail");
             let gpu_error = options
-                .cubecl()
-                .read(&mut bed)
+                .read_cubecl(&mut bed)
                 .err()
                 .expect("GPU should fail");
             assert_eq!(gpu_error.to_string(), cpu_error.to_string());

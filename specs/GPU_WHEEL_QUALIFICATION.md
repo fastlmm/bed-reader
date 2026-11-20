@@ -4,7 +4,7 @@
 
 The initial Python target is NVIDIA on Linux x86-64 and Windows x86-64.
 WSL2 uses the Linux wheel but requires separate runtime validation. This scope
-does not restrict Rust's optional HIP backend or future backend experiments.
+does not restrict future Rust GPU runtime experiments.
 
 The proposed installation extra is `bed-reader[cupy]`, using CuPy's CUDA 13
 distribution, following CuPy's existing driver/toolkit prerequisites. Ordinary

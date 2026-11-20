@@ -9,9 +9,9 @@ use bed_reader::BedError;
 use bed_reader::BedErrorPlus;
 use bed_reader::Metadata;
 use bed_reader::MetadataFields;
-use bed_reader::ReadOptions;
 use bed_reader::SliceInfo1;
 use bed_reader::WriteOptions;
+use bed_reader::{ReadOptions, ReadOptionsBuilder};
 use ndarray as nd;
 use ndarray::s;
 use ndarray_rand::{rand::prelude::StdRng, rand::SeedableRng, rand_distr::Uniform, RandomExt};
@@ -2241,4 +2241,37 @@ fn metadata_iid_sid2() -> Result<(), Box<BedErrorPlus>> {
     println!("{:?}", metadata.sid()); // Outputs ndarray Some(["SNP1", "SNP2", "SNP3", "SNP4"])
 
     Ok(())
+}
+
+// A GPU-enabled build must preserve inference for the 1.2 CPU builder API.
+#[test]
+fn default_builder_infers_cpu_value_type() -> Result<(), Box<BedErrorPlus>> {
+    let mut bed = Bed::new(sample_bed_file("small.bed")?)?;
+    let builder = ReadOptionsBuilder::default();
+    let values: nd::Array2<f32> = builder.read(&mut bed)?;
+    assert_eq_nan(
+        &values,
+        &nd::array![
+            [1.0, 0.0, f32::NAN, 0.0],
+            [2.0, 0.0, f32::NAN, 2.0],
+            [0.0, 1.0, 2.0, 0.0]
+        ],
+    );
+    Ok(())
+}
+
+// Adding a variant to this public enum breaks 1.2 callers' exhaustive matches.
+#[test]
+fn read_errors_preserve_exhaustive_matching() {
+    let error = BedErrorPlus::from(BedError::IidIndexTooBig(3));
+    let is_read_error = match error {
+        BedErrorPlus::BedError(_) => true,
+        BedErrorPlus::IOError(_)
+        | BedErrorPlus::ThreadPoolError(_)
+        | BedErrorPlus::ParseIntError(_)
+        | BedErrorPlus::ParseFloatError(_)
+        | BedErrorPlus::CloudFileError(_)
+        | BedErrorPlus::Utf8Error(_) => false,
+    };
+    assert!(is_read_error);
 }

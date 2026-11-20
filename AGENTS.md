@@ -14,3 +14,9 @@ personal files. More specific project rules take precedence.
   report validation performed and work that remains.
 - Do not publish packages, approve PyPI deployments, or push release tags
   without an explicit request. Prepare artifacts and commands for the maintainer.
+
+## Testing GPU kernels
+
+- On a GPU machine, `--features cubecl-cuda` runs the CUDA kernel tests.
+- `--features _cubecl-cpu-test` runs the same kernel tests on CubeCL's CPU runtime, as CI does.
+- `--all-features` therefore tests the CPU runtime, not CUDA.

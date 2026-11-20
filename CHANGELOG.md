@@ -18,10 +18,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Report CUDA errors while copying data to the GPU as Python exceptions
   instead of panics.
 
-* Rust: the read backend type parameter, `backend::Cpu`, `backend::Error`, and
-  `BedErrorPlus::GpuError` now exist in every build. The `cubecl-cuda` Cargo
-  feature only adds the `CubeCl` backend, so enabling it no longer changes
-  existing types. Remove the untested AMD `cubecl-hip` Cargo feature.
+* Rust: share `ReadOptions<TVal>` between CPU, cloud, and GPU reads. GPU reads
+  end in `ReadOptionsBuilder::read_cubecl`; `Bed::read_cubecl` reads everything and
+  `Bed::read_cubecl_with_options` takes built options. GPU items live in `gpu`
+  (`CubeClMatrix`, `client`, `memory_cleanup`, `Error`), present only with `cubecl-cuda`;
+  GPU calls return `Box<gpu::Error>`, wrapping ordinary read errors. `BedErrorPlus`
+  and existing CPU option signatures match 1.2. GPU support remains Beta.
+  CPU-only builds support Rust 1.85; GPU support needs Rust 1.95. Use an MSRV-aware
+  lockfile with CPU-compatible ICU dependencies. Keep the `cubecl-cuda` feature
+  name and remove the untested AMD `cubecl-hip` Cargo feature. Internal
+  `_cubecl-cpu-test` runs kernel tests on CubeCL's CPU runtime, including when
+  `--all-features` is used.
 
 ## [1.3.0a1] - 2026-11-17
 

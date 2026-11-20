@@ -125,3 +125,11 @@ def test_fused_read_after_standardization_errors(cupy):
         stats = native.standardize_gpu(owner, False, 1.0, 25.0)
         np.testing.assert_array_equal(stats, expected_stats)
         np.testing.assert_array_equal(cupy.asnumpy(cupy.asarray(owner)), expected)
+
+
+def test_invalid_variance_is_runtime_error(tmp_path, cupy):
+    # Finite observations whose centered squares overflow must retain the native diagnostic.
+    values = np.array([[1e308], [-1e308]], dtype=np.float64)
+    owner, actual = owner_with_values(tmp_path / "variance_overflow.bed", values, "F", cupy)
+    with pytest.raises(RuntimeError, match="Invalid GPU variance:"):
+        native.standardize_gpu(owner, False, 1, 25)

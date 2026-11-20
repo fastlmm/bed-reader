@@ -35,6 +35,20 @@ def test_native_gpu_failure_is_runtime_error(cupy):
         native.allocate_gpu(65_536, 65_536, "float32", True)
 
 
+@pytest.mark.parametrize("rows,columns", [([3], [0]), ([-4], [0]), ([0], [4]), ([0], [-5])])
+def test_native_gpu_index_errors_match_cpu(cupy, rows, columns):
+    path = sample_file("small.bed")
+    rows = np.array(rows, dtype=np.intp)
+    columns = np.array(columns, dtype=np.intp)
+    with open_bed(path, count_A1=True) as bed:
+        values = np.empty((len(rows), len(columns)), dtype=np.float32, order="F")
+        with pytest.raises(IndexError) as cpu_error:
+            native.read_f32(str(path), {}, bed.iid_count, bed.sid_count, True, rows, columns, values, 1)
+        with pytest.raises(IndexError) as gpu_error:
+            native.read_gpu(str(path), bed.iid_count, bed.sid_count, True, rows, columns, "float32", True)
+    assert str(gpu_error.value) == str(cpu_error.value)
+
+
 @pytest.mark.parametrize("dtype,order", [("float16", "C"), ("int32", "F"), ("float32", "A")])
 def test_invalid_type_or_order(dtype, order):
     with pytest.raises(ValueError):

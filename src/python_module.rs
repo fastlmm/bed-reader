@@ -11,7 +11,6 @@ use numpy::{PyArray1, PyArray2, PyArray3};
 use pyo3::{
     exceptions::PyIOError,
     exceptions::PyIndexError,
-    exceptions::PyRuntimeError,
     exceptions::PyValueError,
     prelude::*,
     types::{PyDict, PyModule},
@@ -32,9 +31,6 @@ impl std::convert::From<Box<BedErrorPlus>> for PyErr {
             ) => PyIndexError::new_err(err.to_string()),
 
             BedErrorPlus::IOError(_) => PyIOError::new_err(err.to_string()),
-
-            // A missing GPU, out-of-memory, or driver failure is not a bad argument.
-            BedErrorPlus::GpuError(_) => PyRuntimeError::new_err(err.to_string()),
 
             _ => PyValueError::new_err(err.to_string()),
         }
@@ -408,7 +404,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         let mut bytes_vector = bytes_vector.as_array_mut();
         let bytes_vector = bytes_vector
             .as_slice_mut()
-            .ok_or_else(|| Box::new(BedError::EncodingContiguous().into()))?;
+            .ok_or_else(|| Box::<BedErrorPlus>::from(BedError::EncodingContiguous()))?;
 
         Ok(encode1(&val, bytes_vector, is_a1_counted, -127)?)
     }
@@ -427,7 +423,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         let mut bytes_vector = bytes_vector.as_array_mut();
         let bytes_vector = bytes_vector
             .as_slice_mut()
-            .ok_or_else(|| Box::new(BedError::EncodingContiguous().into()))?;
+            .ok_or_else(|| Box::<BedErrorPlus>::from(BedError::EncodingContiguous()))?;
 
         Ok(encode1(&val, bytes_vector, is_a1_counted, f32::NAN)?)
     }
@@ -446,7 +442,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         let mut bytes_vector = bytes_vector.as_array_mut();
         let bytes_vector = bytes_vector
             .as_slice_mut()
-            .ok_or_else(|| Box::new(BedError::EncodingContiguous().into()))?;
+            .ok_or_else(|| Box::<BedErrorPlus>::from(BedError::EncodingContiguous()))?;
 
         Ok(encode1(&val, bytes_vector, is_a1_counted, f64::NAN)?)
     }
@@ -820,11 +816,14 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
 /// `PySnpTools` call these.
 #[cfg(feature = "cubecl-cuda")]
 mod gpu_python {
-    use crate::backend::{
-        cubecl::standardize::{standardize_beta, standardize_unit},
-        CubeCl, CubeClMatrix, CudaPointer,
+    use crate::{
+        gpu::{
+            self,
+            reader::standardize::{self, standardize_beta, standardize_unit},
+            CubeClMatrix, CudaPointer,
+        },
+        Bed, BedErrorPlus, ReadOptions,
     };
-    use crate::{Bed, ReadOptions};
     use cudarc::driver::CudaContext;
     use numpy::{PyArray1, PyArrayMethods, ToPyArray};
     use pyo3::{
@@ -833,6 +832,28 @@ mod gpu_python {
         types::PyDict,
     };
     use std::sync::{Arc, Mutex};
+
+    impl From<Box<gpu::Error>> for PyErr {
+        fn from(error: Box<gpu::Error>) -> Self {
+            match *error {
+                gpu::Error::Bed(error) => error.into(),
+                // A missing GPU, out-of-memory, or driver failure is not a bad argument.
+                error => PyRuntimeError::new_err(error.to_string()),
+            }
+        }
+    }
+
+    impl From<Box<standardize::Error>> for PyErr {
+        fn from(error: Box<standardize::Error>) -> Self {
+            match *error {
+                standardize::Error::Gpu(error) => error.into(),
+                standardize::Error::Bed(error) => Box::<BedErrorPlus>::from(error).into(),
+                error @ standardize::Error::InvalidVariance(_) => {
+                    PyRuntimeError::new_err(error.to_string())
+                }
+            }
+        }
+    }
 
     enum AnyMatrix {
         I8(CubeClMatrix<i8>),
@@ -852,7 +873,7 @@ mod gpu_python {
         // Access is always through &mut self (also guarded by PyO3's mutable
         // borrow), using get_mut; this mutex is never locked or poisoned.
         pointer: Mutex<Option<CudaPointer>>,
-        // CubeCl selects CUDA device 0 and its primary context. Keep the same
+        // GPU reads use CUDA device 0 and its primary context. Keep the same
         // context alive so destruction can wait for consumers on any stream.
         context: Arc<CudaContext>,
     }
@@ -897,7 +918,7 @@ mod gpu_python {
             // `MemoryManagement::cleanup`). A full `memory_cleanup` here was measured about 3x
             // slower for repeated block reads. `test_drop_returns_gpu_memory` checks this
             // behavior; recheck it when upgrading CubeCL.
-            let client = match CubeCl::client() {
+            let client = match gpu::client() {
                 Ok(client) => client,
                 Err(error) => {
                     report_drop_error(
@@ -1022,8 +1043,7 @@ mod gpu_python {
                     .sid_index(si)
                     .is_a1_counted(is_a1_counted)
                     .is_f(is_f)
-                    .cubecl()
-                    .read(&mut bed)?,
+                    .read_cubecl(&mut bed)?,
             ),
             "float32" => AnyMatrix::F32(
                 ReadOptions::<f32>::builder()
@@ -1031,8 +1051,7 @@ mod gpu_python {
                     .sid_index(si)
                     .is_a1_counted(is_a1_counted)
                     .is_f(is_f)
-                    .cubecl()
-                    .read(&mut bed)?,
+                    .read_cubecl(&mut bed)?,
             ),
             "float64" => AnyMatrix::F64(
                 ReadOptions::<f64>::builder()
@@ -1040,8 +1059,7 @@ mod gpu_python {
                     .sid_index(si)
                     .is_a1_counted(is_a1_counted)
                     .is_f(is_f)
-                    .cubecl()
-                    .read(&mut bed)?,
+                    .read_cubecl(&mut bed)?,
             ),
             _ => {
                 return Err(PyValueError::new_err(format!(
@@ -1121,7 +1139,7 @@ mod gpu_python {
         {
             // Existing CuPy views do not ask for the array interface again.
             // Make queued writes visible before returning to those consumers.
-            let client = CubeCl::client()?;
+            let client = gpu::client()?;
             pollster::block_on(client.sync())
                 .map_err(|error| PyRuntimeError::new_err(error.to_string()))?;
         }
@@ -1132,7 +1150,7 @@ mod gpu_python {
     /// process (for example, `CuPy`) can use it.
     #[pyfunction]
     fn gpu_memory_cleanup() -> PyResult<()> {
-        CubeCl::memory_cleanup()?;
+        gpu::memory_cleanup()?;
         Ok(())
     }
 
