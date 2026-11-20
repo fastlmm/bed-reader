@@ -30,6 +30,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `_cubecl-cpu-test` runs kernel tests on CubeCL's CPU runtime, including when
   `--all-features` is used.
 
+* Fix index errors on mode 0 (individual-major) .bed files: an out-of-range
+  individual index was reported as a SNP index, and the reverse. CPU, cloud,
+  and GPU reads now resolve indexes with one shared function.
+
 ## [1.3.0a1] - 2026-11-17
 
 * Add experimental NVIDIA GPU reads for Python through CuPy and optional

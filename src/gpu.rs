@@ -21,7 +21,7 @@
 //! enables it still builds there, but macOS has no CUDA, so GPU reads cannot run. The feature
 //! (and `--all-features`) cannot compile on Windows ARM64 or Intel macOS, because `CubeCL` 0.11
 //! downloads a prebuilt LLVM bundle that does not exist for them. Compiling needs no CUDA
-//! installation; running GPU reads does (see [Requirements](#requirements)).
+//! installation; running GPU reads needs the NVIDIA driver (see [Requirements](#requirements)).
 //!
 //! If a CUDA toolkit is installed, compiling does check it: when `nvcc` on `PATH` is newer than the
 //! `cudarc` crate supports, the build fails with "Unsupported cuda toolkit version". Run
@@ -30,18 +30,12 @@
 //!
 //! # Requirements
 //!
-//! Running GPU reads needs:
+//! Running GPU reads needs only an NVIDIA GPU and its driver, which provides the CUDA driver
+//! library (`libcuda.so` on Linux, `nvcuda.dll` on Windows). No CUDA Toolkit is needed: `CubeCL`
+//! compiles bed-reader's GPU kernels itself, with its bundled LLVM, the first time they run.
+//! Without a usable GPU or driver, GPU calls return [`Error::Unavailable`].
 //!
-//! - an NVIDIA GPU and its driver, which provides the CUDA driver library (`libcuda.so` on
-//!   Linux, `nvcuda.dll` on Windows);
-//! - NVRTC, CUDA's runtime compiler, which compiles bed-reader's GPU kernels the first time they
-//!   run. It comes with the [CUDA Toolkit](https://developer.nvidia.com/cuda-downloads).
-//!   `nvcc` is not used.
-//!
-//! Both libraries are loaded when the program runs, so the operating system must be able to find
-//! them. On Linux, add the toolkit's library folder (usually `/usr/local/cuda/lib64`) to
-//! `LD_LIBRARY_PATH`. On Windows, the toolkit installer adds its `bin` folder to `PATH`.
-//! Tested with CUDA 13.3 on WSL2.
+//! Tested on WSL2 with an NVIDIA RTX 3060 and driver 610.88.
 //!
 //! # Reading into GPU memory
 //!

@@ -16,8 +16,9 @@ use std::path::PathBuf;
 
 use crate::{
     check_and_precompute_iid_index, compute_max_chunk_bytes, compute_max_concurrent_requests,
-    set_up_two_bits_to_value, try_div_4, BedError, BedErrorPlus, BedVal, FromStringArray, Hold,
-    Metadata, ReadOptions, BED_FILE_MAGIC1, BED_FILE_MAGIC2, EMPTY_OPTIONS, STATIC_FETCH_DATA,
+    resolve_index, set_up_two_bits_to_value, try_div_4, BedError, BedErrorPlus, BedVal,
+    FromStringArray, Hold, Metadata, ReadOptions, BED_FILE_MAGIC1, BED_FILE_MAGIC2, EMPTY_OPTIONS,
+    STATIC_FETCH_DATA,
 };
 use crate::{MetadataFields, CB_HEADER_U64};
 
@@ -119,24 +120,6 @@ impl BedCloudBuilder {
     }
 }
 
-fn convert_negative_sid_index(
-    in_sid_i_signed: isize,
-    upper_sid_count: isize,
-    lower_sid_count: isize,
-) -> Result<u64, Box<BedErrorPlus>> {
-    if (0..=upper_sid_count).contains(&in_sid_i_signed) {
-        #[allow(clippy::cast_sign_loss)]
-        Ok(in_sid_i_signed as u64)
-    } else if (lower_sid_count..=-1).contains(&in_sid_i_signed) {
-        #[allow(clippy::cast_sign_loss)]
-        Ok((in_sid_i_signed - lower_sid_count) as u64)
-    } else {
-        Err(Box::new(BedErrorPlus::BedError(BedError::SidIndexTooBig(
-            in_sid_i_signed,
-        ))))
-    }
-}
-
 #[allow(clippy::too_many_arguments)]
 #[allow(clippy::similar_names)]
 async fn internal_read_no_alloc<TVal: BedVal>(
@@ -147,6 +130,8 @@ async fn internal_read_no_alloc<TVal: BedVal>(
     is_a1_counted: bool,
     iid_index: &[isize],
     sid_index: &[isize],
+    iid_too_big: fn(isize) -> BedError,
+    sid_too_big: fn(isize) -> BedError,
     missing_value: TVal,
     max_concurrent_requests: usize,
     max_chunk_bytes: usize,
@@ -155,14 +140,12 @@ async fn internal_read_no_alloc<TVal: BedVal>(
     // compute numbers outside of the loop
     let in_iid_count_div4_u64 = check_file_length(in_iid_count, in_sid_count, size, cloud_file)?;
     let (i_div_4_less_start_array, i_mod_4_times_2_array, i_div_4_start, i_div_4_len) =
-        check_and_precompute_iid_index(in_iid_count, iid_index)?;
+        check_and_precompute_iid_index(in_iid_count, iid_index, iid_too_big)?;
     if i_div_4_len == 0 {
         return Ok(()); // we must return early because the chucks method doesn't work with size 0
     }
     let chunk_count = max(1, max_chunk_bytes / i_div_4_len as usize);
     let from_two_bits_to_value = set_up_two_bits_to_value(is_a1_counted, missing_value);
-    let lower_sid_count = -(in_sid_count as isize);
-    let upper_sid_count: isize = (in_sid_count as isize) - 1;
 
     // sid_index is a slice that tells us which columns to read from the (column-major) file.
     // out_val is a column-major array to fill the decode results.
@@ -175,8 +158,8 @@ async fn internal_read_no_alloc<TVal: BedVal>(
             chunk_count,
             chunk,
             chunk_index,
-            upper_sid_count,
-            lower_sid_count,
+            in_sid_count,
+            sid_too_big,
             in_iid_count_div4_u64,
             i_div_4_start,
             i_div_4_len,
@@ -213,8 +196,8 @@ fn extract_ranges(
     chunk_count: usize,
     chunk: itertools::Chunk<'_, std::slice::Iter<'_, isize>>,
     chunk_index: usize,
-    upper_sid_count: isize,
-    lower_sid_count: isize,
+    in_sid_count: usize,
+    sid_too_big: fn(isize) -> BedError,
     in_iid_count_div4_u64: u64,
     i_div_4_start: u64,
     i_div_4_len: u64,
@@ -223,8 +206,7 @@ fn extract_ranges(
     let mut out_sid_i_vec = Vec::with_capacity(chunk_count);
     for (inner_index, in_sid_i_signed) in chunk.enumerate() {
         let out_sid_i = chunk_index * chunk_count + inner_index;
-        let in_sid_i =
-            convert_negative_sid_index(*in_sid_i_signed, upper_sid_count, lower_sid_count)?;
+        let in_sid_i = resolve_index(*in_sid_i_signed, in_sid_count, sid_too_big)? as u64;
         // File offsets stay u64 across the cloud-file boundary. The file-length
         // and index checks above guarantee these calculations fit.
         let pos = in_sid_i * in_iid_count_div4_u64 + i_div_4_start + CB_HEADER_U64;
@@ -298,7 +280,8 @@ async fn read_no_alloc<TVal: BedVal>(
 
     match bytes[2] {
         0 => {
-            // We swap 'iid' and 'sid' and then reverse the axes.
+            // We swap 'iid' and 'sid' and then reverse the axes. The index errors swap too,
+            // so they still name the caller's axis.
             let mut val_t = val.view_mut().reversed_axes();
 
             internal_read_no_alloc(
@@ -309,6 +292,8 @@ async fn read_no_alloc<TVal: BedVal>(
                 is_a1_counted,
                 sid_index,
                 iid_index,
+                BedError::SidIndexTooBig,
+                BedError::IidIndexTooBig,
                 missing_value,
                 max_concurrent_requests,
                 max_chunk_bytes,
@@ -325,6 +310,8 @@ async fn read_no_alloc<TVal: BedVal>(
                 is_a1_counted,
                 iid_index,
                 sid_index,
+                BedError::IidIndexTooBig,
+                BedError::SidIndexTooBig,
                 missing_value,
                 max_concurrent_requests,
                 max_chunk_bytes,
@@ -2382,6 +2369,7 @@ fn to_metadata_path(
 #[cfg(test)]
 mod tests {
     use super::extract_ranges;
+    use crate::BedError;
     use itertools::Itertools;
     use std::ops::Range;
 
@@ -2393,8 +2381,17 @@ mod tests {
         let indices = [0, -1];
         let chunks = indices.iter().chunks(2);
         let chunk = chunks.into_iter().next().unwrap();
-        let (ranges, output_indices): (Vec<Range<u64>>, _) =
-            extract_ranges(2, chunk, 0, 1, -2, bytes_per_variant, 0, 1).unwrap();
+        let (ranges, output_indices): (Vec<Range<u64>>, _) = extract_ranges(
+            2,
+            chunk,
+            0,
+            2,
+            BedError::SidIndexTooBig,
+            bytes_per_variant,
+            0,
+            1,
+        )
+        .unwrap();
         assert_eq!(
             ranges,
             vec![3..4, (bytes_per_variant + 3)..(bytes_per_variant + 4)]

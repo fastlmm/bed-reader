@@ -8,7 +8,7 @@ mod general;
 use cubecl::prelude::*;
 use ndarray as nd;
 
-use super::{genotype, memory_dimensions, to_u32, CubeClMatrix, CubeClVal, MAX_GRID_Y, UNITS};
+use super::{memory_dimensions, to_u32, CubeClMatrix, CubeClVal, MAX_GRID_Y, UNITS};
 use crate::{find_factor, gpu, snp_mean_std, BedError, Dist};
 
 /// Internal standardizer failures; invalid variance is not part of the public GPU API.
@@ -114,7 +114,7 @@ fn standardize<TVal: CubeClFloat>(
 
     // Finish each SNP's statistics with the CPU code's functions. The integer sums convert to
     // `TVal` exactly whenever the CPU's own float sums are exact (below 2^24 for f32).
-    let two = genotype::<TVal>(2);
+    let two = <TVal as From<i8>>::from(2);
     let mut mean = Vec::with_capacity(sid_count);
     let mut factor = Vec::with_capacity(sid_count);
     let mut snc = Vec::with_capacity(sid_count);

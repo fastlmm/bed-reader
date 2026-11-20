@@ -10,6 +10,7 @@ use crate::file_aat_piece;
 use crate::file_ata_piece;
 use crate::file_b_less_aatbx;
 use crate::read_into_f64;
+use crate::resolve_index;
 use crate::sample_bed_file;
 use crate::sample_file;
 use crate::sample_files;
@@ -217,6 +218,8 @@ fn index() {
         true,
         &[isize::MAX - 1],
         &[isize::MAX - 1],
+        BedError::IidIndexTooBig,
+        BedError::SidIndexTooBig,
         f64::NAN,
         &mut ignore_val.view_mut(),
     );
@@ -1136,4 +1139,34 @@ fn zero_length_encode1() -> Result<(), Box<BedErrorPlus>> {
     encode1(&val.view(), &mut buffer, true, -127)?;
     assert_eq!(buffer, vec![0u8; 0]); // zero length
     Ok(())
+}
+
+#[test]
+fn resolve_index_matches_python_indexing() {
+    use crate::BedError;
+    let resolve = |index| resolve_index(index, 3, BedError::SidIndexTooBig);
+    assert_eq!(resolve(0).ok(), Some(0));
+    assert_eq!(resolve(2).ok(), Some(2));
+    assert_eq!(resolve(-1).ok(), Some(2));
+    assert_eq!(resolve(-3).ok(), Some(0));
+    for index in [3, -4, isize::MAX, isize::MIN] {
+        assert!(matches!(resolve(index), Err(BedError::SidIndexTooBig(bad)) if bad == index));
+    }
+    // Exact at the extremes, with no casts: every isize resolves against the largest count.
+    assert_eq!(
+        resolve_index(isize::MAX, usize::MAX, BedError::IidIndexTooBig).ok(),
+        Some(isize::MAX.unsigned_abs())
+    );
+    assert_eq!(
+        resolve_index(isize::MIN, usize::MAX, BedError::IidIndexTooBig).ok(),
+        Some(usize::MAX - isize::MIN.unsigned_abs())
+    );
+    assert!(matches!(
+        resolve_index(0, 0, BedError::IidIndexTooBig),
+        Err(BedError::IidIndexTooBig(0))
+    ));
+    assert!(matches!(
+        resolve_index(-1, 0, BedError::IidIndexTooBig),
+        Err(BedError::IidIndexTooBig(-1))
+    ));
 }

@@ -1,6 +1,9 @@
 //! GPU reading and matrix storage, re-exported by [`gpu`](super).
 use core::{marker::PhantomData, mem::size_of};
-use std::io::{Read, Seek, SeekFrom};
+use std::{
+    fs::File,
+    io::{Read, Seek, SeekFrom},
+};
 
 use cubecl::{prelude::*, std::tensor::TensorHandle};
 use ndarray as nd;
@@ -8,7 +11,8 @@ use ndarray::ShapeBuilder;
 
 use super::{sealed::Value, Error};
 use crate::{
-    open_and_check, path_ref_to_string, Bed, BedError, BedVal, Hold, ReadOptions, CB_HEADER_U64,
+    open_and_check, path_ref_to_string, resolve_index, set_up_two_bits_to_value, try_div_4, Bed,
+    BedError, BedVal, Hold, ReadOptions, CB_HEADER_U64,
 };
 
 // The standardizer is for the Python bindings (and this module's tests), like the CPU one.
@@ -140,6 +144,11 @@ pub(crate) fn read_cubecl<TVal: CubeClVal>(
 ) -> Result<CubeClMatrix<TVal>, Box<Error>> {
     let iid_count = bed.iid_count()?;
     let sid_count = bed.sid_count()?;
+    // Indexes are `isize`, so each count must fit `isize`. A count can exceed that only when the
+    // caller gives `Bed::builder` counts that no file could have.
+    if isize::try_from(iid_count).is_err() || isize::try_from(sid_count).is_err() {
+        Err(BedError::IndexesTooBigForFiles(iid_count, sid_count))?;
+    }
     let iid_hold = Hold::new(&read_options.iid_index, iid_count)?;
     let sid_hold = Hold::new(&read_options.sid_index, sid_count)?;
     let iid_index = resolve(iid_hold.as_ref(), iid_count, BedError::IidIndexTooBig)?;
@@ -169,11 +178,10 @@ pub(crate) fn read_cubecl<TVal: CubeClVal>(
         ),
         _ => Err(BedError::BadMode(path_ref_to_string(&bed.path)))?,
     };
-    let row_bytes = col_count.div_ceil(4);
-    let expected_len = (row_bytes as u64)
-        .checked_mul(row_count as u64)
-        .and_then(|len| len.checked_add(CB_HEADER_U64))
-        .ok_or(BedError::IndexesTooBigForFiles(iid_count, sid_count))?;
+    // The same file-length check, and error, as the CPU reader, which also swaps counts for mode 0.
+    let row_bytes_u64 = try_div_4(col_count, row_count)?;
+    // `try_div_4` checked that the whole file length fits u64.
+    let expected_len = row_bytes_u64 * row_count as u64 + CB_HEADER_U64;
     if file.metadata()?.len() != expected_len {
         Err(BedError::IllFormed(path_ref_to_string(&bed.path)))?;
     }
@@ -185,6 +193,9 @@ pub(crate) fn read_cubecl<TVal: CubeClVal>(
         _ => (0, 0),
     };
     let span_words = span_len.div_ceil(4);
+    // The kernel indexes `packed` with u32. A few far-apart columns can make it much larger than
+    // the result, so check it separately from `element_count`, before allocating or reading.
+    let packed_len = self::element_count(rows.len(), span_words)?;
     let col_word: Vec<u32> = cols
         .iter()
         .map(|&c| to_u32((c / 4 - span_start) / 4))
@@ -193,16 +204,15 @@ pub(crate) fn read_cubecl<TVal: CubeClVal>(
         .iter()
         .map(|&c| to_u32(((c / 4 - span_start) % 4) * 8 + (c % 4) * 2))
         .collect::<Result<_, _>>()?;
-    let mut packed = vec![0u32; (rows.len() * span_words).max(1)];
-    {
-        let bytes: &mut [u8] = bytemuck::cast_slice_mut(&mut packed);
-        for (out_row, &row) in rows.iter().enumerate() {
-            let pos = CB_HEADER_U64 + (row * row_bytes + span_start) as u64;
-            file.seek(SeekFrom::Start(pos))?;
-            let dst = out_row * span_words * 4;
-            file.read_exact(&mut bytes[dst..dst + span_len])?;
-        }
-    }
+    let packed = read_packed(
+        &mut file,
+        rows,
+        row_bytes_u64,
+        span_start,
+        span_len,
+        span_words,
+        packed_len,
+    )?;
 
     // Empty kernel arguments advertise one dummy element; it must fit even for f64.
     let handle = empty_dedicated(&client, (element_count.max(1) * size_of::<TVal>()).max(4));
@@ -217,14 +227,11 @@ pub(crate) fn read_cubecl<TVal: CubeClVal>(
         let lut_handle = genotype_lookup(&client, read_options);
         let (fast_count, slow_count) = memory_dimensions(cols.len(), rows.len(), kernel_is_f);
         let element_count_u32 = to_u32(element_count)?;
-        // The kernel indexes `packed` with u32. A few far-apart columns can make it much larger
-        // than the result, so check it separately from `element_count`.
-        to_u32(packed.len())?;
         // SAFETY: `decode` writes only `slow * fast_count + fast` for `fast < fast_count` and
         // `slow < slow_count`, so below `element_count` (which fits u32), the length of
-        // `handle`; it reads `col_word`/`col_shift` at column indexes < `cols.len()` and
-        // `packed` at word indexes < `rows.len() * span_words` = `packed.len()` (checked above to
-        // fit u32), the lengths passed.
+        // `handle`; it reads `col_word`/`col_shift` at column indexes < `cols.len()`, `packed` at
+        // word indexes < `rows.len() * span_words` = `packed_len` (checked above to fit u32), and
+        // `lut` at 2-bit codes <= 3 < 4, the lengths passed.
         unsafe {
             decode::launch_unchecked::<TVal>(
                 &client,
@@ -256,6 +263,34 @@ pub(crate) fn read_cubecl<TVal: CubeClVal>(
     })
 }
 
+/// Reads, from each selected stored row, the `span_len` bytes starting at byte `span_start`, into
+/// `span_words` u32 words per row. The caller has checked that the file holds `row_bytes` bytes for
+/// each of its rows, every `row` is one of them, and `packed_len` = `rows.len() * span_words`.
+fn read_packed(
+    file: &mut File,
+    rows: &[usize],
+    row_bytes: u64,
+    span_start: usize,
+    span_len: usize,
+    span_words: usize,
+    packed_len: usize,
+) -> std::io::Result<Vec<u32>> {
+    let mut packed = vec![0u32; packed_len.max(1)];
+    // Native-endian u32 words: the kernel's bit shifts assume little-endian bytes, as on every CUDA
+    // host (x86-64 and ARM64).
+    let bytes: &mut [u8] = bytemuck::cast_slice_mut(&mut packed);
+    for (out_row, &row) in rows.iter().enumerate() {
+        // As in the CPU reader. The file's length (which fits u64) bounds `pos`, so it cannot
+        // overflow. `span_len <= span_words * 4`, so `dst + span_len <= packed_len * 4`, the
+        // length of `bytes`.
+        let pos = row as u64 * row_bytes + span_start as u64 + CB_HEADER_U64;
+        file.seek(SeekFrom::Start(pos))?;
+        let dst = out_row * span_words * 4;
+        file.read_exact(&mut bytes[dst..dst + span_len])?;
+    }
+    Ok(packed)
+}
+
 /// The contiguous and strided dimensions for the selected memory order.
 fn memory_dimensions(iid_count: usize, sid_count: usize, is_f: bool) -> (usize, usize) {
     if is_f {
@@ -269,12 +304,7 @@ fn genotype_lookup<TVal: CubeClVal>(
     client: &Client,
     read_options: &ReadOptions<TVal>,
 ) -> cubecl::server::Handle {
-    let missing = read_options.missing_value;
-    let values: [TVal; 4] = if read_options.is_a1_counted {
-        [genotype(2), missing, genotype(1), genotype(0)]
-    } else {
-        [genotype(0), missing, genotype(1), genotype(2)]
-    };
+    let values = set_up_two_bits_to_value(read_options.is_a1_counted, read_options.missing_value);
     client.create_from_slice(bytemuck::cast_slice(&values))
 }
 
@@ -454,25 +484,15 @@ impl CudaPointer {
     }
 }
 
-/// Resolves Python-style indexes (negative counts from the end), with the CPU reader's errors.
+/// Resolves each index with [`resolve_index`], the resolver every reader shares.
 fn resolve(
     index: &[isize],
     count: usize,
     too_big: fn(isize) -> BedError,
 ) -> Result<Vec<usize>, BedError> {
-    let count_isize =
-        isize::try_from(count).map_err(|_| BedError::IndexesTooBigForFiles(count, 0))?;
     index
         .iter()
-        .map(|&i| {
-            if (0..count_isize).contains(&i) {
-                Ok(i.unsigned_abs())
-            } else if (-count_isize..0).contains(&i) {
-                Ok(count - i.unsigned_abs())
-            } else {
-                Err(too_big(i))
-            }
-        })
+        .map(|&index| resolve_index(index, count, too_big))
         .collect()
 }
 
@@ -493,10 +513,6 @@ fn element_count(rows: usize, columns: usize) -> Result<usize, Error> {
 /// size the pool's later pages to them. Small temporaries stay pooled.
 fn empty_dedicated(client: &Client, size: usize) -> cubecl::server::Handle {
     client.memory_dedicated_allocation(size, |size| client.empty(size))
-}
-
-fn genotype<TVal: CubeClVal>(value: i8) -> TVal {
-    <TVal as From<i8>>::from(value)
 }
 
 /// Copies `words` to a new GPU buffer (through reused pinned host buffers on CUDA, which is about 4x
@@ -1031,19 +1047,47 @@ mod tests {
 
     #[test]
     fn gpu_index_errors_match_cpu() -> Result<(), Box<dyn StandardError>> {
-        let mut bed = Bed::new(sample_bed_file("small.bed")?)?;
-        for (iid_index, sid_index) in [
-            (vec![3isize], vec![0isize]),
-            (vec![-4], vec![0]),
-            (vec![0], vec![4]),
-            (vec![0], vec![-5]),
-        ] {
-            let mut options = ReadOptions::<f32>::builder();
-            options.iid_index(&iid_index).sid_index(&sid_index);
-            let cpu_error = options.read(&mut bed).expect_err("CPU should fail");
-            let gpu_error = options.read_cubecl(&mut bed).expect_err("GPU should fail");
-            assert_eq!(gpu_error.to_string(), cpu_error.to_string());
+        // Mode 0 (individual-major) files swap axes internally; errors must not.
+        for name in ["small.bed", "smallmode0.bed"] {
+            let mut bed = Bed::new(sample_bed_file(name)?)?;
+            // The two files have different shapes, so indexes just out of range differ.
+            let iid_count = isize::try_from(bed.iid_count()?)?;
+            let sid_count = isize::try_from(bed.sid_count()?)?;
+            for (iid_index, sid_index, axis) in [
+                (vec![iid_count], vec![0isize], "individual"),
+                (vec![-iid_count - 1], vec![0], "individual"),
+                (vec![0], vec![sid_count], "SNP"),
+                (vec![0], vec![-sid_count - 1], "SNP"),
+            ] {
+                let mut options = ReadOptions::<f32>::builder();
+                options.iid_index(&iid_index).sid_index(&sid_index);
+                let cpu_error = options.read(&mut bed).expect_err("CPU should fail");
+                let gpu_error = options.read_cubecl(&mut bed).expect_err("GPU should fail");
+                assert_eq!(gpu_error.to_string(), cpu_error.to_string());
+                assert!(
+                    cpu_error
+                        .to_string()
+                        .starts_with(&format!("Index to {axis} ")),
+                    "{name}: {cpu_error}"
+                );
+            }
         }
+        Ok(())
+    }
+
+    #[test]
+    fn gpu_rejects_counts_too_big_for_any_file() -> Result<(), Box<dyn StandardError>> {
+        // Only a caller-given count can exceed isize::MAX. It fails before any GPU work.
+        let too_big = usize::try_from(isize::MAX)? + 1;
+        let mut bed = Bed::builder(sample_bed_file("small.bed")?)
+            .iid_count(too_big)
+            .sid_count(4)
+            .build()?;
+        let error = bed.read_cubecl::<f32>().expect_err("count too big");
+        assert_eq!(
+            error.to_string(),
+            format!("Indexes ({too_big},4) too big for files")
+        );
         Ok(())
     }
 }

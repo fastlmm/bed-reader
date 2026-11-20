@@ -398,7 +398,8 @@ fn read_no_alloc<TVal: BedVal>(
 
         match bytes_vector[2] {
             0 => {
-                // We swap 'iid' and 'sid' and then reverse the axes.
+                // We swap 'iid' and 'sid' and then reverse the axes. The index errors swap too,
+                // so they still name the caller's axis.
                 let mut val_t = val.view_mut().reversed_axes();
                 internal_read_no_alloc(
                     buf_reader,
@@ -408,6 +409,8 @@ fn read_no_alloc<TVal: BedVal>(
                     is_a1_counted,
                     sid_index,
                     iid_index,
+                    BedError::SidIndexTooBig,
+                    BedError::IidIndexTooBig,
                     missing_value,
                     &mut val_t,
                 )
@@ -420,6 +423,8 @@ fn read_no_alloc<TVal: BedVal>(
                 is_a1_counted,
                 iid_index,
                 sid_index,
+                BedError::IidIndexTooBig,
+                BedError::SidIndexTooBig,
                 missing_value,
                 val,
             ),
@@ -559,6 +564,8 @@ fn internal_read_no_alloc<TVal: BedVal>(
     is_a1_counted: bool,
     iid_index: &[isize],
     sid_index: &[isize],
+    iid_too_big: fn(isize) -> BedError,
+    sid_too_big: fn(isize) -> BedError,
     missing_value: TVal,
     out_val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
 ) -> Result<(), Box<BedErrorPlus>> {
@@ -574,25 +581,17 @@ fn internal_read_no_alloc<TVal: BedVal>(
 
     // Check and precompute for each iid_index
     let (i_div_4_less_start_array, i_mod_4_times_2_array, i_div_4_start, i_div_4_len) =
-        check_and_precompute_iid_index(in_iid_count, iid_index)?;
+        check_and_precompute_iid_index(in_iid_count, iid_index, iid_too_big)?;
 
     // Check and compute work for each sid_index
     let from_two_bits_to_value = set_up_two_bits_to_value(is_a1_counted, missing_value);
-    let lower_sid_count = -(in_sid_count as isize);
-    let upper_sid_count: isize = (in_sid_count as isize) - 1;
     // See https://morestina.net/blog/1432/parallel-stream-processing-with-rayon
     // Possible optimization: We could read snp in their input order instead of their output order
     sid_index
         .iter()
         .map(|in_sid_i_signed| {
             // Turn signed sid_index into unsigned sid_index (or error)
-            let in_sid_i = if (0..=upper_sid_count).contains(in_sid_i_signed) {
-                *in_sid_i_signed as u64
-            } else if (lower_sid_count..=-1).contains(in_sid_i_signed) {
-                (in_sid_count - ((-in_sid_i_signed) as usize)) as u64
-            } else {
-                Err(BedError::SidIndexTooBig(*in_sid_i_signed))?
-            };
+            let in_sid_i = resolve_index(*in_sid_i_signed, in_sid_count, sid_too_big)? as u64;
 
             // Read the iid info for one snp from the disk
             let mut bytes_vector: Vec<u8> = vec![0; i_div_4_len as usize];
@@ -622,6 +621,26 @@ fn internal_read_no_alloc<TVal: BedVal>(
     Ok(())
 }
 
+/// Resolves one index against an axis of `count` items: `0..count` as is, and negative indexes
+/// counting from the end (`-1` is the last item), as in Python. Any other index fails with
+/// `too_big(index)`. Every reader (CPU, cloud, and GPU) resolves indexes here, so they accept the
+/// same indexes and report the same errors.
+pub(crate) fn resolve_index(
+    index: isize,
+    count: usize,
+    too_big: fn(isize) -> BedError,
+) -> Result<usize, BedError> {
+    // `unsigned_abs` avoids casts, so this is exact for every `isize` and `usize`.
+    let magnitude = index.unsigned_abs();
+    if index >= 0 && magnitude < count {
+        Ok(magnitude)
+    } else if index < 0 && magnitude <= count {
+        Ok(count - magnitude)
+    } else {
+        Err(too_big(index))
+    }
+}
+
 type Array1Usize = nd::ArrayBase<nd::OwnedRepr<usize>, nd::Dim<[usize; 1]>>;
 type Array1U8 = nd::ArrayBase<nd::OwnedRepr<u8>, nd::Dim<[usize; 1]>>;
 
@@ -630,9 +649,8 @@ type Array1U8 = nd::ArrayBase<nd::OwnedRepr<u8>, nd::Dim<[usize; 1]>>;
 fn check_and_precompute_iid_index(
     in_iid_count: usize,
     iid_index: &[isize],
+    too_big: fn(isize) -> BedError,
 ) -> Result<(Array1Usize, Array1U8, u64, u64), Box<BedErrorPlus>> {
-    let lower_iid_count = -(in_iid_count as isize);
-    let upper_iid_count: isize = (in_iid_count as isize) - 1;
     let mut i_div_4_less_start_array = nd::Array1::<usize>::zeros(iid_index.len());
     let mut i_mod_4_times_2_array = nd::Array1::<u8>::zeros(iid_index.len());
     let mut result_list: Vec<Result<(), BedError>> = vec![Ok(()); iid_index.len()];
@@ -642,17 +660,16 @@ fn check_and_precompute_iid_index(
         result in &mut result_list
     )
     {
-        let in_iid_i = if (0..=upper_iid_count).contains(in_iid_i_signed) {
-            *result = Ok(());
-            *in_iid_i_signed as usize
-        } else if (lower_iid_count..=-1).contains(in_iid_i_signed) {
-            *result = Ok(());
-            in_iid_count - ((-in_iid_i_signed) as usize)
-        } else {
-            *result = Err(BedError::IidIndexTooBig(
-                *in_iid_i_signed,
-            ));
-            0
+        let in_iid_i = match resolve_index(*in_iid_i_signed, in_iid_count, too_big) {
+            Ok(in_iid_i) => {
+                *result = Ok(());
+                in_iid_i
+            }
+            Err(error) => {
+                // The error is reported below; 0 only keeps the precomputed arrays defined.
+                *result = Err(error);
+                0
+            }
         };
 
         *i_div_4_less_start = in_iid_i / 4 ;

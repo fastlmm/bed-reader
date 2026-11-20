@@ -2453,3 +2453,38 @@ async fn doc_test_cloud_1() -> Result<(), Box<BedErrorPlus>> {
     println!("{:?}", bed_cloud.sid().await?); // Outputs ndarray ["sid1", "sid2", "sid3", "sid4"]
     Ok(())
 }
+
+#[tokio::test]
+async fn index_errors_name_the_callers_axis_in_both_modes() -> Result<(), Box<BedErrorPlus>> {
+    // Mode 0 files store individuals as rows, so readers swap axes internally. Errors must still
+    // name the axis the caller indexed. The two files have different shapes, so indexes just out
+    // of range differ.
+    for name in ["small.bed", "smallmode0.bed"] {
+        let file_path = sample_bed_file(name)?;
+        let mut bed = bed_reader::Bed::new(&file_path)?;
+        let mut bed_cloud = BedCloud::new(&abs_path_to_url_string(&file_path)?).await?;
+        let iid_count = isize::try_from(bed.iid_count()?).unwrap();
+        let sid_count = isize::try_from(bed.sid_count()?).unwrap();
+        for bad in [iid_count, -iid_count - 1] {
+            let result = ReadOptions::builder().iid_index(bad).f32().read(&mut bed);
+            assert_error_variant!(result, BedErrorPlus::BedError(BedError::IidIndexTooBig(_)));
+            let result = ReadOptions::builder()
+                .iid_index(bad)
+                .f32()
+                .read_cloud(&mut bed_cloud)
+                .await;
+            assert_error_variant!(result, BedErrorPlus::BedError(BedError::IidIndexTooBig(_)));
+        }
+        for bad in [sid_count, -sid_count - 1] {
+            let result = ReadOptions::builder().sid_index(bad).f32().read(&mut bed);
+            assert_error_variant!(result, BedErrorPlus::BedError(BedError::SidIndexTooBig(_)));
+            let result = ReadOptions::builder()
+                .sid_index(bad)
+                .f32()
+                .read_cloud(&mut bed_cloud)
+                .await;
+            assert_error_variant!(result, BedErrorPlus::BedError(BedError::SidIndexTooBig(_)));
+        }
+    }
+    Ok(())
+}
