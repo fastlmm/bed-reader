@@ -79,7 +79,7 @@
 //! | [`max_concurrent_requests`](struct.ReadOptionsBuilder.html#method.max_concurrent_requests) | Maximum number of concurrent async requests (defaults to 10) -- Used by [`BedCloud`](struct.BedCloud.html). |
 //! | [`max_chunk_bytes`](struct.ReadOptionsBuilder.html#method.max_chunk_bytes) | Maximum chunk size of async requests (defaults to `8_000_000` bytes) -- Used by [`BedCloud`](struct.BedCloud.html). |
 //!
-//! ### [`Index`](enum.Index.html) Expressions
+//! ### [`Index`] Expressions
 //!
 //! Select which individuals (samples) and SNPs (variants) to read by using these
 //! [`iid_index`](struct.ReadOptionsBuilder.html#method.iid_index) and/or
@@ -1762,7 +1762,7 @@ impl BedBuilder {
         }
     }
 
-    /// Create a [`Bed`](struct.Bed.html) from the builder.
+    /// Create a [`Bed`] from the builder.
     ///
     /// > See [`Bed::builder`](struct.Bed.html#method.builder) for more details and examples.
     pub fn build(&self) -> Result<Bed, Box<BedErrorPlus>> {
@@ -1987,7 +1987,7 @@ impl BedBuilder {
 
     /// Don't check the header of the .bed file until and unless the file is actually read.
     ///
-    /// By default, when a [`Bed`](struct.Bed.html) struct is created, the .bed
+    /// By default, when a [`Bed`] struct is created, the .bed
     /// file header is checked. This stops that early check.
     #[must_use]
     pub fn skip_early_check(mut self) -> Self {
@@ -2219,13 +2219,13 @@ impl BedBuilder {
         self
     }
 
-    /// Override the metadata in the .fam and .bim files with info merged in from a [`Metadata`](struct.Metadata.html).
+    /// Override the metadata in the .fam and .bim files with info merged in from a [`Metadata`].
     ///
     /// # Example
     ///
-    /// In the example, we create a [`Metadata`](struct.Metadata.html) with iid
-    /// and sid arrays. Next, we use [`BedBuilder`](struct.BedBuilder.html) to override the fid array
-    /// and an iid array. Then, we add the metadata to the [`BedBuilder`](struct.BedBuilder.html),
+    /// In the example, we create a [`Metadata`] with iid
+    /// and sid arrays. Next, we use [`BedBuilder`] to override the fid array
+    /// and an iid array. Then, we add the metadata to the [`BedBuilder`],
     /// overwriting iid (again) and overriding sid. Finally, we print these
     /// three arrays and chromosome. Chromosome was never overridden so
     /// it is read from the *.bim file.
@@ -2296,7 +2296,7 @@ impl Bed {
     /// # Errors
     /// By default, this method will return an error if the file is missing or its header
     /// is ill-formed. It will also return an error if the options contradict each other.
-    /// See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
+    /// See [`BedError`] and [`BedErrorPlus`]
     /// for all possible errors.
     ///
     /// # Examples
@@ -2392,7 +2392,7 @@ impl Bed {
     ///
     /// # Errors
     /// By default, this method will return an error if the file is missing or its header
-    /// is ill-formed. See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
+    /// is ill-formed. See [`BedError`] and [`BedErrorPlus`]
     /// for all possible errors.
     ///
     /// # Examples
@@ -2865,11 +2865,11 @@ impl Bed {
         Ok(self.metadata.allele_2.as_ref().unwrap()) //unwrap always works because of lazy_bim
     }
 
-    /// [`Metadata`](struct.Metadata.html) for this dataset, for example, the individual (sample) Ids.
+    /// [`Metadata`] for this dataset, for example, the individual (sample) Ids.
     ///
     /// This returns a struct with 12 fields. Each field is a ndarray.
     /// The struct will always be new, but the 12 ndarrays will be
-    /// shared with this [`Bed`](struct.Bed.html).
+    /// shared with this [`Bed`].
     ///
     /// If the needed, the metadata will be read from the .fam and/or .bim files.
     /// ```
@@ -2925,7 +2925,7 @@ impl Bed {
     /// > To read into GPU memory (Cargo feature `cubecl-cuda`, beta), see [`read_cubecl`](#method.read_cubecl).
     ///
     /// # Errors
-    /// See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
+    /// See [`BedError`] and [`BedErrorPlus`]
     /// for all possible errors.
     ///
     /// # Examples
@@ -2976,7 +2976,7 @@ impl Bed {
     /// are ignored. Instead, the order of the preallocated array is used.
     ///
     /// # Errors
-    /// See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
+    /// See [`BedError`] and [`BedErrorPlus`]
     /// for all possible errors.
     ///
     /// # Example
@@ -3043,7 +3043,7 @@ impl Bed {
     /// > Also see [`ReadOptions::builder`](struct.ReadOptions.html#method.builder).
     ///
     /// # Errors
-    /// See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
+    /// See [`BedError`] and [`BedErrorPlus`]
     /// for all possible errors.
     ///
     /// # Example
@@ -3084,7 +3084,7 @@ impl Bed {
     /// > [`read_cubecl_with_options`](#method.read_cubecl_with_options).
     ///
     /// # Errors
-    /// See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
+    /// See [`BedError`] and [`BedErrorPlus`]
     /// for all possible errors.
     ///
     /// # Example
@@ -3184,7 +3184,7 @@ impl Bed {
     /// > Also see [`WriteOptions::builder`](struct.WriteOptions.html#method.builder), which supports metadata and options.
     ///
     /// # Errors
-    /// See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
+    /// See [`BedError`] and [`BedErrorPlus`]
     /// for all possible errors.
     ///
     /// # Example
@@ -3430,7 +3430,7 @@ impl Index {
     // Later Would be nice to not always allocate a new vec, maybe with Rc<[T]>?
     // Even better would be to support an iterator from Index (an enum with fields).
 
-    /// Turns an [`Index`](enum.Index.html) into a vector of usize indexes. Negative means count from end.
+    /// Turns an [`Index`] into a vector of usize indexes. Negative means count from end.
     pub fn to_vec(&self, count: usize) -> Result<Vec<isize>, Box<BedErrorPlus>> {
         let count_signed = count as isize;
         match self {
@@ -3761,7 +3761,7 @@ impl RangeNdSlice {
 }
 
 impl Index {
-    /// Returns the number of elements in an [`Index`](enum.Index.html).
+    /// Returns the number of elements in an [`Index`].
     #[allow(clippy::len_without_is_empty)]
     pub fn len(&self, count: usize) -> Result<usize, Box<BedErrorPlus>> {
         match self {
@@ -3776,7 +3776,7 @@ impl Index {
         }
     }
 
-    /// Returns true if the [`Index`](enum.Index.html) is empty.
+    /// Returns true if the [`Index`] is empty.
     pub fn is_empty(&self, count: usize) -> Result<bool, Box<BedErrorPlus>> {
         match self {
             Index::All => Ok(count == 0),
@@ -4300,7 +4300,7 @@ impl<TVal: BedVal> ReadOptions<TVal> {
     /// and SNPs (variants).
     ///
     /// # Errors
-    /// See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
+    /// See [`BedError`] and [`BedErrorPlus`]
     /// for all possible errors.
     ///
     /// # Examples
@@ -4560,7 +4560,7 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     /// > [`BedCloud::read_with_options`](struct.BedCloud.html#method.read_with_options).
     ///
     /// # Errors
-    /// See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
+    /// See [`BedError`] and [`BedErrorPlus`]
     /// for all possible errors.
     ///
     /// # Example
@@ -4600,7 +4600,7 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     /// are ignored. Instead, the order of the preallocated array is used.
     ///
     /// # Errors
-    /// See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
+    /// See [`BedError`] and [`BedErrorPlus`]
     /// for all possible errors.
     ///
     /// # Example
@@ -4641,7 +4641,7 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     /// are ignored. Instead, the order of the preallocated array is used.
     ///
     /// # Errors
-    /// See [`BedError`](enum.BedError.html) and [`BedErrorPlus`](enum.BedErrorPlus.html)
+    /// See [`BedError`] and [`BedErrorPlus`]
     /// for all possible errors.
     ///
     /// # Example
@@ -4924,7 +4924,7 @@ where
     ///  * a non-default value that represents missing data
     ///  * whether the first allele is counted (default) or the second
     ///  * number of threads to use for writing
-    ///  * a [`Metadata`](struct.Metadata.html)
+    ///  * a [`Metadata`]
     ///
     /// # Examples
     /// In this example, all metadata is given one item at a time.
@@ -5272,11 +5272,11 @@ where
         self.metadata.allele_2.as_ref().unwrap()
     }
 
-    /// [`Metadata`](struct.Metadata.html) for this [`WriteOptions`](struct.WriteOptions.html), for example, the individual (sample) Ids.
+    /// [`Metadata`] for this [`WriteOptions`], for example, the individual (sample) Ids.
     ///
     /// This returns a struct with 12 fields. Each field is a ndarray.
     /// The struct will always be new, but the 12 ndarrays will be
-    /// shared with this [`WriteOptions`](struct.WriteOptions.html).
+    /// shared with this [`WriteOptions`].
     ///
     /// If the needed, default values will be used.
     ///
@@ -5557,9 +5557,9 @@ impl<TVal> WriteOptionsBuilder<TVal>
 where
     TVal: BedVal,
 {
-    /// Creates a new [`WriteOptions`](struct.WriteOptions.html) with the options given and then writes a .bed (and .fam and .bim) file.
+    /// Creates a new [`WriteOptions`] with the options given and then writes a .bed (and .fam and .bim) file.
     ///
-    /// See [`WriteOptions`](struct.WriteOptions.html) for details and examples.
+    /// See [`WriteOptions`] for details and examples.
     pub fn write<S: nd::Data<Elem = TVal>>(
         &mut self,
         val: &nd::ArrayBase<S, nd::Ix2>,
@@ -5575,7 +5575,7 @@ where
     ///
     /// Defaults to zeros.
     ///
-    /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
+    /// > See [`WriteOptions`] for examples.
     ///
     #[anyinput]
     #[must_use]
@@ -5589,7 +5589,7 @@ where
     ///
     /// Defaults to "iid1", "iid2", ...
     ///
-    /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
+    /// > See [`WriteOptions`] for examples.
     ///
     #[anyinput]
     #[must_use]
@@ -5603,7 +5603,7 @@ where
     ///
     /// Defaults to zeros.
     ///
-    /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
+    /// > See [`WriteOptions`] for examples.
     ///
     #[anyinput]
     #[must_use]
@@ -5617,7 +5617,7 @@ where
     ///
     /// Defaults to zeros.
     ///
-    /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
+    /// > See [`WriteOptions`] for examples.
     ///
     #[anyinput]
     #[must_use]
@@ -5642,7 +5642,7 @@ where
     ///
     /// Defaults to zeros.
     ///
-    /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
+    /// > See [`WriteOptions`] for examples.
     ///
     #[anyinput]
     #[must_use]
@@ -5667,7 +5667,7 @@ where
     ///
     /// Defaults to "sid1", "sid2", ...
     ///
-    /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
+    /// > See [`WriteOptions`] for examples.
     ///
     #[anyinput]
     #[must_use]
@@ -5691,7 +5691,7 @@ where
     ///
     /// Defaults to zeros.
     ///
-    /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
+    /// > See [`WriteOptions`] for examples.
     ///
     #[anyinput]
     #[must_use]
@@ -5705,7 +5705,7 @@ where
     ///
     /// Defaults to "A1", A1" ...
     ///
-    /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
+    /// > See [`WriteOptions`] for examples.
     ///
     #[anyinput]
     #[must_use]
@@ -5719,7 +5719,7 @@ where
     ///
     /// Defaults to "A2", A2" ...
     ///
-    /// > See [`WriteOptions`](struct.WriteOptions.html) for examples.
+    /// > See [`WriteOptions`] for examples.
     ///
     #[anyinput]
     #[must_use]
@@ -5729,9 +5729,9 @@ where
         self
     }
 
-    /// Merge metadata from a [`Metadata`](struct.Metadata.html).
+    /// Merge metadata from a [`Metadata`].
     ///
-    /// If a field is set in both [`Metadata`](struct.Metadata.html)'s,
+    /// If a field is set in both [`Metadata`]'s,
     /// it will be overridden.
     ///
     /// # Example
@@ -5955,13 +5955,13 @@ where
         self
     }
 
-    /// Creates a new [`WriteOptions`](struct.WriteOptions.html) with the options given.
+    /// Creates a new [`WriteOptions`] with the options given.
     ///
     /// > Also see [`WriteOptionsBuilder::write`](struct.WriteOptionsBuilder.html#method.write), which creates
-    /// > a [`WriteOptions`](struct.WriteOptions.html) and writes to file in one step.
+    /// > a [`WriteOptions`] and writes to file in one step.
     ///
     /// # Example
-    /// Create a new [`WriteOptions`](struct.WriteOptions.html) with some given values and some
+    /// Create a new [`WriteOptions`] with some given values and some
     /// default values. Then use it to write a .bed file.
     /// ```
     /// use ndarray as nd;
@@ -6243,7 +6243,7 @@ fn compute_field<T: Clone, F: Fn(usize) -> T>(
 }
 
 impl MetadataBuilder {
-    /// Create a [`Metadata`](struct.Metadata.html) from the builder.
+    /// Create a [`Metadata`] from the builder.
     ///
     /// > See [`Metadata::builder()`](struct.Metadata.html#method.builder)
     pub fn build(&self) -> Result<Metadata, Box<BedErrorPlus>> {
@@ -6380,14 +6380,14 @@ impl MetadataBuilder {
         self
     }
 
-    /// Merge metadata from a [`Metadata`](struct.Metadata.html).
+    /// Merge metadata from a [`Metadata`].
     ///
     /// # Example
     ///
-    /// In the example, we create a [`Metadata`](struct.Metadata.html) with iid
-    /// and sid arrays. Next, we use another [`MetadataBuilder`](struct.MetadataBuilder.html) to set an fid array
-    /// and an iid array. Then, we add the first [`Metadata`](struct.Metadata.html)
-    /// to the [`MetadataBuilder`](struct.MetadataBuilder.html),
+    /// In the example, we create a [`Metadata`] with iid
+    /// and sid arrays. Next, we use another [`MetadataBuilder`] to set an fid array
+    /// and an iid array. Then, we add the first [`Metadata`]
+    /// to the [`MetadataBuilder`],
     /// overwriting iid and setting sid. Finally, we print these
     /// three arrays and chromosome. Chromosome is `None`.
     ///```
@@ -6468,7 +6468,7 @@ impl Metadata {
         Ok((iid_count, sid_count))
     }
 
-    /// Create a [`Metadata`](struct.Metadata.html) using a builder.
+    /// Create a [`Metadata`] using a builder.
     ///
     /// # Example
     /// Create metadata.
@@ -6498,7 +6498,7 @@ impl Metadata {
         MetadataBuilder::default()
     }
 
-    /// Create an empty [`Metadata`](struct.Metadata.html).
+    /// Create an empty [`Metadata`].
     ///
     /// > See [`Metadata::builder()`](struct.Metadata.html#method.builder)
     #[must_use]
@@ -6599,11 +6599,11 @@ impl Metadata {
         option_rc_as_ref(self.allele_2.as_ref())
     }
 
-    /// Create a new [`Metadata`](struct.Metadata.html) by filling in empty fields with a .fam file.
+    /// Create a new [`Metadata`] by filling in empty fields with a .fam file.
     ///
     /// # Example
     ///
-    /// Read .fam and .bim information into a [`Metadata`](struct.Metadata.html).
+    /// Read .fam and .bim information into a [`Metadata`].
     /// Do not skip any fields.
     /// ```
     /// use ndarray as nd;
@@ -6685,12 +6685,12 @@ impl Metadata {
         Ok((clone, count))
     }
 
-    /// Create a new [`Metadata`](struct.Metadata.html) by filling in empty
+    /// Create a new [`Metadata`] by filling in empty
     /// fields with a .fam file in the cloud.
     ///
     /// # Example
     ///
-    /// Read .fam and .bim information into a [`Metadata`](struct.Metadata.html).
+    /// Read .fam and .bim information into a [`Metadata`].
     /// Do not skip any fields.
     /// ```
     /// use ndarray as nd;
@@ -6776,11 +6776,11 @@ impl Metadata {
         Ok((clone, count))
     }
 
-    /// Create a new [`Metadata`](struct.Metadata.html) by filling in empty fields with a .bim file.
+    /// Create a new [`Metadata`] by filling in empty fields with a .bim file.
     ///
     /// # Example
     ///
-    /// Read .fam and .bim information into a [`Metadata`](struct.Metadata.html).
+    /// Read .fam and .bim information into a [`Metadata`].
     /// Do not skip any fields.
     /// ```
     /// use ndarray as nd;
@@ -6867,12 +6867,12 @@ impl Metadata {
         Ok((clone, count))
     }
 
-    /// Create a new [`Metadata`](struct.Metadata.html) by filling in empty
+    /// Create a new [`Metadata`] by filling in empty
     /// fields with a .bim file in the cloud.
     ///
     /// # Example
     ///
-    /// Read .fam and .bim information into a [`Metadata`](struct.Metadata.html).
+    /// Read .fam and .bim information into a [`Metadata`].
     /// Do not skip any fields.
     /// ```
     /// use ndarray as nd;
@@ -7189,7 +7189,7 @@ impl Metadata {
         Ok(())
     }
 
-    /// Create a new [`Metadata`](struct.Metadata.html) by filling in empty fields with default values.
+    /// Create a new [`Metadata`] by filling in empty fields with default values.
     ///
     /// # Example
     /// ```
