@@ -1,5 +1,6 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(missing_docs)]
+#![warn(missing_debug_implementations)]
 #![warn(clippy::pedantic)]
 #![allow(
     clippy::missing_panics_doc, // LATER: add panics docs

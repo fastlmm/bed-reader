@@ -1,6 +1,6 @@
 //! Standardize a [`CubeClMatrix`] in place on the GPU. Validated genotype columns
 //! retain exact CPU-compatible integer statistics; other floating-point columns
-//! use shifted, centered f64 reductions to avoid variance cancellation.
+//! use two-pass, centered f64 reductions to avoid variance cancellation.
 //!
 //! Like the CPU standardizer, this is for the Python bindings (`PySnpTools`), not the public Rust API.
 mod general;

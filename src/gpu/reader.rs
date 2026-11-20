@@ -279,7 +279,7 @@ fn genotype_lookup<TVal: CubeClVal>(
 }
 
 impl<TVal: CubeClVal> CubeClMatrix<TVal> {
-    #[cfg(all(feature = "extension-module", feature = "cubecl-cuda"))]
+    #[cfg(feature = "extension-module")]
     pub(crate) fn empty(rows: usize, columns: usize, is_f: bool) -> Result<Self, Box<Error>> {
         let element_count = element_count(rows, columns)?;
         // At most `u32::MAX` elements of at most 8 bytes, so this cannot overflow usize on the
@@ -324,6 +324,9 @@ impl<TVal: CubeClVal> CubeClMatrix<TVal> {
     /// # Errors
     /// [`Error::Server`] if the GPU fails.
     pub fn to_cpu(&self) -> Result<nd::Array2<TVal>, Box<Error>> {
+        // Every matrix comes from `read_cubecl` or `empty`, which check `element_count` (at most
+        // `u32::MAX`) and allocate at least `element_count * size_of::<TVal>()` bytes. So this
+        // product cannot overflow, and the slice of `bytes` below stays in bounds.
         let element_count = self.iid_count * self.sid_count;
         let shape = (self.iid_count, self.sid_count).set_f(self.is_f);
         if element_count == 0 {
@@ -353,7 +356,8 @@ impl<TVal: CubeClVal> CubeClMatrix<TVal> {
     /// The matrix as `CubeCL`'s own tensor type: the same GPU memory with its shape, strides (in
     /// elements), and element type. Use it with [`CubeClMatrix::client`].
     ///
-    /// The memory stays valid while this matrix or any clone of the handle exists.
+    /// The memory stays valid while this matrix or any clone of the handle exists. Kernels that
+    /// write through the handle change this matrix's values, even though this method takes `&self`.
     ///
     /// See the [`CubeClMatrix`] example.
     #[must_use]
@@ -374,10 +378,10 @@ impl<TVal: CubeClVal> CubeClMatrix<TVal> {
     /// CUDA only: the matrix's device pointer, for handing it to another CUDA library (for
     /// example, `CuPy`) without a copy. Finishes this matrix's pending GPU work first.
     ///
-    /// The returned [`CudaPointer`] keeps the allocation alive and in place; use the pointer only
-    /// while both it and this matrix exist. Before releasing them, or using the
-    /// buffer again through `CubeCL`, finish all foreign CUDA work that accesses
-    /// the pointer. This guard pins memory; it does not track other libraries' streams.
+    /// Use the pointer only while both the returned [`CudaPointer`] and this matrix exist; for that
+    /// time, `CubeCL` does not move the allocation. Before dropping either one, or using the
+    /// matrix again through `CubeCL`, finish all foreign CUDA work that accesses the pointer. The
+    /// [`CudaPointer`] pins memory; it does not track other libraries' streams.
     ///
     /// # Errors
     /// [`Error::Server`] if the GPU fails.
@@ -410,12 +414,34 @@ impl<TVal: CubeClVal> CubeClMatrix<TVal> {
     }
 }
 
-/// CUDA only: a matrix's device pointer, from [`CubeClMatrix::cuda_pointer`]. While it exists, `CubeCL`
-/// keeps the allocation alive and never relocates it.
+/// CUDA only: a matrix's device pointer, from [`CubeClMatrix::cuda_pointer`].
+///
+/// Use it only while both it and its matrix exist; for that time, `CubeCL` does not move the
+/// allocation. See [`CubeClMatrix::cuda_pointer`] for synchronizing with other CUDA libraries.
 pub struct CudaPointer {
     ptr: u64,
     /// `CubeCL's` `ManagedResource`, which pins the allocation in place.
     _resource: Box<dyn core::any::Any + Send>,
+}
+
+impl<TVal> core::fmt::Debug for CubeClMatrix<TVal> {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        formatter
+            .debug_struct("CubeClMatrix")
+            .field("dim", &(self.iid_count, self.sid_count))
+            .field("is_f", &self.is_f)
+            .field("element", &core::any::type_name::<TVal>())
+            .finish_non_exhaustive()
+    }
+}
+
+impl core::fmt::Debug for CudaPointer {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        formatter
+            .debug_struct("CudaPointer")
+            .field("ptr", &format_args!("{:#x}", self.ptr))
+            .finish_non_exhaustive()
+    }
 }
 
 impl CudaPointer {
@@ -931,6 +957,35 @@ mod tests {
     }
 
     #[test]
+    fn gpu_debug_describes_the_matrix() -> Result<(), Box<dyn StandardError>> {
+        let mut bed = Bed::new(sample_bed_file("small.bed")?)?;
+        let matrix = ReadOptions::builder()
+            .i8()
+            .c()
+            .sid_index(1..3)
+            .read_cubecl(&mut bed)?;
+        assert_eq!(
+            format!("{matrix:?}"),
+            r#"CubeClMatrix { dim: (3, 2), is_f: false, element: "i8", .. }"#
+        );
+        Ok(())
+    }
+
+    // CUDA only: CubeCL's CPU runtime (internal feature `_cubecl-cpu-test`) has no device pointers.
+    #[cfg(not(feature = "_cubecl-cpu-test"))]
+    #[test]
+    fn gpu_cuda_pointer_debug_shows_the_address() -> Result<(), Box<dyn StandardError>> {
+        let mut bed = Bed::new(sample_bed_file("small.bed")?)?;
+        let matrix = bed.read_cubecl::<f32>()?;
+        let cuda_pointer = matrix.cuda_pointer()?;
+        assert_eq!(
+            format!("{cuda_pointer:?}"),
+            format!("CudaPointer {{ ptr: {:#x}, .. }}", cuda_pointer.ptr())
+        );
+        Ok(())
+    }
+
+    #[test]
     fn gpu_memory_cleanup_runs() -> Result<(), Box<dyn StandardError>> {
         let mut bed = Bed::new(sample_bed_file("small.bed")?)?;
         let matrix = ReadOptions::builder().f32().read_cubecl(&mut bed)?;
@@ -986,10 +1041,7 @@ mod tests {
             let mut options = ReadOptions::<f32>::builder();
             options.iid_index(&iid_index).sid_index(&sid_index);
             let cpu_error = options.read(&mut bed).expect_err("CPU should fail");
-            let gpu_error = options
-                .read_cubecl(&mut bed)
-                .err()
-                .expect("GPU should fail");
+            let gpu_error = options.read_cubecl(&mut bed).expect_err("GPU should fail");
             assert_eq!(gpu_error.to_string(), cpu_error.to_string());
         }
         Ok(())

@@ -40,15 +40,16 @@ features = ["cubecl-cuda"]
 default = ["tokio"]
 tokio = ["dep:tokio"]
 extension-module = ["pyo3/extension-module", "tokio"]
-# GPU-resident reading and standardizing (CubeCL) on NVIDIA GPUs. CubeCL 0.11 downloads a prebuilt
+# Reads into NVIDIA GPU memory (CubeCL; Python also standardizes there). CubeCL 0.11 downloads a prebuilt
 # LLVM while building, which does not exist for Windows ARM or Intel macOS (neither has CUDA), so
 # this feature, and `--all-features`, cannot build there. Linux x86-64/ARM64, Windows x86-64,
 # and ARM64 macOS can build it; macOS cannot run CUDA. No build-time CUDA toolkit is needed
-# (cudarc `fallback-latest`).
+# (cudarc `fallback-latest`), but an installed `nvcc` newer than cudarc supports fails the build;
+# the gpu module docs give the workaround.
 cubecl-cuda = ["dep:cubecl", "cubecl/cuda", "dep:cubecl-runtime", "dep:pollster", "dep:bytemuck", "dep:cudarc"]
 # Internal, not public API: run this crate's own CubeCL kernel tests on CubeCL's CPU (LLVM)
 # runtime, so CI without a GPU can test them. Only `cfg(test)` code switches to the CPU device;
-# the library's CubeCL backend stays CUDA-only.
+# the library itself always uses CUDA.
 _cubecl-cpu-test = ["cubecl-cuda", "cubecl/cpu"]
 
 [dependencies]
@@ -74,7 +75,7 @@ tokio = { version = "1.42.1", features = ["full"], optional = true }
 # CubeCL is alpha, with breaking changes between minor versions: pin exact versions.
 cubecl = { version = "=0.11.3", default-features = false, features = ["std", "stdlib"], optional = true }
 cubecl-runtime = { version = "=0.11.3", default-features = false, optional = true }
-cudarc = { version = "0.19.6", default-features = false, features = ["std", "driver", "fallback-dynamic-loading", "cuda-version-from-build-system"], optional = true }
+cudarc = { version = "0.19.10", default-features = false, features = ["std", "driver", "fallback-dynamic-loading", "cuda-version-from-build-system"], optional = true }
 pollster = { version = "0.4", optional = true }
 bytemuck = { version = "1", optional = true }
 

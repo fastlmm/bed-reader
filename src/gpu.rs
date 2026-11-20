@@ -23,6 +23,11 @@
 //! downloads a prebuilt LLVM bundle that does not exist for them. Compiling needs no CUDA
 //! installation; running GPU reads does (see [Requirements](#requirements)).
 //!
+//! If a CUDA toolkit is installed, compiling does check it: when `nvcc` on `PATH` is newer than the
+//! `cudarc` crate supports, the build fails with "Unsupported cuda toolkit version". Run
+//! `cargo update -p cudarc` to get a newer `cudarc`, or set the environment variable
+//! `CUDARC_CUDA_VERSION` to a supported version, such as `13030` for CUDA 13.3.
+//!
 //! # Requirements
 //!
 //! Running GPU reads needs:
@@ -68,10 +73,15 @@
 //! ```
 //!
 //! GPU reads use device 0 and read local files only. On a machine with several GPUs, choose one
-//! with the `CUDA_VISIBLE_DEVICES` environment variable, or run one process per GPU. `num_threads` and the cloud options do not
-//! apply, and `read_and_fill` is CPU-only. A result has at most `u32::MAX` elements. For further
-//! GPU computation, [`tensor_handle`](struct.CubeClMatrix.html#method.tensor_handle) and
-//! [`client`](struct.CubeClMatrix.html#method.client) give `CubeCL`'s own types. The [`CubeClMatrix`](struct.CubeClMatrix.html) docs have a fuller example.
+//! with the `CUDA_VISIBLE_DEVICES` environment variable, or run one process per GPU.
+//! `num_threads` and the cloud options do not apply, and `read_and_fill` is CPU-only.
+//!
+//! The GPU code indexes with `u32`, so a read fails with [`Error::TooLarge`] if the result has
+//! more than `u32::MAX` elements. The bytes read from the file must also fit: selecting a few
+//! individuals far apart, across many SNPs, can fail even when the result is small.
+//!
+//! For further GPU computation, [`CubeClMatrix::tensor_handle`] and [`CubeClMatrix::client`] give
+//! `CubeCL`'s own types. The [`CubeClMatrix`] docs have a fuller example.
 //!
 //! # When to read into GPU memory
 //!
