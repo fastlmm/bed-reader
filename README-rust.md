@@ -18,11 +18,12 @@ Highlights
 * The Python-facing APIs for this library is used by [PySnpTools](https://github.com/fastlmm/PySnpTools), [FaST-LMM](https://github.com/fastlmm/FaST-LMM), and [PyStatGen](https://github.com/pystatgen).
 * Supports [PLINK 1.9](https://www.cog-genomics.org/plink2/formats).
 * Read data locally or from the cloud, efficiently and directly.
+* Optional [GPU reads](https://docs.rs/bed-reader/1.3.0-beta.1/bed_reader/gpu/index.html) (beta) into NVIDIA GPU memory.
 
 Install
 -------
 
-Requires Rust 1.85 or later, as declared in `Cargo.toml`.
+Requires Rust 1.85 or later, as declared in `Cargo.toml`. The optional GPU support needs Rust 1.95.
 On Rust 1.85 to 1.88, use Cargo's MSRV-aware resolver (the default in edition 2024; otherwise set
 `incompatible-rust-versions = "fallback"` under `[resolver]` in `.cargo/config.toml`).
 
@@ -119,6 +120,22 @@ let val = ReadOptions::builder().sid_index(2).f64().read_cloud(&mut bed_cloud).a
 assert_eq_nan(&val, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
 # Ok::<(), Box<dyn std::error::Error>>(()) }).unwrap();
 # #[cfg(feature = "tokio")] use {tokio::runtime::Runtime, bed_reader::BedErrorPlus};
+```
+
+Into GPU memory (beta): read data for one SNP (variant) at index position 2 directly into
+NVIDIA GPU memory. (Needs the Cargo feature `cubecl-cuda`. See the [`gpu`](gpu/index.html)
+module for requirements and limits.)
+
+```rust,no_run
+use ndarray as nd;
+use bed_reader::{assert_eq_nan, Bed, ReadOptions, sample_bed_file};
+# #[cfg(feature = "cubecl-cuda")] { // '#' needed for doc test
+let mut bed = Bed::new(sample_bed_file("small.bed")?)?;
+let cubecl_matrix = ReadOptions::builder().sid_index(2).f64().read_cubecl(&mut bed)?;
+// The result stays in GPU memory. Copy it back only to check a small result.
+assert_eq_nan(&cubecl_matrix.to_cpu()?, &nd::array![[f64::NAN], [f64::NAN], [2.0]]);
+# }
+# Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
 Project Links

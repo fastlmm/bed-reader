@@ -21,6 +21,7 @@ Highlights
 * Used by [PySnpTools](https://github.com/fastlmm/PySnpTools), [FaST-LMM](https://github.com/fastlmm/FaST-LMM), and [PyStatGen](https://github.com/pystatgen).
 * Supports [PLINK 1.9](https://www.cog-genomics.org/plink2/formats).
 * Read data locally or from the cloud, efficiently and directly.
+* Optional [GPU reads](https://fastlmm.github.io/bed-reader/gpu.html) (beta) into CuPy arrays on NVIDIA GPUs.
 
 Install
 ====================

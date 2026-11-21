@@ -21,6 +21,7 @@ Features:
 * Used by `PySnpTools <https://github.com/fastlmm/PySnpTools>`_, `FaST-LMM <https://github.com/fastlmm/FaST-LMM>`_, and `PyStatGen <https://github.com/pystatgen>`_.
 * Supports `PLINK 1.9 <https://www.cog-genomics.org/plink2/formats>`_.
 * Read data locally or from the cloud, efficiently and directly.
+* Optional :doc:`GPU reads <gpu>` (beta) into CuPy arrays on NVIDIA GPUs.
 
 Install
 ====================
@@ -122,6 +123,7 @@ Open, Read, and Write
     open_bed
     open_bed.read
     open_bed.read_sparse
+    has_gpu_support
     to_bed
     create_bed
 
@@ -169,6 +171,17 @@ open_bed
    :members:
    :inherited-members:
 
+has_gpu_support
+---------------
+
+.. autofunction:: has_gpu_support
+
+GpuFloat64Warning
+-----------------
+
+.. autoclass:: GpuFloat64Warning
+
+
 to_bed
 ----------
 
@@ -205,9 +218,12 @@ By default, :class:`open_bed` uses all available processors. Override this with
 ``num_threads`` or these environment variables, in priority order:
 ``PST_NUM_THREADS``, ``NUM_THREADS``, ``MKL_NUM_THREADS``.
 
-``ARRAY_DTYPE`` sets the default dtype (``float32`` or ``float64``) for
-:meth:`open_bed.read` and :meth:`open_bed.read_sparse`. Omitted or ``None``
-uses this setting, otherwise float32. An explicit dtype always wins.
+``ARRAY_MODULE`` sets the default for :meth:`open_bed.read`'s ``xp``
+(``numpy`` or ``cupy``). ``ARRAY_DTYPE`` sets the default dtype (``float32`` or
+``float64``) for :meth:`open_bed.read` and :meth:`open_bed.read_sparse`. An
+explicit argument always wins. Without these variables, reads return NumPy
+float32 arrays, as before. GPU reads ignore the thread-count variables. See
+:ref:`gpu-reading`.
 
 Guides
 ======================
@@ -215,6 +231,7 @@ Guides
 .. toctree::
    :maxdepth: 1
 
+   gpu
    cloud_urls 
 
 Indices and Tables

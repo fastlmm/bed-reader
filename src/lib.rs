@@ -1,3 +1,4 @@
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(missing_docs)]
 #![warn(missing_debug_implementations)]
 #![warn(clippy::pedantic)]
@@ -24,6 +25,7 @@
 //! | [`Bed::new`](struct.Bed.html#method.new) or [`Bed::builder`](struct.Bed.html#method.builder) | Open a local PLINK .bed file for reading genotype data and metadata. |
 //! | [`BedCloud::new`](struct.BedCloud.html#method.new), [`BedCloud::new_with_options`](struct.BedCloud.html#method.new_with_options),<br> [`BedCloud::builder`](struct.BedCloud.html#method.builder), [`BedCloud::builder_with_options`](struct.BedCloud.html#method.builder_with_options),<br> [`BedCloud::from_cloud_file`](struct.BedCloud.html#method.from_cloud_file), [`BedCloud::builder_from_cloud_file`](struct.BedCloud.html#method.builder_from_cloud_file) | Open a cloud PLINK .bed file for reading genotype data and metadata. |
 //! | [`ReadOptions::builder`](struct.ReadOptions.html#method.builder) | Read genotype data from a local or cloud file. Supports indexing and options. |
+//! | [`Bed::read_cubecl`](struct.Bed.html#method.read_cubecl), [`ReadOptionsBuilder::read_cubecl`](struct.ReadOptionsBuilder.html#method.read_cubecl),<br> [`Bed::read_cubecl_with_options`](struct.Bed.html#method.read_cubecl_with_options) | Read genotype data from a local file directly into NVIDIA GPU memory (Cargo feature `cubecl-cuda`, beta). Uses the same options. See the [gpu module](gpu/index.html). |
 //! | [`WriteOptions::builder`](struct.WriteOptions.html#method.builder) | Write values to a local file in PLINK .bed format. Supports metadata and options. |
 //!
 //! ### `Bed` Metadata Methods
@@ -56,8 +58,9 @@
 //! specify a desired numeric type,
 //! which individuals (samples) to read, which SNPs (variants) to read, etc.
 //!
-//! End the options with `read` or `read_cloud`, or use `build` and pass the result
-//! to `read_with_options` on `Bed` or `BedCloud`.
+//! End the options with `read`, `read_cloud`, or `read_cubecl` (Cargo feature `cubecl-cuda`). Or end
+//! them with `build` and pass the result to `read_with_options` (on `Bed` or `BedCloud`) or
+//! `Bed::read_cubecl_with_options`.
 //!
 //! | Option | Description |
 //! | -------- | ----------- |
@@ -115,6 +118,9 @@
 //! Any requested sample file will be downloaded to this directory. If the environment variable is not set,
 //! a cache folder, appropriate to the OS, will be used.
 
+#[cfg(feature = "cubecl-cuda")]
+#[cfg_attr(docsrs, doc(cfg(feature = "cubecl-cuda")))]
+pub mod gpu;
 mod python_module;
 mod tests;
 use anyinput::anyinput;
@@ -617,7 +623,7 @@ fn internal_read_no_alloc<TVal: BedVal>(
 
 /// Resolves one index against an axis of `count` items: `0..count` as is, and negative indexes
 /// counting from the end (`-1` is the last item), as in Python. Any other index fails with
-/// `too_big(index)`. Both local and cloud readers resolve indexes here, so they accept the
+/// `too_big(index)`. Every reader (CPU, cloud, and GPU) resolves indexes here, so they accept the
 /// same indexes and report the same errors.
 pub(crate) fn resolve_index(
     index: isize,
@@ -1026,13 +1032,14 @@ fn count_lines(path: AnyPath) -> Result<usize, Box<BedErrorPlus>> {
 }
 
 #[allow(dead_code)]
-enum Dist {
+#[derive(Debug)]
+pub(crate) enum Dist {
     Unit,
     Beta { a: f64, b: f64 },
 }
 
 #[allow(dead_code)]
-fn impute_and_zero_mean_snps<
+pub(crate) fn impute_and_zero_mean_snps<
     T: Default + Copy + Debug + Sync + Send + Sync + Float + ToPrimitive + FromPrimitive,
 >(
     val: &mut nd::ArrayViewMut2<'_, T>,
@@ -1073,7 +1080,7 @@ fn impute_and_zero_mean_snps<
 
 // Later move the other fast-lmm functions into their own package
 #[allow(dead_code)]
-fn find_factor<
+pub(crate) fn find_factor<
     T: Default + Copy + Debug + Sync + Send + Sync + Float + ToPrimitive + FromPrimitive,
 >(
     dist: &Dist,
@@ -1108,8 +1115,10 @@ fn find_factor<
 }
 
 /// One SNP's mean and standard deviation from its count, sum, and sum of squares over observed
-/// values. Shared by the column-wise and row-wise CPU standardizers.
-fn snp_mean_std<
+/// values. Shared by the CPU standardizers and the GPU standardizer's exact integer-genotype
+/// path (Cargo feature `cubecl-cuda`), so both produce identical statistics. The GPU's general
+/// floating-point columns instead use centered statistics to avoid cancellation.
+pub(crate) fn snp_mean_std<
     T: Default + Copy + Debug + Sync + Send + Sync + Float + ToPrimitive + FromPrimitive,
 >(
     n_observed: T,
@@ -2931,6 +2940,7 @@ impl Bed {
     /// Read genotype data.
     ///
     /// > Also see [`ReadOptions::builder`](struct.ReadOptions.html#method.builder), which supports selection and options.
+    /// > To read into GPU memory (Cargo feature `cubecl-cuda`, beta), see [`read_cubecl`](#method.read_cubecl).
     ///
     /// # Errors
     /// See [`BedError`] and [`BedErrorPlus`]
@@ -3088,6 +3098,8 @@ impl Bed {
     /// Read genotype data with options.
     ///
     /// > Also see [`ReadOptions::builder`](struct.ReadOptions.html#method.builder).
+    /// > To read into GPU memory (Cargo feature `cubecl-cuda`, beta), see
+    /// > [`read_cubecl_with_options`](#method.read_cubecl_with_options).
     ///
     /// # Errors
     /// See [`BedError`] and [`BedErrorPlus`]
@@ -3124,6 +3136,65 @@ impl Bed {
         self.read_and_fill_with_options(&mut val.view_mut(), read_options)?;
 
         Ok(val)
+    }
+
+    /// Read all genotype data into GPU memory (Cargo feature `cubecl-cuda`, beta).
+    ///
+    /// The GPU counterpart of [`Bed::read`]. For selection and other options, see
+    /// [`ReadOptionsBuilder::read_cubecl`]. The [`gpu`] module covers requirements and limits.
+    ///
+    /// # Errors
+    /// See [`gpu::Error`], which wraps ordinary read errors in [`gpu::Error::Bed`].
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use bed_reader::{Bed, sample_bed_file};
+    ///
+    /// let mut bed = Bed::new(sample_bed_file("small.bed")?)?;
+    /// // A `CubeClMatrix<f32>`, which is always in GPU memory. It can be i8, f32, or f64.
+    /// let cubecl_matrix = bed.read_cubecl::<f32>()?;
+    /// assert_eq!(cubecl_matrix.dim(), (3, 4));
+    /// # use bed_reader::gpu::Error;
+    /// # Ok::<(), Box<Error>>(())
+    /// ```
+    #[cfg(feature = "cubecl-cuda")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "cubecl-cuda")))]
+    pub fn read_cubecl<TVal: gpu::CubeClVal>(
+        &mut self,
+    ) -> Result<gpu::CubeClMatrix<TVal>, Box<gpu::Error>> {
+        let read_options = ReadOptions::<TVal>::builder().build()?;
+        self.read_cubecl_with_options(&read_options)
+    }
+
+    /// Read genotype data with options into GPU memory (Cargo feature `cubecl-cuda`, beta).
+    ///
+    /// The GPU counterpart of [`Bed::read_with_options`]. The options work as for a CPU read, except
+    /// that `num_threads` and the cloud options do not apply. The [`gpu`] module covers requirements
+    /// and limits.
+    ///
+    /// # Errors
+    /// See [`gpu::Error`], which wraps ordinary read errors in [`gpu::Error::Bed`].
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use bed_reader::{Bed, ReadOptions, sample_bed_file};
+    ///
+    /// let mut bed = Bed::new(sample_bed_file("small.bed")?)?;
+    /// let read_options = ReadOptions::builder().sid_index(1..3).f32().build()?;
+    /// let cubecl_matrix = bed.read_cubecl_with_options(&read_options)?;
+    /// assert_eq!(cubecl_matrix.dim(), (3, 2));
+    /// # use bed_reader::gpu::Error;
+    /// # Ok::<(), Box<Error>>(())
+    /// ```
+    #[cfg(feature = "cubecl-cuda")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "cubecl-cuda")))]
+    pub fn read_cubecl_with_options<TVal: gpu::CubeClVal>(
+        &mut self,
+        read_options: &ReadOptions<TVal>,
+    ) -> Result<gpu::CubeClMatrix<TVal>, Box<gpu::Error>> {
+        gpu::reader::read_cubecl(self, read_options)
     }
 
     /// Write genotype data with default metadata.
@@ -3958,6 +4029,8 @@ impl From<()> for Index {
 /// See the [Table of Index Expressions](index.html#index-expressions)
 /// for a list of expressions for selecting individuals (sample)
 /// and SNPs (variants).
+/// To read into GPU memory instead of an `ndarray`, use `read_cubecl` (Cargo feature
+/// `cubecl-cuda`); see the [gpu module](gpu/index.html).
 #[derive(Debug, Clone, Builder)]
 #[builder(build_fn(error = "Box<BedErrorPlus>"))]
 pub struct ReadOptions<TVal: BedVal> {
@@ -4143,7 +4216,7 @@ pub struct ReadOptions<TVal: BedVal> {
     #[builder(default = "true")]
     is_a1_counted: bool,
 
-    /// Number of threads to use (defaults to all processors).
+    /// Number of threads to use (defaults to all processors). Ignored by GPU reads.
     ///
     /// Can also be set with an environment variable.
     /// See [Environment Variables](index.html#environment-variables).
@@ -4492,6 +4565,8 @@ impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
     /// Read genotype data into an `ndarray` array on the CPU.
     ///
     /// > See [`ReadOptions::builder`](struct.ReadOptions.html#method.builder) for details and examples.
+    /// > To read into GPU memory (Cargo feature `cubecl-cuda`, beta), see
+    /// > [`read_cubecl`](struct.ReadOptionsBuilder.html#method.read_cubecl).
     pub fn read(&self, bed: &mut Bed) -> Result<nd::Array2<TVal>, Box<BedErrorPlus>> {
         let read_options = self.build()?;
         bed.read_with_options(&read_options)
@@ -4758,7 +4833,7 @@ impl ReadOptionsBuilder<f32> {
 }
 
 impl ReadOptionsBuilder<f64> {
-    /// Output f64 values.
+    /// Output f64 values. On many consumer GPUs, `f64` arithmetic is much slower than `f32`.
     ///
     /// # Example:
     /// ```
@@ -4783,6 +4858,36 @@ impl ReadOptionsBuilder<f64> {
     /// ```    
     pub fn f64(&mut self) -> &mut Self {
         self
+    }
+}
+
+#[cfg(feature = "cubecl-cuda")]
+impl<TVal: gpu::CubeClVal> ReadOptionsBuilder<TVal> {
+    /// Read genotype data into GPU memory (Cargo feature `cubecl-cuda`, beta).
+    ///
+    /// The GPU counterpart of [`read`](#method.read). The options work as for a CPU read, except
+    /// that `num_threads` and the cloud options do not apply. The [`gpu`] module covers requirements
+    /// and limits.
+    ///
+    /// # Errors
+    /// See [`gpu::Error`], which wraps ordinary read errors in [`gpu::Error::Bed`].
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use bed_reader::{Bed, ReadOptions, sample_bed_file};
+    ///
+    /// let mut bed = Bed::new(sample_bed_file("small.bed")?)?;
+    /// // A `CubeClMatrix<f32>`, which is always in GPU memory.
+    /// let cubecl_matrix = ReadOptions::builder().sid_index(1..3).f32().read_cubecl(&mut bed)?;
+    /// assert_eq!(cubecl_matrix.dim(), (3, 2));
+    /// # use bed_reader::gpu::Error;
+    /// # Ok::<(), Box<Error>>(())
+    /// ```
+    #[cfg_attr(docsrs, doc(cfg(feature = "cubecl-cuda")))]
+    pub fn read_cubecl(&self, bed: &mut Bed) -> Result<gpu::CubeClMatrix<TVal>, Box<gpu::Error>> {
+        let read_options = self.build()?;
+        bed.read_cubecl_with_options(&read_options)
     }
 }
 

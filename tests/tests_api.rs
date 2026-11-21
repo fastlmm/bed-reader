@@ -2243,7 +2243,7 @@ fn metadata_iid_sid2() -> Result<(), Box<BedErrorPlus>> {
     Ok(())
 }
 
-// Preserve value-type inference for the public builder API.
+// A GPU-enabled build must preserve inference for the 1.2 CPU builder API.
 #[test]
 fn default_builder_infers_cpu_value_type() -> Result<(), Box<BedErrorPlus>> {
     let mut bed = Bed::new(sample_bed_file("small.bed")?)?;
