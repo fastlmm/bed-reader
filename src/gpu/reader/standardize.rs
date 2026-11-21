@@ -82,9 +82,9 @@ fn standardize<TVal: CubeClFloat>(
     dist: &Dist,
 ) -> Result<nd::Array2<TVal>, Box<Error>> {
     let (iid_count, sid_count) = (matrix.iid_count, matrix.sid_count);
-    let mut stats = nd::Array2::<TVal>::zeros((sid_count, 2));
+    let mut statistics = nd::Array2::<TVal>::zeros((sid_count, 2));
     if sid_count == 0 {
-        return Ok(stats);
+        return Ok(statistics);
     }
     let element_count = iid_count * sid_count;
     // Each observed genotype contributes at most four to sum2. Both the sums
@@ -119,9 +119,9 @@ fn standardize<TVal: CubeClFloat>(
     // 1 for a single-value SNP (infinite standard deviation), whose values all become 0; the CPU
     // standardizer calls this `is_snc`.
     let mut is_constant = Vec::with_capacity(sid_count);
-    for (sid_index, (column, mut stats_row)) in sums
+    for (sid_index, (column, mut statistics_row)) in sums
         .chunks_exact(4)
-        .zip(stats.axis_iter_mut(nd::Axis(0)))
+        .zip(statistics.axis_iter_mut(nd::Axis(0)))
         .enumerate()
     {
         let &[count, sum, sum2, not_genotype] = column else {
@@ -143,8 +143,8 @@ fn standardize<TVal: CubeClFloat>(
                 dist,
             )?
         };
-        stats_row[0] = mean;
-        stats_row[1] = std;
+        statistics_row[0] = mean;
+        statistics_row[1] = std;
         means.push(mean);
         factors.push(find_factor(dist, mean, std)?);
         is_constant.push(u32::from(num_traits::Float::is_infinite(std)));
@@ -155,7 +155,8 @@ fn standardize<TVal: CubeClFloat>(
         let factors_handle = client.create_from_slice(bytemuck::cast_slice(&factors));
         let is_constant_handle = client.create_from_slice(u32::as_bytes(&is_constant));
         let (fast_count, slow_count) = memory_dimensions(iid_count, sid_count, matrix.is_f);
-        // SAFETY: as for `decode`: writes only `slow * fast_count + fast` < `element_count`;
+        // SAFETY: as for `decode`: writes only `slow * fast_count + fast` < `element_count` (which
+        // fits u32 by `CubeClMatrix`'s invariant);
         // reads the per-SNP arrays at `sid_index < sid_count`, their length.
         unsafe {
             apply::launch_unchecked::<TVal>(
@@ -176,13 +177,13 @@ fn standardize<TVal: CubeClFloat>(
             );
         }
     }
-    Ok(stats)
+    Ok(statistics)
 }
 
 /// Launches `snp_sums` into a new `4 * sid_count`-word buffer and returns it. `use_plane` picks
 /// the plane (warp) reduction, which needs `Plane::Ops`, or the shared-memory tree reduction;
-/// both give identical results. The caller has checked that `4 * iid_count`, `4 * sid_count`,
-/// and `iid_count * sid_count` fit u32.
+/// both give identical results. The caller has checked that `4 * iid_count` and `4 * sid_count`
+/// fit u32; `iid_count * sid_count` fits u32 by `CubeClMatrix`'s invariant.
 fn launch_snp_sums<TVal: CubeClFloat>(
     matrix: &CubeClMatrix<TVal>,
     use_plane: bool,
@@ -192,7 +193,7 @@ fn launch_snp_sums<TVal: CubeClFloat>(
     let client = &matrix.client;
     let sums_handle = client.empty(4 * sid_count * 4);
     // SAFETY: one cube per SNP (`sid_index < sid_count`); it reads the matrix only at indexes below
-    // `iid_count * sid_count` (= `element_count`, which fits u32) and writes
+    // `iid_count * sid_count` (= `element_count`, which fits u32 by `CubeClMatrix`'s invariant) and writes
     // `sums[4 * sid_index .. 4 * sid_index + 4]`, inside the `4 * sid_count` words allocated.
     unsafe {
         snp_sums::launch_unchecked::<TVal>(

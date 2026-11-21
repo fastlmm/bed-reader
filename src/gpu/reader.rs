@@ -129,6 +129,9 @@ impl CubeClVal for f64 {}
 /// # Ok::<(), Box<Error>>(())
 /// ```
 pub struct CubeClMatrix<TVal> {
+    // Invariant: `iid_count`, `sid_count`, and `iid_count * sid_count` fit u32, as the kernels
+    // index. Every constructor (`read_cubecl`, `empty`) enforces it through `element_count`, and
+    // the unchecked kernel launches rely on it.
     client: Client,
     handle: cubecl::server::Handle,
     iid_count: usize,
