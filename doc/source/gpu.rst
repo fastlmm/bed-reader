@@ -83,7 +83,10 @@ CUDA, where CuPy and other libraries can use it.
 Requesting CuPy fails with an error if CuPy or GPU support is missing; there
 is no silent fallback to the CPU. GPU reads have these limits:
 
-* They use GPU device 0.
+* They use GPU device 0. If CuPy's current device is another one (for
+  example, inside ``with cupy.cuda.Device(1):``), they raise ``ValueError``.
+  To use another GPU, start Python with ``CUDA_VISIBLE_DEVICES`` set to it,
+  which makes it device 0.
 * They read local files only, not cloud URLs.
 * They do not support ``force_python_only=True``. ``num_threads``,
   ``max_concurrent_requests``, and ``max_chunk_bytes`` do not apply.

@@ -83,3 +83,17 @@ def test_empty_gpu_selection(index):
     actual = bed.read(index=index, xp=cp)
     expected = bed.read(index=index, xp=np)
     np.testing.assert_array_equal(cp.asnumpy(actual), expected)
+
+
+def test_gpu_read_requires_device_zero(monkeypatch):
+    if not has_gpu_support():
+        pytest.skip("requires bed-reader built with the cubecl-cuda Cargo feature")
+    cp = pytest.importorskip("cupy")
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(cp.cuda, "Device", lambda: SimpleNamespace(id=1))
+    bed = open_bed(sample_file("small.bed"))
+    with pytest.raises(ValueError, match="current device is 1.*CUDA_VISIBLE_DEVICES"):
+        bed.read(xp=cp)
+    with pytest.raises(ValueError, match="current device is 1"):
+        bed._read_gpu()  # the PySnpTools entry point

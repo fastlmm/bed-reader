@@ -374,8 +374,9 @@ class open_bed:
         iid_index, sid_index = self._split_index(index)
         iid_index = np.ascontiguousarray(np.arange(self.iid_count, dtype="intp")[iid_index])
         sid_index = np.ascontiguousarray(np.arange(self.sid_count, dtype="intp")[sid_index])
-        from bed_reader._gpu import _warn_gpu_float64
+        from bed_reader._gpu import _require_device_zero, _warn_gpu_float64
 
+        _require_device_zero()
         _warn_gpu_float64(dtype)
         return native.read_gpu(
             str(self.location), self.iid_count, self.sid_count, self.count_A1,

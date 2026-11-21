@@ -34,6 +34,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ndarray-npy` is now a test-only dependency and `numpy` is enabled only by
   `extension-module`, so neither reaches non-Python builds.
 
+* Python: GPU reads raise `ValueError` when CuPy's current device is not
+  device 0, as GPU allocation already did, instead of returning an array on
+  device 0. To use another GPU, set `CUDA_VISIBLE_DEVICES`.
+
 * Fix index errors on mode 0 (individual-major) .bed files: an out-of-range
   individual index was reported as a SNP index, and the reverse. CPU, cloud,
   and GPU reads now resolve indexes with one shared function.

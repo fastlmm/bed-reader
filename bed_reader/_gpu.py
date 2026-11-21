@@ -172,12 +172,28 @@ def empty_gpu(shape, dtype=None, order="F"):
 
     if not hasattr(native, "allocate_gpu"):
         raise RuntimeError("GPU allocation requires bed-reader built with the cubecl-cuda Cargo feature")
-    import cupy as cp
-
-    if cp.cuda.Device().id != 0:
-        raise ValueError("CubeCL allocation currently requires CUDA device 0")
+    _require_device_zero()
     _warn_gpu_float64(dtype)
     return _as_cupy(native.allocate_gpu(rows, columns, dtype.name, order == "F"))
+
+
+def _require_device_zero():
+    """Raise if CuPy's current device is not CUDA device 0, which GPU reads and allocations use.
+
+    Without this check, a caller inside ``with cupy.cuda.Device(1):`` would silently get an
+    array on device 0 and only see a CuPy device-mismatch error later.
+    """
+    try:
+        import cupy as cp
+    except ImportError:
+        return  # Without CuPy there is no current device to disagree with device 0.
+    device = cp.cuda.Device().id
+    if device != 0:
+        raise ValueError(
+            f"bed-reader GPU arrays use CUDA device 0, but CuPy's current device is {device}. "
+            "To use another GPU, start Python with CUDA_VISIBLE_DEVICES set to it, "
+            "which makes it device 0."
+        )
 
 
 def gpu_memory_cleanup():
