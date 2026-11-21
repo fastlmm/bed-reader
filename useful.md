@@ -228,31 +228,6 @@ Use the actual version number. Look for expected Python versions, platforms, and
 * `win_amd64`
 * `bed_reader-VERSION.tar.gz`
 
-#### GPU Qualification (Required Before Publishing)
-
-CI has no GPU: its kernel tests use CubeCL's CPU runtime, and its installed-wheel
-tests run without CuPy, so the CUDA upload, CUDA pointers, and Python GPU tests
-never run there. Before approving the `pypi` deployment, run the installed-wheel
-tests on an NVIDIA machine against the exact wheels being published, on both
-Linux (or WSL2) and Windows:
-
-```bash
-RUN_ID=...  # the release run's ID, or the CI run's if the wheels come from CI
-DIR=$HOME/.cache/bed-reader-gpu/release-$RUN_ID
-gh run download $RUN_ID --repo fastlmm/bed-reader --name wheels-all --dir $DIR
-uv venv --python 3.13 $DIR/venv
-uv pip install --python $DIR/venv/bin/python \
-  "$(find $DIR -name 'bed_reader-*-cp313-*manylinux*x86_64.whl')[cupy,samples,sparse]" \
-  pytest pytest-datadir pandas
-cd $HOME/.cache
-$DIR/venv/bin/python -m pytest -q -rs -p no:cacheprovider --pyargs bed_reader --doctest-modules
-```
-
-On Windows, install the `cp313-*-win_amd64.whl` wheel the same way and run the same
-pytest command from outside the source checkout. All tests must pass, and the
-`-rs` summary must show no skipped GPU tests (`test_gpu*.py` skip only when CuPy
-or the CUDA build is missing). Approve the deployment only after both pass.
-
 ### 10. Optional: TestPyPI
 
 Upload to TestPyPI:

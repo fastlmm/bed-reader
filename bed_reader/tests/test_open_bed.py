@@ -1461,3 +1461,21 @@ if __name__ == "__main__":
     # test_c_reader_bed(shared_datadir)
     # test_read1(shared_datadir)
     pytest.main([__file__])
+
+
+@pytest.mark.parametrize("name", ["small.bed", "smallmode0.bed"])
+@pytest.mark.parametrize("axis", ["individual", "SNP"])
+@pytest.mark.parametrize("negative", [False, True])
+def test_native_index_errors_name_the_callers_axis(shared_datadir, name, axis, negative):
+    from bed_reader import bed_reader as native
+
+    path = shared_datadir / name
+    with open_bed(path) as bed:
+        count = bed.iid_count if axis == "individual" else bed.sid_count
+        bad = -count - 1 if negative else count
+        rows = np.array([bad if axis == "individual" else 0], dtype=np.intp)
+        columns = np.array([bad if axis == "SNP" else 0], dtype=np.intp)
+        values = np.empty((1, 1), dtype=np.float32, order="F")
+        with pytest.raises(IndexError, match=f"Index to {axis} "):
+            native.read_f32(str(path), {}, bed.iid_count, bed.sid_count,
+                            True, rows, columns, values, 1)

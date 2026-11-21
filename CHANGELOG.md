@@ -7,44 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-* Return a GPU read's memory to CUDA as soon as the array and its views are
-  dropped, so CuPy and other libraries can use it without a manual cleanup.
-  Read results no longer stay in bed-reader's memory pool.
+* Withdraw the experimental GPU features introduced in 1.3.0a1: CuPy reads,
+  GPU allocation and standardization helpers, and Rust CubeCL backends.
+  bed-reader reads into CPU arrays. PySnpTools and FaST-LMM retain GPU
+  computation by transferring CPU reads to CuPy.
 
-* Make `empty_gpu`, `is_cubecl_backed`, `gpu_memory_cleanup`, and
-  `array_dtype` internal; they support PySnpTools rather than end users.
-  `ARRAY_DTYPE` itself is unchanged.
+* Keep `ARRAY_DTYPE` precision defaults for dense and sparse Python reads.
+  An omitted or explicit `dtype=None` uses `ARRAY_DTYPE` when set, otherwise
+  float32. Explicit dtypes override the environment. Before 1.3.0a1,
+  explicit `dtype=None` selected NumPy's implicit float64 dtype.
 
-* Report CUDA errors while copying data to the GPU as Python exceptions
-  instead of panics.
-
-* Rust: share `ReadOptions<TVal>` between CPU, cloud, and GPU reads. GPU reads
-  end in `ReadOptionsBuilder::read_cubecl`; `Bed::read_cubecl` reads everything and
-  `Bed::read_cubecl_with_options` takes built options. GPU items live in `gpu`
-  (`CubeClMatrix`, `client`, `memory_cleanup`, `Error`), present only with `cubecl-cuda`;
-  GPU calls return `Box<gpu::Error>`, wrapping ordinary read errors. `BedErrorPlus`
-  and existing CPU option signatures match 1.2. GPU support remains Beta.
-  CPU-only builds support Rust 1.85; GPU support needs Rust 1.95. Use an MSRV-aware
-  lockfile with CPU-compatible ICU dependencies. Keep the `cubecl-cuda` feature
-  name and remove the untested AMD `cubecl-hip` Cargo feature. Internal
-  `_cubecl-cpu-test` runs kernel tests on CubeCL's CPU runtime, including when
-  `--all-features` is used.
-
-* Rust: Rust 1.85 users no longer need `cargo update -p psm --precise 0.1.28`.
+* Rust 1.85 users no longer need `cargo update -p psm --precise 0.1.28`.
   `ndarray-npy` is now a test-only dependency and `numpy` is enabled only by
-  `extension-module`, so neither reaches non-Python builds.
-
-* Python: GPU reads raise `ValueError` when CuPy's current device is not
-  device 0, as GPU allocation already did, instead of returning an array on
-  device 0. To use another GPU, set `CUDA_VISIBLE_DEVICES`.
-
-* Fix GPU standardization of constant fractional SNPs. A rounded mean (three
-  0.1s average to 0.10000000000000002) gave them a tiny variance, so every value
-  standardized to -1 (or a Beta-weighted equivalent) instead of 0.
+  `extension-module`, so neither reaches non-Python builds. Use Cargo's
+  MSRV-aware resolver for Rust 1.85-compatible dependencies.
 
 * Fix index errors on mode 0 (individual-major) .bed files: an out-of-range
-  individual index was reported as a SNP index, and the reverse. CPU, cloud,
-  and GPU reads now resolve indexes with one shared function.
+  individual index was reported as a SNP index, and the reverse. Local and
+  cloud reads now resolve indexes with one shared function.
+
+* Check Rust formatting, validate prerelease version consistency, and retry
+  documentation inventory downloads in CI. Test installed Linux x86-64 and
+  Windows x64 wheels on every supported Python version.
 
 ## [1.3.0a1] - 2026-11-17
 

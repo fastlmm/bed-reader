@@ -1,5 +1,4 @@
-"""Resolve the destination of newly created arrays."""
-import importlib
+"""Resolve precision defaults for newly read arrays."""
 import os
 
 import numpy as np
@@ -10,7 +9,7 @@ def array_dtype(dtype=None, *, default="float64"):
 
     ARRAY_DTYPE accepts ``float32`` or ``float64``. Explicit dtypes bypass the
     environment; the calling API validates its supported types, including int8
-    where applicable. This does not change existing arrays or NumPy/CuPy defaults.
+    where applicable. This does not change existing arrays or NumPy defaults.
 
     Examples
     --------
@@ -28,12 +27,3 @@ def array_dtype(dtype=None, *, default="float64"):
     if configured not in ("float32", "float64"):
         raise ValueError(f"ARRAY_DTYPE must be 'float32' or 'float64', not {configured!r}")
     return np.dtype(configured)
-
-
-def array_module(xp=None):
-    if xp is None:
-        xp = os.environ.get("ARRAY_MODULE", "numpy")
-    name = xp if isinstance(xp, str) else getattr(xp, "__name__", None)
-    if name not in ("numpy", "cupy"):
-        raise ValueError(f"Unknown array module: {xp!r}")
-    return importlib.import_module(name)

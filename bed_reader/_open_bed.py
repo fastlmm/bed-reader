@@ -357,32 +357,6 @@ class open_bed:
             return parsed
         return Path(input)
 
-    def _read_gpu(self, index=None, dtype=None, order="F"):
-        """Read into a native GPU owner, for the PySnpTools bindings."""
-        from bed_reader import has_gpu_support
-        from bed_reader import bed_reader as native
-
-        if not has_gpu_support():
-            raise RuntimeError("GPU reading requires bed-reader built with the cubecl-cuda Cargo feature")
-        if self._is_url(self.location):
-            raise ValueError("GPU reading does not support cloud files")
-        dtype = array_dtype(dtype, default="float32")
-        if dtype not in (np.dtype("int8"), np.dtype("float32"), np.dtype("float64")):
-            raise ValueError("GPU dtype must be int8, float32, or float64")
-        if order not in {"F", "C"}:
-            raise ValueError("GPU order must be 'F' or 'C'")
-        iid_index, sid_index = self._split_index(index)
-        iid_index = np.ascontiguousarray(np.arange(self.iid_count, dtype="intp")[iid_index])
-        sid_index = np.ascontiguousarray(np.arange(self.sid_count, dtype="intp")[sid_index])
-        from bed_reader._gpu import _require_device_zero, _warn_gpu_float64
-
-        _require_device_zero()
-        _warn_gpu_float64(dtype)
-        return native.read_gpu(
-            str(self.location), (self.iid_count, self.sid_count), self.count_A1,
-            iid_index, sid_index, dtype.name, order == "F",
-        )
-
     def read(
         self,
         index: Optional[Any] = None,
@@ -392,8 +366,7 @@ class open_bed:
         num_threads=None,
         max_concurrent_requests=None,
         max_chunk_bytes=None,
-        xp=None,
-    ):
+    ) -> np.ndarray:
         """Read genotype information.
 
         Parameters
@@ -408,15 +381,15 @@ class open_bed:
             the SNPs. If it is not a tuple and not None, it indexes SNPs.)
 
         dtype: {None, 'float32', 'float64', 'int8'}, optional
-            The desired data-type for the returned array. Defaults to float32,
-            or to the ``ARRAY_DTYPE`` environment variable when set. A float64
-            GPU read emits :class:`GpuFloat64Warning`.
+            The desired data-type for the returned array. Omitted or None uses
+            ARRAY_DTYPE when set, otherwise float32. Explicit dtypes override
+            the environment.
         order : {'F','C'}, optional
             The desired memory layout for the returned array.
             Defaults to ``F`` (Fortran order, which is SNP-major).
         force_python_only: bool, optional
             If False (default), uses the faster Rust code; otherwise it uses the slower
-            pure Python code. Not supported by GPU reads.
+            pure Python code.
 
         num_threads: None or int, optional
             The number of threads with which to read data. Defaults to all available
@@ -424,7 +397,6 @@ class open_bed:
             Can also be set with :class:`open_bed` or these
             environment variables (listed in priority order):
             'PST_NUM_THREADS', 'NUM_THREADS', 'MKL_NUM_THREADS'.
-            Ignored by GPU reads.
 
         max_concurrent_requests: None or int, optional
             The maximum number of concurrent requests to make to the cloud storage
@@ -434,15 +406,9 @@ class open_bed:
             The maximum number of bytes to read in a single request to the cloud
             storage service. Defaults to 8MB.
 
-        xp: module or str, optional
-            ``numpy`` (default) or ``cupy``, as a module or name. Defaults to
-            the ``ARRAY_MODULE`` environment variable when set. ``cupy`` reads
-            into GPU memory; it requires a GPU-enabled installation and a local
-            file. See :ref:`gpu-reading`.
-
         Returns
         -------
-        numpy.ndarray or cupy.ndarray
+        numpy.ndarray
             2-D array containing values of 0, 1, 2, or missing
 
 
@@ -453,19 +419,6 @@ class open_bed:
 
         Examples
         --------
-        To read into GPU memory, use ``xp=cp`` (see :ref:`gpu-reading`):
-
-        .. code-block:: python
-
-            import cupy as cp
-            import numpy as np
-            from bed_reader import open_bed, sample_file
-
-            with open_bed(sample_file("small.bed")) as bed:
-                values = bed.read(np.s_[[2, 0], 1:4], dtype="float32", xp=cp)
-            print(type(values), values.device)  # <class 'cupy.ndarray'> <CUDA Device 0>
-            host_means = cp.asnumpy(cp.nanmean(values, axis=0))  # numpy.ndarray on the CPU
-
         To read all data in a .bed file, set ``index`` to ``None``. This is the default.
 
         .. doctest::
@@ -530,16 +483,6 @@ class open_bed:
             >>> del bed  # optional: delete bed object
 
         """
-        from bed_reader._array_module import array_module
-
-        xp = array_module(xp)
-        if xp is not np:
-            if force_python_only:
-                raise ValueError("GPU reads do not support force_python_only=True")
-            from bed_reader._gpu import _as_cupy
-
-            return _as_cupy(self._read_gpu(index, dtype, order))
-
         iid_index_or_slice_etc, sid_index_or_slice_etc = self._split_index(index)
 
         dtype = array_dtype(dtype, default="float32")
@@ -1521,7 +1464,7 @@ class open_bed:
         max_chunk_bytes=None,
     ) -> (Union[sparse.csc_matrix, sparse.csr_matrix]) if sparse is not None else None:  # type: ignore
         """Read genotype information into a :mod:`scipy.sparse` matrix. Sparse matrices
-        may be useful when the data is mostly zeros. Sparse reads always use the CPU.
+        may be useful when the data is mostly zeros.
 
         .. note::
             This method requires :mod:`scipy`. Install `scipy` with:
@@ -1542,8 +1485,9 @@ class open_bed:
             the SNPs. If it is not a tuple and not None, it indexes SNPs.)
 
         dtype: {None, 'float32', 'float64', 'int8'}, optional
-            The desired data-type for the returned array. Defaults to float32,
-            or to the ``ARRAY_DTYPE`` environment variable when set.
+            The desired data-type for the returned array. Omitted or None uses
+            ARRAY_DTYPE when set, otherwise float32. Explicit dtypes override
+            the environment.
         batch_size: None or int, optional
             Number of dense columns or rows to read at a time, internally.
             Defaults to round(sqrt(total-number-of-columns-or-rows-to-read)).

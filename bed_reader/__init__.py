@@ -8,7 +8,6 @@
 from bed_reader._open_bed import get_num_threads, open_bed
 from bed_reader._sample_data import sample_file, sample_url, tmp_path
 from bed_reader._to_bed import create_bed, to_bed
-from bed_reader._gpu import GpuFloat64Warning
 
 from .bed_reader import (
     encode1_i8,
@@ -31,25 +30,3 @@ from .bed_reader import (
     write_f64,
     write_i8,
 )
-
-
-def has_gpu_support():
-    """Return whether this installation includes GPU reading.
-
-    This checks the installed build, not whether a GPU is present. See
-    :ref:`gpu-reading`.
-
-    Returns
-    -------
-    bool
-        Whether ``open_bed.read(xp="cupy")`` is available.
-
-    Examples
-    --------
-    >>> from bed_reader import has_gpu_support
-    >>> isinstance(has_gpu_support(), bool)
-    True
-    """
-    from . import bed_reader as native
-
-    return hasattr(native, "read_gpu")

@@ -38,42 +38,30 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, windows-11-arm, macos-15, macos-15-intel]
-        # Every public feature the platform can build. `cubecl-cuda` (CubeCL 0.11) downloads a
-        # prebuilt LLVM, which does not exist for Windows ARM or Intel macOS; neither has CUDA.
-        # The internal `_cubecl-cpu-test` feature has its own job.
-        features: ["tokio,extension-module,cubecl-cuda"]
-        exclude:
-          - os: windows-11-arm
-          - os: macos-15-intel
-        include:
-          - os: windows-11-arm
-            features: tokio,extension-module
-          - os: macos-15-intel
-            features: tokio,extension-module
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Set up Rust (Minimum Supported Version)
-        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # generic installer
+      - name: Set up Rust (Pinned Version)
+        uses: dtolnay/rust-toolchain@cfcaf53ba4c621917ec7f78a66bff7a8848ddad4 # 1.85.0
         with:
-          toolchain: 1.95.0
           components: clippy, rustfmt, rust-src
       - name: Check Rust formatting
         run: cargo fmt --check
       - name: Run Clippy (strict for this pinned version of Rust)
-        run: cargo clippy --locked --all-targets --features ${{ matrix.features }} -- -D warnings
+        run: cargo clippy --locked --all-targets --all-features -- -D warnings
       - name: Set up Rust (Latest Stable)
         uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # generic installer
         with:
           toolchain: stable
           components: clippy, rustfmt, rust-src
       - name: Run Clippy (lenient for latest version)
-        run: cargo clippy --locked --all-targets --features ${{ matrix.features }}
+        run: cargo clippy --locked --all-targets --all-features
       - name: Test Rust no-default-features
         run: cargo test --locked --verbose --no-default-features
       - name: Test Rust default features
         run: cargo test --locked --verbose
+
   test_rust_cpu_msrv:
     name: Test Rust CPU MSRV (1.85)
     runs-on: ubuntu-latest
@@ -89,38 +77,6 @@ jobs:
       - name: Test Rust no-default-features on the CPU MSRV
         run: cargo test --locked --no-default-features
 
-  test_rust_cubecl_cpu:
-    # Runs the CubeCL GPU kernel tests on CubeCL's CPU (LLVM) runtime through the internal
-    # `_cubecl-cpu-test` feature, so kernel-logic and indexing regressions surface without a GPU.
-    # CUDA-only code (pinned upload, CudaPointer, the plane reduction, the Python GpuArray) still
-    # needs a local GPU run. The first build downloads a prebuilt LLVM (tracel-llvm-bundler); the
-    # cache keeps it. The CPU runtime gives each cube unit its own spinning thread, so tests run
-    # one at a time to avoid oversubscribing the runner's cores.
-    name: Test Rust CubeCL kernels (CPU runtime)
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Set up Rust (Minimum Supported Version)
-        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # generic installer
-        with:
-          toolchain: 1.95.0
-          components: clippy
-      - name: Cache the prebuilt LLVM
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/.cache/tracel
-            ~/.local/share/tracel
-          key: tracel-llvm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Cargo.lock') }}
-      - name: Run Clippy on the internal CPU-runtime test feature (strict)
-        run: cargo clippy --locked --all-targets --features _cubecl-cpu-test -- -D warnings
-      - name: Test CubeCL kernels on the CPU runtime
-        # Quoted: an unquoted "gpu:: " would parse as a YAML mapping.
-        run: 'cargo test --locked --features _cubecl-cpu-test --lib gpu:: -- --test-threads=1'
-  
-  
   macos:
     strategy:
       fail-fast: false
@@ -158,21 +114,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Keep the original CPU wheels for older glibc; pip prefers the GPU tag
-          # on newer systems. ARM64 stays CPU-only.
           - target: x86_64
             os: ubuntu-latest
-            manylinux: "2014"
-            features: extension-module
-          - target: x86_64
-            os: ubuntu-latest
-            # CubeCL's prebuilt LLVM needs glibc 2.34.
-            manylinux: "2_34"
-            features: extension-module,cubecl-cuda
           - target: aarch64
             os: ubuntu-24.04-arm
-            manylinux: "2014"
-            features: extension-module
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
@@ -183,13 +128,13 @@ jobs:
         uses: PyO3/maturin-action@e83996d129638aa358a18fbd1dfb82f0b0fb5d3b # v1
         with:
           target: ${{ matrix.target }}
-          args: --release --locked --features ${{ matrix.features }} --out dist ${{ env.PYTHON_VERSIONS_ARGS }}
-          manylinux: ${{ matrix.manylinux }}
+          args: --release --locked --out dist ${{ env.PYTHON_VERSIONS_ARGS }}
+          manylinux: "2014"
 
       - name: Upload wheels
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: wheels-linux-${{ matrix.target }}-${{ matrix.manylinux }}
+          name: wheels-linux-${{ matrix.target }}
           path: dist
 
   windows:
@@ -201,11 +146,9 @@ jobs:
           - os: windows-latest
             target: x64
             architecture: x64
-            features: --features extension-module,cubecl-cuda
           - os: windows-11-arm
             target: aarch64-pc-windows-msvc
             architecture: arm64
-            features: ''
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
@@ -216,7 +159,7 @@ jobs:
         uses: PyO3/maturin-action@e83996d129638aa358a18fbd1dfb82f0b0fb5d3b # v1
         with:
           target: ${{ matrix.target }}
-          args: --release --locked ${{ matrix.features }} --out dist ${{ env.PYTHON_VERSIONS_ARGS }}
+          args: --release --locked --out dist ${{ env.PYTHON_VERSIONS_ARGS }}
       - name: Upload wheels
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -321,9 +264,8 @@ jobs:
           source .venv/Scripts/activate
         fi
         pytest bed_reader/tests/test_opt_dep.py  
-    # CuPy is qualified separately on NVIDIA hardware; retain every CPU test extra.
-    - name: Install CPU test dependencies
-      run: uv sync --frozen --extra samples --extra sparse --extra dev --extra min_dev
+    - name: Install all dependencies
+      run: uv sync --frozen --all-extras
     - name: Run all tests
       shell: bash
       run: |
@@ -336,11 +278,9 @@ jobs:
 
 
   artifact-test:
-    name: Installed wheel (${{ matrix.os }}, Python ${{ matrix.python-version }}, ${{ matrix.wheel-flavor }})
+    name: Installed wheel (${{ matrix.os }}, Python ${{ matrix.python-version }})
     needs: merge_artifacts
     runs-on: ${{ matrix.os }}
-    env:
-      WHEEL_FLAVOR: ${{ matrix.wheel-flavor }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -348,47 +288,23 @@ jobs:
         os: [ubuntu-latest, windows-latest]
         # Check all Python versions for changed wheels; other platforms use boundaries.
         python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
-        wheel-flavor: [preferred]
         include:
           - os: ubuntu-24.04-arm
             python-version: "3.11"
-            wheel-flavor: preferred
           - os: ubuntu-24.04-arm
             python-version: "3.15"
-            wheel-flavor: preferred
           - os: windows-11-arm
             python-version: "3.11"
-            wheel-flavor: preferred
           - os: windows-11-arm
             python-version: "3.15"
-            wheel-flavor: preferred
           - os: macos-15
             python-version: "3.11"
-            wheel-flavor: preferred
           - os: macos-15
             python-version: "3.15"
-            wheel-flavor: preferred
           - os: macos-15-intel
             python-version: "3.11"
-            wheel-flavor: preferred
           - os: macos-15-intel
             python-version: "3.15"
-            wheel-flavor: preferred
-          - os: ubuntu-latest
-            python-version: "3.11"
-            wheel-flavor: manylinux2014
-          - os: ubuntu-latest
-            python-version: "3.12"
-            wheel-flavor: manylinux2014
-          - os: ubuntu-latest
-            python-version: "3.13"
-            wheel-flavor: manylinux2014
-          - os: ubuntu-latest
-            python-version: "3.14"
-            wheel-flavor: manylinux2014
-          - os: ubuntu-latest
-            python-version: "3.15"
-            wheel-flavor: manylinux2014
     steps:
       - name: Checkout test sources
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -411,26 +327,9 @@ jobs:
           path: artifact
 
       - name: Install an exact compatible wheel
-        shell: bash
         run: |
-          python - <<'PY'
-          import os
-          from pathlib import Path
-          import platform
-
-          wheels = list(Path('artifact').glob('*.whl'))
-          if platform.system() == 'Linux' and platform.machine() == 'x86_64':
-              count = len(os.environ['PYTHON_VERSIONS'].split())
-              assert sum('manylinux2014_x86_64' in wheel.name for wheel in wheels) == count
-              assert sum('manylinux_2_34_x86_64' in wheel.name for wheel in wheels) == count
-          if os.environ['WHEEL_FLAVOR'] == 'manylinux2014':
-              for wheel in wheels:
-                  if 'manylinux2014_x86_64' not in wheel.name:
-                      wheel.unlink()
-          PY
-          uv venv --seed --python ${{ matrix.python-version }} .artifact-venv
-          # Exercise pip's tag preference with both Linux x86_64 wheel families present.
-          uv run --no-project --python .artifact-venv python -m pip install --no-index --no-deps --only-binary :all: --find-links artifact bed-reader
+          uv venv --python ${{ matrix.python-version }} .artifact-venv
+          uv pip install --python .artifact-venv --no-index --no-deps --only-binary :all: --find-links artifact bed-reader
           uv pip install --python .artifact-venv "bed-reader[samples,sparse,dev]"
 
       - name: Test outside the source checkout
@@ -438,27 +337,7 @@ jobs:
         working-directory: ${{ runner.temp }}
         run: |
           python -c "import pathlib, shutil, sys; shutil.copytree(pathlib.Path(sys.argv[1]) / 'bed_reader' / 'tests', pathlib.Path(sys.argv[2]) / 'bed_reader_artifact_tests')" "$GITHUB_WORKSPACE" "$RUNNER_TEMP"
-          uv run --no-project --python "$GITHUB_WORKSPACE/.artifact-venv" python - <<'PY'
-          import importlib.metadata
-          import importlib.util
-          import os
-          import platform
-          import bed_reader
-          import bed_reader.bed_reader as native
-
-          assert '.artifact-venv' in bed_reader.__file__, bed_reader.__file__
-          linux_x64 = platform.system() == 'Linux' and platform.machine() == 'x86_64'
-          windows_x64 = platform.system() == 'Windows' and platform.machine() == 'AMD64'
-          expected = (linux_x64 and os.environ['WHEEL_FLAVOR'] == 'preferred') or windows_x64
-          if linux_x64:
-              tag = 'manylinux_2_34_x86_64' if expected else 'manylinux2014_x86_64'
-              assert tag in importlib.metadata.distribution('bed-reader').read_text('WHEEL')
-          assert bed_reader.has_gpu_support() == expected, (platform.platform(), expected)
-          assert hasattr(native, 'read_gpu') == expected
-          assert hasattr(native, 'standardize_gpu') == expected
-          assert importlib.util.find_spec('cupy') is None
-          print(bed_reader.__file__, 'GPU support:', expected)
-          PY
+          uv run --no-project --python "$GITHUB_WORKSPACE/.artifact-venv" python -c "import bed_reader; assert '.artifact-venv' in bed_reader.__file__; print(bed_reader.__file__)"
           uv run --no-project --python "$GITHUB_WORKSPACE/.artifact-venv" python -m pytest --import-mode=importlib --doctest-modules "$RUNNER_TEMP/bed_reader_artifact_tests"
 
   sdist-test:
@@ -506,8 +385,7 @@ jobs:
         working-directory: ${{ runner.temp }}
         run: |
           python -c "import pathlib, shutil, sys; shutil.copytree(pathlib.Path(sys.argv[1]) / 'bed_reader' / 'tests', pathlib.Path(sys.argv[2]) / 'bed_reader_artifact_tests')" "$GITHUB_WORKSPACE" "$RUNNER_TEMP"
-          # pyproject.toml keeps source builds CPU-only; no CUDA toolkit is needed.
-          uv run --no-project --python "$GITHUB_WORKSPACE/.artifact-venv" python -c "import bed_reader; assert '.artifact-venv' in bed_reader.__file__; assert not bed_reader.has_gpu_support(); print(bed_reader.__file__)"
+          uv run --no-project --python "$GITHUB_WORKSPACE/.artifact-venv" python -c "import bed_reader; assert '.artifact-venv' in bed_reader.__file__; print(bed_reader.__file__)"
           uv run --no-project --python "$GITHUB_WORKSPACE/.artifact-venv" python -m pytest --import-mode=importlib --doctest-modules "$RUNNER_TEMP/bed_reader_artifact_tests"
 
   docs:
@@ -532,7 +410,7 @@ jobs:
         with:
           toolchain: stable
       - name: Build bed-reader and install documentation dependencies
-        run: uv sync --frozen --extra samples --extra sparse --extra dev --extra min_dev
+        run: uv sync --frozen --all-extras
       - name: Build documentation from clean sources
         env:
           # conf.py downloads the intersphinx inventories here first, with retries.
@@ -544,7 +422,7 @@ jobs:
     # when other jobs fail, so a failure can never appear as a passing skip.
     name: CI result
     if: always()
-    needs: [test_rust, test_rust_cpu_msrv, test_rust_cubecl_cpu, macos, linux, windows, sdist, merge_artifacts, test_python, artifact-test, sdist-test, docs]
+    needs: [test_rust, test_rust_cpu_msrv, macos, linux, windows, sdist, merge_artifacts, test_python, artifact-test, sdist-test, docs]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
