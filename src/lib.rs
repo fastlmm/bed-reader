@@ -1115,8 +1115,8 @@ pub(crate) fn find_factor<
 }
 
 /// One SNP's mean and standard deviation from its count, sum, and sum of squares over observed
-/// values. Shared by the CPU standardizers and the GPU's validated integer-genotype
-/// optimization (internal Cargo feature `cubecl`), which retain identical statistics. General GPU
+/// values. Shared by the CPU standardizers and the GPU standardizer's exact integer-genotype
+/// path (Cargo feature `cubecl-cuda`), so both produce identical statistics. The GPU's general
 /// floating-point columns instead use centered statistics to avoid cancellation.
 pub(crate) fn snp_mean_std<
     T: Default + Copy + Debug + Sync + Send + Sync + Float + ToPrimitive + FromPrimitive,

@@ -379,7 +379,7 @@ class open_bed:
         _require_device_zero()
         _warn_gpu_float64(dtype)
         return native.read_gpu(
-            str(self.location), self.iid_count, self.sid_count, self.count_A1,
+            str(self.location), (self.iid_count, self.sid_count), self.count_A1,
             iid_index, sid_index, dtype.name, order == "F",
         )
 

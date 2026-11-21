@@ -37,11 +37,14 @@ An extra installs dependencies; it does not change a wheel's Cargo features.
 <!-- TODO0 qualify both native platforms, the supported Python matrix, and the
 Linux compatibility baseline before enabling CUDA in published wheels. -->
 
-The existing release workflow still builds CPU-only wheels. Adding `[cupy]`
-alone does not make those artifacts GPU-capable. Do not advertise the new
-extra as a published GPU installation until the artifact builds are updated
-and validated. No version changes, publication, or release tags are part of
-this experiment.
+CI builds every wheel with `cubecl-cuda` (where the platform can build it),
+and the release workflow publishes those same CI-built `wheels-all` artifacts.
+CI has no GPU, so its CUDA coverage stops at building: kernel tests use
+CubeCL's CPU runtime, and installed-wheel tests run without CuPy. The release
+gate is therefore manual: the maintainer runs the installed-wheel GPU tests on
+the exact release artifacts, on Linux and Windows, before approving the `pypi`
+deployment (see "GPU Qualification" in `useful.md`). The broader qualification
+in the TODO above remains open.
 
 ## Initial local results (November 17, 2026)
 

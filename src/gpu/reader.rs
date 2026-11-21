@@ -603,10 +603,7 @@ fn upload_pinned_cuda(
         bytes.len() as u64 <= resource.resource().size,
         "upload must fit its destination buffer"
     );
-    let staging_guard = cuda_staging()?;
-    let staging = staging_guard
-        .as_ref()
-        .expect("cuda_staging returns only after initializing the staging buffers");
+    let (staging_guard, staging) = cuda_staging()?;
     let copy_result = (|| -> Result<(), Error> {
         for (chunk_index, chunk) in bytes.chunks(CHUNK_BYTES).enumerate() {
             let slot = chunk_index % 2;
@@ -641,59 +638,91 @@ fn upload_pinned_cuda(
 #[cfg(not(all(test, feature = "_cubecl-cpu-test")))]
 const CHUNK_BYTES: usize = 16 << 20;
 
-/// Two reused pinned host buffers, their events, and a stream, for chunked copies.
+/// Two reused pinned host buffers, their events, and a stream, for chunked copies. A `Copy` of
+/// the handles in [`StagingHandles`], valid only while its lock is held.
 #[cfg(not(all(test, feature = "_cubecl-cpu-test")))]
+#[derive(Clone, Copy)]
 struct CudaStaging {
-    /// Device 0's primary context, retained once for the life of the process.
-    context: cudarc::driver::sys::CUcontext,
     stream: cudarc::driver::sys::CUstream,
     buffers: [*mut u8; 2],
     events: [cudarc::driver::sys::CUevent; 2],
 }
+
+/// The process-wide staging handles, each created on first use and never released. Each one is
+/// stored as soon as it exists, so a failed initialization keeps what it created and the next
+/// call resumes from there instead of leaking it and starting over.
+#[cfg(not(all(test, feature = "_cubecl-cpu-test")))]
+struct StagingHandles {
+    /// Device 0's primary context, retained once for the life of the process.
+    context: Option<cudarc::driver::sys::CUcontext>,
+    stream: Option<cudarc::driver::sys::CUstream>,
+    buffers: [Option<*mut u8>; 2],
+    events: [Option<cudarc::driver::sys::CUevent>; 2],
+}
 // SAFETY: the raw handles are only used while holding the mutex in `cuda_staging`.
 #[cfg(not(all(test, feature = "_cubecl-cpu-test")))]
-unsafe impl Send for CudaStaging {}
+unsafe impl Send for StagingHandles {}
 
-/// Locks the shared staging state, creating it on first use. On success the `Option` is `Some`.
-/// A failed first initialization leaves it `None`, so a later call retries instead of panicking.
+/// Locks the shared staging handles, creating any that are missing, and returns the lock with a
+/// copy of the handles. On error, handles created so far stay stored for the next call.
 #[cfg(not(all(test, feature = "_cubecl-cpu-test")))]
-fn cuda_staging() -> Result<std::sync::MutexGuard<'static, Option<CudaStaging>>, Error> {
-    use cudarc::driver::{result, sys};
-    static STAGING: std::sync::Mutex<Option<CudaStaging>> = std::sync::Mutex::new(None);
+fn cuda_staging() -> Result<(std::sync::MutexGuard<'static, StagingHandles>, CudaStaging), Error> {
+    use cudarc::driver::{result, sys, DriverError};
+
+    /// Returns the stored handle, or creates and stores it.
+    fn stored<T: Copy>(
+        handle: &mut Option<T>,
+        create: impl FnOnce() -> Result<T, DriverError>,
+    ) -> Result<T, DriverError> {
+        if let Some(handle) = *handle {
+            return Ok(handle);
+        }
+        let created = create()?;
+        *handle = Some(created);
+        Ok(created)
+    }
+
+    static STAGING: std::sync::Mutex<StagingHandles> = std::sync::Mutex::new(StagingHandles {
+        context: None,
+        stream: None,
+        buffers: [None; 2],
+        events: [None; 2],
+    });
     // Nothing panics while this lock is held except a bug, so poisoning is not expected.
     let mut guard = STAGING.lock().expect("staging lock");
-    if let Some(staging) = guard.as_ref() {
-        // SAFETY: the context was retained when the staging state was created and is never
-        // released; it must be current on whichever thread copies.
-        unsafe { result::ctx::set_current(staging.context)? };
-    } else {
-        // SAFETY: device 0 exists (CubeCL already uses it); its primary context is the one CubeCL
-        // uses. It is retained once here, kept in the staging state, and never released. If a
-        // later step fails, handles already created leak (a bounded cost, at most once per
-        // failed attempt).
-        unsafe {
+    let handles = &mut *guard;
+    // SAFETY: device 0 exists (CubeCL already uses it); its primary context is the one CubeCL
+    // uses, retained once here and never released. The context must be current on whichever
+    // thread copies, so it is made current on every call before creating or using the stream,
+    // buffers, and events, which are likewise created once and never released.
+    let staging = unsafe {
+        let context = stored(&mut handles.context, || {
             result::init()?;
-            let device = result::device::get(0)?;
-            let context = result::primary_ctx::retain(device)?;
-            result::ctx::set_current(context)?;
-            let stream = result::stream::create(result::stream::StreamKind::NonBlocking)?;
-            let buffers = [
-                result::malloc_host(CHUNK_BYTES, 0)?.cast::<u8>(),
-                result::malloc_host(CHUNK_BYTES, 0)?.cast::<u8>(),
-            ];
-            let events = [
-                result::event::create(sys::CUevent_flags::CU_EVENT_DISABLE_TIMING)?,
-                result::event::create(sys::CUevent_flags::CU_EVENT_DISABLE_TIMING)?,
-            ];
-            *guard = Some(CudaStaging {
-                context,
-                stream,
-                buffers,
-                events,
-            });
+            result::primary_ctx::retain(result::device::get(0)?)
+        })?;
+        result::ctx::set_current(context)?;
+        let stream = stored(&mut handles.stream, || {
+            result::stream::create(result::stream::StreamKind::NonBlocking)
+        })?;
+        let mut buffers = [core::ptr::null_mut(); 2];
+        for (buffer, handle) in buffers.iter_mut().zip(&mut handles.buffers) {
+            *buffer = stored(handle, || {
+                Ok(result::malloc_host(CHUNK_BYTES, 0)?.cast::<u8>())
+            })?;
         }
-    }
-    Ok(guard)
+        let mut events = [core::ptr::null_mut(); 2];
+        for (event, handle) in events.iter_mut().zip(&mut handles.events) {
+            *event = stored(handle, || {
+                result::event::create(sys::CUevent_flags::CU_EVENT_DISABLE_TIMING)
+            })?;
+        }
+        CudaStaging {
+            stream,
+            buffers,
+            events,
+        }
+    };
+    Ok((guard, staging))
 }
 
 #[cfg(test)]
@@ -720,14 +749,14 @@ mod size_tests {
 mod tests {
     //! Compare the GPU reader and standardizer with the CPU code, exactly (NaN matches NaN). These
     //! need a GPU; without one, they fail (they do not skip).
-    use std::error::Error as StandardError;
+    use std::{error::Error as StandardError, marker::PhantomData};
 
     use ndarray as nd;
 
     use super::{
-        memory_cleanup,
+        client, memory_cleanup,
         standardize::{standardize_beta, standardize_unit, CubeClFloat},
-        CubeClVal,
+        CubeClMatrix, CubeClVal,
     };
     use crate::{impute_and_zero_mean_snps, sample_bed_file, Bed, Dist, ReadOptions};
 
@@ -1088,6 +1117,49 @@ mod tests {
             (f64::from(statistics[[0, 1]]) - expected_variance.sqrt()).abs()
                 < 4.0 * f64::from(f32::EPSILON)
         );
+        Ok(())
+    }
+
+    #[test]
+    fn gpu_standardize_constant_fractional_column_is_zero() -> Result<(), Box<dyn StandardError>> {
+        // Three f64 0.1s average to 0.10000000000000002, so without exact constant detection
+        // the column got a tiny positive variance and standardized to -1 instead of 0.
+        constant_fractional_column_is_zero(0.1f64)?;
+        constant_fractional_column_is_zero(0.1f32)?;
+        Ok(())
+    }
+
+    fn constant_fractional_column_is_zero<TVal: CubeClFloat>(
+        value: TVal,
+    ) -> Result<(), Box<dyn StandardError>> {
+        // Four individuals by two SNPs, in F order: a constant column with one missing value,
+        // then a varying fractional column.
+        let [quarter, half] = [0.25, 0.5].map(|number| TVal::from_f64(number).expect("converts"));
+        let values = [
+            value,
+            value,
+            TVal::nan(),
+            value,
+            quarter,
+            half,
+            half,
+            quarter,
+        ];
+        let client = client()?;
+        let handle = client.create_from_slice(bytemuck::cast_slice(&values));
+        let mut matrix = CubeClMatrix::<TVal> {
+            client,
+            handle,
+            iid_count: 4,
+            sid_count: 2,
+            is_f: true,
+            phantom: PhantomData,
+        };
+        let statistics = standardize_unit(&mut matrix)?;
+        assert_eq!(statistics[[0, 0]], value);
+        assert!(num_traits::Float::is_infinite(statistics[[0, 1]]));
+        let standardized = matrix.to_cpu()?;
+        assert_eq!(standardized.column(0).to_vec(), vec![TVal::zero(); 4]);
         Ok(())
     }
 

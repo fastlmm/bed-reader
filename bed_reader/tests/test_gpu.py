@@ -51,7 +51,7 @@ def cpu_standardize(val, beta):
 
 def gpu_read(path, bed, iid_index, sid_index, is_a1_counted, dtype, order):
     return bed_reader_rust.read_gpu(
-        str(path), bed.iid_count, bed.sid_count, is_a1_counted, iid_index, sid_index, dtype, order == "F"
+        str(path), (bed.iid_count, bed.sid_count), is_a1_counted, iid_index, sid_index, dtype, order == "F"
     )
 
 

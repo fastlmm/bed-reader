@@ -1018,17 +1018,17 @@ mod gpu_python {
     }
 
     #[pyfunction]
-    #[allow(clippy::too_many_arguments, clippy::needless_pass_by_value)]
     fn read_gpu(
         filename: &str,
-        iid_count: usize,
-        sid_count: usize,
+        shape: (usize, usize),
         is_a1_counted: bool,
         iid_index: &Bound<'_, PyArray1<isize>>,
         sid_index: &Bound<'_, PyArray1<isize>>,
         dtype: &str,
         is_f: bool,
     ) -> PyResult<GpuArray> {
+        // A tuple keeps the argument count within Clippy's limit; pyo3 cannot destructure it.
+        let (iid_count, sid_count) = shape;
         let iid_index = iid_index.readonly();
         let sid_index = sid_index.readonly();
         let (iid_index, sid_index) = (iid_index.as_slice()?, sid_index.as_slice()?);

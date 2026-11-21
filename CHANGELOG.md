@@ -38,6 +38,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   device 0, as GPU allocation already did, instead of returning an array on
   device 0. To use another GPU, set `CUDA_VISIBLE_DEVICES`.
 
+* Fix GPU standardization of constant fractional SNPs. A rounded mean (three
+  0.1s average to 0.10000000000000002) gave them a tiny variance, so every value
+  standardized to -1 (or a Beta-weighted equivalent) instead of 0.
+
 * Fix index errors on mode 0 (individual-major) .bed files: an out-of-range
   individual index was reported as a SNP index, and the reverse. CPU, cloud,
   and GPU reads now resolve indexes with one shared function.

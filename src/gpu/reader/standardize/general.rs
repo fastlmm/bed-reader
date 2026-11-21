@@ -77,7 +77,10 @@ pub(super) fn mean_std<TVal: CubeClFloat>(
 /// One cube per SNP, like `snp_sums`. Only non-genotype columns do any work. Two passes in f64:
 /// first the mean, then the sum of squared deviations from it, which avoids the cancellation in
 /// E[x*x] - E[x]**2. In each pass the cube's units stride over individuals (coalesced in F
-/// order) and their partial sums are combined in shared memory.
+/// order) and their partial sums are combined in shared memory. Pass 1 also finds the observed
+/// minimum and maximum: a rounded mean of equal values (three 0.1s average to
+/// 0.10000000000000002) would otherwise give a constant SNP a tiny positive variance, so when
+/// they are equal the mean is that value and every deviation is exactly zero.
 #[cube(launch_unchecked)]
 fn centered<F: Float>(
     values: &[F],
@@ -94,19 +97,20 @@ fn centered<F: Float>(
         active = genotype_sums[(4u32 * sid_index + 3u32) as usize] != 0u32;
     }
 
-    // Pass 1: count and sum of the observed (non-NaN) values.
+    // Pass 1: count, sum, minimum, and maximum of the observed (non-NaN) values. A unit that
+    // observes nothing keeps an infinite minimum and negative-infinite maximum, which merge away.
     let mut count = 0u32;
     let mut sum = 0.0f64;
+    let mut minimum = f64::INFINITY.runtime();
+    let mut maximum = f64::NEG_INFINITY.runtime();
     if active {
         let mut iid_index = UNIT_POS_X;
         while iid_index < iid_count {
-            let mut index = iid_index * sid_count + sid_index;
-            if is_f {
-                index = sid_index * iid_count + iid_index;
-            }
-            let value = f64::cast_from(values[index as usize]);
+            let value = value_at(values, iid_index, sid_index, iid_count, sid_count, is_f);
             // Ordered comparisons exclude NaN while retaining negative values.
             if value >= 0.0f64 || value < 0.0f64 {
+                minimum = f64::min(minimum, value);
+                maximum = f64::max(maximum, value);
                 count += 1u32;
                 sum += value;
             }
@@ -118,8 +122,12 @@ fn centered<F: Float>(
     }
     let mut counts = Shared::<[u32]>::new_slice(UNITS as usize);
     let mut sums = Shared::<[f64]>::new_slice(UNITS as usize);
+    let mut minimums = Shared::<[f64]>::new_slice(UNITS as usize);
+    let mut maximums = Shared::<[f64]>::new_slice(UNITS as usize);
     counts[UNIT_POS_X as usize] = count;
     sums[UNIT_POS_X as usize] = sum;
+    minimums[UNIT_POS_X as usize] = minimum;
+    maximums[UNIT_POS_X as usize] = maximum;
     sync_cube();
     // A runtime variable (a literal start), since a value computed from the constant `UNITS`
     // stays a compile-time constant that the loop could not halve.
@@ -127,26 +135,30 @@ fn centered<F: Float>(
     stride += UNITS / 2u32;
     while stride > 0u32 {
         if UNIT_POS_X < stride {
-            counts[UNIT_POS_X as usize] += counts[(UNIT_POS_X + stride) as usize];
-            sums[UNIT_POS_X as usize] += sums[(UNIT_POS_X + stride) as usize];
+            let unit = UNIT_POS_X as usize;
+            let other = (UNIT_POS_X + stride) as usize;
+            counts[unit] += counts[other];
+            sums[unit] += sums[other];
+            minimums[unit] = f64::min(minimums[unit], minimums[other]);
+            maximums[unit] = f64::max(maximums[unit], maximums[other]);
         }
         sync_cube();
         stride /= 2u32;
     }
     let total_count = counts[0];
     // NaN when no value is observed; the host reports that SNP as having no individuals.
-    let mean = sums[0] / f64::cast_from(total_count);
+    let mut mean = sums[0] / f64::cast_from(total_count);
+    // With any observation the minimum never exceeds the maximum, so `>=` means they are equal.
+    if total_count != 0u32 && minimums[0] >= maximums[0] {
+        mean = minimums[0];
+    }
 
     // Pass 2: sum of squared deviations from the mean.
     let mut squares = 0.0f64;
     if active {
         let mut iid_index = UNIT_POS_X;
         while iid_index < iid_count {
-            let mut index = iid_index * sid_count + sid_index;
-            if is_f {
-                index = sid_index * iid_count + iid_index;
-            }
-            let value = f64::cast_from(values[index as usize]);
+            let value = value_at(values, iid_index, sid_index, iid_count, sid_count, is_f);
             if value >= 0.0f64 || value < 0.0f64 {
                 let difference = value - mean;
                 squares += difference * difference;
@@ -182,4 +194,21 @@ fn centered<F: Float>(
             statistics[(3u32 * sid_index + 2u32) as usize] = 0.0f64;
         }
     }
+}
+
+/// One value, as f64, at the given individual and SNP in either memory order.
+#[cube]
+fn value_at<F: Float>(
+    values: &[F],
+    iid_index: u32,
+    sid_index: u32,
+    iid_count: u32,
+    sid_count: u32,
+    #[comptime] is_f: bool,
+) -> f64 {
+    let mut index = iid_index * sid_count + sid_index;
+    if is_f {
+        index = sid_index * iid_count + iid_index;
+    }
+    f64::cast_from(values[index as usize])
 }

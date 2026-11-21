@@ -45,7 +45,7 @@ def test_native_gpu_index_errors_match_cpu(cupy, rows, columns):
         with pytest.raises(IndexError) as cpu_error:
             native.read_f32(str(path), {}, bed.iid_count, bed.sid_count, True, rows, columns, values, 1)
         with pytest.raises(IndexError) as gpu_error:
-            native.read_gpu(str(path), bed.iid_count, bed.sid_count, True, rows, columns, "float32", True)
+            native.read_gpu(str(path), (bed.iid_count, bed.sid_count), True, rows, columns, "float32", True)
     assert str(gpu_error.value) == str(cpu_error.value)
 
 

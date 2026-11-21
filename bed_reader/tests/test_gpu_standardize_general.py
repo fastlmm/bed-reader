@@ -97,6 +97,20 @@ def test_unit_negative_out_of_range_and_cancellation(tmp_path, cupy, dtype, orde
     assert np.isfinite(stats[3, 1]) and stats[3, 1] > 0
 
 
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+@pytest.mark.parametrize("order", ["C", "F"])
+def test_constant_fractional_column_is_zero(tmp_path, cupy, dtype, order):
+    # Three float64 0.1s average to 0.10000000000000002; a constant column must
+    # still get zero variance and standardize to 0, not -1.
+    values = dosage_values(dtype)
+    values[:, 0] = [0.1, 0.1, np.nan, 0.1, 0.1, 0.1]
+    owner, actual = owner_with_values(tmp_path / "constant.bed", values, order, cupy)
+    stats = native.standardize_gpu(owner, False, 1, 25)
+    assert stats[0, 0] == dtype(0.1)
+    assert np.isinf(stats[0, 1])
+    np.testing.assert_array_equal(cupy.asnumpy(actual)[:, 0], np.zeros(6, dtype=dtype))
+
+
 def test_general_errors_and_int8(tmp_path, cupy):
     values = dosage_values(np.float64)
     values[:, 0] = np.nan
