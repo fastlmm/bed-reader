@@ -39,7 +39,7 @@ features = ["cubecl-cuda"]
 [features]
 default = ["tokio"]
 tokio = ["dep:tokio"]
-extension-module = ["pyo3/extension-module", "tokio"]
+extension-module = ["pyo3/extension-module", "dep:numpy", "tokio"]
 # Reads into NVIDIA GPU memory (CubeCL; Python also standardizes there). CubeCL 0.11 downloads a prebuilt
 # LLVM while building, which does not exist for Windows ARM or Intel macOS (neither has CUDA), so
 # this feature, and `--all-features`, cannot build there. Linux x86-64/ARM64, Windows x86-64,
@@ -55,12 +55,11 @@ _cubecl-cpu-test = ["cubecl-cuda", "cubecl/cpu"]
 [dependencies]
 thiserror = "1.0.66"
 num-traits = "0.2.19"
-ndarray-npy = { version = "0.9.1", default-features = false }
 rayon = "1.10.0"
-numpy = "0.30.0"
+numpy = { version = "0.30.0", optional = true }
 ndarray = { version = "0.16.1", features = ["approx", "rayon"] }
 statrs = "0.17.1"
-byteorder = { version = "1.5.0", default-features = false }
+byteorder = { version = "1.5.0", default-features = false, features = ["std"] }
 dpc-pariter = "0.4.0"                                                           # //  pariter = "0.5.1"
 derive_builder = "0.20.2"
 anyinput = { version = "0.1.8", features = ["ndarray"] }
@@ -80,6 +79,7 @@ pollster = { version = "0.4", optional = true }
 bytemuck = { version = "1", optional = true }
 
 [dev-dependencies]
+ndarray-npy = { version = "0.9.1", default-features = false }
 ndarray-rand = "0.15.0"
 anyhow = "1.0.92"
 rusoto_credential = "0.48.0"

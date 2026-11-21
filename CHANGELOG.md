@@ -30,6 +30,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `_cubecl-cpu-test` runs kernel tests on CubeCL's CPU runtime, including when
   `--all-features` is used.
 
+* Rust: Rust 1.85 users no longer need `cargo update -p psm --precise 0.1.28`.
+  `ndarray-npy` is now a test-only dependency and `numpy` is enabled only by
+  `extension-module`, so neither reaches non-Python builds.
+
 * Fix index errors on mode 0 (individual-major) .bed files: an out-of-range
   individual index was reported as a SNP index, and the reverse. CPU, cloud,
   and GPU reads now resolve indexes with one shared function.
