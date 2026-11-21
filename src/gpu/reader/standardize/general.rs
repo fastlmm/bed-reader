@@ -28,9 +28,9 @@ pub(super) fn statistics<TVal: CubeClFloat>(
             BufferArg::from_raw_parts(matrix.handle.clone(), iid_count * sid_count),
             to_u32(iid_count)?,
             to_u32(sid_count)?,
-            u32::from(!matrix.is_f),
             BufferArg::from_raw_parts(genotype_sums.clone(), 4 * sid_count),
             BufferArg::from_raw_parts(statistics_handle.clone(), 3 * sid_count),
+            matrix.is_f,
         );
     }
     let bytes = matrix
@@ -80,9 +80,9 @@ fn centered<F: Float>(
     values: &[F],
     iid_count: u32,
     sid_count: u32,
-    c_order: u32,
     genotype_sums: &[u32],
     statistics: &mut [f64],
+    #[comptime] is_f: bool,
 ) {
     let sid_index = CUBE_POS_X;
     // Uniform across the cube, so every unit reaches the same `sync_cube` calls below.
@@ -97,9 +97,9 @@ fn centered<F: Float>(
     if active {
         let mut iid_index = UNIT_POS_X;
         while iid_index < iid_count {
-            let mut index = sid_index * iid_count + iid_index;
-            if c_order == 1u32 {
-                index = iid_index * sid_count + sid_index;
+            let mut index = iid_index * sid_count + sid_index;
+            if is_f {
+                index = sid_index * iid_count + iid_index;
             }
             let value = f64::cast_from(values[index as usize]);
             // Ordered comparisons exclude NaN while retaining negative values.
@@ -139,9 +139,9 @@ fn centered<F: Float>(
     if active {
         let mut iid_index = UNIT_POS_X;
         while iid_index < iid_count {
-            let mut index = sid_index * iid_count + iid_index;
-            if c_order == 1u32 {
-                index = iid_index * sid_count + sid_index;
+            let mut index = iid_index * sid_count + sid_index;
+            if is_f {
+                index = sid_index * iid_count + iid_index;
             }
             let value = f64::cast_from(values[index as usize]);
             if value >= 0.0f64 || value < 0.0f64 {

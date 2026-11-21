@@ -160,8 +160,9 @@ pub(crate) fn read_cubecl<TVal: CubeClVal>(
     let mut file = buf_reader.into_inner();
     // Mode 1 stores each SNP's individuals together (SNP-major); mode 0 stores each individual's
     // SNPs together. For mode 0, swap the roles of individuals and SNPs and flip the memory
-    // order: the transposed result has the requested layout (as the CPU reader does).
-    let (row_count, rows, col_count, cols, kernel_is_f) = match header[2] {
+    // order: the transposed result has the requested layout (as the CPU reader does). From here
+    // on, "rows" and "columns" are the file's: the output has one row per selected column.
+    let (row_count, rows, column_count, columns, kernel_is_f) = match header[2] {
         1 => (
             sid_count,
             &sid_index,
@@ -179,7 +180,7 @@ pub(crate) fn read_cubecl<TVal: CubeClVal>(
         _ => Err(BedError::BadMode(path_ref_to_string(&bed.path)))?,
     };
     // The same file-length check, and error, as the CPU reader, which also swaps counts for mode 0.
-    let row_bytes_u64 = try_div_4(col_count, row_count)?;
+    let row_bytes_u64 = try_div_4(column_count, row_count)?;
     // `try_div_4` checked that the whole file length fits u64.
     let expected_len = row_bytes_u64 * row_count as u64 + CB_HEADER_U64;
     if file.metadata()?.len() != expected_len {
@@ -187,8 +188,9 @@ pub(crate) fn read_cubecl<TVal: CubeClVal>(
     }
 
     // Within each stored row, read only the bytes spanning the selected columns, packed into
-    // u32 words. Column `c`'s 2-bit code sits in word `col_word[c]` at bit `col_shift[c]`.
-    let (span_start, span_len) = match (cols.iter().min(), cols.iter().max()) {
+    // u32 words. Selected column `k`'s 2-bit code sits in word `column_word[k]` at bit
+    // `column_shift[k]` of its row's words.
+    let (span_start, span_len) = match (columns.iter().min(), columns.iter().max()) {
         (Some(&min), Some(&max)) => (min / 4, max / 4 + 1 - min / 4),
         _ => (0, 0),
     };
@@ -196,13 +198,13 @@ pub(crate) fn read_cubecl<TVal: CubeClVal>(
     // The kernel indexes `packed` with u32. A few far-apart columns can make it much larger than
     // the result, so check it separately from `element_count`, before allocating or reading.
     let packed_len = self::element_count(rows.len(), span_words)?;
-    let col_word: Vec<u32> = cols
+    let column_word: Vec<u32> = columns
         .iter()
-        .map(|&c| to_u32((c / 4 - span_start) / 4))
+        .map(|&column| to_u32((column / 4 - span_start) / 4))
         .collect::<Result<_, _>>()?;
-    let col_shift: Vec<u32> = cols
+    let column_shift: Vec<u32> = columns
         .iter()
-        .map(|&c| to_u32(((c / 4 - span_start) % 4) * 8 + (c % 4) * 2))
+        .map(|&column| to_u32(((column / 4 - span_start) % 4) * 8 + (column % 4) * 2))
         .collect::<Result<_, _>>()?;
     let packed = read_packed(
         &mut file,
@@ -222,16 +224,17 @@ pub(crate) fn read_cubecl<TVal: CubeClVal>(
         // The CPU runtime (internal test feature) has no CUDA device to pin-copy to.
         #[cfg(all(test, feature = "_cubecl-cpu-test"))]
         let packed_handle = client.create_from_slice(u32::as_bytes(&packed));
-        let col_word_handle = client.create_from_slice(u32::as_bytes(&col_word));
-        let col_shift_handle = client.create_from_slice(u32::as_bytes(&col_shift));
-        let lut_handle = genotype_lookup(&client, read_options);
-        let (fast_count, slow_count) = memory_dimensions(cols.len(), rows.len(), kernel_is_f);
+        let column_word_handle = client.create_from_slice(u32::as_bytes(&column_word));
+        let column_shift_handle = client.create_from_slice(u32::as_bytes(&column_shift));
+        let lookup_handle = genotype_lookup(&client, read_options);
+        // The output is (selected file columns) x (selected file rows).
+        let (fast_count, slow_count) = memory_dimensions(columns.len(), rows.len(), kernel_is_f);
         let element_count_u32 = to_u32(element_count)?;
         // SAFETY: `decode` writes only `slow * fast_count + fast` for `fast < fast_count` and
         // `slow < slow_count`, so below `element_count` (which fits u32), the length of
-        // `handle`; it reads `col_word`/`col_shift` at column indexes < `cols.len()`, `packed` at
-        // word indexes < `rows.len() * span_words` = `packed_len` (checked above to fit u32), and
-        // `lut` at 2-bit codes <= 3 < 4, the lengths passed.
+        // `handle`; it reads `column_word`/`column_shift` at column indexes < `columns.len()`,
+        // `packed` at word indexes < `rows.len() * span_words` = `packed_len` (checked above to
+        // fit u32), and `lookup` at 2-bit codes <= 3 < 4, the lengths passed.
         unsafe {
             decode::launch_unchecked::<TVal>(
                 &client,
@@ -243,13 +246,13 @@ pub(crate) fn read_cubecl<TVal: CubeClVal>(
                 CubeDim::new_1d(UNITS),
                 BufferArg::from_raw_parts(packed_handle, packed.len()),
                 to_u32(span_words)?,
-                BufferArg::from_raw_parts(col_word_handle, col_word.len()),
-                BufferArg::from_raw_parts(col_shift_handle, col_shift.len()),
-                to_u32(cols.len())?,
+                BufferArg::from_raw_parts(column_word_handle, column_word.len()),
+                BufferArg::from_raw_parts(column_shift_handle, column_shift.len()),
+                to_u32(columns.len())?,
                 to_u32(rows.len())?,
-                u32::from(!kernel_is_f),
-                BufferArg::from_raw_parts(lut_handle, 4),
+                BufferArg::from_raw_parts(lookup_handle, 4),
                 BufferArg::from_raw_parts(handle.clone(), element_count_u32 as usize),
+                kernel_is_f,
             );
         }
     }
@@ -280,23 +283,23 @@ fn read_packed(
     // host (x86-64 and ARM64).
     let bytes: &mut [u8] = bytemuck::cast_slice_mut(&mut packed);
     for (out_row, &row) in rows.iter().enumerate() {
-        // As in the CPU reader. The file's length (which fits u64) bounds `pos`, so it cannot
-        // overflow. `span_len <= span_words * 4`, so `dst + span_len <= packed_len * 4`, the
+        // As in the CPU reader. The file's length (which fits u64) bounds `offset`, so it cannot
+        // overflow. `span_len <= span_words * 4`, so `destination + span_len <= packed_len * 4`, the
         // length of `bytes`.
-        let pos = row as u64 * row_bytes + span_start as u64 + CB_HEADER_U64;
-        file.seek(SeekFrom::Start(pos))?;
-        let dst = out_row * span_words * 4;
-        file.read_exact(&mut bytes[dst..dst + span_len])?;
+        let offset = row as u64 * row_bytes + span_start as u64 + CB_HEADER_U64;
+        file.seek(SeekFrom::Start(offset))?;
+        let destination = out_row * span_words * 4;
+        file.read_exact(&mut bytes[destination..destination + span_len])?;
     }
     Ok(packed)
 }
 
-/// The contiguous and strided dimensions for the selected memory order.
-fn memory_dimensions(iid_count: usize, sid_count: usize, is_f: bool) -> (usize, usize) {
+/// A matrix's contiguous and strided dimensions (`fast_count`, `slow_count`) for its memory order.
+fn memory_dimensions(row_count: usize, column_count: usize, is_f: bool) -> (usize, usize) {
     if is_f {
-        (iid_count, sid_count)
+        (row_count, column_count)
     } else {
-        (sid_count, iid_count)
+        (column_count, row_count)
     }
 }
 
@@ -525,41 +528,44 @@ fn upload_u32(client: &Client, words: &[u32]) -> Result<cubecl::server::Handle, 
 }
 
 /// Decodes one output element per unit, on a 2D grid: x covers the axis that is contiguous in the
-/// output (individuals for F order, SNPs for C order), so writes are coalesced and no division is
-/// needed; y covers the other axis, striding by the grid height when it exceeds the grid limit.
-/// Element (`iid_i`, `sid_j`)'s 2-bit code sits in word `sid_j * span_words + iid_word[iid_i]` at
-/// bit `iid_shift[iid_i]`.
+/// output (its rows for F order, its columns for C order), so writes are coalesced and no division
+/// is needed; y covers the other axis, striding by the grid height when it exceeds the grid limit.
+///
+/// The output has one row per selected file column and one column per selected file row (for mode
+/// 1 files, individuals x SNPs). Element (`column`, `row`)'s 2-bit code sits in word
+/// `row * span_words + column_word[column]` at bit `column_shift[column]`. `is_f` is compile-time,
+/// so each memory order gets its own compiled kernel.
 #[cube(launch_unchecked)]
 fn decode<F: Numeric>(
     packed: &[u32],
     span_words: u32,
-    iid_word: &[u32],
-    iid_shift: &[u32],
-    iid_count: u32,
-    sid_count: u32,
-    c_order: u32,
-    lut: &[F],
+    column_word: &[u32],
+    column_shift: &[u32],
+    column_count: u32,
+    row_count: u32,
+    lookup: &[F],
     out: &mut [F],
+    #[comptime] is_f: bool,
 ) {
     let fast = CUBE_POS_X * UNITS + UNIT_POS_X;
     let mut slow = CUBE_POS_Y;
-    let mut fast_count = iid_count;
-    let mut slow_count = sid_count;
-    if c_order == 1u32 {
-        fast_count = sid_count;
-        slow_count = iid_count;
+    let mut fast_count = row_count;
+    let mut slow_count = column_count;
+    if is_f {
+        fast_count = column_count;
+        slow_count = row_count;
     }
     if fast < fast_count {
         while slow < slow_count {
-            let mut iid_i = fast;
-            let mut sid_j = slow;
-            if c_order == 1u32 {
-                iid_i = slow;
-                sid_j = fast;
+            let mut column = slow;
+            let mut row = fast;
+            if is_f {
+                column = fast;
+                row = slow;
             }
-            let word = packed[(sid_j * span_words + iid_word[iid_i as usize]) as usize];
-            let code = (word >> iid_shift[iid_i as usize]) & 3u32;
-            out[(slow * fast_count + fast) as usize] = lut[code as usize];
+            let word = packed[(row * span_words + column_word[column as usize]) as usize];
+            let code = (word >> column_shift[column as usize]) & 3u32;
+            out[(slow * fast_count + fast) as usize] = lookup[code as usize];
             // Avoid wrapping the u32 loop index at the largest supported dimensions.
             if slow_count - slow <= CUBE_COUNT_Y {
                 break;

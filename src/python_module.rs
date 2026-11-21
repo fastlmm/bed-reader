@@ -994,11 +994,11 @@ mod gpu_python {
                     matrix.cuda_pointer()?,
                 ),
             };
-            let (rows, cols) = dim;
+            let (rows, columns) = dim;
             let strides = if is_f {
                 (itemsize, itemsize * rows)
             } else {
-                (itemsize * cols, itemsize)
+                (itemsize * columns, itemsize)
             };
             // Even an empty matrix owns a small native allocation. CuPy needs
             // its non-null pointer to determine the device for an empty view.
@@ -1008,7 +1008,7 @@ mod gpu_python {
                 .get_mut()
                 .expect("pointer mutex is never locked") = Some(pointer);
             let interface = PyDict::new(py);
-            interface.set_item("shape", (rows, cols))?;
+            interface.set_item("shape", (rows, columns))?;
             interface.set_item("typestr", typestr)?;
             interface.set_item("data", (ptr, false))?;
             interface.set_item("strides", strides)?;
@@ -1031,7 +1031,7 @@ mod gpu_python {
     ) -> PyResult<GpuArray> {
         let iid_index = iid_index.readonly();
         let sid_index = sid_index.readonly();
-        let (ii, si) = (iid_index.as_slice()?, sid_index.as_slice()?);
+        let (iid_index, sid_index) = (iid_index.as_slice()?, sid_index.as_slice()?);
         let mut bed = Bed::builder(filename)
             .iid_count(iid_count)
             .sid_count(sid_count)
@@ -1039,24 +1039,24 @@ mod gpu_python {
         let matrix = match dtype {
             "int8" => AnyMatrix::I8(
                 ReadOptions::<i8>::builder()
-                    .iid_index(ii)
-                    .sid_index(si)
+                    .iid_index(iid_index)
+                    .sid_index(sid_index)
                     .is_a1_counted(is_a1_counted)
                     .is_f(is_f)
                     .read_cubecl(&mut bed)?,
             ),
             "float32" => AnyMatrix::F32(
                 ReadOptions::<f32>::builder()
-                    .iid_index(ii)
-                    .sid_index(si)
+                    .iid_index(iid_index)
+                    .sid_index(sid_index)
                     .is_a1_counted(is_a1_counted)
                     .is_f(is_f)
                     .read_cubecl(&mut bed)?,
             ),
             "float64" => AnyMatrix::F64(
                 ReadOptions::<f64>::builder()
-                    .iid_index(ii)
-                    .sid_index(si)
+                    .iid_index(iid_index)
+                    .sid_index(sid_index)
                     .is_a1_counted(is_a1_counted)
                     .is_f(is_f)
                     .read_cubecl(&mut bed)?,

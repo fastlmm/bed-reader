@@ -93,7 +93,6 @@ fn standardize<TVal: CubeClFloat>(
         let times_four = u64::from(to_u32(count)?) * 4;
         u32::try_from(times_four).map_err(|_| gpu::Error::TooLarge(times_four))?;
     }
-    let c_order = u32::from(!matrix.is_f);
     let client = &matrix.client;
     // CUDA has plane operations; only CubeCL's CPU runtime (internal tests) lacks them.
     let use_plane = client
@@ -115,9 +114,11 @@ fn standardize<TVal: CubeClFloat>(
     // Finish each SNP's statistics with the CPU code's functions. The integer sums convert to
     // `TVal` exactly whenever the CPU's own float sums are exact (below 2^24 for f32).
     let two = <TVal as From<i8>>::from(2);
-    let mut mean = Vec::with_capacity(sid_count);
-    let mut factor = Vec::with_capacity(sid_count);
-    let mut snc = Vec::with_capacity(sid_count);
+    let mut means = Vec::with_capacity(sid_count);
+    let mut factors = Vec::with_capacity(sid_count);
+    // 1 for a single-value SNP (infinite standard deviation), whose values all become 0; the CPU
+    // standardizer calls this `is_snc`.
+    let mut is_constant = Vec::with_capacity(sid_count);
     for (sid_index, (column, mut stats_row)) in sums
         .chunks_exact(4)
         .zip(stats.axis_iter_mut(nd::Axis(0)))
@@ -126,7 +127,7 @@ fn standardize<TVal: CubeClFloat>(
         let &[count, sum, sum2, not_genotype] = column else {
             unreachable!("chunks_exact(4) produces four statistics per SNP");
         };
-        let (mean_s, std) = if not_genotype == 0 {
+        let (mean, std) = if not_genotype == 0 {
             snp_mean_std(
                 from_u32::<TVal>(count),
                 from_u32(sum),
@@ -142,20 +143,20 @@ fn standardize<TVal: CubeClFloat>(
                 dist,
             )?
         };
-        stats_row[0] = mean_s;
+        stats_row[0] = mean;
         stats_row[1] = std;
-        mean.push(mean_s);
-        factor.push(find_factor(dist, mean_s, std)?);
-        snc.push(u32::from(num_traits::Float::is_infinite(std)));
+        means.push(mean);
+        factors.push(find_factor(dist, mean, std)?);
+        is_constant.push(u32::from(num_traits::Float::is_infinite(std)));
     }
 
     if element_count > 0 {
-        let mean_handle = client.create_from_slice(bytemuck::cast_slice(&mean));
-        let factor_handle = client.create_from_slice(bytemuck::cast_slice(&factor));
-        let snc_handle = client.create_from_slice(u32::as_bytes(&snc));
+        let means_handle = client.create_from_slice(bytemuck::cast_slice(&means));
+        let factors_handle = client.create_from_slice(bytemuck::cast_slice(&factors));
+        let is_constant_handle = client.create_from_slice(u32::as_bytes(&is_constant));
         let (fast_count, slow_count) = memory_dimensions(iid_count, sid_count, matrix.is_f);
         // SAFETY: as for `decode`: writes only `slow * fast_count + fast` < `element_count`;
-        // reads the per-SNP arrays at `sid_j < sid_count`, their length.
+        // reads the per-SNP arrays at `sid_index < sid_count`, their length.
         unsafe {
             apply::launch_unchecked::<TVal>(
                 client,
@@ -168,10 +169,10 @@ fn standardize<TVal: CubeClFloat>(
                 BufferArg::from_raw_parts(matrix.handle.clone(), element_count),
                 to_u32(iid_count)?,
                 to_u32(sid_count)?,
-                c_order,
-                BufferArg::from_raw_parts(mean_handle, sid_count),
-                BufferArg::from_raw_parts(factor_handle, sid_count),
-                BufferArg::from_raw_parts(snc_handle, sid_count),
+                BufferArg::from_raw_parts(means_handle, sid_count),
+                BufferArg::from_raw_parts(factors_handle, sid_count),
+                BufferArg::from_raw_parts(is_constant_handle, sid_count),
+                matrix.is_f,
             );
         }
     }
@@ -188,12 +189,11 @@ fn launch_snp_sums<TVal: CubeClFloat>(
 ) -> Result<cubecl::server::Handle, Box<Error>> {
     let (iid_count, sid_count) = (matrix.iid_count, matrix.sid_count);
     let element_count = iid_count * sid_count;
-    let c_order = u32::from(!matrix.is_f);
     let client = &matrix.client;
     let sums_handle = client.empty(4 * sid_count * 4);
-    // SAFETY: one cube per SNP (`sid_j < sid_count`); it reads the matrix only at indexes below
+    // SAFETY: one cube per SNP (`sid_index < sid_count`); it reads the matrix only at indexes below
     // `iid_count * sid_count` (= `element_count`, which fits u32) and writes
-    // `sums[4 * sid_j .. 4 * sid_j + 4]`, inside the `4 * sid_count` words allocated.
+    // `sums[4 * sid_index .. 4 * sid_index + 4]`, inside the `4 * sid_count` words allocated.
     unsafe {
         snp_sums::launch_unchecked::<TVal>(
             client,
@@ -205,8 +205,8 @@ fn launch_snp_sums<TVal: CubeClFloat>(
             ),
             to_u32(iid_count)?,
             to_u32(sid_count)?,
-            c_order,
             BufferArg::from_raw_parts(sums_handle.clone(), 4 * sid_count),
+            matrix.is_f,
             use_plane,
         );
     }
@@ -219,30 +219,30 @@ fn from_u32<TVal: CubeClFloat>(value: u32) -> TVal {
 }
 
 /// Per-SNP sums over observed (non-NaN) values: one cube per SNP. Writes `count`, `sum`,
-/// `sum of squares`, and a flag set if any value is not 0, 1, or 2 to `sums[4 * sid_j ..]`. The
+/// `sum of squares`, and a flag set if any value is not 0, 1, or 2 to `sums[4 * sid_index ..]`. The
 /// values are small integers, so these integer sums are exact in any order.
 #[cube(launch_unchecked)]
 fn snp_sums<F: Float>(
-    val: &[F],
+    values: &[F],
     iid_count: u32,
     sid_count: u32,
-    c_order: u32,
     sums: &mut [u32],
+    #[comptime] is_f: bool,
     #[comptime] use_plane: bool,
 ) {
-    let sid_j = CUBE_POS_X;
+    let sid_index = CUBE_POS_X;
     let mut count = 0u32;
     let mut sum = 0u32;
     let mut sum2 = 0u32;
     let mut not_genotype = 0u32;
-    if sid_j < sid_count {
-        let mut iid_i = UNIT_POS_X;
-        while iid_i < iid_count {
-            let mut index = sid_j * iid_count + iid_i;
-            if c_order == 1u32 {
-                index = iid_i * sid_count + sid_j;
+    if sid_index < sid_count {
+        let mut iid_index = UNIT_POS_X;
+        while iid_index < iid_count {
+            let mut index = iid_index * sid_count + sid_index;
+            if is_f {
+                index = sid_index * iid_count + iid_index;
             }
-            let value = val[index as usize];
+            let value = values[index as usize];
             // NaN (missing) fails every ordered comparison, so it takes neither branch and is not
             // counted. (`F::is_nan` returns a line-wide bool, which a scalar `if` can't use.)
             if value >= F::from_int(0) && value <= F::from_int(2) {
@@ -259,10 +259,10 @@ fn snp_sums<F: Float>(
                 // the general floating-point path gets a chance to handle it.
                 not_genotype = 1u32;
             }
-            if iid_count - iid_i <= UNITS {
+            if iid_count - iid_index <= UNITS {
                 break;
             }
-            iid_i += UNITS;
+            iid_index += UNITS;
         }
     }
     let mut partials = Shared::<[u32]>::new_slice((4u32 * UNITS) as usize);
@@ -280,25 +280,27 @@ fn snp_sums<F: Float>(
             partials[(4u32 * plane + 3u32) as usize] = not_genotype_plane;
         }
         sync_cube();
-        if UNIT_POS_X == 0u32 && sid_j < sid_count {
+        if UNIT_POS_X == 0u32 && sid_index < sid_count {
             let planes = UNITS / PLANE_DIM;
             let mut total_count = 0u32;
             let mut total_sum = 0u32;
             let mut total_sum2 = 0u32;
             let mut total_not_genotype = 0u32;
-            let mut p = 0u32;
-            while p < planes {
-                total_count += partials[(4u32 * p) as usize];
-                total_sum += partials[(4u32 * p + 1u32) as usize];
-                total_sum2 += partials[(4u32 * p + 2u32) as usize];
-                total_not_genotype =
-                    u32::max(total_not_genotype, partials[(4u32 * p + 3u32) as usize]);
-                p += 1u32;
+            let mut plane_index = 0u32;
+            while plane_index < planes {
+                total_count += partials[(4u32 * plane_index) as usize];
+                total_sum += partials[(4u32 * plane_index + 1u32) as usize];
+                total_sum2 += partials[(4u32 * plane_index + 2u32) as usize];
+                total_not_genotype = u32::max(
+                    total_not_genotype,
+                    partials[(4u32 * plane_index + 3u32) as usize],
+                );
+                plane_index += 1u32;
             }
-            sums[(4u32 * sid_j) as usize] = total_count;
-            sums[(4u32 * sid_j + 1u32) as usize] = total_sum;
-            sums[(4u32 * sid_j + 2u32) as usize] = total_sum2;
-            sums[(4u32 * sid_j + 3u32) as usize] = total_not_genotype;
+            sums[(4u32 * sid_index) as usize] = total_count;
+            sums[(4u32 * sid_index + 1u32) as usize] = total_sum;
+            sums[(4u32 * sid_index + 2u32) as usize] = total_sum2;
+            sums[(4u32 * sid_index + 3u32) as usize] = total_not_genotype;
         }
     } else {
         // Runtimes without plane operations (CubeCL's CPU runtime, used by this crate's tests):
@@ -327,51 +329,53 @@ fn snp_sums<F: Float>(
             sync_cube();
             stride /= 2u32;
         }
-        if UNIT_POS_X == 0u32 && sid_j < sid_count {
-            sums[(4u32 * sid_j) as usize] = partials[0];
-            sums[(4u32 * sid_j + 1u32) as usize] = partials[1];
-            sums[(4u32 * sid_j + 2u32) as usize] = partials[2];
-            sums[(4u32 * sid_j + 3u32) as usize] = partials[3];
+        if UNIT_POS_X == 0u32 && sid_index < sid_count {
+            sums[(4u32 * sid_index) as usize] = partials[0];
+            sums[(4u32 * sid_index + 1u32) as usize] = partials[1];
+            sums[(4u32 * sid_index + 2u32) as usize] = partials[2];
+            sums[(4u32 * sid_index + 3u32) as usize] = partials[3];
         }
     }
 }
 
-/// Applies per-SNP `mean` and `factor` in place, on the same 2D grid as `decode`: missing values
-/// and single-value SNPs (`snc` = 1) become 0, others `(value - mean) * factor`. Call only after
+/// Applies per-SNP `means` and `factors` in place, on the same 2D grid as `decode`: missing values
+/// and single-value SNPs (`is_constant` = 1) become 0, others `(value - mean) * factor`. Call only after
 /// the per-SNP statistics have been validated. (No multiply-add pattern, so
 /// genotype columns continue to round exactly as the CPU does.)
 #[cube(launch_unchecked)]
 fn apply<F: Float>(
-    val: &mut [F],
+    values: &mut [F],
     iid_count: u32,
     sid_count: u32,
-    c_order: u32,
-    mean: &[F],
-    factor: &[F],
-    snc: &[u32],
+    means: &[F],
+    factors: &[F],
+    is_constant: &[u32],
+    #[comptime] is_f: bool,
 ) {
     let fast = CUBE_POS_X * UNITS + UNIT_POS_X;
     let mut slow = CUBE_POS_Y;
-    let mut fast_count = iid_count;
-    let mut slow_count = sid_count;
-    if c_order == 1u32 {
-        fast_count = sid_count;
-        slow_count = iid_count;
+    let mut fast_count = sid_count;
+    let mut slow_count = iid_count;
+    if is_f {
+        fast_count = iid_count;
+        slow_count = sid_count;
     }
     if fast < fast_count {
         while slow < slow_count {
-            let mut sid_j = slow;
-            if c_order == 1u32 {
-                sid_j = fast;
+            let mut sid_index = fast;
+            if is_f {
+                sid_index = slow;
             }
             let index = (slow * fast_count + fast) as usize;
-            let value = val[index];
+            let value = values[index];
             // NaN fails both ordered comparisons; negative finite values must
             // still be transformed. Single-value SNPs always become zero.
-            if (value >= F::from_int(0) || value < F::from_int(0)) && snc[sid_j as usize] == 0u32 {
-                val[index] = (value - mean[sid_j as usize]) * factor[sid_j as usize];
+            if (value >= F::from_int(0) || value < F::from_int(0))
+                && is_constant[sid_index as usize] == 0u32
+            {
+                values[index] = (value - means[sid_index as usize]) * factors[sid_index as usize];
             } else {
-                val[index] = F::from_int(0);
+                values[index] = F::from_int(0);
             }
             if slow_count - slow <= CUBE_COUNT_Y {
                 break;
