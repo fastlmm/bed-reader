@@ -11,6 +11,9 @@ use crate::{
     BedError, Dist,
 };
 
+/// Per-SNP `[count, mean, variance]` of the observed (non-NaN) values, computed on the GPU in f64
+/// for the SNPs whose `genotype_sums` flag (word 3 of 4) marks a non-genotype value; all zeros for
+/// the others, whose statistics come from the exact integer sums instead.
 pub(super) fn statistics<TVal: CubeClFloat>(
     matrix: &CubeClMatrix<TVal>,
     genotype_sums: &Handle,
@@ -18,7 +21,7 @@ pub(super) fn statistics<TVal: CubeClFloat>(
     let (iid_count, sid_count) = matrix.dim();
     let statistics_handle = matrix.client.empty(3 * sid_count * size_of::<f64>());
     // SAFETY: one cube per SNP (`sid_index < sid_count`). Matrix offsets are below
-    // iid_count * sid_count, already checked by the reader. The input flags have four words per
+    // iid_count * sid_count, which fits u32 by `CubeClMatrix`'s invariant. The input flags have four words per
     // SNP and the output has three f64 values per SNP, written only by unit 0 of each cube.
     unsafe {
         centered::launch_unchecked::<TVal>(
@@ -54,8 +57,8 @@ pub(super) fn mean_std<TVal: CubeClFloat>(
     {
         return Err(BedError::IllegalSnpMean.into());
     }
-    // A centered sum of squares cannot be negative. Do not turn invalid or
-    // overflowed moments into a constant column as the legacy CPU formula does.
+    // A centered sum of squares cannot be negative, so a negative or non-finite variance means the
+    // moments overflowed or were invalid: report it rather than treating the SNP as constant.
     if !variance.is_finite() || variance < 0.0 {
         return Err(Error::InvalidVariance(variance));
     }
