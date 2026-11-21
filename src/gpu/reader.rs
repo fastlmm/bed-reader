@@ -1022,6 +1022,29 @@ mod tests {
         Ok(())
     }
 
+    // CUDA only: the CPU runtime (internal feature `_cubecl-cpu-test`) uploads without staging.
+    #[cfg(not(feature = "_cubecl-cpu-test"))]
+    #[test]
+    fn gpu_upload_crosses_staging_chunks() -> Result<(), Box<dyn StandardError>> {
+        // The sample files fit one staging chunk. Two and a half chunks exercise both pinned
+        // buffers, reuse of the first, and a short final chunk.
+        let word_count = (5 * super::CHUNK_BYTES / 2) / size_of::<u32>() + 3;
+        let words: Vec<u32> = (0..u32::try_from(word_count)?)
+            .map(|index| index.wrapping_mul(2_654_435_761))
+            .collect();
+        let client = super::client()?;
+        let handle = super::upload_u32(&client, &words)?;
+        let bytes = client.read_one(handle).map_err(super::Error::from)?;
+        let uploaded: &[u32] = bytemuck::cast_slice(&bytes[..word_count * 4]);
+        // Report the first wrong word rather than printing millions of them.
+        let first_mismatch = uploaded
+            .iter()
+            .zip(&words)
+            .position(|(got, expected)| got != expected);
+        assert_eq!(first_mismatch, None);
+        Ok(())
+    }
+
     #[test]
     fn gpu_memory_cleanup_runs() -> Result<(), Box<dyn StandardError>> {
         let mut bed = Bed::new(sample_bed_file("small.bed")?)?;
@@ -1057,10 +1080,12 @@ mod tests {
             .map(|&value| (f64::from(value) - expected_mean).powi(2))
             .sum::<f64>()
             / observed_count;
-        let stats = standardize_unit(&mut matrix)?;
-        assert!((f64::from(stats[[0, 0]]) - expected_mean).abs() < 4.0 * f64::from(f32::EPSILON));
+        let statistics = standardize_unit(&mut matrix)?;
         assert!(
-            (f64::from(stats[[0, 1]]) - expected_variance.sqrt()).abs()
+            (f64::from(statistics[[0, 0]]) - expected_mean).abs() < 4.0 * f64::from(f32::EPSILON)
+        );
+        assert!(
+            (f64::from(statistics[[0, 1]]) - expected_variance.sqrt()).abs()
                 < 4.0 * f64::from(f32::EPSILON)
         );
         Ok(())
