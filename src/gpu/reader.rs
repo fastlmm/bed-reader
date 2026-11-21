@@ -594,32 +594,44 @@ fn upload_pinned_cuda(
     let resource = client
         .get_resource::<<CudaRuntime as Runtime>::Server>(handle.clone())
         .map_err(Error::from)?;
+    // `ptr` already includes the handle's offset within its CubeCL page.
     let device_ptr = resource.resource().ptr;
+    assert!(
+        bytes.len() as u64 <= resource.resource().size,
+        "upload must fit its destination buffer"
+    );
     let staging_guard = cuda_staging()?;
     let staging = staging_guard
         .as_ref()
         .expect("cuda_staging returns only after initializing the staging buffers");
-    for (chunk_index, chunk) in bytes.chunks(CHUNK_BYTES).enumerate() {
-        let slot = chunk_index % 2;
-        // SAFETY: the event guards the pinned buffer until its previous copy finished; the
-        // destination range lies inside the CubeCL buffer, which `resource` keeps alive and in place.
-        unsafe {
-            result::event::synchronize(staging.events[slot]).map_err(Error::from)?;
-            let buffer = core::slice::from_raw_parts_mut(staging.buffers[slot], chunk.len());
-            buffer.copy_from_slice(chunk);
-            result::memcpy_htod_async(
-                device_ptr + (chunk_index * CHUNK_BYTES) as u64,
-                buffer,
-                staging.stream,
-            )
-            .map_err(Error::from)?;
-            result::event::record(staging.events[slot], staging.stream).map_err(Error::from)?;
+    let copy_result = (|| -> Result<(), Error> {
+        for (chunk_index, chunk) in bytes.chunks(CHUNK_BYTES).enumerate() {
+            let slot = chunk_index % 2;
+            // SAFETY: the event guards the pinned buffer until its previous copy finished; the
+            // destination range lies inside the CubeCL buffer (asserted above), which `resource`
+            // keeps alive and in place until the stream is synchronized below.
+            unsafe {
+                result::event::synchronize(staging.events[slot])?;
+                let buffer = core::slice::from_raw_parts_mut(staging.buffers[slot], chunk.len());
+                buffer.copy_from_slice(chunk);
+                result::memcpy_htod_async(
+                    device_ptr + (chunk_index * CHUNK_BYTES) as u64,
+                    buffer,
+                    staging.stream,
+                )?;
+                result::event::record(staging.events[slot], staging.stream)?;
+            }
         }
-    }
-    // SAFETY: the stream is valid; waiting makes the data visible to CubeCL's later launches.
-    unsafe { result::stream::synchronize(staging.stream).map_err(Error::from)? };
+        Ok(())
+    })();
+    // Wait even when a copy failed: copies already queued still write into the CubeCL buffer and
+    // read the pinned buffers, so neither may be released or reused until they finish.
+    // SAFETY: the stream is valid; waiting also makes the data visible to CubeCL's later launches.
+    let sync_result = unsafe { result::stream::synchronize(staging.stream) };
     drop(staging_guard);
     drop(resource);
+    copy_result?;
+    sync_result.map_err(Error::from)?;
     Ok(())
 }
 
