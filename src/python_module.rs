@@ -1108,27 +1108,27 @@ mod gpu_python {
                 .synchronize()
                 .map_err(|error| PyRuntimeError::new_err(error.to_string()))?;
         }
-        let stats = match array.matrix.as_mut().expect("matrix is present until drop") {
+        let statistics = match array.matrix.as_mut().expect("matrix is present until drop") {
             AnyMatrix::I8(_) => {
                 return Err(PyValueError::new_err(
                     "Standardizing needs float32 or float64, not int8",
                 ))
             }
             AnyMatrix::F32(matrix) => {
-                let stats = if beta_not_unit_variance {
+                let statistics = if beta_not_unit_variance {
                     standardize_beta(matrix, beta_a, beta_b)?
                 } else {
                     standardize_unit(matrix)?
                 };
-                stats.to_pyarray(py).into_any()
+                statistics.to_pyarray(py).into_any()
             }
             AnyMatrix::F64(matrix) => {
-                let stats = if beta_not_unit_variance {
+                let statistics = if beta_not_unit_variance {
                     standardize_beta(matrix, beta_a, beta_b)?
                 } else {
                     standardize_unit(matrix)?
                 };
-                stats.to_pyarray(py).into_any()
+                statistics.to_pyarray(py).into_any()
             }
         };
         if array
@@ -1143,7 +1143,7 @@ mod gpu_python {
             pollster::block_on(client.sync())
                 .map_err(|error| PyRuntimeError::new_err(error.to_string()))?;
         }
-        Ok(stats)
+        Ok(statistics)
     }
 
     /// Asks `CubeCL` to return the GPU memory of dropped arrays, so that other GPU libraries in the

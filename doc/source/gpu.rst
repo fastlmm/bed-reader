@@ -42,7 +42,8 @@ or later, even on machines without a GPU. To check an installation, call
 :func:`has_gpu_support`; it reports whether the installed build includes
 GPU reading, not whether a GPU is present.
 
-The ``cupy`` extra installs CuPy's CUDA 13 distribution, which needs a
+bed-reader's GPU reads themselves need only the NVIDIA driver, not the CUDA
+toolkit. The ``cupy`` extra installs CuPy's CUDA 13 distribution, which needs a
 compatible NVIDIA driver and the CUDA 13 toolkit; see CuPy's
 `installation guide <https://docs.cupy.dev/en/stable/install.html>`_.
 Alternatively, CuPy can install the CUDA components with pip, which still
