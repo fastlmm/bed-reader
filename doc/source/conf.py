@@ -1,4 +1,6 @@
+import os
 import time
+import urllib.request
 from pathlib import Path
 
 from recommonmark.parser import CommonMarkParser
@@ -66,11 +68,44 @@ html_theme_options = {
 }
 htmlhelp_basename = f"{project}doc"
 
+
+def _intersphinx_inventory(name, url):
+    """Where Sphinx looks for `name`'s objects.inv.
+
+    When INTERSPHINX_CACHE is set (as CI does), download it there first, retrying, so one slow
+    docs site does not fail the -W build. Sphinx tries the local copy, then the site, and warns
+    only if both fail.
+    """
+    cache = os.environ.get("INTERSPHINX_CACHE")
+    if not cache:
+        return None
+    path = Path(cache) / f"{name}.inv"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    attempts = 3
+    for attempt in range(attempts):
+        try:
+            # numpy.org refuses urllib's default User-Agent with HTTP 403.
+            request = urllib.request.Request(f"{url}objects.inv", headers={"User-Agent": "bed-reader-docs-build"})
+            with urllib.request.urlopen(request, timeout=30) as response:
+                path.write_bytes(response.read())
+            break
+        except OSError as error:
+            print(f"Downloading the {name} inventory failed (attempt {attempt + 1} of {attempts}): {error}")
+            if attempt + 1 < attempts:
+                time.sleep(10)
+    return (str(path), None) if path.exists() else None
+
+
+# Without a timeout, Sphinx would wait forever on a docs site that never answers.
+intersphinx_timeout = 30
 intersphinx_mapping = {
-    "python": ("https://docs.python.org/3", None),
-    "numpy": ("https://docs.scipy.org/doc/numpy/", None),
-    "pandas": ("https://pandas.pydata.org/pandas-docs/stable/", None),
-    "scipy": ("https://docs.scipy.org/doc/scipy/reference/", None),
+    name: (url, _intersphinx_inventory(name, url))
+    for name, url in {
+        "python": "https://docs.python.org/3/",
+        "numpy": "https://numpy.org/doc/stable/",
+        "pandas": "https://pandas.pydata.org/docs/",
+        "scipy": "https://docs.scipy.org/doc/scipy/",
+    }.items()
 }
 
 source_parsers = {

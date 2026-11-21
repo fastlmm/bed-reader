@@ -534,6 +534,9 @@ jobs:
       - name: Build bed-reader and install documentation dependencies
         run: uv sync --frozen --extra samples --extra sparse --extra dev --extra min_dev
       - name: Build documentation from clean sources
+        env:
+          # conf.py downloads the intersphinx inventories here first, with retries.
+          INTERSPHINX_CACHE: ${{ runner.temp }}/intersphinx
         run: uv run --frozen --no-sync sphinx-build -W --keep-going -E -a -d "${{ runner.temp }}/doctrees" -b html doc/source "${{ runner.temp }}/generated-docs"
 
   ci-result:
