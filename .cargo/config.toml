@@ -1,5 +1,5 @@
-# On lockfile refresh, retain idna_adapter 1.2.0 (CPU ICU 1.x), psm 0.1.28 (reached only
-# through the test-only ndarray-npy; a newer psm build dependency needs Rust 1.88 without
-# declaring it), and one ndarray 0.16.1 shared with numpy; validate the CPU graph on Rust 1.85.
+# On lockfile refresh, retain psm 0.1.28 (reached only through the test-only ndarray-npy;
+# a newer psm build dependency needs Rust 1.88 without declaring it) and one ndarray 0.16.1
+# shared with numpy; validate the dependency graph on Rust 1.85.
 [resolver]
 incompatible-rust-versions = "fallback"

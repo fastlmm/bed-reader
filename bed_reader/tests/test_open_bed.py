@@ -1450,19 +1450,6 @@ def test_stream_modes2(shared_datadir, tmp_path) -> None:
                     assert np.allclose(val, val3, equal_nan=True)
 
 
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-
-    shared_datadir = Path(r"D:\OneDrive\programs\bed-reader\bed_reader\tests\data")
-    tmp_path = Path(r"m:/deldir/tests")
-    test_bed_reading_example()
-    # test_zero_files(tmp_path)
-    # test_index(shared_datadir)
-    # test_c_reader_bed(shared_datadir)
-    # test_read1(shared_datadir)
-    pytest.main([__file__])
-
-
 @pytest.mark.parametrize("name", ["small.bed", "smallmode0.bed"])
 @pytest.mark.parametrize("axis", ["individual", "SNP"])
 @pytest.mark.parametrize("negative", [False, True])
@@ -1479,3 +1466,16 @@ def test_native_index_errors_name_the_callers_axis(shared_datadir, name, axis, n
         with pytest.raises(IndexError, match=f"Index to {axis} "):
             native.read_f32(str(path), {}, bed.iid_count, bed.sid_count,
                             True, rows, columns, values, 1)
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+
+    shared_datadir = Path(r"D:\OneDrive\programs\bed-reader\bed_reader\tests\data")
+    tmp_path = Path(r"m:/deldir/tests")
+    test_bed_reading_example()
+    # test_zero_files(tmp_path)
+    # test_index(shared_datadir)
+    # test_c_reader_bed(shared_datadir)
+    # test_read1(shared_datadir)
+    pytest.main([__file__])

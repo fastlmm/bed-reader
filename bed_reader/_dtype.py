@@ -4,8 +4,8 @@ import os
 import numpy as np
 
 
-def array_dtype(dtype=None, *, default="float64"):
-    """Resolve explicit dtype, ARRAY_DTYPE, then the API's original default.
+def array_dtype(dtype, *, default):
+    """Resolve an explicit dtype, then ARRAY_DTYPE, then the calling API's default.
 
     ARRAY_DTYPE accepts ``float32`` or ``float64``. Explicit dtypes bypass the
     environment; the calling API validates its supported types, including int8
@@ -14,9 +14,9 @@ def array_dtype(dtype=None, *, default="float64"):
     Examples
     --------
     >>> from unittest.mock import patch
-    >>> from bed_reader._array_module import array_dtype
+    >>> from bed_reader._dtype import array_dtype
     >>> with patch.dict("os.environ", {"ARRAY_DTYPE": "float32"}):
-    ...     print(array_dtype(), array_dtype("float64"))
+    ...     print(array_dtype(None, default="float32"), array_dtype("float64", default="float32"))
     float32 float64
     """
     if dtype is not None:

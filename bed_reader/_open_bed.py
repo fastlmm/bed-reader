@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 
 import numpy as np
 
-from bed_reader._array_module import array_dtype
+from bed_reader._dtype import array_dtype
 
 if TYPE_CHECKING:
     from scipy import sparse

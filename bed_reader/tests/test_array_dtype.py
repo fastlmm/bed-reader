@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 
 from bed_reader import open_bed, sample_file
-from bed_reader._array_module import array_dtype
+from bed_reader._dtype import array_dtype
 
 
 @pytest.mark.parametrize("configured", ["float32", "float64"])
@@ -21,8 +21,8 @@ def test_read_precision_precedence(monkeypatch, configured, force_python_only):
 
 def test_unconfigured_read_default_is_float32(monkeypatch):
     monkeypatch.delenv("ARRAY_DTYPE", raising=False)
-    assert array_dtype() == np.float64
-    assert array_dtype(default="float32") == np.float32
+    assert array_dtype(None, default="float64") == np.float64
+    assert array_dtype(None, default="float32") == np.float32
     with open_bed(sample_file("small.bed")) as bed:
         assert bed.read().dtype == np.float32
         assert bed.read(dtype=None).dtype == np.float32
@@ -34,9 +34,9 @@ def test_unconfigured_read_default_is_float32(monkeypatch):
 def test_invalid_environment_is_rejected_but_explicit_dtype_wins(monkeypatch, configured):
     monkeypatch.setenv("ARRAY_DTYPE", configured)
     with pytest.raises(ValueError, match="ARRAY_DTYPE"):
-        array_dtype()
-    assert array_dtype(np.float32) == np.float32
-    assert array_dtype(np.int8) == np.int8
+        array_dtype(None, default="float32")
+    assert array_dtype(np.float32, default="float32") == np.float32
+    assert array_dtype(np.int8, default="float32") == np.int8
 
     with open_bed(sample_file("small.bed")) as bed:
         for read in (bed.read, bed.read_sparse):

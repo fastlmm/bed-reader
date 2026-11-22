@@ -12,10 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   bed-reader reads into CPU arrays. PySnpTools and FaST-LMM retain GPU
   computation by transferring CPU reads to CuPy.
 
-* Keep `ARRAY_DTYPE` precision defaults for dense and sparse Python reads.
-  An omitted or explicit `dtype=None` uses `ARRAY_DTYPE` when set, otherwise
-  float32. Explicit dtypes override the environment. Before 1.3.0a1,
-  explicit `dtype=None` selected NumPy's implicit float64 dtype.
+* Behavior change from 1.2.1: an explicit `dtype=None` in `open_bed.read` and
+  `open_bed.read_sparse` now returns float32, not NumPy's implicit float64.
+  An omitted or explicit `dtype=None` uses the `ARRAY_DTYPE` environment
+  variable (`float32` or `float64`) when set, otherwise float32. Explicit
+  dtypes override the environment.
 
 * Rust 1.85 users no longer need `cargo update -p psm --precise 0.1.28`.
   `ndarray-npy` is now a test-only dependency and `numpy` is enabled only by

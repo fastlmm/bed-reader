@@ -1108,7 +1108,7 @@ fn find_factor<
 }
 
 /// One SNP's mean and standard deviation from its count, sum, and sum of squares over observed
-/// values. Shared by the column-wise and row-wise CPU standardizers.
+/// values. Shared by the column-wise and row-wise standardizers.
 fn snp_mean_std<
     T: Default + Copy + Debug + Sync + Send + Sync + Float + ToPrimitive + FromPrimitive,
 >(
@@ -4489,7 +4489,7 @@ impl<TVal: BedVal> ReadOptions<TVal> {
 }
 
 impl<TVal: BedVal> ReadOptionsBuilder<TVal> {
-    /// Read genotype data into an `ndarray` array on the CPU.
+    /// Read genotype data into an `ndarray` array.
     ///
     /// > See [`ReadOptions::builder`](struct.ReadOptions.html#method.builder) for details and examples.
     pub fn read(&self, bed: &mut Bed) -> Result<nd::Array2<TVal>, Box<BedErrorPlus>> {

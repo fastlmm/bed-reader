@@ -2245,7 +2245,7 @@ fn metadata_iid_sid2() -> Result<(), Box<BedErrorPlus>> {
 
 // Preserve value-type inference for the public builder API.
 #[test]
-fn default_builder_infers_cpu_value_type() -> Result<(), Box<BedErrorPlus>> {
+fn default_builder_infers_value_type() -> Result<(), Box<BedErrorPlus>> {
     let mut bed = Bed::new(sample_bed_file("small.bed")?)?;
     let builder = ReadOptionsBuilder::default();
     let values: nd::Array2<f32> = builder.read(&mut bed)?;
