@@ -2260,7 +2260,7 @@ async fn s3_article() -> Result<(), Box<BedErrorPlus>> {
 #[tokio::test]
 async fn http_one() -> Result<(), Box<BedErrorPlus>> {
     // Open the bed file with a URL and any needed cloud options, then use as before.
-    let mut bed_cloud = BedCloud::new("https://raw.githubusercontent.com/fastlmm/bed-reader/rustybed/bed_reader/tests/data/some_missing.bed").await?;
+    let mut bed_cloud = BedCloud::new("https://raw.githubusercontent.com/fastlmm/bed-reader/a462625e4c44a9c0b18703501559f219bd2cd63c/bed_reader/tests/data/some_missing.bed").await?;
     println!("{:?}", bed_cloud.iid().await?.slice(s![..5]));
     println!("{:?}", bed_cloud.sid().await?.slice(s![..5]));
     println!(
