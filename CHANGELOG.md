@@ -7,11 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.3.0b3] - 2026-11-23
 
-* Fix standardization of constant fractional SNPs (`standardize_f32` and
-  `standardize_f64`, used by PySnpTools' Unit and Beta standardizers). A SNP
-  whose observed values are all equal now standardizes to exactly zero and, when
-  training, stores an infinite standard deviation, so applying the trained
-  statistics to new values also gives zero. Before, a rounded mean left a tiny
+* Fix a pre-existing bug (also in 1.2.1) in the standardization of constant
+  fractional SNPs (`standardize_f32` and `standardize_f64`, used by
+  PySnpTools' Unit and Beta standardizers). A SNP whose observed values are all
+  equal now standardizes to exactly zero and, when training, stores an infinite
+  standard deviation, so applying the trained statistics to new values also
+  gives zero. Before, a rounded mean left a tiny
   nonzero variance: for example, 0.1 repeated 1,000 times standardized to values
   up to 1.3e-7 in float64 (1.7 repeated in float32: up to 2.8e-3), and applying
   the trained statistics to new values gave results up to 3.8e8. A SNP is
