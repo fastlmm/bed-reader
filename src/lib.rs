@@ -1231,6 +1231,12 @@ fn find_factor<
 /// One SNP's mean and standard deviation from its count, sum, and sum of squares over observed
 /// values. Shared by the column-wise and row-wise standardizers.
 ///
+/// The count and sums are accumulated in f64 for every value type. For f32 values this keeps
+/// `E[x*x] - E[x]**2` from cancelling: with f32 sums, a SNP whose values are mostly 2 (a rare
+/// variant counted by its common allele) lost up to about 3e-4 of its standard deviation. For
+/// f64 values the arithmetic is unchanged. Only the final mean and standard deviation are
+/// converted to `T`.
+///
 /// `is_constant` says the SNP's observed minimum equals its maximum. A constant SNP gets an
 /// infinite standard deviation even when `E[x*x] - E[x]**2` rounds to a tiny positive value:
 /// 0.1 repeated 1,000 times has a rounded mean, so the variance formula leaves a residue that
@@ -1240,19 +1246,21 @@ fn find_factor<
 fn snp_mean_std<
     T: Default + Copy + Debug + Sync + Send + Sync + Float + ToPrimitive + FromPrimitive,
 >(
-    n_observed: T,
-    sum_s: T,
-    sum2_s: T,
+    n_observed: f64,
+    sum_s: f64,
+    sum2_s: f64,
     is_constant: bool,
     dist: &Dist,
     two: T,
 ) -> Result<(T, T), BedError> {
-    if n_observed < T::one() {
+    if n_observed < 1.0 {
         //LATER make it work (in some form) for n of 0
         Err(BedError::NoIndividuals)?;
     }
-    let mean_s = sum_s / n_observed; //compute the mean over observed individuals for the current SNP
-    let mean2_s: T = sum2_s / n_observed; //compute the mean of the squared SNP
+    let mean_f64 = sum_s / n_observed; //compute the mean over observed individuals for the current SNP
+    let mean2_f64 = sum2_s / n_observed; //compute the mean of the squared SNP
+    // The mean of finite T values fits in T; an infinite or NaN mean converts as itself.
+    let mean_s = T::from_f64(mean_f64).expect("an f64 mean converts to the value type");
 
     if mean_s.is_nan()
         || (matches!(dist, Dist::Beta { a: _, b: _ }) && ((mean_s > two) || (mean_s < T::zero())))
@@ -1260,9 +1268,11 @@ fn snp_mean_std<
         Err(BedError::IllegalSnpMean)?;
     }
 
-    let variance: T = mean2_s - mean_s * mean_s; //By the Cauchy Schwartz inequality this should always be positive
+    let variance = mean2_f64 - mean_f64 * mean_f64; //By the Cauchy Schwartz inequality this should always be positive
 
-    let mut std = variance.sqrt();
+    // The standard deviation never exceeds the largest observed magnitude, so it fits in T.
+    let mut std =
+        T::from_f64(variance.sqrt()).expect("an f64 standard deviation converts to the value type");
     if is_constant || std.is_nan() || std <= T::zero() {
         // All "SNPs" have the same value (aka SNC)
         std = T::infinity(); //SNCs are still meaning full in QQ plots because they should be thought of as SNPs without enough data.
@@ -1282,18 +1292,19 @@ fn process_sid<
     two: T,
 ) -> Result<(), BedError> {
     if !use_stats {
-        let mut n_observed = T::zero();
-        let mut sum_s = T::zero(); // the sum of a SNP over all observed individuals
-        let mut sum2_s = T::zero(); // the sum of the squares of the SNP over all observed individuals
+        let mut n_observed = 0.0f64;
+        let mut sum_s = 0.0f64; // the sum of a SNP over all observed individuals
+        let mut sum2_s = 0.0f64; // the sum of the squares of the SNP over all observed individuals
         let mut min_s = T::infinity(); // the smallest observed value of the SNP
         let mut max_s = T::neg_infinity(); // the largest observed value of the SNP
 
         for iid_i in 0..col.len() {
             let v = col[iid_i];
             if !v.is_nan() {
-                sum_s = sum_s + v;
-                sum2_s = sum2_s + v * v;
-                n_observed = n_observed + T::one();
+                let v_f64 = v.to_f64().expect("f32 and f64 values convert to f64");
+                sum_s += v_f64;
+                sum2_s += v_f64 * v_f64;
+                n_observed += 1.0;
                 min_s = Float::min(min_s, v);
                 max_s = Float::max(max_s, v);
             }
@@ -1352,9 +1363,11 @@ fn process_all_iids<
         const SUM2: usize = 2;
         const MIN: usize = 3;
         const MAX: usize = 4;
-        let mut accumulator = nd::Array2::<T>::zeros((sid_count, 5));
-        accumulator.column_mut(MIN).fill(T::infinity());
-        accumulator.column_mut(MAX).fill(T::neg_infinity());
+        // All five are f64 (see snp_mean_std); f32 and f64 values convert to f64 exactly, so the
+        // minimum-equals-maximum test is unchanged.
+        let mut accumulator = nd::Array2::<f64>::zeros((sid_count, 5));
+        accumulator.column_mut(MIN).fill(f64::INFINITY);
+        accumulator.column_mut(MAX).fill(f64::NEG_INFINITY);
         // About four chunks per thread for load balance; at least one SNP per chunk.
         let sid_chunk_size = sid_count.div_ceil(rayon::current_num_threads() * 4).max(1);
         val.axis_chunks_iter(nd::Axis(1), sid_chunk_size)
@@ -1364,11 +1377,12 @@ fn process_all_iids<
                 for row in val_chunk.axis_iter(nd::Axis(0)) {
                     for (&v, mut snp_accumulator) in row.iter().zip(accumulator_chunk.rows_mut()) {
                         if !v.is_nan() {
-                            snp_accumulator[N_OBSERVED] = snp_accumulator[N_OBSERVED] + T::one();
-                            snp_accumulator[SUM] = snp_accumulator[SUM] + v;
-                            snp_accumulator[SUM2] = snp_accumulator[SUM2] + v * v;
-                            snp_accumulator[MIN] = Float::min(snp_accumulator[MIN], v);
-                            snp_accumulator[MAX] = Float::max(snp_accumulator[MAX], v);
+                            let v = v.to_f64().expect("f32 and f64 values convert to f64");
+                            snp_accumulator[N_OBSERVED] += 1.0;
+                            snp_accumulator[SUM] += v;
+                            snp_accumulator[SUM2] += v * v;
+                            snp_accumulator[MIN] = snp_accumulator[MIN].min(v);
+                            snp_accumulator[MAX] = snp_accumulator[MAX].max(v);
                         }
                     }
                 }
@@ -1381,7 +1395,9 @@ fn process_all_iids<
                 snp_accumulator in accumulator.axis_iter(nd::Axis(0)),
                 result_ptr in &mut result_list)
         {
-            let is_constant = snp_accumulator[MIN] == snp_accumulator[MAX];
+            // Once any value is observed the minimum never exceeds the maximum, so `>=` means
+            // they are equal (the same test as the column-wise path).
+            let is_constant = snp_accumulator[MIN] >= snp_accumulator[MAX];
             match snp_mean_std(
                 snp_accumulator[N_OBSERVED],
                 snp_accumulator[SUM],

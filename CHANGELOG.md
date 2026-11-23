@@ -19,6 +19,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   constant when its observed minimum equals its maximum. Results for all other
   SNPs, and the stored means of constant SNPs, are unchanged bit for bit.
 
+* More accurate float32 standardization (`standardize_f32`): per-SNP sums are
+  now accumulated in float64. With float32 sums, the variance formula lost
+  precision when a SNP's values were mostly 2, such as a rare variant counted
+  by its common allele: the standard deviation was off by up to 3.4e-4
+  (relative) at minor allele frequency 0.0002 with 14,925 individuals. It is
+  now within float32 rounding. Pre-existing. float32 results change slightly;
+  float64 results are unchanged bit for bit. Speed is unchanged.
+
+* Faster float32 and float64 standardization of C-order (row-major) arrays:
+  about 4x on 14,925 x 10,000 at 8 threads.
+
 ## [1.3.0b2] - 2026-11-23
 
 * Faster local reads, especially with many threads. Each thread now reads its

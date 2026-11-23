@@ -33,3 +33,18 @@ def test_constant_fractional_snp(dtype, constant, standardize, beta, order):
     standardize(new_val, beta, 1.0, 25.0, True, True, stats, 1)
     assert np.all(new_val[:, 0] == 0)
     assert np.any(new_val[:, 1] != 0)
+
+
+@pytest.mark.parametrize("order", ["F", "C"])
+def test_float32_std_of_rare_variant_counted_by_common_allele(order):
+    # Values mostly 2 made float32 sums cancel in E[x*x] - E[x]**2 (relative std error up to
+    # about 3e-4); sums are now accumulated in float64.
+    rng = np.random.default_rng(0)
+    genotype = 2.0 - rng.binomial(2, 0.0002, size=(14_925, 50))
+    genotype = genotype[:, genotype.std(axis=0) > 0]
+    exact = genotype.std(axis=0)  # float64, two-pass
+    stats = np.zeros((genotype.shape[1], 2), dtype=np.float32)
+    standardize_f32(np.array(genotype, dtype=np.float32, order=order), False, 1.0, 1.0, False, False, stats, 1)
+    relative_error = np.abs(stats[:, 1] - exact) / exact
+    # Conversion of the final std to float32 alone allows half an ulp (3e-8).
+    assert relative_error.max() < 4 * np.finfo(np.float32).eps
