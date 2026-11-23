@@ -16,8 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   nonzero variance: for example, 0.1 repeated 1,000 times standardized to values
   up to 1.3e-7 in float64 (1.7 repeated in float32: up to 2.8e-3), and applying
   the trained statistics to new values gave results up to 3.8e8. A SNP is
-  constant when its observed minimum equals its maximum. Results for all other
-  SNPs, and the stored means of constant SNPs, are unchanged bit for bit.
+  constant when its observed minimum equals its maximum. Aside from the float32
+  accuracy change described below, this fix leaves all other SNPs, and the
+  stored means of constant SNPs, unchanged bit for bit.
 
 * More accurate float32 standardization (`standardize_f32`): per-SNP sums are
   now accumulated in float64. With float32 sums, the variance formula lost
