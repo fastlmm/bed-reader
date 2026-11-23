@@ -2352,8 +2352,9 @@ fn check_read_exact<TVal: bed_reader::BedVal + num_traits::Signed + PartialOrd +
 
 /// Reads match the written values exactly at every thread count, for both file modes, both
 /// memory orders, every value type, and indexes that are negative, repeated, unsorted,
-/// descending, or consecutive. Each read holds more than 64 KiB, so it is split into several
-/// parallel chunks; consecutive SNPs over all iids are read together in one positional read.
+/// descending, or consecutive. The full-array reads hold more than 64 KiB, so they split into
+/// several parallel chunks; consecutive SNPs over all iids are read together in one positional
+/// read.
 #[test]
 fn read_is_exact_at_every_thread_count() -> Result<(), Box<BedErrorPlus>> {
     // 403 iids is not a multiple of 4, so each SNP record ends in a partial byte.
