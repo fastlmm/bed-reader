@@ -38,6 +38,14 @@ publication. Preparing this workflow does not authorize creating a release tag.
 
 ## Publish after maintainer approval
 
+Immediately before any publish step, re-read the open-work records:
+FaST-LMM's `specs/todo.md` (shared by the FaST-LMM family of repositories), this
+repository's `specs/` folder, and its open GitHub issues. Search them for
+bed-reader and give the maintainer a list of every open item, each marked as
+included in this release or deferred, with the reason. Do not publish until the
+maintainer has seen that list. Parallel work may have added items after
+preparation started, so an earlier check does not count.
+
 Before creating a tag, configure PyPI trusted publishing for owner `fastlmm`,
 repository `bed-reader`, workflow `release.yml`, and environment `pypi`. Configure
 that GitHub environment with the maintainer as a required reviewer. Review the

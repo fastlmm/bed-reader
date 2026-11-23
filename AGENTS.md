@@ -14,3 +14,10 @@ personal files. More specific project rules take precedence.
   report validation performed and work that remains.
 - Do not publish packages, approve PyPI deployments, or push release tags
   without an explicit request. Prepare artifacts and commands for the maintainer.
+- Before giving the maintainer publish commands, and before calling a release
+  or project done, re-read the open-work records: FaST-LMM's `specs/todo.md`
+  (shared by the FaST-LMM family of repositories), this repository's `specs/`
+  folder, and its open GitHub issues. Search them for bed-reader and list every
+  open item for the maintainer as included in this release or deferred, with
+  the reason. Re-read immediately before publishing, because parallel agents may
+  have added items since the work began.
