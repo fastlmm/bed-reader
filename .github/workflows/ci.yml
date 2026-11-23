@@ -329,7 +329,7 @@ jobs:
       - name: Install an exact compatible wheel
         run: |
           uv venv --python ${{ matrix.python-version }} .artifact-venv
-          # --no-cache: every commit is 1.3.0b1, so uv would otherwise reuse a wheel cached by an earlier run.
+          # --no-cache: commits share a version until the next bump, so uv would otherwise reuse a wheel cached by an earlier run.
           uv pip install --python .artifact-venv --no-cache --no-index --no-deps --only-binary :all: --find-links artifact bed-reader
           uv pip install --python .artifact-venv "bed-reader[samples,sparse,dev]"
 
@@ -375,7 +375,7 @@ jobs:
         run: |
           uv build --wheel --python ${{ matrix.python-version }} --no-sources --out-dir sdist-wheel artifact/*.tar.gz
           uv venv --python ${{ matrix.python-version }} .artifact-venv
-          # --no-cache: every commit is 1.3.0b1, so uv would otherwise reuse a wheel cached by an earlier run.
+          # --no-cache: commits share a version until the next bump, so uv would otherwise reuse a wheel cached by an earlier run.
           uv pip install --python .artifact-venv --no-cache --no-index --no-deps --only-binary :all: --find-links sdist-wheel bed-reader
           uv pip install --python .artifact-venv "bed-reader[samples,sparse,dev]"
 
