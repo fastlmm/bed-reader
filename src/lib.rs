@@ -152,7 +152,7 @@ use std::str::Utf8Error;
 use std::{
     env,
     fs::File,
-    io::{BufRead, BufReader, BufWriter},
+    io::{self, BufRead, BufReader, BufWriter},
     ops::RangeFull,
     path::{Path, PathBuf},
 };
@@ -704,7 +704,7 @@ fn sid_per_chunk(
 /// Fills `buffer` from `file`, starting at byte `offset`, without using or needing the file's
 /// cursor, so several tasks can read one `File` at once.
 #[cfg(unix)]
-fn read_exact_at(file: &File, buffer: &mut [u8], offset: u64) -> std::io::Result<()> {
+fn read_exact_at(file: &File, buffer: &mut [u8], offset: u64) -> io::Result<()> {
     use std::os::unix::fs::FileExt;
     file.read_exact_at(buffer, offset)
 }
@@ -713,8 +713,8 @@ fn read_exact_at(file: &File, buffer: &mut [u8], offset: u64) -> std::io::Result
 /// cursor, so several tasks can read one `File` at once. (`seek_read` moves the cursor as a
 /// side effect, but each call names its own offset, so concurrent calls do not interfere.)
 #[cfg(windows)]
-fn read_exact_at(file: &File, mut buffer: &mut [u8], mut offset: u64) -> std::io::Result<()> {
-    use std::io::{Error, ErrorKind};
+fn read_exact_at(file: &File, mut buffer: &mut [u8], mut offset: u64) -> io::Result<()> {
+    use io::{Error, ErrorKind};
     use std::os::windows::fs::FileExt;
     while !buffer.is_empty() {
         match file.seek_read(buffer, offset) {
