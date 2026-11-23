@@ -23,10 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   every path. Previously `force_python_only=True` and files with no
   individuals or SNPs returned arrays of the unsupported dtype.
 
-* Rust 1.85 users no longer need `cargo update -p psm --precise 0.1.28`.
-  `ndarray-npy` is now a test-only dependency and `numpy` is enabled only by
-  `extension-module`, so neither reaches non-Python builds. Use Cargo's
-  MSRV-aware resolver for Rust 1.85-compatible dependencies.
+* Rust: `numpy` is now enabled only by the `extension-module` feature and
+  `ndarray-npy` is a test-only dependency, so non-Python builds compile fewer
+  dependencies.
 
 * Fix index errors on mode 0 (individual-major) .bed files: an out-of-range
   individual index was reported as a SNP index, and the reverse. Local and
