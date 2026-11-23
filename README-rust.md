@@ -22,10 +22,7 @@ Highlights
 Install
 -------
 
-Requires Rust 1.85 or later, as declared in `Cargo.toml`.
-On Rust older than the newest stable release, use Cargo's MSRV-aware resolver (the default in
-edition 2024; otherwise set `incompatible-rust-versions = "fallback"` under `[resolver]` in
-`.cargo/config.toml`), so Cargo picks dependency versions your Rust supports.
+Requires Rust 1.85 or later.
 
 **Full version**: Can read local and cloud files
 
