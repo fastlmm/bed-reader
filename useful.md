@@ -7,8 +7,10 @@ corresponding `1.3.0-beta.1` Rust beta, documentation, and release artifacts.
 
 ### 1. Prepare And Review The Release Branch
 
-The release changes are prepared on `implement/cpu-only` and reviewed before
-they are squash-merged into `main`. Confirm that the versions remain:
+The release changes are prepared and reviewed on `implement/cpu-only`, and the
+beta is tagged there. `main` keeps 1.2.1 (and its published documentation)
+until the final 1.3.0, when `implement/cpu-only` is squash-merged into `main`.
+Confirm that the versions remain:
 
 * `version = "1.3.0-beta.1"` in `Cargo.toml`
 * `version = "1.3.0b1"` in `pyproject.toml`
@@ -26,8 +28,7 @@ rg -n "cmk" --glob '!doc/build/**' --glob '!docs/**' .
 
 Update:
 
-* `CHANGELOG.md`: in the release-preparation commit, before the squash-merge
-  and tag, rename `## [Unreleased]` to `## [1.3.0b1] - YYYY-MM-DD` with the
+* `CHANGELOG.md`: in the release-preparation commit, before tagging, rename `## [Unreleased]` to `## [1.3.0b1] - YYYY-MM-DD` with the
   actual release date. Do not commit a placeholder date.
 
 Review:
@@ -227,15 +228,17 @@ Use the actual version number. Look for expected Python versions, platforms, and
 The workflows do not upload to TestPyPI. Do not run a separate `twine upload`:
 the release workflow publishes the qualified files directly to PyPI.
 
-### 9. Merge To Main And Tag
+### 9. Tag The Beta
 
-After review and CI succeed, squash-merge `implement/cpu-only` into `main`.
-Confirm that the exact commit on `main` has the beta versions and release notes,
-then create the Python-version tag expected by `release.yml`:
+After review and CI succeed, tag `implement/cpu-only`; do not merge the beta into
+`main`, because `docs.yml` deploys the documentation site from `main`.
+`release.yml` runs on any `v*` tag, whatever the branch. Confirm that the exact
+commit has the beta versions and dated release notes, then create the
+Python-version tag expected by `release.yml`:
 
 ```bash
 git status
-git switch main
+git switch implement/cpu-only
 git pull
 git show --stat
 git tag -a v1.3.0b1 -m "v1.3.0b1"
