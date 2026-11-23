@@ -31,10 +31,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   individual index was reported as a SNP index, and the reverse. Local and
   cloud reads now resolve indexes with one shared function.
 
-* Check Rust formatting, validate prerelease version consistency, and retry
-  documentation inventory downloads in CI. Test installed Linux x86-64 and
-  Windows x64 wheels on every supported Python version.
-
 ## [1.3.0a1] - 2026-11-17
 
 * Add experimental NVIDIA GPU reads for Python through CuPy and optional
