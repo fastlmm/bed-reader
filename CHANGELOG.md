@@ -12,8 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * Faster local reads, especially with many threads. Each thread now reads its
   own run of SNPs with positional file reads, in place of one serialized
-  reader, and thread pools are reused across calls. Results are unchanged.
-  A small read may use fewer threads than `num_threads`. When several indexes
+  reader. Results are unchanged. `num_threads` is now a maximum: a small read
+  may use fewer threads. When several indexes
   are out of range, the error now always names the first one.
 
 ## [1.3.0b1] - 2026-11-22

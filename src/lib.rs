@@ -138,7 +138,7 @@ use rayon::slice::ParallelSlice;
 use rayon::{ThreadPoolBuildError, iter::ParallelBridge};
 use statrs::distribution::{Beta, Continuous};
 use std::cmp::Ordering;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::fs::{self};
 use std::io::Read;
 use std::io::Seek;
@@ -155,7 +155,6 @@ use std::{
     io::{BufRead, BufReader, BufWriter},
     ops::RangeFull,
     path::{Path, PathBuf},
-    sync::{Arc, Mutex, OnceLock},
 };
 use thiserror::Error;
 mod bed_cloud;
@@ -374,33 +373,22 @@ impl<T> BedVal for T where
 {
 }
 
-/// Returns the process-wide thread pool with `num_threads` threads, building it on first use.
-/// As with `rayon::ThreadPoolBuilder`, 0 means all logical CPUs, unless `RAYON_NUM_THREADS` is
-/// set when that pool is first built.
+/// Builds a new thread pool for one call. As with `rayon::ThreadPoolBuilder`, 0 means all
+/// logical CPUs, unless `RAYON_NUM_THREADS` is set.
 ///
-/// Pools are cached because building one costs up to several milliseconds (about 4.5 ms for 32
-/// threads), which is significant for small reads. Concurrent calls with the same `num_threads`
-/// share a pool. Rayon's global pool is not used, because `RAYON_NUM_THREADS` or a host
-/// application can resize it.
-fn thread_pool(num_threads: usize) -> Result<Arc<rayon::ThreadPool>, Box<BedErrorPlus>> {
-    static POOLS: OnceLock<Mutex<HashMap<usize, Arc<rayon::ThreadPool>>>> = OnceLock::new();
-    // Nothing that can panic runs while the lock is held, except allocation failure, which aborts.
-    let mut pools = POOLS
-        .get_or_init(Mutex::default)
-        .lock()
-        .expect("thread-pool cache lock should not be poisoned");
-    if let Some(pool) = pools.get(&num_threads) {
-        return Ok(Arc::clone(pool));
-    }
-    let pool = match rayon::ThreadPoolBuilder::new()
+/// Pools are deliberately not cached, though building one costs up to several milliseconds
+/// (about 4.5 ms for 32 threads). A pool that outlives the call is unsafe across `fork()` (for
+/// example, Python `multiprocessing` with the fork start method): the child inherits the pool,
+/// and any lock guarding a cache, but not the worker threads, so it can block forever. Rayon's
+/// global pool has the same problem, and `RAYON_NUM_THREADS` or a host application can resize it.
+fn create_pool(num_threads: usize) -> Result<rayon::ThreadPool, Box<BedErrorPlus>> {
+    match rayon::ThreadPoolBuilder::new()
         .num_threads(num_threads)
         .build()
     {
-        Err(e) => return Err(Box::new(e.into())),
-        Ok(pool) => Arc::new(pool),
-    };
-    pools.insert(num_threads, Arc::clone(&pool));
-    Ok(pool)
+        Err(e) => Err(Box::new(e.into())),
+        Ok(pool) => Ok(pool),
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -416,7 +404,7 @@ fn read_no_alloc<TVal: BedVal>(
     num_threads: usize,
     val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
 ) -> Result<(), Box<BedErrorPlus>> {
-    thread_pool(num_threads)?.install(|| {
+    create_pool(num_threads)?.install(|| {
         let (buf_reader, bytes_vector) = open_and_check(path)?;
         let file = buf_reader.into_inner();
 

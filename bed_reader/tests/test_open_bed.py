@@ -1468,6 +1468,32 @@ def test_native_index_errors_name_the_callers_axis(shared_datadir, name, axis, n
                             True, rows, columns, values, 1)
 
 
+def _read_in_child(path, num_threads):
+    with open_bed(path) as bed:
+        bed.read(num_threads=num_threads)
+
+
+@pytest.mark.skipif(platform.system() == "Windows", reason="fork() is POSIX-only")
+def test_read_after_fork(shared_datadir):
+    # A fork()ed child inherits the parent's memory but not its threads. If a read left a
+    # thread pool (or a lock guarding one) behind, the child could block forever using it.
+    import multiprocessing
+
+    path = shared_datadir / "small.bed"
+    with open_bed(path) as bed:
+        bed.read(num_threads=4)
+    process = multiprocessing.get_context("fork").Process(
+        target=_read_in_child, args=(path, 4),
+    )
+    process.start()
+    process.join(15)
+    if process.is_alive():
+        process.kill()
+        process.join()
+        pytest.fail("read in a fork()ed child did not finish within 15 s")
+    assert process.exitcode == 0
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
