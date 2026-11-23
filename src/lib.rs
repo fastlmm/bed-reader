@@ -678,10 +678,11 @@ const MIN_CHUNK_WORK: usize = 1 << 16;
 /// Input bytes above which a chunk is split, which bounds each task's read buffer.
 const MAX_CHUNK_BYTES: usize = 1 << 20;
 
-/// Returns how many SNPs (output columns) each read task handles: about four tasks per thread,
-/// for load balance, with at least `MIN_CHUNK_WORK` of work and at most `MAX_CHUNK_BYTES` of input
-/// per task where possible. A small read therefore uses fewer tasks, and so fewer threads, than
-/// `num_threads`.
+/// Returns how many SNPs (output columns) each read task handles. It targets about four tasks per
+/// thread, for load balance, raised if needed to give each task at least `MIN_CHUNK_WORK` of work,
+/// then capped so each task reads at most `MAX_CHUNK_BYTES`, or one SNP if a single SNP is larger.
+/// The cap overrides both the target and the minimum. A small read therefore uses fewer tasks, and
+/// so fewer threads, than `num_threads`.
 ///
 /// A SNP's work is the larger of the bytes it reads and the values it decodes divided by 4 (a
 /// whole-record read decodes 4 values per byte). Counting decoded values matters when `iid_index`
