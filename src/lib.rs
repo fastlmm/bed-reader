@@ -56,8 +56,9 @@
 //! specify a desired numeric type,
 //! which individuals (samples) to read, which SNPs (variants) to read, etc.
 //!
-//! End the options with `read` or `read_cloud`, or use `build` and pass the result
-//! to `read_with_options` on `Bed` or `BedCloud`.
+//! End the options with `read` or `read_cloud` (or `read_and_fill` or `read_and_fill_cloud`
+//! to fill a preallocated array), or use `build` and pass the result to `read_with_options`
+//! on `Bed` or `BedCloud`.
 //!
 //! | Option | Description |
 //! | -------- | ----------- |

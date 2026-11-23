@@ -209,7 +209,7 @@ By default, :class:`open_bed` uses all available processors. Override this with
 :meth:`open_bed.read` and :meth:`open_bed.read_sparse`. Omitted or ``None``
 uses this setting, otherwise float32. An explicit dtype always wins.
 
-Guides
+Cloud URL Examples
 ======================
 
 .. toctree::
