@@ -612,6 +612,7 @@ fn internal_read_no_alloc<TVal: BedVal>(
     let sid_per_chunk = sid_per_chunk(
         in_sid_i_vec.len(),
         bytes_per_sid,
+        iid_index.len(),
         rayon::current_num_threads(),
     );
 
@@ -671,19 +672,30 @@ fn internal_read_no_alloc<TVal: BedVal>(
     Ok(())
 }
 
-/// Input bytes below which a chunk is not split further: smaller tasks cost more to schedule
-/// than they save.
-const MIN_CHUNK_BYTES: usize = 1 << 16;
+/// Work, in input-byte equivalents, below which a chunk is not split further: smaller tasks cost
+/// more to schedule than they save.
+const MIN_CHUNK_WORK: usize = 1 << 16;
 /// Input bytes above which a chunk is split, which bounds each task's read buffer.
 const MAX_CHUNK_BYTES: usize = 1 << 20;
 
 /// Returns how many SNPs (output columns) each read task handles: about four tasks per thread,
-/// for load balance, within `MIN_CHUNK_BYTES..=MAX_CHUNK_BYTES` of input where possible. A small
-/// read therefore uses fewer tasks, and so fewer threads, than `num_threads`.
-fn sid_per_chunk(sid_count: usize, bytes_per_sid: usize, num_threads: usize) -> usize {
-    assert!(sid_count > 0 && bytes_per_sid > 0 && num_threads > 0);
+/// for load balance, with at least `MIN_CHUNK_WORK` of work and at most `MAX_CHUNK_BYTES` of input
+/// per task where possible. A small read therefore uses fewer tasks, and so fewer threads, than
+/// `num_threads`.
+///
+/// A SNP's work is the larger of the bytes it reads and the values it decodes divided by 4 (a
+/// whole-record read decodes 4 values per byte). Counting decoded values matters when `iid_index`
+/// repeats or picks a narrow span: then a few input bytes can fill a large output.
+fn sid_per_chunk(
+    sid_count: usize,
+    bytes_per_sid: usize,
+    values_per_sid: usize,
+    num_threads: usize,
+) -> usize {
+    assert!(sid_count > 0 && bytes_per_sid > 0 && values_per_sid > 0 && num_threads > 0);
+    let work_per_sid = bytes_per_sid.max(values_per_sid.div_ceil(4));
     let for_balance = sid_count.div_ceil(4 * num_threads);
-    let floor = MIN_CHUNK_BYTES.div_ceil(bytes_per_sid);
+    let floor = MIN_CHUNK_WORK.div_ceil(work_per_sid);
     let ceiling = (MAX_CHUNK_BYTES / bytes_per_sid).max(1);
     for_balance.max(floor).min(ceiling)
 }

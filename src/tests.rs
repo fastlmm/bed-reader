@@ -22,7 +22,7 @@ use crate::sample_bed_file;
 use crate::sample_file;
 use crate::sample_files;
 use crate::try_div_4;
-use crate::{BedError, BedErrorPlus, internal_read_no_alloc, read_no_alloc};
+use crate::{BedError, BedErrorPlus, internal_read_no_alloc, read_no_alloc, sid_per_chunk};
 use crate::{impute_and_zero_mean_snps, matrix_subset_no_alloc};
 use anyinput::anyinput;
 use nd::s;
@@ -1168,4 +1168,25 @@ fn resolve_index_matches_python_indexing() {
         resolve_index(-1, 0, BedError::IidIndexTooBig),
         Err(BedError::IidIndexTooBig(-1))
     ));
+}
+
+#[test]
+fn sid_per_chunk_balances_work() {
+    let threads = 8;
+    // Repeated iids: 1 input byte per SNP but 100,000 decoded values, so the work still splits
+    // across all threads rather than landing in one task.
+    let chunk = sid_per_chunk(10_000, 1, 100_000, threads);
+    assert!(10_000_usize.div_ceil(chunk) >= 4 * threads);
+    // A whole-record read: the decoded values match the bytes read, so the bytes set the floor.
+    // 500 iids is 125 bytes per SNP, and 64 KiB needs 525 SNPs.
+    assert_eq!(sid_per_chunk(10_000, 125, 500, threads), 525);
+    // Many small SNPs split about four ways per thread.
+    assert_eq!(
+        sid_per_chunk(100_000, 100, 400, threads),
+        100_000_usize.div_ceil(32)
+    );
+    // Large SNP records hit the 1 MiB buffer limit first: 1 MiB / 3,732 bytes is 280 SNPs.
+    assert_eq!(sid_per_chunk(100_000, 3_732, 14_925, threads), 280);
+    // A SNP record larger than the 1 MiB buffer limit gets a task of its own.
+    assert_eq!(sid_per_chunk(10, 2 << 20, 8 << 20, threads), 1);
 }
