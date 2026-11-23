@@ -28,8 +28,9 @@ rg -n "cmk" --glob '!doc/build/**' --glob '!docs/**' .
 
 Update:
 
-* `CHANGELOG.md`: in the release-preparation commit, before tagging, rename `## [Unreleased]` to `## [1.3.0b1] - YYYY-MM-DD` with the
-  actual release date. Do not commit a placeholder date.
+* `CHANGELOG.md`: in the release-preparation commit, before tagging, rename
+  `## [Unreleased]` to `## [1.3.0b1] - YYYY-MM-DD` with the actual release
+  date. Do not commit a placeholder date.
 
 Review:
 
