@@ -74,7 +74,7 @@
 //! | [`count_a1`](struct.ReadOptionsBuilder.html#method.count_a1) | Count the number allele 1 (default) |
 //! | [`count_a2`](struct.ReadOptionsBuilder.html#method.count_a2) | Count the number allele 2 |
 //! | [`is_a1_counted`](struct.ReadOptionsBuilder.html#method.is_a1_counted) | Is allele 1 counted? (defaults to true) |
-//! | [`num_threads`](struct.ReadOptionsBuilder.html#method.num_threads) | Number of threads to use (defaults to all processors) |
+//! | [`num_threads`](struct.ReadOptionsBuilder.html#method.num_threads) | Maximum number of threads to use; small reads use fewer (defaults to all processors) |
 //! | [`max_concurrent_requests`](struct.ReadOptionsBuilder.html#method.max_concurrent_requests) | Maximum number of concurrent async requests (defaults to 10) -- Used by [`BedCloud`](struct.BedCloud.html). |
 //! | [`max_chunk_bytes`](struct.ReadOptionsBuilder.html#method.max_chunk_bytes) | Maximum chunk size of async requests (defaults to `8_000_000` bytes) -- Used by [`BedCloud`](struct.BedCloud.html). |
 //!
@@ -4263,7 +4263,7 @@ pub struct ReadOptions<TVal: BedVal> {
     #[builder(default = "true")]
     is_a1_counted: bool,
 
-    /// Number of threads to use (defaults to all processors).
+    /// Maximum number of threads to use; small reads use fewer (defaults to all processors).
     ///
     /// Can also be set with an environment variable.
     /// See [Environment Variables](index.html#environment-variables).
@@ -4584,7 +4584,7 @@ impl<TVal: BedVal> ReadOptions<TVal> {
         self.is_a1_counted
     }
 
-    /// Number of threads to be used (`None` means set with
+    /// Maximum number of threads to use; small reads use fewer (`None` means set with
     /// [Environment Variables](index.html#environment-variables) or use all processors).
     ///
     /// # Example

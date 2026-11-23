@@ -149,8 +149,8 @@ class open_bed:
         True (default) to count the number of A1 alleles (the PLINK standard).
         False to count the number of A2 alleles.
     num_threads: None or int, optional
-        The number of threads with which to read data. Defaults to all available
-        processors.
+        The maximum number of threads with which to read data; small reads use
+        fewer. Defaults to all available processors.
         Can also be set with these environment variables (listed in priority order):
         'PST_NUM_THREADS', 'NUM_THREADS', 'MKL_NUM_THREADS'.
     skip_format_check: bool, optional
@@ -392,8 +392,8 @@ class open_bed:
             pure Python code.
 
         num_threads: None or int, optional
-            The number of threads with which to read data. Defaults to all available
-            processors.
+            The maximum number of threads with which to read data; small reads use
+            fewer. Defaults to all available processors.
             Can also be set with :class:`open_bed` or these
             environment variables (listed in priority order):
             'PST_NUM_THREADS', 'NUM_THREADS', 'MKL_NUM_THREADS'.
@@ -1495,8 +1495,8 @@ class open_bed:
             The desired format of the sparse matrix.
             Defaults to ``csc`` (Compressed Sparse Column, which is SNP-major).
         num_threads: None or int, optional
-            The number of threads with which to read data. Defaults to all available
-            processors.
+            The maximum number of threads with which to read data; small reads use
+            fewer. Defaults to all available processors.
             Can also be set with :class:`open_bed` or these
             environment variables (listed in priority order):
             'PST_NUM_THREADS', 'NUM_THREADS', 'MKL_NUM_THREADS'.
