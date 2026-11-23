@@ -2,8 +2,8 @@
 
 ## Release Checklist
 
-Use this as the deployment checklist for the `1.3.0b2` Python beta, the
-corresponding `1.3.0-beta.2` Rust beta, documentation, and release artifacts.
+Use this as the deployment checklist for the `1.3.0b3` Python beta, the
+corresponding `1.3.0-beta.3` Rust beta, documentation, and release artifacts.
 
 ### 1. Prepare And Review The Release Branch
 
@@ -12,8 +12,8 @@ beta is tagged there. `main` keeps 1.2.1 (and its published documentation)
 until the final 1.3.0, when `implement/cpu-only` is squash-merged into `main`.
 Confirm that the versions remain:
 
-* `version = "1.3.0-beta.2"` in `Cargo.toml`
-* `version = "1.3.0b2"` in `pyproject.toml`
+* `version = "1.3.0-beta.3"` in `Cargo.toml`
+* `version = "1.3.0b3"` in `pyproject.toml`
 
 Also confirm that `CHANGELOG.md`, README files, and documentation describe the
 beta accurately. Do not use the Python spelling in `Cargo.toml` or the Rust
@@ -29,7 +29,7 @@ rg -n "cmk" --glob '!doc/build/**' --glob '!docs/**' .
 Update:
 
 * `CHANGELOG.md`: in the release-preparation commit, before tagging, rename
-  `## [Unreleased]` to `## [1.3.0b2] - YYYY-MM-DD` with the actual release
+  `## [Unreleased]` to `## [1.3.0b3] - YYYY-MM-DD` with the actual release
   date. Do not commit a placeholder date.
 
 Review:
@@ -174,7 +174,7 @@ git status
 git diff --check
 git add Cargo.toml Cargo.lock pyproject.toml CHANGELOG.md README.md README-rust.md doc src bed_reader tests .github useful.md
 test ! -d docs || git add docs
-git commit -m "Prepare bed-reader 1.3.0 beta 2"
+git commit -m "Prepare bed-reader 1.3.0 beta 3"
 git push origin implement/cpu-only
 gh workflow run ci.yml --ref implement/cpu-only
 ```
@@ -184,7 +184,7 @@ should contain:
 
 * 30 wheels: Python 3.11 through 3.15 for macOS x86_64, macOS aarch64,
   Linux x86_64, Linux aarch64, Windows x64, and Windows ARM64.
-* 1 source distribution: `bed_reader-1.3.0b2.tar.gz`.
+* 1 source distribution: `bed_reader-1.3.0b3.tar.gz`.
 
 If the GitHub Actions UI does not show the artifact list, download the merged artifact with `gh`:
 
@@ -212,7 +212,7 @@ find wheels -type f | sort
 Check the artifacts before upload:
 
 ```bash
-uvx twine check --strict wheels/bed_reader-1.3.0b2*
+uvx twine check --strict wheels/bed_reader-1.3.0b3*
 ```
 
 Use the actual version number. Look for expected Python versions, platforms, and file names:
@@ -224,7 +224,7 @@ Use the actual version number. Look for expected Python versions, platforms, and
 * `manylinux_2_17_aarch64.manylinux2014_aarch64`
 * `win_amd64`
 * `win_arm64`
-* `bed_reader-1.3.0b2.tar.gz`
+* `bed_reader-1.3.0b3.tar.gz`
 
 The workflows do not upload to TestPyPI. Do not run a separate `twine upload`:
 the release workflow publishes the qualified files directly to PyPI.
@@ -242,13 +242,13 @@ git status
 git switch implement/cpu-only
 git pull
 git show --stat
-git tag -a v1.3.0b2 -m "v1.3.0b2"
-git push origin v1.3.0b2
+git tag -a v1.3.0b3 -m "v1.3.0b3"
+git push origin v1.3.0b3
 ```
 
-Pushing `v1.3.0b2` starts `.github/workflows/release.yml`. Its first job verifies
-that the tag is `v1.3.0b2`, the Python version is `1.3.0b2`, and the Rust
-version normalizes from `1.3.0-beta.2`. It then calls the complete CI workflow,
+Pushing `v1.3.0b3` starts `.github/workflows/release.yml`. Its first job verifies
+that the tag is `v1.3.0b3`, the Python version is `1.3.0b3`, and the Rust
+version normalizes from `1.3.0-beta.3`. It then calls the complete CI workflow,
 including wheel and source-distribution builds and installed-artifact tests.
 
 The release workflow does not create a GitHub Release.
@@ -266,7 +266,7 @@ There is no manual GPU qualification: this release and its wheels are CPU-only.
 ### 11. Publish The Rust Crate Manually
 
 No GitHub Actions workflow publishes to crates.io. From the exact tagged commit,
-inspect the dry run again and then publish `1.3.0-beta.2` manually:
+inspect the dry run again and then publish `1.3.0-beta.3` manually:
 
 ```bash
 rm -rf target/package
@@ -278,7 +278,7 @@ Rust dependency smoke test:
 
 ```bash
 # In a small outside Rust project, such as InstallTestRust:
-cargo add bed-reader@1.3.0-beta.2
+cargo add bed-reader@1.3.0-beta.3
 cargo run
 ```
 
@@ -287,10 +287,10 @@ cargo run
 ```bash
 uv venv --python 3.15 /tmp/bed-reader-pypi
 source /tmp/bed-reader-pypi/bin/activate
-uv pip install bed-reader==1.3.0b2
+uv pip install bed-reader==1.3.0b3
 cd /tmp
 python -c "import bed_reader; from bed_reader import open_bed; print(bed_reader.__file__); print(open_bed)"
-uv pip install "bed-reader[samples]==1.3.0b2"
+uv pip install "bed-reader[samples]==1.3.0b3"
 python -c "from bed_reader import sample_file; print(sample_file('small.bed'))"
 deactivate
 ```
