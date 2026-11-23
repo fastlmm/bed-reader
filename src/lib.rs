@@ -1340,45 +1340,56 @@ fn process_all_iids<
 
     if !use_stats {
         // O(iid_count * sid_count)
-        // Serial that respects C-order is 3-times faster than parallel that doesn't
-        // So we parallelize the inner loop instead of the outer loop
-        let mut n_observed_array = nd::Array1::<T>::zeros(sid_count);
-        let mut sum_s_array = nd::Array1::<T>::zeros(sid_count); //the sum of a SNP over all observed individuals
-        let mut sum2_s_array = nd::Array1::<T>::zeros(sid_count); //the sum of the squares of the SNP over all observed individuals
-        let mut min_s_array = nd::Array1::<T>::from_elem(sid_count, T::infinity()); //the smallest observed value of each SNP
-        let mut max_s_array = nd::Array1::<T>::from_elem(sid_count, T::neg_infinity()); //the largest observed value of each SNP
-        for row in val.axis_iter(nd::Axis(0)) {
-            nd::par_azip!((&v in row,
-                n_observed_ptr in &mut n_observed_array,
-                sum_s_ptr in &mut sum_s_array,
-                sum2_s_ptr in &mut sum2_s_array,
-                min_s_ptr in &mut min_s_array,
-                max_s_ptr in &mut max_s_array
-            )
-                if !v.is_nan() {
-                    *n_observed_ptr = *n_observed_ptr + T::one();
-                    *sum_s_ptr = *sum_s_ptr + v;
-                    *sum2_s_ptr = *sum2_s_ptr + v * v;
-                    *min_s_ptr = Float::min(*min_s_ptr, v);
-                    *max_s_ptr = Float::max(*max_s_ptr, v);
+        // Each parallel task owns a run of SNPs (columns of `val`) and walks every row of it, so
+        // reads stay contiguous within each row and there is one parallel dispatch, not one per
+        // row. Each SNP still accumulates its rows in order 0, 1, 2, ..., so results do not
+        // depend on the chunking or thread count.
+        // `accumulator` has one row per SNP: observed count, sum, sum of squares, minimum, and
+        // maximum of the observed values. Keeping them in one array lets a single parallel zip
+        // pair each column chunk of `val` with its SNPs' accumulators.
+        const N_OBSERVED: usize = 0;
+        const SUM: usize = 1;
+        const SUM2: usize = 2;
+        const MIN: usize = 3;
+        const MAX: usize = 4;
+        let mut accumulator = nd::Array2::<T>::zeros((sid_count, 5));
+        accumulator.column_mut(MIN).fill(T::infinity());
+        accumulator.column_mut(MAX).fill(T::neg_infinity());
+        // About four chunks per thread for load balance; at least one SNP per chunk.
+        let sid_chunk_size = sid_count.div_ceil(rayon::current_num_threads() * 4).max(1);
+        val.axis_chunks_iter(nd::Axis(1), sid_chunk_size)
+            .into_par_iter()
+            .zip(accumulator.axis_chunks_iter_mut(nd::Axis(0), sid_chunk_size))
+            .for_each(|(val_chunk, mut accumulator_chunk)| {
+                for row in val_chunk.axis_iter(nd::Axis(0)) {
+                    for (&v, mut snp_accumulator) in row.iter().zip(accumulator_chunk.rows_mut()) {
+                        if !v.is_nan() {
+                            snp_accumulator[N_OBSERVED] = snp_accumulator[N_OBSERVED] + T::one();
+                            snp_accumulator[SUM] = snp_accumulator[SUM] + v;
+                            snp_accumulator[SUM2] = snp_accumulator[SUM2] + v * v;
+                            snp_accumulator[MIN] = Float::min(snp_accumulator[MIN], v);
+                            snp_accumulator[MAX] = Float::max(snp_accumulator[MAX], v);
+                        }
+                    }
                 }
-            );
-        }
+            });
 
         // O(sid_count)
-        // With no observed values, min_s > max_s and snp_mean_std reports NoIndividuals.
-        let is_constant_array = nd::Zip::from(&min_s_array)
-            .and(&max_s_array)
-            .map_collect(|&min_s, &max_s| min_s == max_s);
+        // With no observed values, min > max and snp_mean_std reports NoIndividuals.
         let mut result_list: Vec<Result<(), BedError>> = vec![Ok(()); sid_count];
         nd::par_azip!((mut stats_row in stats.axis_iter_mut(nd::Axis(0)),
-                &n_observed in &n_observed_array,
-                &sum_s in &sum_s_array,
-                &sum2_s in &sum2_s_array,
-                &is_constant in &is_constant_array,
+                snp_accumulator in accumulator.axis_iter(nd::Axis(0)),
                 result_ptr in &mut result_list)
         {
-            match snp_mean_std(n_observed, sum_s, sum2_s, is_constant, dist, two) {
+            let is_constant = snp_accumulator[MIN] == snp_accumulator[MAX];
+            match snp_mean_std(
+                snp_accumulator[N_OBSERVED],
+                snp_accumulator[SUM],
+                snp_accumulator[SUM2],
+                is_constant,
+                dist,
+                two,
+            ) {
                 Ok((mean_s, std)) => {
                     stats_row[0] = mean_s;
                     stats_row[1] = std;
