@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 
-from bed_reader import open_bed, sample_file
+from bed_reader import open_bed, sample_file, to_bed
 from bed_reader._dtype import array_dtype
 
 
@@ -43,3 +43,26 @@ def test_invalid_environment_is_rejected_but_explicit_dtype_wins(monkeypatch, co
             with pytest.raises(ValueError, match="ARRAY_DTYPE"):
                 read()
             assert read(dtype="float32").dtype == np.float32
+
+
+@pytest.mark.parametrize("dtype", ["float16", "complex64", "int16", np.uint8])
+@pytest.mark.parametrize("force_python_only", [False, True])
+def test_unsupported_explicit_dtype_is_rejected(dtype, force_python_only):
+    with open_bed(sample_file("small.bed")) as bed:
+        with pytest.raises(ValueError, match="not known"):
+            bed.read(dtype=dtype, force_python_only=force_python_only)
+        with pytest.raises(ValueError, match="not known"):
+            bed.read_sparse(dtype=dtype)
+
+
+@pytest.mark.parametrize("dtype", ["float16", "complex64"])
+def test_unsupported_explicit_dtype_is_rejected_for_empty_files(tmp_path, dtype):
+    # Reads of a file with no individuals or SNPs never reach the native reader.
+    path = tmp_path / "empty.bed"
+    to_bed(path, np.zeros((0, 0), dtype=np.float32))
+    with open_bed(path) as bed:
+        assert bed.read(dtype="float32").shape == (0, 0)
+        with pytest.raises(ValueError, match="not known"):
+            bed.read(dtype=dtype)
+        with pytest.raises(ValueError, match="not known"):
+            bed.read_sparse(dtype=dtype)

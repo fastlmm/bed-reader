@@ -7,9 +7,10 @@ import numpy as np
 def array_dtype(dtype, *, default):
     """Resolve an explicit dtype, then ARRAY_DTYPE, then the calling API's default.
 
-    ARRAY_DTYPE accepts ``float32`` or ``float64``. Explicit dtypes bypass the
-    environment; the calling API validates its supported types, including int8
-    where applicable. This does not change existing arrays or NumPy defaults.
+    ARRAY_DTYPE accepts ``float32`` or ``float64``. An explicit dtype bypasses the
+    environment and must be ``int8``, ``float32``, or ``float64``; anything else
+    raises ``ValueError`` here, before any read path is chosen. This does not
+    change existing arrays or NumPy defaults.
 
     Examples
     --------
@@ -20,7 +21,15 @@ def array_dtype(dtype, *, default):
     float32 float64
     """
     if dtype is not None:
-        return np.dtype(dtype)
+        dtype = np.dtype(dtype)
+        # Validate here so the Python-only reader and reads of empty files reject
+        # the same dtypes as the native reader (see open_bed._pick_reader).
+        if dtype not in (np.int8, np.float32, np.float64):
+            raise ValueError(
+                f"dtype '{dtype}' not known, only "
+                + "'int8', 'float32', and 'float64' are allowed.",
+            )
+        return dtype
     configured = os.environ.get("ARRAY_DTYPE")
     if configured is None:
         return np.dtype(default)

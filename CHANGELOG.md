@@ -18,6 +18,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   variable (`float32` or `float64`) when set, otherwise float32. Explicit
   dtypes override the environment.
 
+* Reject unsupported explicit dtypes (anything but `int8`, `float32`, or
+  `float64`) with `ValueError` in `open_bed.read` and `open_bed.read_sparse` on
+  every path. Previously `force_python_only=True` and files with no
+  individuals or SNPs returned arrays of the unsupported dtype.
+
 * Rust 1.85 users no longer need `cargo update -p psm --precise 0.1.28`.
   `ndarray-npy` is now a test-only dependency and `numpy` is enabled only by
   `extension-module`, so neither reaches non-Python builds. Use Cargo's
