@@ -11,7 +11,6 @@ keywords = ["bioinformatics", "plink", "genomics", "genotype", "snps"]
 categories = ["science"]
 edition = "2021"
 rust-version = "1.85"
-# When refreshing Cargo.lock, retain one ndarray 0.16.1 shared with numpy.
 homepage = "https://fastlmm.github.io/"
 exclude = [
     "**/tests/data/*",
