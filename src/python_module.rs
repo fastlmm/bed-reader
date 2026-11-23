@@ -1,9 +1,9 @@
 #![cfg(feature = "extension-module")]
 
 use crate::{
-    Bed, BedError, BedErrorPlus, Dist, ReadOptions, WriteOptions, create_pool, encode1,
-    file_aat_piece, file_ata_piece, file_ata_piece_internal, file_b_less_aatbx,
-    impute_and_zero_mean_snps, matrix_subset_no_alloc, read_into_f32, read_into_f64,
+    Bed, BedError, BedErrorPlus, Dist, ReadOptions, WriteOptions, encode1, file_aat_piece,
+    file_ata_piece, file_ata_piece_internal, file_b_less_aatbx, impute_and_zero_mean_snps,
+    matrix_subset_no_alloc, read_into_f32, read_into_f64, thread_pool,
 };
 use crate::{BedCloud, CloudFile};
 use numpy::PyArrayMethods;
@@ -466,7 +466,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         let ii = &iid_index.as_slice()?;
         let si = &sid_index.as_slice()?;
 
-        create_pool(num_threads)?
+        thread_pool(num_threads)?
             .install(|| matrix_subset_no_alloc(&val_in, ii, si, &mut val_out))?;
 
         Ok(())
@@ -491,7 +491,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         let ii = &iid_index.as_slice()?;
         let si = &sid_index.as_slice()?;
 
-        create_pool(num_threads)?
+        thread_pool(num_threads)?
             .install(|| matrix_subset_no_alloc(&val_in, ii, si, &mut val_out))?;
 
         Ok(())
@@ -516,7 +516,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         let ii = &iid_index.as_slice()?;
         let si = &sid_index.as_slice()?;
 
-        create_pool(num_threads)?
+        thread_pool(num_threads)?
             .install(|| matrix_subset_no_alloc(&val_in, ii, si, &mut val_out))?;
 
         Ok(())
@@ -539,7 +539,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         let mut stats = stats.readwrite();
         let mut stats = stats.as_array_mut();
         let dist = create_dist(beta_not_unit_variance, beta_a, beta_b);
-        create_pool(num_threads)?.install(|| {
+        thread_pool(num_threads)?.install(|| {
             impute_and_zero_mean_snps(
                 &mut val.view_mut(),
                 &dist,
@@ -577,7 +577,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         let mut stats = stats.as_array_mut();
         let dist = create_dist(beta_not_unit_variance, beta_a, beta_b);
 
-        create_pool(num_threads)?.install(|| {
+        thread_pool(num_threads)?.install(|| {
             impute_and_zero_mean_snps(
                 &mut val.view_mut(),
                 &dist,
@@ -604,7 +604,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         let mut ata_piece = ata_piece.readwrite();
         let mut ata_piece = ata_piece.as_array_mut();
 
-        create_pool(num_threads)?.install(|| {
+        thread_pool(num_threads)?.install(|| {
             file_ata_piece(
                 filename,
                 offset,
@@ -635,7 +635,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         let mut ata_piece = ata_piece.readwrite();
         let mut ata_piece = ata_piece.as_array_mut();
 
-        create_pool(num_threads)?.install(|| {
+        thread_pool(num_threads)?.install(|| {
             file_ata_piece(
                 filename,
                 offset,
@@ -665,7 +665,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         let mut ata_piece = ata_piece.readwrite();
         let mut ata_piece = ata_piece.as_array_mut();
 
-        create_pool(num_threads)?.install(|| {
+        thread_pool(num_threads)?.install(|| {
             file_ata_piece_internal(
                 filename,
                 offset,
@@ -695,7 +695,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         let mut aat_piece = aat_piece.readwrite();
         let mut aat_piece = aat_piece.as_array_mut();
 
-        create_pool(num_threads)?.install(|| {
+        thread_pool(num_threads)?.install(|| {
             file_aat_piece(
                 filename,
                 offset,
@@ -726,7 +726,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         let mut aat_piece = aat_piece.readwrite();
         let mut aat_piece = aat_piece.as_array_mut();
 
-        create_pool(num_threads)?.install(|| {
+        thread_pool(num_threads)?.install(|| {
             file_aat_piece(
                 filename,
                 offset,
@@ -762,7 +762,7 @@ fn bed_reader(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         let mut atb = atb.readwrite();
         let mut atb = atb.as_array_mut();
 
-        create_pool(num_threads)?.install(|| {
+        thread_pool(num_threads)?.install(|| {
             file_b_less_aatbx(
                 a_filename,
                 offset,

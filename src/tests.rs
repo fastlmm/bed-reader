@@ -31,7 +31,6 @@ use ndarray::Order;
 use ndarray::ShapeBuilder;
 use ndarray_npy::read_npy;
 use num_traits::abs;
-use std::io::BufReader;
 use std::ops::Range;
 use std::ops::RangeInclusive;
 use std::path::Path;
@@ -209,9 +208,9 @@ fn index() {
     assert_error_variant!(result4, BedErrorPlus::BedError(BedError::SidIndexTooBig(_)));
 
     let mut ignore_val = nd::Array2::zeros((1, 1));
-    let buf_reader = BufReader::new(std::fs::File::open(&bed_fam[0]).unwrap());
+    let file = std::fs::File::open(&bed_fam[0]).unwrap();
     let result5 = internal_read_no_alloc(
-        buf_reader,
+        &file,
         "ignore",
         usize::MAX,
         usize::MAX,

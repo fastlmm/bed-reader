@@ -2275,3 +2275,161 @@ fn read_errors_preserve_exhaustive_matching() {
     };
     assert!(is_read_error);
 }
+
+/// Writes `val` (with missing as -127) as a SNP-major (mode 1) file and as an
+/// individual-major (mode 0) file with the same values. The mode-0 file is the SNP-major file
+/// of the transpose, with its mode byte changed.
+fn write_both_modes(
+    val: &nd::Array2<i8>,
+    temp_out: &TempDir,
+) -> Result<[std::path::PathBuf; 2], Box<BedErrorPlus>> {
+    let mode1_file = temp_out.join("mode1.bed");
+    WriteOptions::builder(&mode1_file).i8().write(val)?;
+    let mode0_file = temp_out.join("mode0.bed");
+    WriteOptions::builder(&mode0_file).i8().write(&val.t())?;
+    let mut bytes = std::fs::read(&mode0_file)?;
+    assert_eq!(bytes[2], 1);
+    bytes[2] = 0;
+    std::fs::write(&mode0_file, bytes)?;
+    Ok([mode1_file, mode0_file])
+}
+
+fn resolve(index: &[isize], count: usize) -> Vec<usize> {
+    index
+        .iter()
+        .map(|&index| {
+            if index < 0 {
+                count - index.unsigned_abs()
+            } else {
+                index.unsigned_abs()
+            }
+        })
+        .collect()
+}
+
+/// Reads one index pair at each thread count and memory order, and checks the values against
+/// `val` exactly.
+fn check_read_exact<TVal: bed_reader::BedVal + num_traits::Signed + PartialOrd + 'static>(
+    file: &std::path::Path,
+    val: &nd::Array2<i8>,
+    iid_index: &[isize],
+    sid_index: &[isize],
+) -> Result<(), Box<BedErrorPlus>> {
+    let (iid_count, sid_count) = val.dim();
+    let expected = val
+        .select(nd::Axis(0), &resolve(iid_index, iid_count))
+        .select(nd::Axis(1), &resolve(sid_index, sid_count))
+        .mapv(|value| {
+            if value == -127 {
+                TVal::missing()
+            } else {
+                TVal::from(value)
+            }
+        });
+    // 3 threads splits the chunks unevenly; 32 gives more tasks than chunks.
+    for num_threads in [1, 3, 32] {
+        for is_f in [true, false] {
+            let mut bed = Bed::builder(file)
+                .iid_count(iid_count)
+                .sid_count(sid_count)
+                .build()?;
+            let actual = ReadOptions::<TVal>::builder()
+                .iid_index(iid_index)
+                .sid_index(sid_index)
+                .num_threads(num_threads)
+                .is_f(is_f)
+                .read(&mut bed)?;
+            if is_f {
+                assert!(actual.t().is_standard_layout());
+            } else {
+                assert!(actual.is_standard_layout());
+            }
+            assert_eq_nan(&actual, &expected);
+        }
+    }
+    Ok(())
+}
+
+/// Reads match the written values exactly at every thread count, for both file modes, both
+/// memory orders, every value type, and indexes that are negative, repeated, unsorted,
+/// descending, or consecutive. Each read holds more than 64 KiB, so it is split into several
+/// parallel chunks; consecutive SNPs over all iids are read together in one positional read.
+#[test]
+fn read_is_exact_at_every_thread_count() -> Result<(), Box<BedErrorPlus>> {
+    // 403 iids is not a multiple of 4, so each SNP record ends in a partial byte.
+    let (iid_count, sid_count) = (403, 2_001);
+    let mut rng = StdRng::seed_from_u64(0);
+    let val = nd::Array::random_using((iid_count, sid_count), Uniform::from(0i8..4), &mut rng)
+        .mapv(|value| if value == 3 { -127 } else { value });
+    let temp_out = TempDir::default();
+    let files = write_both_modes(&val, &temp_out)?;
+
+    let all_iid: Vec<isize> = (0..iid_count as isize).collect();
+    let all_sid: Vec<isize> = (0..sid_count as isize).collect();
+    let some_iid: Vec<isize> = vec![5, -1, 5, 200, 0, 7, -403, 402];
+    // Spans only part of each SNP record, so SNPs are read one at a time.
+    let middle_iid: Vec<isize> = vec![100, 9, 300, 9, -150];
+    let descending_sid: Vec<isize> = (0..sid_count as isize).rev().collect();
+    let runs_sid: Vec<isize> = (10..900)
+        .chain([-1, 3, 3, 1_500, 2])
+        .chain(1_000..1_900)
+        .chain([-2_001, 2_000, 0])
+        .collect();
+    let index_pairs = [
+        (&all_iid, &all_sid),
+        (&all_iid, &runs_sid),
+        (&all_iid, &descending_sid),
+        (&some_iid, &all_sid),
+        (&some_iid, &runs_sid),
+        (&middle_iid, &all_sid),
+        (&middle_iid, &runs_sid),
+        (&all_iid, &vec![-1]),
+        (&vec![7], &all_sid),
+    ];
+
+    for file in &files {
+        for (iid_index, sid_index) in index_pairs {
+            check_read_exact::<f32>(file, &val, iid_index, sid_index)?;
+        }
+        // The value type changes only the lookup table, so one small read each suffices.
+        check_read_exact::<i8>(file, &val, &some_iid, &runs_sid)?;
+        check_read_exact::<f64>(file, &val, &some_iid, &runs_sid)?;
+    }
+    Ok(())
+}
+
+/// With several bad indexes, a read reports the first, at every thread count and in both file
+/// modes.
+#[test]
+fn read_reports_first_bad_index() -> Result<(), Box<BedErrorPlus>> {
+    let (iid_count, sid_count) = (403, 2_001);
+    let val = nd::Array2::<i8>::zeros((iid_count, sid_count));
+    let temp_out = TempDir::default();
+    for file in write_both_modes(&val, &temp_out)? {
+        for num_threads in [1, 2, 8, 32] {
+            let mut bed = Bed::builder(&file)
+                .iid_count(iid_count)
+                .sid_count(sid_count)
+                .build()?;
+            let result = ReadOptions::builder()
+                .sid_index([0, 1, 5_000, 2, -7_000, 9_999])
+                .num_threads(num_threads)
+                .i8()
+                .read(&mut bed);
+            assert_error_variant!(
+                result,
+                BedErrorPlus::BedError(BedError::SidIndexTooBig(5_000))
+            );
+            let result = ReadOptions::builder()
+                .iid_index([0, 1, 999, 2, -1_000, 4_444])
+                .num_threads(num_threads)
+                .i8()
+                .read(&mut bed);
+            assert_error_variant!(
+                result,
+                BedErrorPlus::BedError(BedError::IidIndexTooBig(999))
+            );
+        }
+    }
+    Ok(())
+}

@@ -130,11 +130,15 @@ use futures_util::StreamExt;
 use nd::ShapeBuilder;
 use ndarray as nd;
 use num_traits::{Float, FromPrimitive, Signed, ToPrimitive, abs};
-use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
+use rayon::iter::{
+    IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator,
+    IntoParallelRefMutIterator, ParallelIterator,
+};
+use rayon::slice::ParallelSlice;
 use rayon::{ThreadPoolBuildError, iter::ParallelBridge};
 use statrs::distribution::{Beta, Continuous};
 use std::cmp::Ordering;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs::{self};
 use std::io::Read;
 use std::io::Seek;
@@ -151,6 +155,7 @@ use std::{
     io::{BufRead, BufReader, BufWriter},
     ops::RangeFull,
     path::{Path, PathBuf},
+    sync::{Arc, Mutex, OnceLock},
 };
 use thiserror::Error;
 mod bed_cloud;
@@ -369,14 +374,33 @@ impl<T> BedVal for T where
 {
 }
 
-fn create_pool(num_threads: usize) -> Result<rayon::ThreadPool, Box<BedErrorPlus>> {
-    match rayon::ThreadPoolBuilder::new()
+/// Returns the process-wide thread pool with `num_threads` threads, building it on first use.
+/// As with `rayon::ThreadPoolBuilder`, 0 means all logical CPUs, unless `RAYON_NUM_THREADS` is
+/// set when that pool is first built.
+///
+/// Pools are cached because building one costs up to several milliseconds (about 4.5 ms for 32
+/// threads), which is significant for small reads. Concurrent calls with the same `num_threads`
+/// share a pool. Rayon's global pool is not used, because `RAYON_NUM_THREADS` or a host
+/// application can resize it.
+fn thread_pool(num_threads: usize) -> Result<Arc<rayon::ThreadPool>, Box<BedErrorPlus>> {
+    static POOLS: OnceLock<Mutex<HashMap<usize, Arc<rayon::ThreadPool>>>> = OnceLock::new();
+    // Nothing that can panic runs while the lock is held, except allocation failure, which aborts.
+    let mut pools = POOLS
+        .get_or_init(Mutex::default)
+        .lock()
+        .expect("thread-pool cache lock should not be poisoned");
+    if let Some(pool) = pools.get(&num_threads) {
+        return Ok(Arc::clone(pool));
+    }
+    let pool = match rayon::ThreadPoolBuilder::new()
         .num_threads(num_threads)
         .build()
     {
-        Err(e) => Err(Box::new(e.into())),
-        Ok(pool) => Ok(pool),
-    }
+        Err(e) => return Err(Box::new(e.into())),
+        Ok(pool) => Arc::new(pool),
+    };
+    pools.insert(num_threads, Arc::clone(&pool));
+    Ok(pool)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -392,8 +416,9 @@ fn read_no_alloc<TVal: BedVal>(
     num_threads: usize,
     val: &mut nd::ArrayViewMut2<'_, TVal>, //mutable slices additionally allow to modify elements. But slices cannot grow - they are just a view into some vector.
 ) -> Result<(), Box<BedErrorPlus>> {
-    create_pool(num_threads)?.install(|| {
+    thread_pool(num_threads)?.install(|| {
         let (buf_reader, bytes_vector) = open_and_check(path)?;
+        let file = buf_reader.into_inner();
 
         match bytes_vector[2] {
             0 => {
@@ -401,7 +426,7 @@ fn read_no_alloc<TVal: BedVal>(
                 // so they still name the caller's axis.
                 let mut val_t = val.view_mut().reversed_axes();
                 internal_read_no_alloc(
-                    buf_reader,
+                    &file,
                     path,
                     sid_count,
                     iid_count,
@@ -415,7 +440,7 @@ fn read_no_alloc<TVal: BedVal>(
                 )
             }
             1 => internal_read_no_alloc(
-                buf_reader,
+                &file,
                 path,
                 iid_count,
                 sid_count,
@@ -556,7 +581,7 @@ fn try_div_4(in_iid_count: usize, in_sid_count: usize) -> Result<u64, Box<BedErr
 #[allow(clippy::too_many_arguments)]
 #[anyinput]
 fn internal_read_no_alloc<TVal: BedVal>(
-    mut buf_reader: BufReader<File>,
+    file: &File,
     path: AnyPath,
     in_iid_count: usize,
     in_sid_count: usize,
@@ -572,7 +597,7 @@ fn internal_read_no_alloc<TVal: BedVal>(
 
     let in_iid_count_div4_u64 = try_div_4(in_iid_count, in_sid_count)?;
     // "as" and math is safe because of early checks
-    let file_len = buf_reader.get_ref().metadata()?.len();
+    let file_len = file.metadata()?.len();
     let file_len2 = in_iid_count_div4_u64 * (in_sid_count as u64) + CB_HEADER_U64;
     if file_len != file_len2 {
         Err(BedError::IllFormed(path_ref_to_string(path)))?;
@@ -582,43 +607,135 @@ fn internal_read_no_alloc<TVal: BedVal>(
     let (i_div_4_less_start_array, i_mod_4_times_2_array, i_div_4_start, i_div_4_len) =
         check_and_precompute_iid_index(in_iid_count, iid_index, iid_too_big)?;
 
-    // Check and compute work for each sid_index
+    // Resolve every sid_index before reading anything, in order, so the first bad index is the
+    // one reported, whatever the thread count.
+    let in_sid_i_vec = sid_index
+        .iter()
+        .map(|in_sid_i_signed| resolve_index(*in_sid_i_signed, in_sid_count, sid_too_big))
+        .collect::<Result<Vec<usize>, BedError>>()?;
+    if iid_index.is_empty() || sid_index.is_empty() {
+        return Ok(());
+    }
+
     let from_two_bits_to_value = set_up_two_bits_to_value(is_a1_counted, missing_value);
+    let bytes_per_sid = i_div_4_len as usize; // At least 1, because iid_index is not empty.
+    // Consecutive SNPs are adjacent on disk only when each read spans the SNP's whole record.
+    let is_whole_record = i_div_4_start == 0 && i_div_4_len == in_iid_count_div4_u64;
+    let sid_per_chunk = sid_per_chunk(
+        in_sid_i_vec.len(),
+        bytes_per_sid,
+        rayon::current_num_threads(),
+    );
+
     // See https://morestina.net/blog/1432/parallel-stream-processing-with-rayon
     // Possible optimization: We could read snp in their input order instead of their output order
-    sid_index
-        .iter()
-        .map(|in_sid_i_signed| {
-            // Turn signed sid_index into unsigned sid_index (or error)
-            let in_sid_i = resolve_index(*in_sid_i_signed, in_sid_count, sid_too_big)? as u64;
-
-            // Read the iid info for one snp from the disk
-            let mut bytes_vector: Vec<u8> = vec![0; i_div_4_len as usize];
-            let pos: u64 = in_sid_i * in_iid_count_div4_u64 + i_div_4_start + CB_HEADER_U64; // "as" and math is safe because of early checks
-            buf_reader.seek(SeekFrom::Start(pos))?;
-            buf_reader.read_exact(&mut bytes_vector)?;
-            Ok::<_, Box<BedErrorPlus>>(bytes_vector)
-        })
-        // Zip in the column of the output array
-        .zip(out_val.axis_iter_mut(nd::Axis(1)))
-        // In parallel, decompress the iid info and put it in its column
-        .par_bridge() // This seems faster that parallel zip
-        .try_for_each(|(bytes_vector_result, mut col)| match bytes_vector_result {
-            Err(e) => Err(e),
-            Ok(bytes_vector) => {
-                for out_iid_i in 0..iid_index.len() {
-                    let i_div_4_less_start = i_div_4_less_start_array[out_iid_i];
-                    let i_mod_4_times_2 = i_mod_4_times_2_array[out_iid_i];
-                    let genotype_byte: u8 =
-                        (bytes_vector[i_div_4_less_start] >> i_mod_4_times_2) & 0x03;
-                    col[out_iid_i] = from_two_bits_to_value[genotype_byte as usize];
+    // Each task fills a contiguous run of output columns. It reads with positional I/O, so tasks
+    // share one `File` without a shared cursor, and it reuses one buffer for the whole run.
+    out_val
+        .axis_chunks_iter_mut(nd::Axis(1), sid_per_chunk)
+        .into_par_iter()
+        .zip(in_sid_i_vec.par_chunks(sid_per_chunk))
+        .try_for_each(|(mut out_chunk, in_sid_i_chunk)| {
+            let buffer_sid_count = if is_whole_record {
+                in_sid_i_chunk.len()
+            } else {
+                1
+            };
+            let mut buffer = vec![0u8; buffer_sid_count * bytes_per_sid];
+            // One column iterator for the whole chunk, advanced run by run. (Restarting it with
+            // `skip(start)` for each run would cost time quadratic in the chunk's width.)
+            let mut out_cols = out_chunk.axis_iter_mut(nd::Axis(1));
+            let mut start = 0;
+            while start < in_sid_i_chunk.len() {
+                let first_in_sid_i = in_sid_i_chunk[start];
+                let run_len = if is_whole_record {
+                    // Count the SNPs that follow `first_in_sid_i` on disk, so one read gets them all.
+                    1 + in_sid_i_chunk[start + 1..]
+                        .iter()
+                        .zip(first_in_sid_i + 1..)
+                        .take_while(|(in_sid_i, expected)| **in_sid_i == *expected)
+                        .count()
+                } else {
+                    1
+                };
+                let run_bytes = &mut buffer[..run_len * bytes_per_sid];
+                // "as" and math is safe because of early checks
+                let pos: u64 =
+                    first_in_sid_i as u64 * in_iid_count_div4_u64 + i_div_4_start + CB_HEADER_U64;
+                read_exact_at(file, run_bytes, pos)?;
+                for (bytes_vector, mut col) in run_bytes
+                    .chunks_exact(bytes_per_sid)
+                    .zip(out_cols.by_ref().take(run_len))
+                {
+                    for out_iid_i in 0..iid_index.len() {
+                        let i_div_4_less_start = i_div_4_less_start_array[out_iid_i];
+                        let i_mod_4_times_2 = i_mod_4_times_2_array[out_iid_i];
+                        let genotype_byte: u8 =
+                            (bytes_vector[i_div_4_less_start] >> i_mod_4_times_2) & 0x03;
+                        col[out_iid_i] = from_two_bits_to_value[genotype_byte as usize];
+                    }
                 }
-                Ok(())
+                start += run_len;
             }
+            Ok::<_, Box<BedErrorPlus>>(())
         })?;
 
     Ok(())
 }
+
+/// Input bytes below which a chunk is not split further: smaller tasks cost more to schedule
+/// than they save.
+const MIN_CHUNK_BYTES: usize = 1 << 16;
+/// Input bytes above which a chunk is split, which bounds each task's read buffer.
+const MAX_CHUNK_BYTES: usize = 1 << 20;
+
+/// Returns how many SNPs (output columns) each read task handles: about four tasks per thread,
+/// for load balance, within `MIN_CHUNK_BYTES..=MAX_CHUNK_BYTES` of input where possible. A small
+/// read therefore uses fewer tasks, and so fewer threads, than `num_threads`.
+fn sid_per_chunk(sid_count: usize, bytes_per_sid: usize, num_threads: usize) -> usize {
+    assert!(sid_count > 0 && bytes_per_sid > 0 && num_threads > 0);
+    let for_balance = sid_count.div_ceil(4 * num_threads);
+    let floor = MIN_CHUNK_BYTES.div_ceil(bytes_per_sid);
+    let ceiling = (MAX_CHUNK_BYTES / bytes_per_sid).max(1);
+    for_balance.max(floor).min(ceiling)
+}
+
+/// Fills `buffer` from `file`, starting at byte `offset`, without using or needing the file's
+/// cursor, so several tasks can read one `File` at once.
+#[cfg(unix)]
+fn read_exact_at(file: &File, buffer: &mut [u8], offset: u64) -> std::io::Result<()> {
+    use std::os::unix::fs::FileExt;
+    file.read_exact_at(buffer, offset)
+}
+
+/// Fills `buffer` from `file`, starting at byte `offset`, without using or needing the file's
+/// cursor, so several tasks can read one `File` at once. (`seek_read` moves the cursor as a
+/// side effect, but each call names its own offset, so concurrent calls do not interfere.)
+#[cfg(windows)]
+fn read_exact_at(file: &File, mut buffer: &mut [u8], mut offset: u64) -> std::io::Result<()> {
+    use std::io::{Error, ErrorKind};
+    use std::os::windows::fs::FileExt;
+    while !buffer.is_empty() {
+        match file.seek_read(buffer, offset) {
+            Ok(0) => {
+                return Err(Error::new(
+                    ErrorKind::UnexpectedEof,
+                    "failed to fill whole buffer",
+                ));
+            }
+            Ok(read_count) => {
+                buffer = &mut buffer[read_count..];
+                offset += read_count as u64;
+            }
+            Err(error) if error.kind() == ErrorKind::Interrupted => {}
+            Err(error) => return Err(error),
+        }
+    }
+    Ok(())
+}
+
+#[cfg(not(any(unix, windows)))]
+compile_error!("Reading .bed files needs positional file reads, implemented for Unix and Windows.");
 
 /// Resolves one index against an axis of `count` items: `0..count` as is, and negative indexes
 /// counting from the end (`-1` is the last item), as in Python. Any other index fails with
@@ -674,10 +791,8 @@ fn check_and_precompute_iid_index(
         *i_div_4_less_start = in_iid_i / 4 ;
         *i_mod_4_times_2 = (in_iid_i % 4 * 2) as u8;
     });
-    result_list
-        .iter()
-        .par_bridge()
-        .try_for_each(|x| (*x).clone())?;
+    // Scan serially, so the first bad index is the one reported, whatever the thread count.
+    result_list.into_iter().try_for_each(|result| result)?;
 
     let (i_div_4_start, i_div_4_len) =
         if let Some(min_value) = i_div_4_less_start_array.par_iter().min() {
