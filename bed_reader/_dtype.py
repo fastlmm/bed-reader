@@ -8,9 +8,9 @@ def array_dtype(dtype, *, default):
     """Resolve an explicit dtype, then ARRAY_DTYPE, then the calling API's default.
 
     ARRAY_DTYPE accepts ``float32`` or ``float64``. An explicit dtype bypasses the
-    environment and must be ``int8``, ``float32``, or ``float64``; anything else
-    raises ``ValueError`` here, before any read path is chosen. This does not
-    change existing arrays or NumPy defaults.
+    environment and is normalized with ``np.dtype``; a recognized dtype other than
+    ``int8``, ``float32``, or ``float64`` raises ``ValueError`` here, before any read
+    path is chosen. This does not change existing arrays or NumPy defaults.
 
     Examples
     --------

@@ -45,23 +45,32 @@ def test_invalid_environment_is_rejected_but_explicit_dtype_wins(monkeypatch, co
             assert read(dtype="float32").dtype == np.float32
 
 
-@pytest.mark.parametrize("dtype", ["float16", "complex64", "int16", np.uint8])
+UNSUPPORTED_DTYPES = ["float16", "complex64", "int16", np.uint8]
+
+
+@pytest.mark.parametrize("dtype", UNSUPPORTED_DTYPES)
 @pytest.mark.parametrize("force_python_only", [False, True])
-def test_unsupported_explicit_dtype_is_rejected(dtype, force_python_only):
+def test_unsupported_explicit_dtype_is_rejected_by_read(dtype, force_python_only):
     with open_bed(sample_file("small.bed")) as bed:
         with pytest.raises(ValueError, match="not known"):
             bed.read(dtype=dtype, force_python_only=force_python_only)
+
+
+@pytest.mark.parametrize("dtype", UNSUPPORTED_DTYPES)
+def test_unsupported_explicit_dtype_is_rejected_by_read_sparse(dtype):
+    with open_bed(sample_file("small.bed")) as bed:
         with pytest.raises(ValueError, match="not known"):
             bed.read_sparse(dtype=dtype)
 
 
+@pytest.mark.parametrize("shape", [(0, 0), (0, 3), (3, 0)])
 @pytest.mark.parametrize("dtype", ["float16", "complex64"])
-def test_unsupported_explicit_dtype_is_rejected_for_empty_files(tmp_path, dtype):
-    # Reads of a file with no individuals or SNPs never reach the native reader.
+def test_unsupported_explicit_dtype_is_rejected_for_empty_files(tmp_path, shape, dtype):
+    # Reads of a file with no individuals or no SNPs never reach the native reader.
     path = tmp_path / "empty.bed"
-    to_bed(path, np.zeros((0, 0), dtype=np.float32))
+    to_bed(path, np.zeros(shape, dtype=np.float32))
     with open_bed(path) as bed:
-        assert bed.read(dtype="float32").shape == (0, 0)
+        assert bed.read(dtype="float32").shape == shape
         with pytest.raises(ValueError, match="not known"):
             bed.read(dtype=dtype)
         with pytest.raises(ValueError, match="not known"):
