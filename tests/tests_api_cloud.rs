@@ -1,11 +1,5 @@
 #![cfg(feature = "tokio")]
 
-use bed_reader::allclose;
-use bed_reader::assert_eq_nan;
-use bed_reader::assert_error_variant;
-use bed_reader::sample_bed_file;
-use bed_reader::sample_bed_url;
-use bed_reader::sample_file;
 use bed_reader::BedCloud;
 use bed_reader::BedError;
 use bed_reader::BedErrorPlus;
@@ -13,10 +7,16 @@ use bed_reader::Metadata;
 use bed_reader::MetadataFields;
 use bed_reader::ReadOptions;
 use bed_reader::SliceInfo1;
+use bed_reader::allclose;
+use bed_reader::assert_eq_nan;
+use bed_reader::assert_error_variant;
+use bed_reader::sample_bed_file;
+use bed_reader::sample_bed_url;
+use bed_reader::sample_file;
 use bed_reader::{sample_url, sample_urls};
-use cloud_file::abs_path_to_url_string;
 use cloud_file::CloudFile;
 use cloud_file::EMPTY_OPTIONS;
+use cloud_file::abs_path_to_url_string;
 use ndarray as nd;
 use ndarray::s;
 use std::collections::HashSet;
@@ -1737,8 +1737,8 @@ async fn cloud_metadata_bed() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn cloud_read_and_fill_with_options() -> Result<(), Box<BedErrorPlus>> {
-    use bed_reader::assert_eq_nan;
     use bed_reader::ReadOptions;
+    use bed_reader::assert_eq_nan;
     use ndarray as nd;
     // Read the SNPs indexed by 2.
     let url = "https://raw.githubusercontent.com/fastlmm/bed-sample-files/main/small.bed";
@@ -2146,7 +2146,7 @@ fn read_me_cloud() -> Result<(), Box<BedErrorPlus>> {
 
 #[test]
 fn local_file_url_example() -> Result<(), Box<BedErrorPlus>> {
-    use bed_reader::{sample_bed_file, BedCloud, ReadOptions};
+    use bed_reader::{BedCloud, ReadOptions, sample_bed_file};
     use ndarray as nd;
     use {assert_eq_nan, bed_reader::BedErrorPlus, tokio::runtime::Runtime};
     Runtime::new().unwrap().block_on(async {
@@ -2167,7 +2167,7 @@ fn local_file_url_example() -> Result<(), Box<BedErrorPlus>> {
 
 #[test]
 fn local_file_cloud_file_example() -> Result<(), Box<BedErrorPlus>> {
-    use bed_reader::{sample_bed_file, BedCloud, ReadOptions};
+    use bed_reader::{BedCloud, ReadOptions, sample_bed_file};
     use ndarray as nd;
     use {assert_eq_nan, bed_reader::BedErrorPlus, tokio::runtime::Runtime}; // '#' needed for doctest
     Runtime::new().unwrap().block_on(async {
@@ -2438,7 +2438,7 @@ fn http_cloud_urls_md_3() -> Result<(), Box<BedErrorPlus>> {
 
 #[tokio::test]
 async fn doc_test_cloud_1() -> Result<(), Box<BedErrorPlus>> {
-    use bed_reader::{sample_urls, BedCloud, CloudFile};
+    use bed_reader::{BedCloud, CloudFile, sample_urls};
 
     let deb_maf_mib = sample_urls(["small.deb", "small.maf", "small.mib"])?
         .iter()

@@ -1,20 +1,20 @@
 #![cfg(feature = "extension-module")]
 
 use crate::{
-    create_pool, encode1, file_aat_piece, file_ata_piece, file_ata_piece_internal,
-    file_b_less_aatbx, impute_and_zero_mean_snps, matrix_subset_no_alloc, read_into_f32,
-    read_into_f64, Bed, BedError, BedErrorPlus, Dist, ReadOptions, WriteOptions,
+    Bed, BedError, BedErrorPlus, Dist, ReadOptions, WriteOptions, create_pool, encode1,
+    file_aat_piece, file_ata_piece, file_ata_piece_internal, file_b_less_aatbx,
+    impute_and_zero_mean_snps, matrix_subset_no_alloc, read_into_f32, read_into_f64,
 };
 use crate::{BedCloud, CloudFile};
 use numpy::PyArrayMethods;
 use numpy::{PyArray1, PyArray2, PyArray3};
 use pyo3::{
+    Bound, PyErr,
     exceptions::PyIOError,
     exceptions::PyIndexError,
     exceptions::PyValueError,
     prelude::*,
     types::{PyDict, PyModule},
-    Bound, PyErr,
 };
 use std::collections::HashMap;
 use tokio::runtime;

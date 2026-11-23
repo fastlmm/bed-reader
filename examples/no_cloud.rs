@@ -1,4 +1,4 @@
-use bed_reader::{sample_bed_file, Bed, BedErrorPlus, ReadOptions};
+use bed_reader::{Bed, BedErrorPlus, ReadOptions, sample_bed_file};
 use ndarray::s;
 use std::collections::HashSet;
 

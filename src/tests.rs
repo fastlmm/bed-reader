@@ -2,6 +2,13 @@
 
 #![cfg(test)]
 
+use crate::Bed;
+use crate::Dist;
+use crate::Index;
+use crate::Metadata;
+use crate::ReadOptions;
+use crate::SliceInfo1;
+use crate::WriteOptions;
 use crate::allclose;
 use crate::assert_eq_nan;
 use crate::assert_error_variant;
@@ -15,15 +22,8 @@ use crate::sample_bed_file;
 use crate::sample_file;
 use crate::sample_files;
 use crate::try_div_4;
-use crate::Bed;
-use crate::Dist;
-use crate::Index;
-use crate::Metadata;
-use crate::ReadOptions;
-use crate::SliceInfo1;
-use crate::WriteOptions;
+use crate::{BedError, BedErrorPlus, internal_read_no_alloc, read_no_alloc};
 use crate::{impute_and_zero_mean_snps, matrix_subset_no_alloc};
-use crate::{internal_read_no_alloc, read_no_alloc, BedError, BedErrorPlus};
 use anyinput::anyinput;
 use nd::s;
 use ndarray as nd;

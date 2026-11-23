@@ -119,19 +119,19 @@
 mod python_module;
 mod tests;
 use anyinput::anyinput;
-pub use bed_cloud::{sample_bed_url, sample_url, sample_urls, BedCloud, BedCloudBuilder};
+pub use bed_cloud::{BedCloud, BedCloudBuilder, sample_bed_url, sample_url, sample_urls};
 use byteorder::{LittleEndian, ReadBytesExt};
 pub use cloud_file::{CloudFile, CloudFileError};
 use core::fmt::Debug;
 use derive_builder::Builder;
-use dpc_pariter::{scope, IteratorExt};
+use dpc_pariter::{IteratorExt, scope};
 use fetch_data::FetchData;
 use futures_util::StreamExt;
 use nd::ShapeBuilder;
 use ndarray as nd;
-use num_traits::{abs, Float, FromPrimitive, Signed, ToPrimitive};
+use num_traits::{Float, FromPrimitive, Signed, ToPrimitive, abs};
 use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
-use rayon::{iter::ParallelBridge, ThreadPoolBuildError};
+use rayon::{ThreadPoolBuildError, iter::ParallelBridge};
 use statrs::distribution::{Beta, Continuous};
 use std::cmp::Ordering;
 use std::collections::HashSet;
@@ -211,9 +211,7 @@ pub enum BedError {
     IllFormed(String),
 
     #[allow(missing_docs)]
-    #[error(
-        "Ill-formed BED file. BED file header is incorrect. Expected mode to be 0 or 1. '{0}'"
-    )]
+    #[error("Ill-formed BED file. BED file header is incorrect. Expected mode to be 0 or 1. '{0}'")]
     BadMode(String),
 
     #[allow(missing_docs)]
@@ -241,7 +239,9 @@ pub enum BedError {
     SidIndexTooBig(isize),
 
     #[allow(missing_docs)]
-    #[error("Length of iid_index ({0}) and sid_index ({1}) must match dimensions of output array ({2},{3}).")]
+    #[error(
+        "Length of iid_index ({0}) and sid_index ({1}) must match dimensions of output array ({2},{3})."
+    )]
     IndexMismatch(usize, usize, usize, usize),
 
     #[allow(missing_docs)]
@@ -249,7 +249,9 @@ pub enum BedError {
     IndexesTooBigForFiles(usize, usize),
 
     #[allow(missing_docs)]
-    #[error("Subset: length of iid_index ({0}) and sid_index ({1}) must match dimensions of output array ({2},{3}).")]
+    #[error(
+        "Subset: length of iid_index ({0}) and sid_index ({1}) must match dimensions of output array ({2},{3})."
+    )]
     SubsetMismatch(usize, usize, usize, usize),
 
     #[allow(missing_docs)]
@@ -349,7 +351,9 @@ pub enum BedError {
     EncodingContiguous(),
 
     #[allow(missing_docs)]
-    #[error("Encoding destination buffer have length {0}, (in_vector.len() - 1) // 4 + 1, but it has length {1}.")]
+    #[error(
+        "Encoding destination buffer have length {0}, (in_vector.len() - 1) // 4 + 1, but it has length {1}."
+    )]
     EncodingLength(usize, usize),
 }
 
@@ -3337,7 +3341,7 @@ impl Hold<'_> {
     fn as_ref(&self) -> &Vec<isize> {
         match self {
             Hold::Ref(vec) => vec,
-            Hold::Copy(ref vec) => vec,
+            Hold::Copy(vec) => vec,
         }
     }
 }
@@ -6069,11 +6073,7 @@ pub fn allclose<
             let b_nan = *ptr_b != *ptr_b;
 
             if a_nan || b_nan {
-                if equal_nan {
-                    a_nan == b_nan
-                } else {
-                    false
-                }
+                if equal_nan { a_nan == b_nan } else { false }
             } else {
                 let c: T1 = abs(*ptr_a - T2::into(*ptr_b));
                 c <= atol

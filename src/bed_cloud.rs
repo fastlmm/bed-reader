@@ -3,7 +3,7 @@ compile_error!("This code requires a 64-bit target architecture.");
 
 use anyinput::anyinput;
 use bytes::Bytes;
-use cloud_file::{abs_path_to_url_string, CloudFile};
+use cloud_file::{CloudFile, abs_path_to_url_string};
 use derive_builder::Builder;
 use futures_util::StreamExt;
 use itertools::Itertools;
@@ -15,12 +15,12 @@ use std::ops::Range;
 use std::path::PathBuf;
 
 use crate::{
+    BED_FILE_MAGIC1, BED_FILE_MAGIC2, BedError, BedErrorPlus, BedVal, EMPTY_OPTIONS,
+    FromStringArray, Hold, Metadata, ReadOptions, STATIC_FETCH_DATA,
     check_and_precompute_iid_index, compute_max_chunk_bytes, compute_max_concurrent_requests,
-    resolve_index, set_up_two_bits_to_value, try_div_4, BedError, BedErrorPlus, BedVal,
-    FromStringArray, Hold, Metadata, ReadOptions, BED_FILE_MAGIC1, BED_FILE_MAGIC2, EMPTY_OPTIONS,
-    STATIC_FETCH_DATA,
+    resolve_index, set_up_two_bits_to_value, try_div_4,
 };
-use crate::{MetadataFields, CB_HEADER_U64};
+use crate::{CB_HEADER_U64, MetadataFields};
 
 /// Represents a PLINK .bed file in the cloud that is open for reading genotype data and metadata.
 ///
