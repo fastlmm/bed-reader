@@ -1230,12 +1230,20 @@ fn find_factor<
 
 /// One SNP's mean and standard deviation from its count, sum, and sum of squares over observed
 /// values. Shared by the column-wise and row-wise standardizers.
+///
+/// `is_constant` says the SNP's observed minimum equals its maximum. A constant SNP gets an
+/// infinite standard deviation even when `E[x*x] - E[x]**2` rounds to a tiny positive value:
+/// 0.1 repeated 1,000 times has a rounded mean, so the variance formula leaves a residue that
+/// would otherwise standardize the SNP to nonzero values and, when training, store a finite
+/// standard deviation. The mean is unchanged.
+// Same min-versus-max rule as PySnpTools' Python and CuPy standardizers.
 fn snp_mean_std<
     T: Default + Copy + Debug + Sync + Send + Sync + Float + ToPrimitive + FromPrimitive,
 >(
     n_observed: T,
     sum_s: T,
     sum2_s: T,
+    is_constant: bool,
     dist: &Dist,
     two: T,
 ) -> Result<(T, T), BedError> {
@@ -1255,7 +1263,7 @@ fn snp_mean_std<
     let variance: T = mean2_s - mean_s * mean_s; //By the Cauchy Schwartz inequality this should always be positive
 
     let mut std = variance.sqrt();
-    if std.is_nan() || std <= T::zero() {
+    if is_constant || std.is_nan() || std <= T::zero() {
         // All "SNPs" have the same value (aka SNC)
         std = T::infinity(); //SNCs are still meaning full in QQ plots because they should be thought of as SNPs without enough data.
     }
@@ -1277,6 +1285,8 @@ fn process_sid<
         let mut n_observed = T::zero();
         let mut sum_s = T::zero(); // the sum of a SNP over all observed individuals
         let mut sum2_s = T::zero(); // the sum of the squares of the SNP over all observed individuals
+        let mut min_s = T::infinity(); // the smallest observed value of the SNP
+        let mut max_s = T::neg_infinity(); // the largest observed value of the SNP
 
         for iid_i in 0..col.len() {
             let v = col[iid_i];
@@ -1284,9 +1294,12 @@ fn process_sid<
                 sum_s = sum_s + v;
                 sum2_s = sum2_s + v * v;
                 n_observed = n_observed + T::one();
+                min_s = Float::min(min_s, v);
+                max_s = Float::max(max_s, v);
             }
         }
-        let (mean_s, std) = snp_mean_std(n_observed, sum_s, sum2_s, dist, two)?;
+        // With no observed values, min_s > max_s and snp_mean_std reports NoIndividuals.
+        let (mean_s, std) = snp_mean_std(n_observed, sum_s, sum2_s, min_s == max_s, dist, two)?;
         stats_row[0] = mean_s;
         stats_row[1] = std;
     }
@@ -1332,29 +1345,40 @@ fn process_all_iids<
         let mut n_observed_array = nd::Array1::<T>::zeros(sid_count);
         let mut sum_s_array = nd::Array1::<T>::zeros(sid_count); //the sum of a SNP over all observed individuals
         let mut sum2_s_array = nd::Array1::<T>::zeros(sid_count); //the sum of the squares of the SNP over all observed individuals
+        let mut min_s_array = nd::Array1::<T>::from_elem(sid_count, T::infinity()); //the smallest observed value of each SNP
+        let mut max_s_array = nd::Array1::<T>::from_elem(sid_count, T::neg_infinity()); //the largest observed value of each SNP
         for row in val.axis_iter(nd::Axis(0)) {
             nd::par_azip!((&v in row,
                 n_observed_ptr in &mut n_observed_array,
                 sum_s_ptr in &mut sum_s_array,
-                sum2_s_ptr in &mut sum2_s_array
+                sum2_s_ptr in &mut sum2_s_array,
+                min_s_ptr in &mut min_s_array,
+                max_s_ptr in &mut max_s_array
             )
                 if !v.is_nan() {
                     *n_observed_ptr = *n_observed_ptr + T::one();
                     *sum_s_ptr = *sum_s_ptr + v;
                     *sum2_s_ptr = *sum2_s_ptr + v * v;
+                    *min_s_ptr = Float::min(*min_s_ptr, v);
+                    *max_s_ptr = Float::max(*max_s_ptr, v);
                 }
             );
         }
 
         // O(sid_count)
+        // With no observed values, min_s > max_s and snp_mean_std reports NoIndividuals.
+        let is_constant_array = nd::Zip::from(&min_s_array)
+            .and(&max_s_array)
+            .map_collect(|&min_s, &max_s| min_s == max_s);
         let mut result_list: Vec<Result<(), BedError>> = vec![Ok(()); sid_count];
         nd::par_azip!((mut stats_row in stats.axis_iter_mut(nd::Axis(0)),
                 &n_observed in &n_observed_array,
                 &sum_s in &sum_s_array,
                 &sum2_s in &sum2_s_array,
+                &is_constant in &is_constant_array,
                 result_ptr in &mut result_list)
         {
-            match snp_mean_std(n_observed, sum_s, sum2_s, dist, two) {
+            match snp_mean_std(n_observed, sum_s, sum2_s, is_constant, dist, two) {
                 Ok((mean_s, std)) => {
                     stats_row[0] = mean_s;
                     stats_row[1] = std;

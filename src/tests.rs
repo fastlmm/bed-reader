@@ -30,7 +30,8 @@ use ndarray as nd;
 use ndarray::Order;
 use ndarray::ShapeBuilder;
 use ndarray_npy::read_npy;
-use num_traits::abs;
+use num_traits::{Float, abs};
+use std::fmt::Debug;
 use std::ops::Range;
 use std::ops::RangeInclusive;
 use std::path::Path;
@@ -441,6 +442,87 @@ fn standardize_unit() {
 
         assert!((val[(0, 0)] - -0.305_026_183_261_766_8).abs() < 1e-8);
     }
+}
+
+// A constant fractional SNP must standardize to exactly zero and train an infinite standard
+// deviation, even though its rounded mean leaves `E[x*x] - E[x]**2` a tiny positive value.
+// F order exercises the column-wise standardizer; C order, the row-wise one.
+fn check_constant_fractional_snp<
+    T: Default
+        + Copy
+        + Debug
+        + Sync
+        + Send
+        + Float
+        + num_traits::ToPrimitive
+        + num_traits::FromPrimitive,
+>(
+    constant: T,
+) {
+    const IID_COUNT: usize = 1_001; // 1,000 observed values plus one missing
+    const MISSING_IID_INDEX: usize = 500;
+    let dist_list = [Dist::Unit, Dist::Beta { a: 1.0, b: 25.0 }];
+    for dist in &dist_list {
+        for is_f in [true, false] {
+            // Column 0 is the constant SNP (with one missing value); column 1 varies.
+            let shape = ShapeBuilder::set_f((IID_COUNT, 2), is_f);
+            let mut val = nd::Array2::<T>::from_shape_fn(shape, |(iid_index, sid_index)| {
+                if sid_index == 0 {
+                    if iid_index == MISSING_IID_INDEX {
+                        T::nan()
+                    } else {
+                        constant
+                    }
+                } else {
+                    T::from_usize(iid_index % 3).unwrap() * constant
+                }
+            });
+            let mut stats = nd::Array2::<T>::zeros((2, 2));
+            impute_and_zero_mean_snps(
+                &mut val.view_mut(),
+                dist,
+                true,
+                false,
+                &mut stats.view_mut(),
+            )
+            .unwrap();
+            assert!(
+                val.column(0).iter().all(|value| *value == T::zero()),
+                "constant SNP must standardize to exactly zero (is_f={is_f})"
+            );
+            assert!(stats[(0, 1)].is_infinite() && stats[(0, 1)] > T::zero());
+            assert!(val.column(1).iter().any(|value| *value != T::zero()));
+            assert!(stats[(1, 1)].is_finite());
+
+            // Applying the trained statistics to new values of the SNP gives zero, too.
+            let mut new_val = nd::Array2::<T>::from_shape_fn(shape, |(iid_index, _)| {
+                T::from_usize(iid_index % 5).unwrap() * constant
+            });
+            impute_and_zero_mean_snps(
+                &mut new_val.view_mut(),
+                dist,
+                true,
+                true,
+                &mut stats.view_mut(),
+            )
+            .unwrap();
+            assert!(
+                new_val.column(0).iter().all(|value| *value == T::zero()),
+                "trained constant SNP must standardize new values to zero (is_f={is_f})"
+            );
+            assert!(new_val.column(1).iter().any(|value| *value != T::zero()));
+        }
+    }
+}
+
+#[test]
+fn standardize_constant_fractional_snp_f64() {
+    check_constant_fractional_snp(0.1f64);
+}
+
+#[test]
+fn standardize_constant_fractional_snp_f32() {
+    check_constant_fractional_snp(1.7f32);
 }
 
 #[test]
