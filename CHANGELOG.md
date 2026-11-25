@@ -5,102 +5,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.3.0b3] - 2026-11-23
+## [1.3.0] - in beta (changes since 1.2.1)
 
-* Fix a pre-existing bug (also in 1.2.1) in the standardization of constant
-  fractional SNPs (`standardize_f32` and `standardize_f64`, used by
-  PySnpTools' Unit and Beta standardizers). A SNP whose observed values are all
-  equal now standardizes to exactly zero and, when training, stores an infinite
-  standard deviation, so applying the trained statistics to new values also
-  gives zero. Before, a rounded mean left a tiny
-  nonzero variance: for example, 0.1 repeated 1,000 times standardized to values
-  up to 1.3e-7 in float64 (1.7 repeated in float32: up to 2.8e-3), and applying
-  the trained statistics to new values gave results up to 3.8e8. A SNP is
-  constant when its observed minimum equals its maximum. Aside from the float32
-  accuracy change described below, this fix leaves all other SNPs, and the
-  stored means of constant SNPs, unchanged bit for bit.
+### Highlights
 
-* More accurate float32 standardization (`standardize_f32`): per-SNP sums are
-  now accumulated in float64. With float32 sums, the variance formula lost
-  precision when a SNP's values were mostly 2, such as a rare variant counted
-  by its common allele: the standard deviation was off by up to 3.4e-4
-  (relative) at minor allele frequency 0.0002 with 14,925 individuals. It is
-  now within float32 rounding. Pre-existing. float32 results change slightly;
-  float64 results are unchanged bit for bit. Speed is unchanged.
+* **Faster local reads, especially with many threads.** Each thread reads its own run
+  of SNPs with positional file reads, in place of one serialized reader. Results are
+  unchanged. `num_threads` is now a maximum: a small read may use fewer threads.
+* **Precision default.** The `ARRAY_DTYPE` environment variable (`float32` or
+  `float64`) sets the default dtype for `open_bed.read` and `open_bed.read_sparse`; an
+  explicit dtype wins. Without it, reads still default to float32.
 
-* Faster float32 and float64 standardization of C-order (row-major) arrays:
-  about 4x on 14,925 x 10,000 at 8 threads.
+### Behavior changes
 
-## [1.3.0b2] - 2026-11-23
-
-* Faster local reads, especially with many threads. Each thread now reads its
-  own run of SNPs with positional file reads, in place of one serialized
-  reader. Results are unchanged. `num_threads` is now a maximum: a small read
-  may use fewer threads. When several indexes are out of range, the error now
-  always names the first one.
-
-* Rust: the crate uses edition 2024. The minimum supported Rust version
-  remains 1.85.
-
-## [1.3.0b1] - 2026-11-22
-
-Tagged but not published; its changes are released in 1.3.0b2.
-
-* Withdraw the experimental GPU features introduced in 1.3.0a1: CuPy reads,
-  GPU allocation and standardization helpers, and Rust CubeCL backends.
-  bed-reader reads into CPU arrays. PySnpTools and FaST-LMM retain GPU
-  computation by transferring CPU reads to CuPy.
-
-* Behavior change from 1.2.1: an explicit `dtype=None` in `open_bed.read` and
-  `open_bed.read_sparse` now returns float32, not NumPy's implicit float64.
-  An omitted or explicit `dtype=None` uses the `ARRAY_DTYPE` environment
-  variable (`float32` or `float64`) when set, otherwise float32. Explicit
-  dtypes override the environment.
-
-* Reject unsupported explicit dtypes (anything but `int8`, `float32`, or
-  `float64`) with `ValueError` in `open_bed.read` and `open_bed.read_sparse` on
-  every path. Previously `force_python_only=True` and files with no
+* An explicit `dtype=None` in `open_bed.read` and `open_bed.read_sparse` now means the
+  default (`ARRAY_DTYPE`, then float32), not NumPy's implicit float64.
+* Unsupported explicit dtypes (anything but `int8`, `float32`, or `float64`) raise
+  `ValueError` on every path. Before, `force_python_only=True` and files with no
   individuals or SNPs returned arrays of the unsupported dtype.
+* When several indexes are out of range, the error now always names the first one.
 
-* Rust: `numpy` is now enabled only by the `extension-module` feature and
-  `ndarray-npy` is a test-only dependency, so non-Python builds compile fewer
-  dependencies.
+### Fixes
 
-* Fix index errors on mode 0 (individual-major) .bed files: an out-of-range
-  individual index was reported as a SNP index, and the reverse. Local and
-  cloud reads now resolve indexes with one shared function.
+* Constant fractional SNPs (for example, dosages that are all 0.1) now standardize to
+  exactly zero with `standardize_f32` and `standardize_f64` (used by PySnpTools' Unit
+  and Beta), and training stores an infinite standard deviation, so applying the
+  trained statistics to new values also gives zero. Before, a rounded mean left a tiny
+  variance: 0.1 repeated 1,000 times standardized to values up to 1.3e-7 in float64
+  (1.7 in float32: up to 2.8e-3), and applying the trained statistics gave results up
+  to 3.8e8.
+* Float32 standardization accumulates per-SNP sums in float64. With float32 sums, a SNP
+  whose values were mostly 2 (such as a rare variant counted by its common allele) had
+  its standard deviation off by up to 3.4e-4 relative; it is now within float32
+  rounding. Float32 results change slightly; float64 results are unchanged bit for bit.
+* On mode 0 (individual-major) .bed files, an out-of-range individual index was
+  reported as a SNP index, and the reverse. Local and cloud reads now share one index
+  check.
 
-## [1.3.0a1] - 2026-11-17
+### Other
 
-* Add experimental NVIDIA GPU reads for Python through CuPy and optional
-  CubeCL CUDA/HIP backends for Rust. CPU execution remains the default.
-  Python GPU wheels target Windows and Linux x86-64; WSL2 uses the Linux wheel.
-  The `cupy` extra installs CuPy's CUDA 13 distribution and follows CuPy's
-  NVIDIA driver/toolkit prerequisites.
-
-* Support GPU Unit/Beta standardization of fractional float32/float64 inputs,
-  with centered variance calculation, missing values, constant columns,
-  trained statistics, and both memory orders. Int8 standardization remains
-  unsupported. Warn about float64 GPU arithmetic costs without changing dtype.
-
-* Add experimental Rust backend selection while retaining CPU-only builds.
-  Optional GPU dependencies require Rust 1.95 or later.
-
-* Add `ARRAY_DTYPE` precision defaults for Python dense/sparse reads and GPU
-  allocation. Explicit dtype wins; without the setting, existing defaults are
-  unchanged. The optional dtype parameter now defaults to `None`.
-  Explicit `dtype=None` now selects the same default as omission (float32 for
-  reads without the environment), rather than NumPy's implicit float64 dtype.
-
-* Add `is_cubecl_backed` to identify CubeCL-backed CuPy arrays and their views
-  without copying values or synchronizing the GPU.
-
-* Add experimental `empty_gpu` allocation of CubeCL-backed CuPy matrices, with
-  view lifetime tracking and safe native owner transfer between Python threads.
-  Expose `gpu_memory_cleanup` to release unused native allocations without
-  invalidating live arrays.
-
-* Retry sample-file downloads up to three times on transient network errors.
+* About 4 times faster float32 and float64 standardization of C-order (row-major)
+  arrays (14,925 x 10,000 at 8 threads).
+* Sample-file downloads retry up to three times on transient network errors.
+* Rust: the crate uses edition 2024; the minimum supported Rust version remains 1.85.
+  `numpy` is enabled only by the `extension-module` feature, and `ndarray-npy` is a
+  test-only dependency, so non-Python builds compile fewer dependencies.
+* The experimental GPU features of the 1.3.0a1 alpha were withdrawn; bed-reader reads
+  into CPU arrays, and PySnpTools and FaST-LMM move the data to the GPU.
 
 ## [1.2.1] - 2026-11-13
 
